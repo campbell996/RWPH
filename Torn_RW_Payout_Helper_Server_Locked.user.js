@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.101
+// @version      1.1.105
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -617,7 +617,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -629,6 +629,10 @@
 
   function rwphRestorePayoutFormState() {
     const state = rwphSafeJsonGet(PAYOUT_FORM_STATE_STORAGE_KEY, {});
+    if (state["rw-hit-weight"] && !state["rw-war-hit-weight"]) state["rw-war-hit-weight"] = state["rw-hit-weight"];
+    if (state["rw-hit-weight"] && !state["rw-outside-hit-weight"]) state["rw-outside-hit-weight"] = state["rw-hit-weight"];
+    if (state["rw-outside-hit-weight"] && !state["rw-retaliation-hit-weight"]) state["rw-retaliation-hit-weight"] = state["rw-outside-hit-weight"];
+    if (state["rw-hit-weight"] && !state["rw-retaliation-hit-weight"]) state["rw-retaliation-hit-weight"] = state["rw-hit-weight"];
     for (const [id, value] of Object.entries(state)) {
       const el = document.getElementById(id);
       if (!el) continue;
@@ -638,7 +642,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -939,6 +943,7 @@
   }
 
   function panelBaseCss() {
+    // All selectors in this stylesheet must stay scoped to RWPH elements. Do not style body/html/Torn globals here.
     return `
       #rw-payout-helper {
         position: fixed;
@@ -2050,7 +2055,7 @@
         }
       }
 
-      /* v1.1.101 Torn-style dark/red theme */
+      /* v1.1.102 Torn-style dark/red theme */
       #rw-payout-helper,
       #rw-payout-helper .rw-results-panel,
       #rwph-xanax-send-status,
@@ -2478,7 +2483,7 @@
       h1 { font-size:18px; }
     }
   
-    /* v1.1.101 Torn-style dark/red theme */
+    /* v1.1.102 Torn-style dark/red theme */
     body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
     body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
     .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
@@ -2712,7 +2717,7 @@
     h1 { margin:10px 0 6px; font-size:22px; }
     p { margin:0; color:#a5b4fc; font-weight:800; line-height:1.45; }
   
-    /* v1.1.101 Torn-style dark/red theme */
+    /* v1.1.102 Torn-style dark/red theme */
     body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
     body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
     .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
@@ -3519,7 +3524,7 @@
       th, td { font-size:11px; padding:7px 5px; }
     }
   
-    /* v1.1.101 Torn-style dark/red theme */
+    /* v1.1.102 Torn-style dark/red theme */
     body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
     body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
     .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
@@ -4251,18 +4256,6 @@
 
     panel.innerHTML = `
       <style>${panelBaseCss()}
-    /* v1.1.101 Torn-style dark/red theme */
-    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
-    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
-    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
-    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
-    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
-
   </style>
       <div class="rw-head">
         <span>Ranked War Payout Helper - Locked</span>
@@ -4288,7 +4281,7 @@
           <div class="rw-actions">
             <button id="rw-start-payment">Buy Licence</button>
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
-            <button id="rw-free-trial" class="secondary">2 Day Free Trial</button>
+            <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
           </div>
@@ -4417,7 +4410,7 @@
               <li><b>No Check Payment buttons:</b> users do not manually press Check Payment. RWPH watches for the correct Xanax payment automatically.</li>
               <li><b>5-minute payment codes:</b> payment codes expire after 5 minutes. If a code expires, create a new one before sending.</li>
               <li><b>Saved payment code:</b> the current active payment code is saved locally while it is valid.</li>
-              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
+              <li><b>7 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
               <li><b>Your Expiration:</b> shows the licensed Torn ID, remaining licence time, and expiry date/time.</li>
               <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
               <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
@@ -4472,7 +4465,9 @@
               <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
               <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
-              <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
+              <li><b>War Hit Weight:</b> controls how much ranked-war hits count toward payout share. Default is 1.</li>
+              <li><b>Outside Hit Weight:</b> controls how much outside hits count when ranked-war only is off. Default is 1.</li>
+              <li><b>Retaliation Hit Weight:</b> controls how much retaliation hits count when ranked-war only is off. Default is 1.</li>
               <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
               <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
               <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
@@ -4618,20 +4613,20 @@
       const userKey = document.getElementById("rw-paywall-key").value.trim();
       if (!userKey) return alert("Enter your Torn API key first.");
 
-      if (!confirm("Start your 2 day free trial? This can only be used once per Torn account.")) return;
+      if (!confirm("Start your 7 day free trial? This can only be used once per Torn account.")) return;
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
         clearPendingPayment();
         updatePendingPaymentUi();
-        status.textContent = "Activating 2 day free trial...";
+        status.textContent = "Activating 7 day free trial...";
         codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/trial", { userKey });
         if (!result.token) throw new Error(result.message || "Trial did not return a license token.");
 
         GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-        status.textContent = `${result.message || "2 day free trial activated."} Loading tool...`;
+        status.textContent = `${result.message || "7 day free trial activated."} Loading tool...`;
         closePanel();
         createPanel();
       } catch (e) {
@@ -4767,18 +4762,6 @@
 
     panel.innerHTML = `
       <style>${panelBaseCss()}
-    /* v1.1.101 Torn-style dark/red theme */
-    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
-    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
-    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
-    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
-    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
-
   </style>
       <div class="rw-head">
         <span>Ranked War Payout Helper</span>
@@ -4819,11 +4802,19 @@
             <input id="rw-total" type="number" value="100000000" min="0">
           </label>
           <div class="rw-row">
-            <label>Normal hit weight
-              <input id="rw-hit-weight" type="number" value="1" step="0.1">
+            <label>War Hit Weight
+              <input id="rw-war-hit-weight" type="number" value="1" step="0.1" min="0">
+            </label>
+            <label>Outside Hit Weight
+              <input id="rw-outside-hit-weight" type="number" value="1" step="0.1" min="0">
+            </label>
+          </div>
+          <div class="rw-row">
+            <label>Retaliation Hit Weight
+              <input id="rw-retaliation-hit-weight" type="number" value="1" step="0.1" min="0">
             </label>
             <label>Assist weight
-              <input id="rw-assist-weight" type="number" value="0" step="0.1">
+              <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
             </label>
           </div>
           <label><input id="rw-only" type="checkbox" checked> Use ranked-war hits for payout only</label>
@@ -4959,7 +4950,7 @@
               <li><b>No Check Payment buttons:</b> users do not manually press Check Payment. RWPH watches for the correct Xanax payment automatically.</li>
               <li><b>5-minute payment codes:</b> payment codes expire after 5 minutes. If a code expires, create a new one before sending.</li>
               <li><b>Saved payment code:</b> the current active payment code is saved locally while it is valid.</li>
-              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
+              <li><b>7 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
               <li><b>Your Expiration:</b> shows the licensed Torn ID, remaining licence time, and expiry date/time.</li>
               <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
               <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
@@ -5014,7 +5005,9 @@
               <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
               <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
-              <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
+              <li><b>War Hit Weight:</b> controls how much ranked-war hits count toward payout share. Default is 1.</li>
+              <li><b>Outside Hit Weight:</b> controls how much outside hits count when ranked-war only is off. Default is 1.</li>
+              <li><b>Retaliation Hit Weight:</b> controls how much retaliation hits count when ranked-war only is off. Default is 1.</li>
               <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
               <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
               <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
@@ -5268,7 +5261,9 @@
       const from = dateTimeLocalToUnix(document.getElementById("rw-from").value);
       const to = dateTimeLocalToUnix(document.getElementById("rw-to").value);
       const totalPayout = Number(document.getElementById("rw-total").value);
-      const hitWeight = Number(document.getElementById("rw-hit-weight").value);
+      const warHitWeight = Number(document.getElementById("rw-war-hit-weight").value);
+      const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight").value);
+      const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight").value);
       const assistWeight = Number(document.getElementById("rw-assist-weight").value);
       const rwOnly = document.getElementById("rw-only").checked;
       const includeChainHits = document.getElementById("rw-chain").checked;
@@ -5276,13 +5271,14 @@
       if (!userKey) return alert("Enter your Torn API key.");
       if (!from || !to || to <= from) return alert("Enter a valid start/end date and time.");
       if (totalPayout <= 0) return alert("Enter a payout pool greater than 0.");
+      if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0) return alert("Weights cannot be negative.");
 
       let preOpenedResultsTab = null;
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
         results.innerHTML = "";
-        status.textContent = "Server is verifying licence, fetching attacks, classifying war/assist/outside/retal hits, and calculating payouts...";
+        status.textContent = "Server is verifying licence, fetching attacks, classifying war/assist/outside/retal hits, applying separate war, outside, retaliation, and assist weights, and calculating payouts...";
         preOpenedResultsTab = openBlankResultsTab();
 
         const result = await apiPost("/api/calc/rw-payout", {
@@ -5291,7 +5287,9 @@
           from,
           to,
           totalPayout,
-          hitWeight,
+          warHitWeight,
+          outsideHitWeight,
+          retaliationHitWeight,
           assistWeight,
           rwOnly,
           includeChainHits,
@@ -5328,7 +5326,7 @@
           try {
             preOpenedResultsTab.document.open();
             preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121212;color:#d7d7d7;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center}.box{max-width:520px;border:1px solid #474747;border-radius:8px;background:linear-gradient(180deg,#242424,#1a1a1a);padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#f2f2f2}p{color:#c8c8c8;font-weight:800}
-    /* v1.1.101 Torn-style dark/red theme */
+    /* v1.1.102 Torn-style dark/red theme */
     body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
     body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
     .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
@@ -5472,18 +5470,6 @@
     rwphApplyPanelLayout(panel);
 
     panel.innerHTML = `<style>${panelBaseCss()}
-    /* v1.1.101 Torn-style dark/red theme */
-    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
-    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
-    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
-    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
-    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
-
   </style><div class="rw-body"><div class="rw-muted">Checking license...</div></div>`;
 
     const valid = await verifySavedLicense();
