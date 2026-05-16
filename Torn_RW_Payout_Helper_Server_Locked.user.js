@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.75
+// @version      1.1.76
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -230,7 +230,7 @@
         <div class="rw-payment-recipient">${esc(PAYMENT_RECEIVER_TEXT)}</div>
         <div class="rw-payment-instruction">Use this exact message:</div>
         <div class="rw-payment-code">${safeCode}</div>
-        <div class="rw-payment-note">${esc(minutesLeftText)} RWPH will check for the Xanax payment automatically. You still review and press Send yourself in Torn.</div>
+        <div class="rw-payment-note">${esc(minutesLeftText)} RWPH only adds licence days when <b>${esc(PAYMENT_ITEM_NAME)}</b> is sent with the exact payment code as the message. Other items do not count. If you send ${esc(PAYMENT_ITEM_NAME)} without the code, it will need manual review. You still review and press Send yourself in Torn.</div>
         <button type="button" data-open-xanax-payment="${safeCode}">Open ${esc(PAYMENT_ITEM_NAME)} Send Page</button>
       </div>`;
   }
@@ -293,6 +293,45 @@
     if (status) status.textContent = message;
   }
 
+
+  function closeWrongPaymentPanel() {
+    document.getElementById("rw-wrong-payment-panel")?.remove();
+  }
+
+  function showWrongPaymentPanel(message) {
+    closeWrongPaymentPanel();
+    const panel = document.createElement("div");
+    panel.id = "rw-wrong-payment-panel";
+    panel.style.cssText = `
+      position: fixed;
+      z-index: 1000002;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(420px, calc(100vw - 24px));
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(96,165,250,.35);
+      background: radial-gradient(circle at top, rgba(37,99,235,.28), transparent 42%), linear-gradient(145deg, rgba(15,23,42,.98), rgba(30,41,59,.98));
+      box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06) inset;
+      color: #e0f7ff;
+      text-align: center;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    `;
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-weight:950;font-size:16px;color:#fff;">
+        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(59,130,246,.55));" />
+        Payment Needs Manual Review
+      </div>
+      <div style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;">
+        ${esc(message || `You sent the payment wrong. Licence days are only automatically added when ${PAYMENT_ITEM_NAME} is sent with the exact payment code in the item message. Your licence will be manually added ASAP.`)}
+      </div>
+      <button id="rw-wrong-payment-close" type="button" style="width:100%;padding:10px 12px;border-radius:14px;border:1px solid rgba(125,211,252,.45);background:linear-gradient(135deg,rgba(37,99,235,.95),rgba(79,70,229,.95));color:#fff;font-weight:950;cursor:pointer;">Close</button>
+    `;
+    document.body.appendChild(panel);
+    panel.querySelector("#rw-wrong-payment-close")?.addEventListener("click", closeWrongPaymentPanel);
+  }
+
   async function autoCheckPaymentOnce(userKey, mode = "unlock") {
     const pending = getPendingPayment();
     if (!pending) {
@@ -311,8 +350,17 @@
       const result = await apiPost("/api/paywall/check", { userKey });
 
       if (!result.paid) {
+        if (result.wrongPayment) {
+          clearPendingPayment();
+          stopAutoPaymentCheck();
+          const msg = result.error || `Wrong payment detected. Licence days are only automatically added when ${PAYMENT_ITEM_NAME} is sent with the exact payment code. Your licence will be manually added ASAP.`;
+          setPaymentStatus(msg, mode);
+          updatePendingPaymentUi();
+          showWrongPaymentPanel(msg);
+          return false;
+        }
         const mins = pendingPaymentMinutesLeft(getPendingPayment());
-        setPaymentStatus(`Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in about ${mins} minute(s).`, mode);
+        setPaymentStatus(result.error || `Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in about ${mins} minute(s).`, mode);
         updatePendingPaymentUi();
         return false;
       }
@@ -3141,6 +3189,8 @@
               <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase.</li>
               <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel so users can add more time to their existing licence.</li>
               <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds while the payment code is active.</li>
+              <li><b>Xanax only:</b> automatic licence time is only added when Xanax is sent to Evil_Panda_420 [3236276] with the exact payment code in the item message. Other items do not count.</li>
+              <li><b>Missing or wrong code:</b> if Xanax is sent without the exact payment code, RWPH shows a manual-review message and the licence will need to be added manually ASAP.</li>
               <li><b>No Check Payment buttons:</b> users do not manually press Check Payment. RWPH watches for the correct Xanax payment automatically.</li>
               <li><b>5-minute payment codes:</b> payment codes expire after 5 minutes. If a code expires, create a new one before sending.</li>
               <li><b>Saved payment code:</b> the current active payment code is saved locally while it is valid.</li>
@@ -3238,6 +3288,8 @@
             <ul class="rw-how-list">
               <li><b>Failed to fetch:</b> backend server is offline, ngrok is closed, or PAYWALL_API_BASE is wrong.</li>
               <li><b>Payment not found:</b> check the receiver, exact payment code, Xanax quantity, and that the code has not expired.</li>
+              <li><b>Wrong item:</b> sending any item other than Xanax with the payment code will not automatically add licence time.</li>
+              <li><b>No payment code:</b> sending Xanax without the exact payment code opens a manual-review message. Licence time will need to be added manually ASAP.</li>
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
@@ -3652,6 +3704,8 @@
               <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase.</li>
               <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel so users can add more time to their existing licence.</li>
               <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds while the payment code is active.</li>
+              <li><b>Xanax only:</b> automatic licence time is only added when Xanax is sent to Evil_Panda_420 [3236276] with the exact payment code in the item message. Other items do not count.</li>
+              <li><b>Missing or wrong code:</b> if Xanax is sent without the exact payment code, RWPH shows a manual-review message and the licence will need to be added manually ASAP.</li>
               <li><b>No Check Payment buttons:</b> users do not manually press Check Payment. RWPH watches for the correct Xanax payment automatically.</li>
               <li><b>5-minute payment codes:</b> payment codes expire after 5 minutes. If a code expires, create a new one before sending.</li>
               <li><b>Saved payment code:</b> the current active payment code is saved locally while it is valid.</li>
@@ -3749,6 +3803,8 @@
             <ul class="rw-how-list">
               <li><b>Failed to fetch:</b> backend server is offline, ngrok is closed, or PAYWALL_API_BASE is wrong.</li>
               <li><b>Payment not found:</b> check the receiver, exact payment code, Xanax quantity, and that the code has not expired.</li>
+              <li><b>Wrong item:</b> sending any item other than Xanax with the payment code will not automatically add licence time.</li>
+              <li><b>No payment code:</b> sending Xanax without the exact payment code opens a manual-review message. Licence time will need to be added manually ASAP.</li>
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
