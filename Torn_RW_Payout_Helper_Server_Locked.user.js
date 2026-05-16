@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.60
+// @version      1.1.61
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1277,6 +1277,250 @@
     `;
   }
 
+
+  function buildFullscreenResultsHtml(rows, summary) {
+    const list = (rows || []).map((r, index) => ({
+      rank: index + 1,
+      id: String(r.id || "unknown"),
+      name: r.name || `Unknown ${r.id || "unknown"}`,
+      attacks: Number(r.attacks || 0),
+      assists: Number(r.assists || 0),
+      weight: Number(r.weight || 0),
+      respect: Number(r.respect || 0),
+      payout: Number(r.payout || 0),
+      addBalanceUrl: buildFactionAddBalanceUrl(r.id || "unknown", r.payout || 0),
+    }));
+
+    const totalPayout = Number(summary?.totalPayout || 0) || list.reduce((sum, r) => sum + r.payout, 0);
+    const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
+    const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
+    const newsletterHtml = buildWarPayoutNewsletterHtml(rows || [], summary || {});
+    const newsletterJson = JSON.stringify(newsletterHtml).replaceAll("<", "\\u003c");
+
+    const cards = list.map((r) => `
+      <article class="result-card">
+        <div class="result-top">
+          <div>
+            <div class="result-name">${esc(r.rank)}. ${esc(r.name)}</div>
+            <div class="result-id">Torn ID: ${esc(r.id)}</div>
+          </div>
+          <div class="payout">${esc(money(r.payout))}</div>
+        </div>
+        <div class="stats">
+          <div><span>Hits</span><b>${r.attacks}</b></div>
+          <div><span>Assists</span><b>${r.assists}</b></div>
+          <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
+          <div><span>Respect</span><b>${r.respect.toFixed(2)}</b></div>
+        </div>
+        <button class="btn secondary" data-open-url="${esc(r.addBalanceUrl)}">Add Balance</button>
+      </article>`).join("");
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RWPH Fetch + Calculate Results</title>
+  <style>
+    :root {
+      --bg:#020617;
+      --panel:#0f172a;
+      --panel2:#111827;
+      --line:rgba(125,211,252,.24);
+      --text:#f8fafc;
+      --muted:#a5b4fc;
+      --blue:#38bdf8;
+      --indigo:#6366f1;
+      --green:#86efac;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-height:100vh;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(56,189,248,.22), transparent 26%),
+        radial-gradient(circle at 88% 0%, rgba(99,102,241,.20), transparent 28%),
+        linear-gradient(180deg, #020617, #0f172a 42%, #020617);
+      padding:18px;
+    }
+    .app { max-width:1320px; margin:0 auto; }
+    .hero {
+      position:sticky;
+      top:0;
+      z-index:10;
+      padding:14px;
+      margin-bottom:14px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.86));
+      box-shadow:0 20px 60px rgba(0,0,0,.48), 0 0 24px rgba(56,189,248,.10);
+      backdrop-filter: blur(14px);
+    }
+    .title { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .title img { width:34px; height:34px; object-fit:contain; filter:drop-shadow(0 0 10px rgba(56,189,248,.35)); }
+    h1 { font-size:22px; margin:0; letter-spacing:.3px; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .btn {
+      border:1px solid rgba(125,211,252,.32);
+      background:linear-gradient(135deg, rgba(14,165,233,.96), rgba(79,70,229,.92));
+      color:#f8fdff;
+      font-weight:900;
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      box-shadow:0 10px 22px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
+    }
+    .btn.secondary { background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); }
+    .summary {
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:10px;
+      margin-bottom:14px;
+    }
+    .summary-card, .result-card {
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:linear-gradient(180deg, rgba(15,23,42,.92), rgba(2,6,23,.82));
+      box-shadow:0 14px 34px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .summary-card { padding:12px; }
+    .summary-card span, .result-id, .stats span { color:var(--muted); font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:.5px; }
+    .summary-card b { display:block; margin-top:3px; font-size:18px; color:#e0f2fe; }
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(285px, 1fr));
+      gap:12px;
+    }
+    .result-card { padding:12px; }
+    .result-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .result-name { font-weight:950; color:#f8fafc; }
+    .payout { font-size:18px; color:var(--green); font-weight:950; white-space:nowrap; }
+    .stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:7px; margin:10px 0; }
+    .stats div { padding:8px; border-radius:12px; background:rgba(15,23,42,.72); border:1px solid rgba(125,211,252,.12); }
+    .stats b { display:block; color:#fff; margin-top:2px; }
+    @media (max-width:780px) {
+      body { padding:8px; }
+      .summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns:1fr; }
+      .hero { position:static; }
+      h1 { font-size:18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="title">
+        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
+        <h1>Fetch + Calculate Results</h1>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="addAllBtn">Add Balance (All)</button>
+        <button class="btn secondary" id="csvBtn">Export CSV</button>
+        <button class="btn secondary" id="newsletterBtn">Create HTML Newsletter</button>
+        <button class="btn secondary" onclick="window.close()">Close Tab</button>
+      </div>
+    </section>
+
+    <section class="summary">
+      <div class="summary-card"><span>Total payout</span><b>${esc(money(totalPayout))}</b></div>
+      <div class="summary-card"><span>Total weight</span><b>${Number(summary?.totalWeight || 0).toFixed(2)}</b></div>
+      <div class="summary-card"><span>Hits</span><b>${Number(summary?.totalHits || 0)}</b></div>
+      <div class="summary-card"><span>Assists</span><b>${Number(summary?.totalAssists || 0)}</b></div>
+      <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
+    </section>
+
+    <section class="grid">${cards || `<div class="result-card">No payable attacks found.</div>`}</section>
+  </main>
+
+  <script>
+    const rows = ${rowsJson};
+    const summary = ${summaryJson};
+    const newsletterHtml = ${newsletterJson};
+
+    function money(n) {
+      return "$" + Math.round(Number(n || 0)).toLocaleString();
+    }
+
+    function downloadText(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportCsv() {
+      const header = ["Torn ID", "Name", "Hits", "Assists", "Weight", "Respect", "Payout"];
+      const lines = [header].concat(rows.map((r) => [
+        r.id, r.name, r.attacks, r.assists,
+        Number(r.weight || 0).toFixed(2),
+        Number(r.respect || 0).toFixed(2),
+        Math.round(Number(r.payout || 0)),
+      ]));
+      const csv = lines.map((line) => line.map((v) => '"' + String(v).replaceAll('"', '""') + '"').join(",")).join("\\n");
+      downloadText("torn-rw-payouts.csv", csv, "text/csv");
+    }
+
+    function openNewsletter() {
+      const blob = new Blob([newsletterHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function openAll() {
+      let index = 0;
+      const next = () => {
+        if (index >= rows.length) return;
+        const url = rows[index++].addBalanceUrl;
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+        setTimeout(next, 1500);
+      };
+      next();
+    }
+
+    document.addEventListener("click", (e) => {
+      const url = e.target?.getAttribute?.("data-open-url");
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    });
+
+    document.getElementById("addAllBtn").addEventListener("click", openAll);
+    document.getElementById("csvBtn").addEventListener("click", exportCsv);
+    document.getElementById("newsletterBtn").addEventListener("click", openNewsletter);
+  </script>
+</body>
+</html>`;
+  }
+
+  function openFullscreenResultsTab(rows, summary) {
+    const html = buildFullscreenResultsHtml(rows || [], summary || {});
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+
+    try {
+      if (typeof GM_openInTab === "function") {
+        GM_openInTab(url, {
+          active: true,
+          insert: true,
+          setParent: true,
+        });
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        return true;
+      }
+    } catch (e) {
+      console.warn("Could not open fullscreen results with GM_openInTab:", e);
+    }
+
+    const tab = window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    return !!tab;
+  }
+
   function renderRows(rows, summary) {
     if (!rows || !rows.length) return `<div class="rw-muted">No payable attacks found.</div>`;
 
@@ -1954,7 +2198,19 @@
     rwphSendHelperPanelStatus(rwphPaymentHelperHtml(code, message, isError), isError);
   }
 
+  function rwphMaybeAutoClosePaymentHelper() {
+    const state = window.__rwphPaymentHelperButtonState || {};
+    if (state.receiverClicked && state.codeClicked) {
+      sessionStorage.setItem("rwph_xanax_helper_closed", "1");
+      setTimeout(() => {
+        document.getElementById("rwph-xanax-send-status")?.remove();
+      }, 650);
+    }
+  }
+
   function rwphSetupPaymentHelperPanelClicks(code) {
+    window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
+
     if (window.__rwphPaymentHelperClicksInstalled) return;
     window.__rwphPaymentHelperClicksInstalled = true;
 
@@ -1975,22 +2231,30 @@
 
       if (target.id === "rwph-copy-receiver") {
         e.preventDefault();
+        window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
+        window.__rwphPaymentHelperButtonState.receiverClicked = true;
+
         const res = await rwphPasteReceiverIntoOpenForm();
         if (res.ok) {
           rwphRenderPaymentHelperPanel(currentCode, `Receiver pasted into the User ID field: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Review before sending.`);
         } else {
           rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
         }
+        rwphMaybeAutoClosePaymentHelper();
       }
 
       if (target.id === "rwph-copy-code") {
         e.preventDefault();
+        window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
+        window.__rwphPaymentHelperButtonState.codeClicked = true;
+
         const res = await rwphPastePaymentCodeIntoOpenForm(currentCode);
         if (res.ok) {
           rwphRenderPaymentHelperPanel(currentCode, "Payment code pasted into the message field. Review before sending.");
         } else {
           rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
         }
+        rwphMaybeAutoClosePaymentHelper();
       }
     });
   }
@@ -2013,6 +2277,7 @@
     if (!code) return;
 
     saveXanaxPaymentHelper(code);
+    window.__rwphPaymentHelperButtonState = { receiverClicked: false, codeClicked: false };
     rwphSetupPaymentHelperPanelClicks(code);
     await copyText(code).catch(() => false);
     rwphRenderPaymentHelperPanel(
@@ -2397,7 +2662,7 @@
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn data, calculates payouts server-side, and returns results.</li>
 
               <li class="rw-feature-group">Results and payout tools</li>
-              <li><b>Separate results panel:</b> Fetch + Calculate results open in their own draggable and resizable panel.</li>
+              <li><b>Fullscreen results tab:</b> Fetch + Calculate results open in a new fullscreen-style tab.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
               <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
               <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
@@ -2445,7 +2710,7 @@
               <li>Enter the total payout pool.</li>
               <li>Adjust hit weight, assist weight, ranked-war filtering, and chain fallback if needed.</li>
               <li>Click <b>Fetch + Calculate</b>.</li>
-              <li>Review every member result in the separate results panel before paying anyone.</li>
+              <li>Review every member result in the fullscreen results tab before paying anyone.</li>
             </ul>
           </div>
 
@@ -2901,7 +3166,7 @@
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn data, calculates payouts server-side, and returns results.</li>
 
               <li class="rw-feature-group">Results and payout tools</li>
-              <li><b>Separate results panel:</b> Fetch + Calculate results open in their own draggable and resizable panel.</li>
+              <li><b>Fullscreen results tab:</b> Fetch + Calculate results open in a new fullscreen-style tab.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
               <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
               <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
@@ -2949,7 +3214,7 @@
               <li>Enter the total payout pool.</li>
               <li>Adjust hit weight, assist weight, ranked-war filtering, and chain fallback if needed.</li>
               <li>Click <b>Fetch + Calculate</b>.</li>
-              <li>Review every member result in the separate results panel before paying anyone.</li>
+              <li>Review every member result in the fullscreen results tab before paying anyone.</li>
             </ul>
           </div>
 
@@ -3202,16 +3467,28 @@
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
         results.innerHTML = renderRows(lastRows, lastSummary);
-        const resultsPanel = document.getElementById("rw-results-panel");
-        if (resultsPanel) {
-          resultsPanel.hidden = false;
-          resultsPanel.removeAttribute("hidden");
-          resultsPanel.style.display = "block";
-          resultsPanel.style.visibility = "visible";
-          resultsPanel.style.opacity = "1";
-          resultsPanel.scrollTop = 0;
+
+        const openedResultsTab = openFullscreenResultsTab(lastRows, lastSummary);
+        if (openedResultsTab) {
+          const resultsPanel = document.getElementById("rw-results-panel");
+          if (resultsPanel) {
+            resultsPanel.hidden = true;
+            resultsPanel.setAttribute("hidden", "");
+            resultsPanel.style.display = "none";
+          }
+          status.textContent = `Done. ${lastRows.length} members with payable contribution. Results opened in a fullscreen new tab.`;
+        } else {
+          const resultsPanel = document.getElementById("rw-results-panel");
+          if (resultsPanel) {
+            resultsPanel.hidden = false;
+            resultsPanel.removeAttribute("hidden");
+            resultsPanel.style.display = "block";
+            resultsPanel.style.visibility = "visible";
+            resultsPanel.style.opacity = "1";
+            resultsPanel.scrollTop = 0;
+          }
+          status.textContent = `Done. ${lastRows.length} members with payable contribution. Popup blocked, so results opened in the panel.`;
         }
-        status.textContent = `Done. ${lastRows.length} members with payable contribution. Results opened in the separate results panel.`;
       } catch (e) {
         status.textContent = "Error: " + e.message;
         if (String(e.message).toLowerCase().includes("license")) {
