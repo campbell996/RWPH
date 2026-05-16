@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.80
+// @version      1.1.82
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -9,13 +9,15 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
-// @connect      *
+// @connect      api.torn.com
+// @connect      gooey-eagle-rentable.ngrok-free.dev
 // ==/UserScript==
 
 (function () {
   "use strict";
 
   // Change this after hosting your backend online.
+  // If you change this domain, update the @connect backend domain in the userscript header too.
   const PAYWALL_API_BASE = "https://gooey-eagle-rentable.ngrok-free.dev";
 
   const STORAGE_KEY = "rw_payout_helper_api_key";
@@ -1134,7 +1136,7 @@
       #rw-payout-helper .rw-result-name { font-weight:900; font-size:14px; color:#fff5ee !important; word-break:break-word; text-shadow: 0 0 8px rgba(255,140,66,.08); letter-spacing: .2px; }
       #rw-payout-helper .rw-result-id { font-size:11px; color:#c8a892 !important; margin-top:2px; }
       #rw-payout-helper .rw-result-payout { text-align:right; font-weight:900; color:#ffdfbf !important; white-space:nowrap; text-shadow: 0 0 10px rgba(255,140,66,.14); }
-      #rw-payout-helper .rw-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-top:9px; }
+      #rw-payout-helper .rw-stat-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; margin-top:9px; }
       #rw-payout-helper .rw-stat-box { background: linear-gradient(180deg, rgba(46,28,24,.74), rgba(28,24,22,.70)) !important; border: 1px solid rgba(184,136,89,.12); border-radius:10px; padding:7px; text-align:center; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
       #rw-payout-helper .rw-stat-label { font-size:10px; color:#d0a78c !important; }
       #rw-payout-helper .rw-stat-value { font-weight:900; color:#fff7f1 !important; }
@@ -1867,7 +1869,7 @@
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
 
-    <section class="grid">${cards || `<div class="result-card">No payable attacks found.</div>`}</section>
+    <section class="grid">${cards || `<div class="result-card">No payable or tracked attacks found.</div>`}</section>
   </main>
 
   <script>
@@ -1957,7 +1959,7 @@
   }
 
   function renderRows(rows, summary) {
-    if (!rows || !rows.length) return `<div class="rw-muted">No payable attacks found.</div>`;
+    if (!rows || !rows.length) return `<div class="rw-muted">No payable or tracked attacks found.</div>`;
 
     return `
       <div class="rw-summary">
@@ -2373,8 +2375,10 @@
               <tr>
                 <th>#</th>
                 <th>Member</th>
-                <th class="num">Hits</th>
+                <th class="num">War Hits</th>
                 <th class="num">Assists</th>
+                <th class="num">Outside</th>
+                <th class="num">Retals</th>
                 <th class="num">Respect</th>
                 <th class="num">Weight</th>
                 <th class="num">Payout</th>
@@ -3138,6 +3142,7 @@
           <label>Your Torn API Key -Limited Access-
             <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
           </label>
+          <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
           <div class="rw-actions">
             <button id="rw-start-payment">Buy Licence</button>
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
@@ -3218,7 +3223,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Requirements</div>
             <ul class="rw-how-list">
-              <li><b>Torn API key:</b> users need to paste and save their own Torn API key.</li>
+              <li><b>Torn API key:</b> users need to paste their own Torn API key. Saving it locally is optional.</li>
               <li><b>Limited Access key:</b> the key should be a Torn <b>Limited Access</b> API key, not a full-access key.</li>
               <li><b>Faction API access:</b> the API key must be able to use the faction API calls needed for ranked war data and member payout calculations.</li>
               <li><b>Faction banking access:</b> payout managers need access to faction banking/faction controls in Torn to use Add Balance payment preparation.</li>
@@ -3226,6 +3231,21 @@
               <li><b>Unlocked licence:</b> payout calculations require a valid RWPH licence, trial, or extension.</li>
             </ul>
           </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">API Key Privacy And Terms</div>
+            <ul class="rw-how-list">
+              <li><b>Purpose of use:</b> the API key is used to identify the Torn account, verify licence ownership, fetch faction/ranked-war data, calculate payouts, and check licence/payment status.</li>
+              <li><b>Key access level:</b> users should use a Torn <b>Limited Access</b> API key with only the access needed for faction API calls and ranked-war payout calculations.</li>
+              <li><b>Local key storage:</b> when <b>Save Key</b> is clicked, the key is saved locally in the user's Tampermonkey or Torn PDA storage on that device.</li>
+              <li><b>Backend key handling:</b> the key is sent to the RWPH backend during unlock, licence, payment, war-time, and calculation requests so the backend can call the Torn API. The backend is not designed to store user API keys in paywall-db.json.</li>
+              <li><b>Backend stored data:</b> the backend stores licence records, trial use, payment codes, used payment records, Xanax quantities, bonus progress, revoked users, payment fingerprints, Torn IDs, names, and expiry times.</li>
+              <li><b>Data sharing:</b> RWPH data is for running this tool only. User API keys and licence/payment records should not be sold, posted publicly, or shared with unrelated third parties.</li>
+              <li><b>User responsibility:</b> users should revoke or rotate their Torn API key anytime they no longer want RWPH to use it.</li>
+              <li><b>Owner responsibility:</b> the backend owner must keep .env, OWNER_TORN_API_KEY, ADMIN_KEY, PAYWALL_SECRET, and paywall-db.json private and secure.</li>
+            </ul>
+          </div>
+
 
           <div class="rw-how-box">
             <div class="rw-how-title">Licence Prices And Bonuses</div>
@@ -3627,6 +3647,7 @@
           <label>API Key
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
+          <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
           <div class="rw-actions">
             <button id="rw-extend-licence" class="secondary">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
@@ -3734,7 +3755,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Requirements</div>
             <ul class="rw-how-list">
-              <li><b>Torn API key:</b> users need to paste and save their own Torn API key.</li>
+              <li><b>Torn API key:</b> users need to paste their own Torn API key. Saving it locally is optional.</li>
               <li><b>Limited Access key:</b> the key should be a Torn <b>Limited Access</b> API key, not a full-access key.</li>
               <li><b>Faction API access:</b> the API key must be able to use the faction API calls needed for ranked war data and member payout calculations.</li>
               <li><b>Faction banking access:</b> payout managers need access to faction banking/faction controls in Torn to use Add Balance payment preparation.</li>
@@ -3742,6 +3763,21 @@
               <li><b>Unlocked licence:</b> payout calculations require a valid RWPH licence, trial, or extension.</li>
             </ul>
           </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">API Key Privacy And Terms</div>
+            <ul class="rw-how-list">
+              <li><b>Purpose of use:</b> the API key is used to identify the Torn account, verify licence ownership, fetch faction/ranked-war data, calculate payouts, and check licence/payment status.</li>
+              <li><b>Key access level:</b> users should use a Torn <b>Limited Access</b> API key with only the access needed for faction API calls and ranked-war payout calculations.</li>
+              <li><b>Local key storage:</b> when <b>Save Key</b> is clicked, the key is saved locally in the user's Tampermonkey or Torn PDA storage on that device.</li>
+              <li><b>Backend key handling:</b> the key is sent to the RWPH backend during unlock, licence, payment, war-time, and calculation requests so the backend can call the Torn API. The backend is not designed to store user API keys in paywall-db.json.</li>
+              <li><b>Backend stored data:</b> the backend stores licence records, trial use, payment codes, used payment records, Xanax quantities, bonus progress, revoked users, payment fingerprints, Torn IDs, names, and expiry times.</li>
+              <li><b>Data sharing:</b> RWPH data is for running this tool only. User API keys and licence/payment records should not be sold, posted publicly, or shared with unrelated third parties.</li>
+              <li><b>User responsibility:</b> users should revoke or rotate their Torn API key anytime they no longer want RWPH to use it.</li>
+              <li><b>Owner responsibility:</b> the backend owner must keep .env, OWNER_TORN_API_KEY, ADMIN_KEY, PAYWALL_SECRET, and paywall-db.json private and secure.</li>
+            </ul>
+          </div>
+
 
           <div class="rw-how-box">
             <div class="rw-how-title">Licence Prices And Bonuses</div>
