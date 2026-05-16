@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.57
+// @version      1.1.59
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -840,6 +840,8 @@
       #rw-payout-helper .rw-head span { padding: 0 8px; }
       #rw-payout-helper .rw-head::before, #rw-payout-helper .rw-head::after { width: 12px; }
       #rw-payout-helper .rw-head::after { right: 30px; }
+      #rw-payout-helper .rw-head span::before,
+      #rwph-payment-helper-title::before { width: 14px; height: 14px; flex-basis: 14px; }
       #rw-payout-helper > .rw-body { padding: 12px 8px 8px; }
       #rw-payout-helper label { margin-top: 6px; font-size: 10px; }
       #rw-payout-helper input { margin-top: 3px; padding: 5px 6px; border-radius: 8px; font-size: 10px; }
@@ -1089,6 +1091,34 @@
       }
       #rw-payout-helper .rw-head::before,
       #rw-payout-helper .rw-head::after { display: none !important; }
+      #rw-payout-helper .rw-head span {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 8px;
+      }
+      #rw-payout-helper .rw-head span::before {
+        content: "";
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        border-radius: 6px;
+        background: url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center / contain no-repeat;
+        filter: drop-shadow(0 0 8px rgba(56,189,248,.24));
+      }
+      #rwph-payment-helper-title {
+        display: flex !important;
+        align-items: center;
+        gap: 8px;
+      }
+      #rwph-payment-helper-title::before {
+        content: "";
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        border-radius: 6px;
+        background: url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center / contain no-repeat;
+        filter: drop-shadow(0 0 8px rgba(56,189,248,.24));
+      }
       #rw-payout-helper > .rw-body,
       #rw-payout-helper .rw-results-panel .rw-body {
         scrollbar-color: rgba(56,189,248,.45) rgba(15,23,42,.6);
@@ -1201,6 +1231,47 @@
         border-right-color: rgba(56,189,248,.78) !important;
         border-bottom-color: rgba(56,189,248,.78) !important;
         opacity: .95 !important;
+      }
+      /* v1.1.59 Torn PDA / phone half-size defaults */
+      @media (max-width: 760px), (pointer: coarse) {
+        #rw-payout-helper {
+          width: 150px !important;
+          min-width: 150px !important;
+          min-height: 120px !important;
+          max-height: 42vh !important;
+          right: 8px !important;
+          top: 74px !important;
+        }
+        #rw-payout-helper > .rw-body {
+          max-height: calc(42vh - 38px) !important;
+        }
+        #rw-payout-helper .rw-results-panel {
+          width: 215px !important;
+          min-width: 160px !important;
+          min-height: 120px !important;
+          max-height: 40vh !important;
+          right: 8px !important;
+          left: auto !important;
+          top: 250px !important;
+        }
+        #rw-payout-helper .rw-results-panel .rw-body {
+          max-height: calc(40vh - 38px) !important;
+          overflow: auto !important;
+        }
+        #rwph-xanax-send-status {
+          width: 180px !important;
+          max-width: calc(100vw - 16px) !important;
+          min-width: 150px !important;
+          min-height: 110px !important;
+          right: 8px !important;
+          bottom: 8px !important;
+          padding: 8px 9px !important;
+          font-size: 10px !important;
+        }
+        #rwph-payment-helper-title {
+          font-size: 11px !important;
+          margin-right: 24px !important;
+        }
       }
       #rw-payout-helper a { color: #7dd3fc !important; }
     `;
@@ -1604,8 +1675,10 @@
         right: 18px;
         bottom: 18px;
         z-index: 1000000;
-        max-width: 360px;
-        padding: 12px 14px;
+        width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "180px" : "auto"};
+        max-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vw - 16px)" : "360px"};
+        min-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "150px" : "0"};
+        padding: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "8px 9px" : "12px 14px"};
         border-radius: 16px;
         border: 1px solid rgba(125,211,252,.35);
         background: radial-gradient(circle at 18% 0%, rgba(56,189,248,.16), transparent 32%), linear-gradient(180deg, rgba(8,13,25,.97), rgba(15,23,42,.96));
@@ -2155,8 +2228,11 @@
       const point = rwphGetPoint(e);
       const dx = point.x - startX;
       const dy = point.y - startY;
-      const minWidth = panel.classList?.contains("rw-results-panel") ? 280 : 240;
-      const minHeight = 180;
+      const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
+      const isResultsPanel = panel.classList?.contains("rw-results-panel");
+      const isXanaxHelper = panel.id === "rwph-xanax-send-status";
+      const minWidth = mobilePanel ? (isResultsPanel ? 160 : (isXanaxHelper ? 150 : 150)) : (isResultsPanel ? 280 : 240);
+      const minHeight = mobilePanel ? 110 : 180;
       const maxWidth = Math.max(minWidth, window.innerWidth - 16);
       const maxHeight = Math.max(minHeight, window.innerHeight - 16);
       panel.style.width = `${Math.min(Math.max(minWidth, startWidth + dx), maxWidth)}px`;
