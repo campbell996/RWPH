@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.53
+// @version      1.1.54
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -640,6 +640,9 @@
         border-radius: 18px 18px 0 0;
         box-shadow: inset 0 -4px 0 rgba(70,17,13,.55), inset 0 1px 0 rgba(255,255,255,.05);
         cursor: move;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -701,10 +704,13 @@
         position: absolute;
         right: 7px;
         bottom: 7px;
-        width: 15px;
-        height: 15px;
+        width: 22px;
+        height: 22px;
         z-index: 5;
         cursor: nwse-resize;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
         border-right: 2px solid rgba(230,186,116,.72);
         border-bottom: 2px solid rgba(230,186,116,.72);
         border-radius: 0 0 8px 0;
@@ -1686,7 +1692,7 @@
     const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
     return `
       <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(224,171,96,.36);background:rgba(0,0,0,.28);color:#fff2dd;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
-      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#fff2dd;cursor:move;">RWPH Xanax Payment Helper</div>
+      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#fff2dd;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
       <div style="margin-bottom:6px;${isError ? 'color:#ffb4a8;' : ''}">${message}</div>
       <div style="padding:8px;border-radius:9px;background:rgba(0,0,0,.22);margin:7px 0;">
         <div><b>Item:</b> ${esc(PAYMENT_ITEM_NAME)}</div>
@@ -1843,6 +1849,21 @@
     URL.revokeObjectURL(url);
   }
 
+  function rwphGetPoint(e) {
+    const touch = e?.touches?.[0] || e?.changedTouches?.[0];
+    return {
+      x: Number(touch?.clientX ?? e?.clientX ?? 0),
+      y: Number(touch?.clientY ?? e?.clientY ?? 0),
+    };
+  }
+
+  function rwphBlockTouchDefaults(el) {
+    if (!el) return;
+    el.style.touchAction = "none";
+    el.style.webkitUserSelect = "none";
+    el.style.userSelect = "none";
+  }
+
   function makeDraggable(panel, handleSelector = ".rw-head") {
     if (!panel || panel.dataset.rwphDragReady === "1") return;
     panel.dataset.rwphDragReady = "1";
@@ -1853,15 +1874,17 @@
     let startLeft = 0;
     let startTop = 0;
 
-    panel.addEventListener("mousedown", (e) => {
-      const handle = e.target.closest?.(handleSelector);
+    function beginDrag(e) {
+      const target = e.target;
+      const handle = target.closest?.(handleSelector);
       if (!handle || !panel.contains(handle)) return;
-      if (e.target.closest?.("button, input, textarea, select, a, .rw-resize-handle")) return;
+      if (target.closest?.("button, input, textarea, select, a, .rw-resize-handle")) return;
 
+      const point = rwphGetPoint(e);
       const rect = panel.getBoundingClientRect();
       dragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = point.x;
+      startY = point.y;
       startLeft = rect.left;
       startTop = rect.top;
 
@@ -1870,22 +1893,38 @@
       panel.style.right = "auto";
       panel.style.bottom = "auto";
       panel.style.position = "fixed";
-      e.preventDefault();
-    });
+      panel.style.maxWidth = "calc(100vw - 16px)";
 
-    document.addEventListener("mousemove", (e) => {
+      rwphBlockTouchDefaults(handle);
+      e.preventDefault?.();
+      e.stopPropagation?.();
+    }
+
+    function moveDrag(e) {
       if (!dragging) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
+      const point = rwphGetPoint(e);
+      const dx = point.x - startX;
+      const dy = point.y - startY;
       const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
       const maxTop = Math.max(8, window.innerHeight - 40);
       panel.style.left = `${Math.min(Math.max(8, startLeft + dx), maxLeft)}px`;
       panel.style.top = `${Math.min(Math.max(8, startTop + dy), maxTop)}px`;
-    });
+      e.preventDefault?.();
+    }
 
-    document.addEventListener("mouseup", () => {
+    function endDrag() {
       dragging = false;
-    });
+    }
+
+    panel.addEventListener("mousedown", beginDrag);
+    panel.addEventListener("touchstart", beginDrag, { passive: false });
+
+    document.addEventListener("mousemove", moveDrag);
+    document.addEventListener("touchmove", moveDrag, { passive: false });
+
+    document.addEventListener("mouseup", endDrag);
+    document.addEventListener("touchend", endDrag);
+    document.addEventListener("touchcancel", endDrag);
   }
 
   function makeResizable(panel) {
@@ -1899,16 +1938,20 @@
       handle.style.position = "absolute";
       handle.style.right = "7px";
       handle.style.bottom = "7px";
-      handle.style.width = "15px";
-      handle.style.height = "15px";
+      handle.style.width = "22px";
+      handle.style.height = "22px";
       handle.style.zIndex = "5";
       handle.style.cursor = "nwse-resize";
+      handle.style.touchAction = "none";
+      handle.style.webkitUserSelect = "none";
+      handle.style.userSelect = "none";
       handle.style.borderRight = "2px solid rgba(230,186,116,.72)";
       handle.style.borderBottom = "2px solid rgba(230,186,116,.72)";
       handle.style.borderRadius = "0 0 8px 0";
       handle.style.opacity = ".9";
       panel.appendChild(handle);
     }
+    rwphBlockTouchDefaults(handle);
 
     if (panel.dataset.rwphResizeReady === "1") return;
     panel.dataset.rwphResizeReady = "1";
@@ -1919,12 +1962,13 @@
     let startWidth = 0;
     let startHeight = 0;
 
-    panel.addEventListener("mousedown", (e) => {
+    function beginResize(e) {
       const resizeHandle = e.target.closest?.(".rw-resize-handle");
       if (!resizeHandle || !panel.contains(resizeHandle)) return;
+      const point = rwphGetPoint(e);
       resizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = point.x;
+      startY = point.y;
       startWidth = panel.offsetWidth || panel.getBoundingClientRect().width || 300;
       startHeight = panel.offsetHeight || panel.getBoundingClientRect().height || 240;
       const rect = panel.getBoundingClientRect();
@@ -1933,15 +1977,17 @@
       panel.style.right = "auto";
       panel.style.bottom = "auto";
       panel.style.position = "fixed";
+      panel.style.maxWidth = "none";
       panel.style.maxHeight = "none";
-      e.preventDefault();
-      e.stopPropagation();
-    });
+      e.preventDefault?.();
+      e.stopPropagation?.();
+    }
 
-    document.addEventListener("mousemove", (e) => {
+    function moveResize(e) {
       if (!resizing) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
+      const point = rwphGetPoint(e);
+      const dx = point.x - startX;
+      const dy = point.y - startY;
       const minWidth = panel.classList?.contains("rw-results-panel") ? 280 : 240;
       const minHeight = 180;
       const maxWidth = Math.max(minWidth, window.innerWidth - 16);
@@ -1949,11 +1995,22 @@
       panel.style.width = `${Math.min(Math.max(minWidth, startWidth + dx), maxWidth)}px`;
       panel.style.height = `${Math.min(Math.max(minHeight, startHeight + dy), maxHeight)}px`;
       panel.style.overflow = "auto";
-    });
+      e.preventDefault?.();
+    }
 
-    document.addEventListener("mouseup", () => {
+    function endResize() {
       resizing = false;
-    });
+    }
+
+    panel.addEventListener("mousedown", beginResize);
+    panel.addEventListener("touchstart", beginResize, { passive: false });
+
+    document.addEventListener("mousemove", moveResize);
+    document.addEventListener("touchmove", moveResize, { passive: false });
+
+    document.addEventListener("mouseup", endResize);
+    document.addEventListener("touchend", endResize);
+    document.addEventListener("touchcancel", endResize);
   }
 
 
