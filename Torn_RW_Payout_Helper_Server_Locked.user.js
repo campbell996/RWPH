@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.61
+// @version      1.1.64
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   const ADMIN_KEY_STORAGE_KEY = "rw_payout_helper_admin_key";
   const PENDING_PAYMENT_STORAGE_KEY = "rw_payout_helper_pending_payment";
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
-  const PENDING_PAYMENT_TTL_MS = 10 * 60 * 1000;
+  const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
   const ADD_BALANCE_ALL_DELAY_MS = 1500;
   const PAYMENT_ITEM_ID = "206";
@@ -217,7 +217,7 @@
     return !!tab;
   }
 
-  function renderPaymentCodeCard(code, minutesLeftText = "Saved for 10 minutes.") {
+  function renderPaymentCodeCard(code, minutesLeftText = "Saved for 5 minutes.") {
     const safeCode = esc(code || "");
     return `
       <div class="rw-payment-card">
@@ -226,37 +226,148 @@
         <div class="rw-payment-recipient">${esc(PAYMENT_RECEIVER_TEXT)}</div>
         <div class="rw-payment-instruction">Use this exact message:</div>
         <div class="rw-payment-code">${safeCode}</div>
-        <div class="rw-payment-note">${esc(minutesLeftText)} The helper can open your items page and try to prefill the ${esc(PAYMENT_ITEM_NAME)} send form. You still review and press Send yourself.</div>
+        <div class="rw-payment-note">${esc(minutesLeftText)} RWPH will check for the Xanax payment automatically. You still review and press Send yourself in Torn.</div>
         <button type="button" data-open-xanax-payment="${safeCode}">Open ${esc(PAYMENT_ITEM_NAME)} Send Page</button>
       </div>`;
   }
 
   function updatePendingPaymentUi() {
     const pending = getPendingPayment();
-    const btn = document.getElementById("rw-check-payment");
     const codeBox = document.getElementById("rw-paywall-code");
+    const mainCodeBox = document.getElementById("rw-main-payment-code");
     const status = document.getElementById("rw-paywall-status");
+    const mainStatus = document.getElementById("rw-status");
 
-    if (btn) {
+    for (const box of [codeBox, mainCodeBox].filter(Boolean)) {
       if (pending) {
-        btn.textContent = "Check Payment (Saved)";
-        btn.title = `Saved payment code: ${pending.code}. Expires in about ${pendingPaymentMinutesLeft(pending)} minute(s).`;
-      } else {
-        btn.textContent = "Check Payment";
-        btn.title = "";
+        box.innerHTML = renderPaymentCodeCard(
+          pending.code,
+          `Saved payment code. Expires in about ${pendingPaymentMinutesLeft(pending)} minute(s). Auto-check is running.`
+        );
+      } else if (box.dataset?.rwphAutoPaymentBox === "1") {
+        box.innerHTML = "";
       }
     }
 
-    if (codeBox && pending) {
-      codeBox.innerHTML = renderPaymentCodeCard(
-        pending.code,
-        `Saved payment code. Expires in about ${pendingPaymentMinutesLeft(pending)} minute(s).`
-      );
+    for (const box of [codeBox, mainCodeBox].filter(Boolean)) {
+      if (box) box.dataset.rwphAutoPaymentBox = "1";
     }
 
-    if (status && pending && !String(status.textContent || "").trim().startsWith("Send ")) {
-      status.textContent = pending.instructions || "Saved payment code found. Send the item, then click Check Payment (Saved).";
+    const waitMsg = pending
+      ? (pending.instructions || `Waiting for Xanax payment with code ${pending.code}. RWPH checks automatically every few seconds.`)
+      : "";
+
+    if (status && pending && !String(status.textContent || "").includes("Checking automatically") && !String(status.textContent || "").includes("Unlocked")) {
+      status.textContent = waitMsg;
     }
+    if (mainStatus && pending && !String(mainStatus.textContent || "").includes("Checking automatically") && !String(mainStatus.textContent || "").includes("Licence extended")) {
+      mainStatus.textContent = waitMsg;
+    }
+  }
+
+  function stopAutoPaymentCheck() {
+    if (window.__rwphPaymentAutoCheckTimer) {
+      clearInterval(window.__rwphPaymentAutoCheckTimer);
+      window.__rwphPaymentAutoCheckTimer = null;
+    }
+    window.__rwphPaymentAutoCheckState = null;
+  }
+
+  function getPaymentUserKey() {
+    return (
+      document.getElementById("rw-key")?.value.trim() ||
+      document.getElementById("rw-paywall-key")?.value.trim() ||
+      GM_getValue(STORAGE_KEY, "")
+    );
+  }
+
+  function setPaymentStatus(message, mode = "unlock") {
+    const status =
+      mode === "extend"
+        ? (document.getElementById("rw-status") || document.getElementById("rw-paywall-status"))
+        : (document.getElementById("rw-paywall-status") || document.getElementById("rw-status"));
+    if (status) status.textContent = message;
+  }
+
+  async function autoCheckPaymentOnce(userKey, mode = "unlock") {
+    const pending = getPendingPayment();
+    if (!pending) {
+      stopAutoPaymentCheck();
+      updatePendingPaymentUi();
+      return false;
+    }
+
+    if (!userKey) {
+      setPaymentStatus("Paste and save your Torn API key so RWPH can auto-check your payment.", mode);
+      return false;
+    }
+
+    try {
+      setPaymentStatus(`Checking automatically for payment code ${pending.code}...`, mode);
+      const result = await apiPost("/api/paywall/check", { userKey });
+
+      if (!result.paid) {
+        const mins = pendingPaymentMinutesLeft(getPendingPayment());
+        setPaymentStatus(`Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in about ${mins} minute(s).`, mode);
+        updatePendingPaymentUi();
+        return false;
+      }
+
+      clearPendingPayment();
+      stopAutoPaymentCheck();
+      GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
+
+      const paidQtyText = result.qty && result.addedDays
+        ? ` ${result.qty}x Xanax detected = ${result.addedDays} licence day(s).`
+        : "";
+
+      const paywallCode = document.getElementById("rw-paywall-code");
+      const mainCode = document.getElementById("rw-main-payment-code");
+      if (paywallCode) paywallCode.innerHTML = "";
+      if (mainCode) mainCode.innerHTML = "";
+
+      if (mode === "extend" || document.getElementById("rw-key")) {
+        const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
+        if (status) status.textContent = `Licence extended.${paidQtyText}`;
+        if (status) await showLicenseDays(status);
+      } else {
+        setPaymentStatus(`Unlocked.${paidQtyText} Loading tool...`, mode);
+        closePanel();
+        createPanel();
+      }
+
+      return true;
+    } catch (e) {
+      setPaymentStatus("Auto payment check error: " + (e.message || e), mode);
+      updatePendingPaymentUi();
+      return false;
+    }
+  }
+
+  function startAutoPaymentCheck(userKey, mode = "unlock") {
+    const pending = getPendingPayment();
+    if (!pending) {
+      updatePendingPaymentUi();
+      return;
+    }
+
+    const key = userKey || getPaymentUserKey();
+    const stateKey = `${pending.code}|${mode}|${key || ""}`;
+    if (window.__rwphPaymentAutoCheckState === stateKey && window.__rwphPaymentAutoCheckTimer) return;
+
+    stopAutoPaymentCheck();
+    window.__rwphPaymentAutoCheckState = stateKey;
+
+    autoCheckPaymentOnce(key, mode);
+    window.__rwphPaymentAutoCheckTimer = setInterval(() => {
+      const activePending = getPendingPayment();
+      if (!activePending) {
+        stopAutoPaymentCheck();
+        updatePendingPaymentUi();
+        return;
+      }
+      autoCheckPaymentOnce(key, mode);
+    }, 15000);
   }
 
 
@@ -547,7 +658,7 @@
       GM_getValue(STORAGE_KEY, "");
 
     if (!token && !userKey) {
-      return { valid: false, error: "No saved license token or Torn API key found. Start payment or paste your Torn API key first." };
+      return { valid: false, error: "No saved license token or Torn API key found. Buy Licence or paste your Torn API key first." };
     }
 
     try {
@@ -575,6 +686,9 @@
 
     if (!info.valid) {
       statusEl.textContent = "License check: " + (info.error || "No valid saved license found.");
+      if (document.getElementById("rw-key")) {
+        returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+      }
       return false;
     }
 
@@ -582,6 +696,38 @@
       `License active for ${info.name || "this user"} (${info.tornId || "unknown"}). ` +
       `Time left: ${formatLicenseDaysLeft(info.expiresAt)}. Expires: ${formatUnixDate(info.expiresAt)}.`;
     return true;
+  }
+
+  function returnToLockedPanel(message = "Your licence has expired. Buy Licence to unlock RWPH again.") {
+    GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (window.__rwphLicenseMonitor) {
+      clearInterval(window.__rwphLicenseMonitor);
+      window.__rwphLicenseMonitor = null;
+    }
+
+    const panel = document.getElementById("rw-payout-helper");
+    if (!panel) return;
+
+    showPaywallScreen(panel);
+    setTimeout(() => {
+      const status = document.getElementById("rw-paywall-status");
+      if (status) status.textContent = message;
+    }, 0);
+  }
+
+  function startLicenseExpiryMonitor() {
+    if (window.__rwphLicenseMonitor) clearInterval(window.__rwphLicenseMonitor);
+
+    window.__rwphLicenseMonitor = setInterval(async () => {
+      const panel = document.getElementById("rw-payout-helper");
+      const mainKeyInput = document.getElementById("rw-key");
+      if (!panel || !mainKeyInput) return;
+
+      const info = await getSavedLicenseInfo();
+      if (!info.valid) {
+        returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+      }
+    }, 60000);
   }
 
   async function verifySavedLicense() {
@@ -1859,7 +2005,7 @@
       e.stopPropagation();
 
       const code = btn.getAttribute("data-open-xanax-payment") || "";
-      if (!code) return alert("No payment code found. Click Start Payment again.");
+      if (!code) return alert("No payment code found. Click Buy Licence again.");
       openXanaxPaymentPage(code);
     });
   }
@@ -2549,14 +2695,13 @@
             <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
           </label>
           <div class="rw-actions">
-            <button id="rw-start-payment">Start Payment</button>
+            <button id="rw-start-payment">Buy Licence</button>
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">2 Day Free Trial</button>
-            <button id="rw-check-payment" class="secondary">Check Payment</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
           </div>
-          <div id="rw-paywall-status" class="rw-muted">Enter your key and click Start Payment.</div>
+          <div id="rw-paywall-status" class="rw-muted">Enter your key and click Buy Licence.</div>
           <div id="rw-paywall-code"></div>
         </div>
 
@@ -2603,58 +2748,66 @@
 
                 <div id="rw-paywall-how-section" class="rw-tab-section" hidden>
 
+
           <div class="rw-how-box">
             <div class="rw-how-title">What RWPH Is</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked payout helper for Torn ranked wars. It helps payout managers fetch war activity, calculate fair payout shares, review every member result, export reports, and prepare faction balance payments.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, fetch war data, calculate member payouts, review results, export records, create reports, and prepare faction balance payments.
             </p>
             <p class="rw-how-intro">
-              The userscript is only the front-end panel. Unlocking, trial checks, payment checks, expiration checks, and payout calculations all require the RWPH backend server.
+              The userscript is the front-end panel. Licence checks, payment checks, trial checks, expiration checks, and payout calculations are protected by the backend server.
             </p>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">Important Server-Side Protection</div>
             <ul class="rw-how-list">
-              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, claim trials, check payments, check expiration, or calculate payouts.</li>
-              <li><b>Server-side calculation:</b> payout calculations are protected on the backend, not only inside Tampermonkey.</li>
-              <li><b>Harder to bypass:</b> removing the visible locked screen from the userscript does not unlock the protected backend routes.</li>
-              <li><b>Backend database:</b> licenses, trial claims, payment codes, and payment records are saved by the backend.</li>
+              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, extend, check payments, check expiration, or calculate payouts.</li>
+              <li><b>Protected calculations:</b> Fetch + Calculate is handled through the backend, so removing the locked screen from Tampermonkey does not unlock the protected routes.</li>
+              <li><b>Expired licence lockback:</b> when a saved licence expires, RWPH sends the user back to the locked panel.</li>
+              <li><b>Payment database:</b> the backend stores licences, trials, payment codes, payment records, item quantity, total days added, and used payment fingerprints.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">All Features</div>
             <ul class="rw-how-list">
-              <li class="rw-feature-group">Access and licence features</li>
-              <li><b>Locked screen:</b> users unlock with a paid licence, 2 day free trial, or admin-granted licence.</li>
-              <li><b>Save Key:</b> saves the Torn API key from the locked panel so users do not need to paste it every time.</li>
-              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side 2 day trial.</li>
-              <li><b>Start Payment:</b> creates a unique payment code for the user.</li>
-              <li><b>Saved payment code:</b> unused payment codes stay available for 10 minutes so Check Payment can reuse them.</li>
-              <li><b>Xanax payment:</b> each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the licence. The exact payment code must be used as the item message.</li>
-              <li><b>Check Payment:</b> asks the backend to verify the correct Xanax and matching payment message.</li>
-              <li><b>Your Expiration:</b> shows the licensed user, remaining time, and expiry date/time.</li>
+              <li class="rw-feature-group">Licence and access</li>
+              <li><b>Buy Licence:</b> creates a payment code for a new licence purchase.</li>
+              <li><b>Extend Licence:</b> creates a payment code from the unlocked panel to add more time to an existing licence.</li>
+              <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds.</li>
+              <li><b>No Check Payment buttons:</b> users no longer need to manually press Check Payment. The script watches for the Xanax payment while the code is active.</li>
+              <li><b>5 minute payment codes:</b> payment codes expire after 5 minutes.</li>
+              <li><b>Xanax value:</b> each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the licence.</li>
+              <li><b>Multiple Xanax supported:</b> 2 Xanax adds 30 days, 3 Xanax adds 45 days, and 10 Xanax adds 150 days.</li>
+              <li><b>Exact message required:</b> users must send the exact payment code as the item message.</li>
+              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
+              <li><b>Your Expiration:</b> shows the licensed user, time remaining, and expiry date/time.</li>
+              <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
+              <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
 
-              <li class="rw-feature-group">Panel and mobile features</li>
-              <li><b>RWPH launcher:</b> opens the helper from a small button on Torn.</li>
-              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the position.</li>
-              <li><b>Draggable panels:</b> the main panel, results panel, and Xanax helper can be moved around the screen.</li>
-              <li><b>Resizable panels:</b> panels have a bottom-right resize handle so you can make them bigger or smaller.</li>
-              <li><b>Torn PDA support:</b> drag and resize support works with touch controls as well as desktop mouse controls.</li>
-              <li><b>Ranked-war theme:</b> compact dark faction-banner styling designed to fit Torn.</li>
+              <li class="rw-feature-group">Panel and layout</li>
+              <li><b>RWPH launcher logo:</b> opens the helper from the branded RWPH logo button on Torn.</li>
+              <li><b>Logo panel titles:</b> panel titles include the RWPH logo.</li>
+              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
+              <li><b>Modern theme:</b> panels use the newer sleek dark blue RWPH style.</li>
+              <li><b>Draggable panels:</b> main panel, results, and payment helper can be moved around.</li>
+              <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
+              <li><b>Torn PDA touch support:</b> drag and resize work with touch controls.</li>
+              <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
 
               <li class="rw-feature-group">Xanax payment helper</li>
-              <li><b>Open Xanax Send Page:</b> opens the Torn items page and loads the RWPH Xanax Payment Helper.</li>
-              <li><b>Manual-safe helper:</b> it does not auto-open Send this item, does not auto-click Add Message, and does not send items.</li>
-              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and can paste it into the visible User ID field after the user manually opens the form.</li>
-              <li><b>Copy Code:</b> copies the payment code and can paste it into the visible Add Message field after the user manually opens the message box.</li>
-              <li><b>User confirmation required:</b> the user chooses the Xanax amount and manually clicks Send/Confirm.</li>
+              <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax payment flow.</li>
+              <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
+              <li><b>Copy Receiver:</b> copies or pastes Evil_Panda_420 [3236276] into the visible User ID field after the user manually opens the send form.</li>
+              <li><b>Copy Code:</b> copies or pastes the payment code into the visible Add Message field after the user manually opens Add Message.</li>
+              <li><b>Auto-close helper:</b> the payment helper closes after both Copy Receiver and Copy Code have been clicked once.</li>
+              <li><b>User confirmation required:</b> users choose the Xanax amount and manually click Send/Confirm inside Torn.</li>
 
               <li class="rw-feature-group">Ranked war payout calculator</li>
               <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
-              <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
+              <li><b>Total payout pool:</b> enter the total cash pool to split between members.</li>
               <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
               <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
               <li><b>Ranked-war filtering:</b> option to count only attacks flagged as ranked-war attacks.</li>
@@ -2662,42 +2815,53 @@
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn data, calculates payouts server-side, and returns results.</li>
 
               <li class="rw-feature-group">Results and payout tools</li>
-              <li><b>Fullscreen results tab:</b> Fetch + Calculate results open in a new fullscreen-style tab.</li>
+              <li><b>Fullscreen results tab:</b> Fetch + Calculate opens results in a new fullscreen-style tab.</li>
+              <li><b>Fallback results panel:</b> if Torn PDA or the browser blocks the new tab, RWPH keeps the old results panel as a fallback.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
               <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
               <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
               <li><b>Manual payout confirmation:</b> RWPH prepares pages only. It does not automatically send faction money.</li>
-              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file from the results toolbar.</li>
+              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Create HTML Newsletter:</b> creates a styled war payout report with totals, averages, chart-style payouts, and a full member table.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">How To Unlock Access</div>
+            <div class="rw-how-title">How To Buy A Licence</div>
             <ul class="rw-how-list">
-              <li>Install the latest Ranked War Payout Helper userscript.</li>
-              <li>Open Torn and click the <b>RWPH</b> launcher button.</li>
+              <li>Open RWPH from the launcher logo.</li>
               <li>Paste your Torn API key into <b>Your Torn API Key -Limited Access-</b>.</li>
-              <li>Click <b>Save Key</b> if you want the key saved locally in Tampermonkey/Torn PDA storage.</li>
-              <li>Use <b>2 Day Free Trial</b>, or click <b>Start Payment</b> to generate a payment code.</li>
-              <li>For payment, send Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the item message.</li>
-              <li>Each Xanax adds <b>15 days</b> to your licence.</li>
-              <li>Click <b>Check Payment</b>. If the server finds the matching item and message, your licence unlocks or extends.</li>
-              <li>Click <b>Your Expiration</b> anytime to check how long is left.</li>
+              <li>Click <b>Save Key</b> if you want the key saved locally.</li>
+              <li>Click <b>Buy Licence</b>.</li>
+              <li>RWPH creates a payment code that is valid for 5 minutes.</li>
+              <li>Send 1x or more Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the item message.</li>
+              <li>RWPH automatically checks every 15 seconds. When the backend finds the payment, the licence unlocks.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">How To Extend A Licence</div>
+            <ul class="rw-how-list">
+              <li>While unlocked, click <b>Extend Licence</b>.</li>
+              <li>RWPH creates a new 5 minute payment code.</li>
+              <li>Send Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact code as the item message.</li>
+              <li>Each Xanax adds 15 days to the current licence.</li>
+              <li>RWPH automatically checks for the payment and extends the licence when the backend confirms it.</li>
+              <li>Click <b>Your Expiration</b> after it updates if you want to confirm the new expiry time.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">How To Use The Xanax Payment Helper</div>
             <ul class="rw-how-list">
-              <li>Click <b>Start Payment</b> first so you have a payment code.</li>
+              <li>Click <b>Buy Licence</b> or <b>Extend Licence</b> first so you have a payment code.</li>
               <li>Click <b>Open Xanax Send Page</b>.</li>
               <li>Manually click your Xanax item.</li>
               <li>Manually click <b>Send this item</b>.</li>
               <li>Manually click <b>Add Message</b>.</li>
               <li>Use <b>Copy Receiver</b> and <b>Copy Code</b> to copy or paste the needed details.</li>
-              <li>Choose the amount of Xanax you want to send.</li>
-              <li>Review the receiver, amount, and message yourself, then manually click Send/Confirm.</li>
+              <li>After both helper buttons have been clicked once, the payment helper closes automatically.</li>
+              <li>Choose the amount of Xanax you want to send, review everything, then manually click Send/Confirm.</li>
             </ul>
           </div>
 
@@ -2705,12 +2869,12 @@
             <div class="rw-how-title">How To Calculate Payouts</div>
             <ul class="rw-how-list">
               <li>Unlock RWPH first. The backend will not calculate without a valid licence.</li>
-              <li>Paste the Torn API key in the Payout tab if it is not already saved.</li>
+              <li>Paste or save the Torn API key in the Payout tab.</li>
               <li>Click <b>Auto-fill War Times</b>, or manually set the war start and finish times.</li>
               <li>Enter the total payout pool.</li>
               <li>Adjust hit weight, assist weight, ranked-war filtering, and chain fallback if needed.</li>
               <li>Click <b>Fetch + Calculate</b>.</li>
-              <li>Review every member result in the fullscreen results tab before paying anyone.</li>
+              <li>Review every member result in the fullscreen results tab or fallback results panel.</li>
             </ul>
           </div>
 
@@ -2729,11 +2893,12 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Troubleshooting</div>
             <ul class="rw-how-list">
-              <li><b>Panel will not unlock:</b> check your API key, licence status, backend server, and payment code.</li>
+              <li><b>Payment not found yet:</b> wait for the next automatic check. RWPH checks about every 15 seconds while the code is active.</li>
+              <li><b>Payment code expired:</b> codes last 5 minutes. Click Buy Licence or Extend Licence again to make a new code.</li>
+              <li><b>Panel locked again:</b> the saved licence likely expired. Buy or extend the licence to unlock again.</li>
               <li><b>Failed to fetch:</b> the backend server may be offline, ngrok may be closed, or PAYWALL_API_BASE may be wrong.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
-              <li><b>Results panel not visible:</b> close/reopen RWPH, run Fetch + Calculate again, or refresh Torn.</li>
-              <li><b>Drag/resize not working on Torn PDA:</b> update to the latest version and use the panel header to drag and the bottom-right handle to resize.</li>
+              <li><b>Results tab blocked:</b> allow popups/tabs for Torn. RWPH will also keep fallback results in the panel.</li>
               <li><b>Add Balance tabs blocked:</b> allow popups/tabs for Torn, or use each member's Add Balance button one by one.</li>
               <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
@@ -2816,9 +2981,10 @@
         }
 
         savePendingPayment(result);
-        status.textContent = result.instructions || "Payment code created.";
-        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 10 minutes. Use Check Payment (Saved) after sending.");
+        status.textContent = result.instructions || "Payment code created. RWPH will check automatically after you send the Xanax.";
+        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running.");
         updatePendingPaymentUi();
+        startAutoPaymentCheck(userKey, "unlock");
       } catch (e) {
         status.textContent = "Payment start error: " + e.message;
       }
@@ -2851,40 +3017,8 @@
       }
     });
 
-    document.getElementById("rw-check-payment").addEventListener("click", async () => {
-      const status = document.getElementById("rw-paywall-status");
-      const userKey = document.getElementById("rw-paywall-key").value.trim();
-      if (!userKey) return alert("Enter your Torn API key first.");
-
-      try {
-        GM_setValue(STORAGE_KEY, userKey);
-        const pending = getPendingPayment();
-        status.textContent = pending
-          ? `Checking payment for saved code ${pending.code}...`
-          : "Checking payment...";
-        const result = await apiPost("/api/paywall/check", { userKey });
-
-        if (!result.paid) {
-          status.textContent = result.error || "Payment not found yet.";
-          updatePendingPaymentUi();
-          return;
-        }
-
-        clearPendingPayment();
-        GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-        const paidQtyText = result.qty && result.addedDays
-          ? ` ${result.qty}x Xanax detected = ${result.addedDays} licence day(s).`
-          : "";
-        status.textContent = `Unlocked.${paidQtyText} Loading tool...`;
-        closePanel();
-        createPanel();
-      } catch (e) {
-        status.textContent = "Payment check error: " + e.message;
-        updatePendingPaymentUi();
-      }
-    });
-
     updatePendingPaymentUi();
+    startAutoPaymentCheck(document.getElementById("rw-paywall-key")?.value.trim(), "unlock");
     setInterval(updatePendingPaymentUi, 30000);
 
     document.getElementById("rw-check-license-days").addEventListener("click", async () => {
@@ -3058,9 +3192,11 @@
             <button id="rw-run">Fetch + Calculate</button>
             <button id="rw-save" class="secondary">Save Key</button>
             <button id="rw-license-days" class="secondary">Your Expiration</button>
+            <button id="rw-extend-licence" class="secondary">Extend Licence</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
-            <button id="rw-lock" class="secondary">Lock/Reset License</button>
+            <button id="rw-lock" class="secondary">Lock</button>
           </div>
+          <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
           <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after Fetch + Calculate.</div>
         </div>
@@ -3107,58 +3243,66 @@
 
                 <div id="rw-how-tab-section" class="rw-tab-section" hidden>
 
+
           <div class="rw-how-box">
             <div class="rw-how-title">What RWPH Is</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked payout helper for Torn ranked wars. It helps payout managers fetch war activity, calculate fair payout shares, review every member result, export reports, and prepare faction balance payments.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, fetch war data, calculate member payouts, review results, export records, create reports, and prepare faction balance payments.
             </p>
             <p class="rw-how-intro">
-              The userscript is only the front-end panel. Unlocking, trial checks, payment checks, expiration checks, and payout calculations all require the RWPH backend server.
+              The userscript is the front-end panel. Licence checks, payment checks, trial checks, expiration checks, and payout calculations are protected by the backend server.
             </p>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">Important Server-Side Protection</div>
             <ul class="rw-how-list">
-              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, claim trials, check payments, check expiration, or calculate payouts.</li>
-              <li><b>Server-side calculation:</b> payout calculations are protected on the backend, not only inside Tampermonkey.</li>
-              <li><b>Harder to bypass:</b> removing the visible locked screen from the userscript does not unlock the protected backend routes.</li>
-              <li><b>Backend database:</b> licenses, trial claims, payment codes, and payment records are saved by the backend.</li>
+              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, extend, check payments, check expiration, or calculate payouts.</li>
+              <li><b>Protected calculations:</b> Fetch + Calculate is handled through the backend, so removing the locked screen from Tampermonkey does not unlock the protected routes.</li>
+              <li><b>Expired licence lockback:</b> when a saved licence expires, RWPH sends the user back to the locked panel.</li>
+              <li><b>Payment database:</b> the backend stores licences, trials, payment codes, payment records, item quantity, total days added, and used payment fingerprints.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">All Features</div>
             <ul class="rw-how-list">
-              <li class="rw-feature-group">Access and licence features</li>
-              <li><b>Locked screen:</b> users unlock with a paid licence, 2 day free trial, or admin-granted licence.</li>
-              <li><b>Save Key:</b> saves the Torn API key from the locked panel so users do not need to paste it every time.</li>
-              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side 2 day trial.</li>
-              <li><b>Start Payment:</b> creates a unique payment code for the user.</li>
-              <li><b>Saved payment code:</b> unused payment codes stay available for 10 minutes so Check Payment can reuse them.</li>
-              <li><b>Xanax payment:</b> each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the licence. The exact payment code must be used as the item message.</li>
-              <li><b>Check Payment:</b> asks the backend to verify the correct Xanax and matching payment message.</li>
-              <li><b>Your Expiration:</b> shows the licensed user, remaining time, and expiry date/time.</li>
+              <li class="rw-feature-group">Licence and access</li>
+              <li><b>Buy Licence:</b> creates a payment code for a new licence purchase.</li>
+              <li><b>Extend Licence:</b> creates a payment code from the unlocked panel to add more time to an existing licence.</li>
+              <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds.</li>
+              <li><b>No Check Payment buttons:</b> users no longer need to manually press Check Payment. The script watches for the Xanax payment while the code is active.</li>
+              <li><b>5 minute payment codes:</b> payment codes expire after 5 minutes.</li>
+              <li><b>Xanax value:</b> each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the licence.</li>
+              <li><b>Multiple Xanax supported:</b> 2 Xanax adds 30 days, 3 Xanax adds 45 days, and 10 Xanax adds 150 days.</li>
+              <li><b>Exact message required:</b> users must send the exact payment code as the item message.</li>
+              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
+              <li><b>Your Expiration:</b> shows the licensed user, time remaining, and expiry date/time.</li>
+              <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
+              <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
 
-              <li class="rw-feature-group">Panel and mobile features</li>
-              <li><b>RWPH launcher:</b> opens the helper from a small button on Torn.</li>
-              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the position.</li>
-              <li><b>Draggable panels:</b> the main panel, results panel, and Xanax helper can be moved around the screen.</li>
-              <li><b>Resizable panels:</b> panels have a bottom-right resize handle so you can make them bigger or smaller.</li>
-              <li><b>Torn PDA support:</b> drag and resize support works with touch controls as well as desktop mouse controls.</li>
-              <li><b>Ranked-war theme:</b> compact dark faction-banner styling designed to fit Torn.</li>
+              <li class="rw-feature-group">Panel and layout</li>
+              <li><b>RWPH launcher logo:</b> opens the helper from the branded RWPH logo button on Torn.</li>
+              <li><b>Logo panel titles:</b> panel titles include the RWPH logo.</li>
+              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
+              <li><b>Modern theme:</b> panels use the newer sleek dark blue RWPH style.</li>
+              <li><b>Draggable panels:</b> main panel, results, and payment helper can be moved around.</li>
+              <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
+              <li><b>Torn PDA touch support:</b> drag and resize work with touch controls.</li>
+              <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
 
               <li class="rw-feature-group">Xanax payment helper</li>
-              <li><b>Open Xanax Send Page:</b> opens the Torn items page and loads the RWPH Xanax Payment Helper.</li>
-              <li><b>Manual-safe helper:</b> it does not auto-open Send this item, does not auto-click Add Message, and does not send items.</li>
-              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and can paste it into the visible User ID field after the user manually opens the form.</li>
-              <li><b>Copy Code:</b> copies the payment code and can paste it into the visible Add Message field after the user manually opens the message box.</li>
-              <li><b>User confirmation required:</b> the user chooses the Xanax amount and manually clicks Send/Confirm.</li>
+              <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax payment flow.</li>
+              <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
+              <li><b>Copy Receiver:</b> copies or pastes Evil_Panda_420 [3236276] into the visible User ID field after the user manually opens the send form.</li>
+              <li><b>Copy Code:</b> copies or pastes the payment code into the visible Add Message field after the user manually opens Add Message.</li>
+              <li><b>Auto-close helper:</b> the payment helper closes after both Copy Receiver and Copy Code have been clicked once.</li>
+              <li><b>User confirmation required:</b> users choose the Xanax amount and manually click Send/Confirm inside Torn.</li>
 
               <li class="rw-feature-group">Ranked war payout calculator</li>
               <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
-              <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
+              <li><b>Total payout pool:</b> enter the total cash pool to split between members.</li>
               <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
               <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
               <li><b>Ranked-war filtering:</b> option to count only attacks flagged as ranked-war attacks.</li>
@@ -3166,42 +3310,53 @@
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn data, calculates payouts server-side, and returns results.</li>
 
               <li class="rw-feature-group">Results and payout tools</li>
-              <li><b>Fullscreen results tab:</b> Fetch + Calculate results open in a new fullscreen-style tab.</li>
+              <li><b>Fullscreen results tab:</b> Fetch + Calculate opens results in a new fullscreen-style tab.</li>
+              <li><b>Fallback results panel:</b> if Torn PDA or the browser blocks the new tab, RWPH keeps the old results panel as a fallback.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
               <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
               <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
               <li><b>Manual payout confirmation:</b> RWPH prepares pages only. It does not automatically send faction money.</li>
-              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file from the results toolbar.</li>
+              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Create HTML Newsletter:</b> creates a styled war payout report with totals, averages, chart-style payouts, and a full member table.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">How To Unlock Access</div>
+            <div class="rw-how-title">How To Buy A Licence</div>
             <ul class="rw-how-list">
-              <li>Install the latest Ranked War Payout Helper userscript.</li>
-              <li>Open Torn and click the <b>RWPH</b> launcher button.</li>
+              <li>Open RWPH from the launcher logo.</li>
               <li>Paste your Torn API key into <b>Your Torn API Key -Limited Access-</b>.</li>
-              <li>Click <b>Save Key</b> if you want the key saved locally in Tampermonkey/Torn PDA storage.</li>
-              <li>Use <b>2 Day Free Trial</b>, or click <b>Start Payment</b> to generate a payment code.</li>
-              <li>For payment, send Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the item message.</li>
-              <li>Each Xanax adds <b>15 days</b> to your licence.</li>
-              <li>Click <b>Check Payment</b>. If the server finds the matching item and message, your licence unlocks or extends.</li>
-              <li>Click <b>Your Expiration</b> anytime to check how long is left.</li>
+              <li>Click <b>Save Key</b> if you want the key saved locally.</li>
+              <li>Click <b>Buy Licence</b>.</li>
+              <li>RWPH creates a payment code that is valid for 5 minutes.</li>
+              <li>Send 1x or more Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the item message.</li>
+              <li>RWPH automatically checks every 15 seconds. When the backend finds the payment, the licence unlocks.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">How To Extend A Licence</div>
+            <ul class="rw-how-list">
+              <li>While unlocked, click <b>Extend Licence</b>.</li>
+              <li>RWPH creates a new 5 minute payment code.</li>
+              <li>Send Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact code as the item message.</li>
+              <li>Each Xanax adds 15 days to the current licence.</li>
+              <li>RWPH automatically checks for the payment and extends the licence when the backend confirms it.</li>
+              <li>Click <b>Your Expiration</b> after it updates if you want to confirm the new expiry time.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">How To Use The Xanax Payment Helper</div>
             <ul class="rw-how-list">
-              <li>Click <b>Start Payment</b> first so you have a payment code.</li>
+              <li>Click <b>Buy Licence</b> or <b>Extend Licence</b> first so you have a payment code.</li>
               <li>Click <b>Open Xanax Send Page</b>.</li>
               <li>Manually click your Xanax item.</li>
               <li>Manually click <b>Send this item</b>.</li>
               <li>Manually click <b>Add Message</b>.</li>
               <li>Use <b>Copy Receiver</b> and <b>Copy Code</b> to copy or paste the needed details.</li>
-              <li>Choose the amount of Xanax you want to send.</li>
-              <li>Review the receiver, amount, and message yourself, then manually click Send/Confirm.</li>
+              <li>After both helper buttons have been clicked once, the payment helper closes automatically.</li>
+              <li>Choose the amount of Xanax you want to send, review everything, then manually click Send/Confirm.</li>
             </ul>
           </div>
 
@@ -3209,12 +3364,12 @@
             <div class="rw-how-title">How To Calculate Payouts</div>
             <ul class="rw-how-list">
               <li>Unlock RWPH first. The backend will not calculate without a valid licence.</li>
-              <li>Paste the Torn API key in the Payout tab if it is not already saved.</li>
+              <li>Paste or save the Torn API key in the Payout tab.</li>
               <li>Click <b>Auto-fill War Times</b>, or manually set the war start and finish times.</li>
               <li>Enter the total payout pool.</li>
               <li>Adjust hit weight, assist weight, ranked-war filtering, and chain fallback if needed.</li>
               <li>Click <b>Fetch + Calculate</b>.</li>
-              <li>Review every member result in the fullscreen results tab before paying anyone.</li>
+              <li>Review every member result in the fullscreen results tab or fallback results panel.</li>
             </ul>
           </div>
 
@@ -3233,11 +3388,12 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Troubleshooting</div>
             <ul class="rw-how-list">
-              <li><b>Panel will not unlock:</b> check your API key, licence status, backend server, and payment code.</li>
+              <li><b>Payment not found yet:</b> wait for the next automatic check. RWPH checks about every 15 seconds while the code is active.</li>
+              <li><b>Payment code expired:</b> codes last 5 minutes. Click Buy Licence or Extend Licence again to make a new code.</li>
+              <li><b>Panel locked again:</b> the saved licence likely expired. Buy or extend the licence to unlock again.</li>
               <li><b>Failed to fetch:</b> the backend server may be offline, ngrok may be closed, or PAYWALL_API_BASE may be wrong.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
-              <li><b>Results panel not visible:</b> close/reopen RWPH, run Fetch + Calculate again, or refresh Torn.</li>
-              <li><b>Drag/resize not working on Torn PDA:</b> update to the latest version and use the panel header to drag and the bottom-right handle to resize.</li>
+              <li><b>Results tab blocked:</b> allow popups/tabs for Torn. RWPH will also keep fallback results in the panel.</li>
               <li><b>Add Balance tabs blocked:</b> allow popups/tabs for Torn, or use each member's Add Balance button one by one.</li>
               <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
@@ -3403,11 +3559,36 @@
       await showLicenseDays(status);
     });
 
-    document.getElementById("rw-lock").addEventListener("click", () => {
-      GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
-      closePanel();
-      createPanel();
+    document.getElementById("rw-extend-licence").addEventListener("click", async () => {
+      const status = document.getElementById("rw-status");
+      const codeBox = document.getElementById("rw-main-payment-code");
+      const userKey = document.getElementById("rw-key").value.trim();
+      if (!userKey) return alert("Enter your Torn API key first.");
+
+      try {
+        GM_setValue(STORAGE_KEY, userKey);
+        status.textContent = "Creating extension payment code...";
+        if (codeBox) codeBox.innerHTML = "";
+
+        const result = await apiPost("/api/paywall/start", { userKey, extend: true });
+        savePendingPayment(result);
+        status.textContent = result.instructions || "Extension payment code created. RWPH will check automatically after you send the Xanax.";
+        if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running.");
+        updatePendingPaymentUi();
+        startAutoPaymentCheck(userKey, "extend");
+      } catch (e) {
+        status.textContent = "Extend licence error: " + e.message;
+      }
     });
+
+    document.getElementById("rw-lock").addEventListener("click", () => {
+      const panel = document.getElementById("rw-payout-helper");
+      if (panel) showPaywallScreen(panel);
+    });
+
+    startLicenseExpiryMonitor();
+    updatePendingPaymentUi();
+    startAutoPaymentCheck(document.getElementById("rw-key")?.value.trim(), "extend");
 
     document.getElementById("rw-autofill").addEventListener("click", async () => {
       const status = document.getElementById("rw-status");
@@ -3491,8 +3672,8 @@
         }
       } catch (e) {
         status.textContent = "Error: " + e.message;
-        if (String(e.message).toLowerCase().includes("license")) {
-          GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+        if (String(e.message).toLowerCase().includes("license") || String(e.message).toLowerCase().includes("licence")) {
+          returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
         }
       }
     });
