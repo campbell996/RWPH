@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.64
+// @version      1.1.66
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,6 +24,10 @@
   const ADMIN_KEY_STORAGE_KEY = "rw_payout_helper_admin_key";
   const PENDING_PAYMENT_STORAGE_KEY = "rw_payout_helper_pending_payment";
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
+  const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
+  const PANEL_LAYOUT_STORAGE_KEY = "rw_payout_helper_panel_layout";
+  const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
+  const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
   const ADD_BALANCE_ALL_DELAY_MS = 1500;
@@ -488,6 +492,111 @@
     }
   }
 
+  function rwphSafeJsonGet(key, fallback = {}) {
+    try {
+      const raw = GM_getValue(key, "");
+      if (!raw) return fallback;
+      return typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function rwphSafeJsonSet(key, value) {
+    try {
+      GM_setValue(key, JSON.stringify(value || {}));
+    } catch (e) {
+      console.warn("RWPH could not save state:", e);
+    }
+  }
+
+  function rwphSetPanelOpenState(isOpen) {
+    GM_setValue(PANEL_OPEN_STORAGE_KEY, isOpen ? "1" : "0");
+  }
+
+  function rwphGetPanelOpenState() {
+    return GM_getValue(PANEL_OPEN_STORAGE_KEY, "0") === "1";
+  }
+
+  function rwphSavePanelLayout(panel) {
+    if (!panel || !panel.id) return;
+    const rect = panel.getBoundingClientRect();
+    if (!rect || rect.width < 40 || rect.height < 40) return;
+    const layouts = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {});
+    layouts[panel.id] = {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+    };
+    rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, layouts);
+  }
+
+  function rwphApplyPanelLayout(panel) {
+    if (!panel || !panel.id) return;
+    const saved = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {})[panel.id];
+    if (!saved) return;
+
+    const minWidth = panel.id === "rw-results-panel" ? 160 : 150;
+    const minHeight = 110;
+    const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
+    const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
+    const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
+    const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - 40));
+
+    panel.style.setProperty("position", "fixed", "important");
+    panel.style.setProperty("left", `${left}px`, "important");
+    panel.style.setProperty("top", `${top}px`, "important");
+    panel.style.setProperty("right", "auto", "important");
+    panel.style.setProperty("bottom", "auto", "important");
+    panel.style.setProperty("width", `${width}px`, "important");
+    panel.style.setProperty("height", `${height}px`, "important");
+    panel.style.setProperty("max-height", "none", "important");
+  }
+
+  function rwphSaveActiveTab(area, tabName) {
+    const state = rwphSafeJsonGet(ACTIVE_TAB_STORAGE_KEY, {});
+    state[area] = tabName;
+    rwphSafeJsonSet(ACTIVE_TAB_STORAGE_KEY, state);
+  }
+
+  function rwphGetActiveTab(area, fallback) {
+    const state = rwphSafeJsonGet(ACTIVE_TAB_STORAGE_KEY, {});
+    return state[area] || fallback;
+  }
+
+  function rwphSavePayoutFormState() {
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
+    const state = {};
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      state[id] = el.type === "checkbox" ? !!el.checked : String(el.value || "");
+    }
+    rwphSafeJsonSet(PAYOUT_FORM_STATE_STORAGE_KEY, state);
+  }
+
+  function rwphRestorePayoutFormState() {
+    const state = rwphSafeJsonGet(PAYOUT_FORM_STATE_STORAGE_KEY, {});
+    for (const [id, value] of Object.entries(state)) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (el.type === "checkbox") el.checked = !!value;
+      else if (value !== undefined && value !== null && String(value) !== "") el.value = String(value);
+    }
+  }
+
+  function rwphAttachPayoutFormPersistence() {
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.rwphPersistReady === "1") continue;
+      el.dataset.rwphPersistReady = "1";
+      el.addEventListener("input", rwphSavePayoutFormState);
+      el.addEventListener("change", rwphSavePayoutFormState);
+    }
+  }
+
   function attachMoveLauncherButton() {
     const btn = document.getElementById("rw-move-launcher");
     if (!btn) return;
@@ -498,7 +607,11 @@
 
   function closePanel() {
     const panel = document.getElementById("rw-payout-helper");
-    if (panel) panel.remove();
+    if (panel) {
+      rwphSavePanelLayout(panel);
+      panel.remove();
+    }
+    rwphSetPanelOpenState(false);
     setLauncherOpenState(false);
   }
 
@@ -2085,6 +2198,7 @@
     box.innerHTML = message;
     makeDraggable(box, "#rwph-payment-helper-title");
     makeResizable(box);
+    rwphApplyPanelLayout(box);
   }
 
   function rwphNodeMeta(el) {
@@ -2564,6 +2678,7 @@
     }
 
     function endDrag() {
+      if (dragging) rwphSavePanelLayout(panel);
       dragging = false;
     }
 
@@ -2653,6 +2768,7 @@
     }
 
     function endResize() {
+      if (resizing) rwphSavePanelLayout(panel);
       resizing = false;
     }
 
@@ -2918,9 +3034,11 @@
 
     makeDraggable(panel);
     makeResizable(panel);
+    rwphApplyPanelLayout(panel);
     const lockedResultsPanel = document.getElementById("rw-results-panel");
     makeDraggable(lockedResultsPanel);
     makeResizable(lockedResultsPanel);
+    rwphApplyPanelLayout(lockedResultsPanel);
     attachMoveLauncherButton();
     document.getElementById("rw-move-launcher-admin").addEventListener("click", cycleLauncherCorner);
     document.getElementById("rw-close").addEventListener("click", closePanel);
@@ -2933,6 +3051,7 @@
     const howSection = document.getElementById("rw-paywall-how-section");
 
     function switchLockedTab(tabName) {
+      rwphSaveActiveTab("locked", tabName);
       const showAdmin = tabName === "admin";
       const showHow = tabName === "how";
       paySection.hidden = showAdmin || showHow;
@@ -2949,6 +3068,7 @@
     payTabBtn.addEventListener("click", () => switchLockedTab("unlock"));
     adminTabBtn.addEventListener("click", () => switchLockedTab("admin"));
     howTabBtn.addEventListener("click", () => switchLockedTab("how"));
+    switchLockedTab(rwphGetActiveTab("locked", "unlock"));
 
     const lockedSaveKeyBtn = document.getElementById("rw-paywall-save-key");
     if (lockedSaveKeyBtn) {
@@ -3164,6 +3284,10 @@
           <label>API Key
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
+          <div class="rw-actions">
+            <button id="rw-extend-licence" class="secondary">Extend Licence</button>
+            <button id="rw-save" class="secondary">Save Key</button>
+          </div>
           <div class="rw-row">
             <label>War start date/time
               <input id="rw-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
@@ -3190,9 +3314,7 @@
           <label><input id="rw-chain" type="checkbox" checked> Include chain hits if ranked-war flag is missing</label>
           <div class="rw-actions">
             <button id="rw-run">Fetch + Calculate</button>
-            <button id="rw-save" class="secondary">Save Key</button>
             <button id="rw-license-days" class="secondary">Your Expiration</button>
-            <button id="rw-extend-licence" class="secondary">Extend Licence</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
             <button id="rw-lock" class="secondary">Lock</button>
           </div>
@@ -3413,9 +3535,11 @@
 
     makeDraggable(panel);
     makeResizable(panel);
+    rwphApplyPanelLayout(panel);
     const mainResultsPanel = document.getElementById("rw-results-panel");
     makeDraggable(mainResultsPanel);
     makeResizable(mainResultsPanel);
+    rwphApplyPanelLayout(mainResultsPanel);
     attachMoveLauncherButton();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
@@ -3426,6 +3550,7 @@
     const howTab = document.getElementById("rw-how-tab-section");
 
     function switchTab(tabName) {
+      rwphSaveActiveTab("main", tabName);
       const showAdmin = tabName === "admin";
       const showHow = tabName === "how";
       payoutTab.hidden = showAdmin || showHow;
@@ -3442,6 +3567,9 @@
     payoutTabBtn.addEventListener("click", () => switchTab("payout"));
     adminTabBtn.addEventListener("click", () => switchTab("admin"));
     howTabBtn.addEventListener("click", () => switchTab("how"));
+    rwphRestorePayoutFormState();
+    rwphAttachPayoutFormPersistence();
+    switchTab(rwphGetActiveTab("main", "payout"));
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
@@ -3611,6 +3739,7 @@
     });
 
     document.getElementById("rw-run").addEventListener("click", async () => {
+      rwphSavePayoutFormState();
       const status = document.getElementById("rw-status");
       const results = document.getElementById("rw-results");
       const userKey = document.getElementById("rw-key").value.trim();
@@ -3794,7 +3923,9 @@
     const panel = document.createElement("div");
     panel.id = "rw-payout-helper";
     document.body.appendChild(panel);
+    rwphSetPanelOpenState(true);
     setLauncherOpenState(true);
+    rwphApplyPanelLayout(panel);
 
     panel.innerHTML = `<style>${panelBaseCss()}</style><div class="rw-body"><div class="rw-muted">Checking license...</div></div>`;
 
@@ -3810,4 +3941,7 @@
   setupXanaxPaymentButtonHandler();
   createLauncherButton();
   runXanaxPaymentAutofillFromUrl();
+  if (rwphGetPanelOpenState()) {
+    setTimeout(() => createPanel(), 250);
+  }
 })();
