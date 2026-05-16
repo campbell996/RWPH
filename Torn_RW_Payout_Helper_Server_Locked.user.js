@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.105
+// @version      1.1.106
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2181,7 +2181,7 @@
 
 
   function buildPayoutCsvText(rows) {
-    const header = ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Respect", "Payout"];
+    const header = ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Payable Respect", "Payout"];
     const body = (rows || []).map((r) => [
       r.id,
       r.name,
@@ -2293,7 +2293,7 @@
           <div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
           <div><span>Payable</span><b>${r.payableEvents}</b></div>
           <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
-          <div><span>Respect</span><b>${r.respect.toFixed(2)}</b></div>
+          <div><span>Pay Respect</span><b>${r.respect.toFixed(2)}</b></div>
         </div>
       </article>`).join("");
 
@@ -2566,7 +2566,7 @@
     }
 
     function exportCsv() {
-      const header = ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Respect", "Payout"];
+      const header = ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Payable Respect", "Payout"];
       const lines = [header].concat(rows.map((r) => [
         r.id, r.name, r.warHits ?? r.attacks ?? 0, r.assists, r.outsideHits || 0, r.retaliationHits || 0,
         r.totalTrackedHits || 0,
@@ -2846,7 +2846,7 @@
                 <div class="rw-stat-box"><div class="rw-stat-label">Tracked</div><div class="rw-stat-value">${Number(r.totalTrackedHits || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Payable</div><div class="rw-stat-value">${Number(r.payableEvents || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Weight</div><div class="rw-stat-value">${weight.toFixed(2)}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Respect</div><div class="rw-stat-value">${respect.toFixed(2)}</div></div>
+                <div class="rw-stat-box"><div class="rw-stat-label">Pay Respect</div><div class="rw-stat-value">${respect.toFixed(2)}</div></div>
               </div>
             </div>`;
         }).join("")}
@@ -3555,7 +3555,7 @@
         ${statCard("War Hits", String(totalHits), `${totalAssists} assists`)}
         ${statCard("Outside Hits", String(totalOutsideHits), `${totalRetaliationHits} retals`)}
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
-        ${statCard("Total Weight", totalWeight.toFixed(2), `${totalRespect.toFixed(2)} total respect`)}
+        ${statCard("Total Weight", totalWeight.toFixed(2), `${totalRespect.toFixed(2)} payable respect`)}
         ${statCard("Fetched Attacks", String(safeNumber(summary?.attacksFetched)), "from server calculation")}
         ${statCard("Names Loaded", String(safeNumber(summary?.nameCount)), "member name matches")}
         ${statCard("Average Payout", money(list.length ? totalPayout / list.length : 0), "per paid member")}
@@ -3584,7 +3584,7 @@
                 <th class="num">Retals</th>
                 <th class="num">Tracked</th>
                 <th class="num">Payable</th>
-                <th class="num">Respect</th>
+                <th class="num">Pay Respect</th>
                 <th class="num">Weight</th>
                 <th class="num">Payout</th>
                 <th class="num">Share</th>
@@ -4472,7 +4472,7 @@
               <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
               <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
               <li><b>Hit categories:</b> results now separate war hits, assists, outside hits, and retaliation hits for every member.</li>
-              <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, respect, and payout.</li>
+              <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, payable respect, and payout.</li>
               <li><b>Improved hit rules:</b> War Hits take priority over retals, assists stay separate, failed attacks are skipped, and retals only count when Torn gives explicit retaliation evidence.</li>
             </ul>
           </div>
@@ -4482,7 +4482,7 @@
             <ul class="rw-how-list">
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a Torn-style full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
-              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
+              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, payable respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
@@ -5012,7 +5012,7 @@
               <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
               <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
               <li><b>Hit categories:</b> results now separate war hits, assists, outside hits, and retaliation hits for every member.</li>
-              <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, respect, and payout.</li>
+              <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, payable respect, and payout.</li>
               <li><b>Improved hit rules:</b> War Hits take priority over retals, assists stay separate, failed attacks are skipped, and retals only count when Torn gives explicit retaliation evidence.</li>
             </ul>
           </div>
@@ -5022,7 +5022,7 @@
             <ul class="rw-how-list">
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a Torn-style full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
-              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
+              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, payable respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
