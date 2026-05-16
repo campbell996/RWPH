@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.67
+// @version      1.1.68
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2006,95 +2006,224 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ranked War Payout Newsletter</title>
+  <title>RWPH Ranked War Payout Newsletter</title>
   <style>
     :root {
-      --bg:#151211;
-      --panel:#211b18;
-      --panel2:#30221d;
-      --line:#7c5034;
-      --gold:#d8aa6a;
-      --bronze:#b85d35;
-      --red:#7a271e;
-      --text:#fff4e8;
-      --muted:#d0aa8e;
-      --green:#7dd082;
+      --bg:#020617;
+      --panel:#0f172a;
+      --panel2:#111827;
+      --line:rgba(125,211,252,.24);
+      --text:#f8fafc;
+      --muted:#a5b4fc;
+      --blue:#38bdf8;
+      --indigo:#6366f1;
+      --green:#86efac;
+      --danger:#fca5a5;
     }
     * { box-sizing:border-box; }
     body {
       margin:0;
-      font-family: Arial, Helvetica, sans-serif;
+      min-height:100vh;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
       color:var(--text);
       background:
-        radial-gradient(circle at 15% 0%, rgba(184,93,53,.24), transparent 28%),
-        radial-gradient(circle at 85% 0%, rgba(216,170,106,.16), transparent 24%),
-        linear-gradient(180deg, #141110, #211916 45%, #12100f);
-      padding:22px;
+        radial-gradient(circle at 15% 0%, rgba(56,189,248,.22), transparent 26%),
+        radial-gradient(circle at 88% 0%, rgba(99,102,241,.20), transparent 28%),
+        linear-gradient(180deg, #020617, #0f172a 42%, #020617);
+      padding:18px;
+      text-align:center;
     }
     .newsletter {
-      max-width:1050px;
+      max-width:1320px;
       margin:0 auto;
-      border:1px solid rgba(216,170,106,.28);
-      border-radius:22px;
-      overflow:hidden;
-      box-shadow:0 24px 70px rgba(0,0,0,.45), inset 0 0 0 4px rgba(122,39,30,.18);
-      background:linear-gradient(180deg, rgba(33,27,24,.98), rgba(22,19,18,.98));
     }
     .hero {
-      padding:28px 30px;
-      background:
-        linear-gradient(90deg, rgba(122,39,30,.95), rgba(184,93,53,.86), rgba(122,39,30,.95));
-      border-bottom:4px solid rgba(216,170,106,.75);
+      position:sticky;
+      top:0;
+      z-index:10;
+      padding:14px;
+      margin-bottom:14px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.86));
+      box-shadow:0 20px 60px rgba(0,0,0,.48), 0 0 24px rgba(56,189,248,.10);
+      backdrop-filter: blur(14px);
     }
-    .eyebrow { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:#ffe7c2; font-weight:800; }
-    h1 { margin:6px 0 8px; font-size:34px; line-height:1.05; }
-    .subtitle { color:#ffe9d6; font-size:14px; }
-    .content { padding:24px; }
-    .stats { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:22px; }
-    .stat-card {
-      border:1px solid rgba(216,170,106,.22);
-      background:linear-gradient(180deg, rgba(48,34,29,.95), rgba(30,25,23,.95));
-      border-radius:16px;
+    .title {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      margin-bottom:8px;
+    }
+    .title img {
+      width:34px;
+      height:34px;
+      object-fit:contain;
+      filter:drop-shadow(0 0 10px rgba(56,189,248,.35));
+    }
+    .eyebrow {
+      margin-bottom:4px;
+      color:var(--muted);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:1.4px;
+      font-weight:900;
+    }
+    h1 {
+      font-size:22px;
+      margin:0;
+      letter-spacing:.3px;
+      color:#f8fafc;
+    }
+    .subtitle {
+      color:#c7d2fe;
+      font-size:12px;
+      font-weight:800;
+    }
+    .content { padding:0; }
+    .stats {
+      display:grid;
+      grid-template-columns:repeat(6, minmax(0, 1fr));
+      gap:10px;
+      margin-bottom:14px;
+    }
+    .stat-card, .section {
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:linear-gradient(180deg, rgba(15,23,42,.92), rgba(2,6,23,.82));
+      box-shadow:0 14px 34px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .stat-card { padding:12px; }
+    .stat-label, .stat-sub, .muted, .chart-name span {
+      color:var(--muted);
+      font-size:11px;
+      text-transform:uppercase;
+      font-weight:800;
+      letter-spacing:.5px;
+    }
+    .stat-value {
+      display:block;
+      margin-top:3px;
+      font-size:18px;
+      font-weight:950;
+      color:#e0f2fe;
+    }
+    .stat-sub {
+      margin-top:3px;
+      text-transform:none;
+      letter-spacing:0;
+      color:#93c5fd;
+    }
+    .section {
+      margin-top:14px;
       padding:14px;
     }
-    .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; font-weight:800; }
-    .stat-value { font-size:22px; font-weight:900; margin-top:3px; color:#fff8ef; }
-    .stat-sub { margin-top:3px; font-size:11px; color:var(--muted); }
-    .section {
-      margin-top:22px;
-      padding:18px;
-      border:1px solid rgba(216,170,106,.20);
-      border-radius:18px;
-      background:linear-gradient(180deg, rgba(33,27,24,.92), rgba(24,21,20,.92));
+    h2 {
+      margin:0 0 12px;
+      font-size:18px;
+      color:#f8fafc;
     }
-    h2 { margin:0 0 14px; font-size:20px; }
-    .chart-key { display:flex; gap:16px; color:var(--muted); font-size:12px; margin-bottom:14px; }
-    .key-dot { display:inline-block; width:10px; height:10px; border-radius:999px; margin-right:5px; }
-    .key-dot.payout { background:var(--gold); }
-    .key-dot.weight { background:var(--bronze); }
-    .chart-row { margin:10px 0 14px; }
-    .chart-name { display:flex; justify-content:space-between; gap:12px; font-size:12px; margin-bottom:4px; }
-    .chart-name span { color:var(--muted); text-align:right; }
-    .bar-wrap { height:12px; border-radius:999px; background:rgba(0,0,0,.35); overflow:hidden; border:1px solid rgba(216,170,106,.10); }
-    .bar-wrap.weight-wrap { height:7px; margin-top:3px; opacity:.9; }
+    .chart-key {
+      display:flex;
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:10px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:900;
+      margin-bottom:12px;
+    }
+    .key-dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      margin-right:5px;
+      box-shadow:0 0 10px rgba(56,189,248,.30);
+    }
+    .key-dot.payout { background:var(--green); }
+    .key-dot.weight { background:var(--blue); }
+    .chart-row {
+      margin:10px auto 14px;
+      max-width:980px;
+      padding:10px;
+      border:1px solid rgba(125,211,252,.14);
+      border-radius:14px;
+      background:rgba(15,23,42,.56);
+    }
+    .chart-name {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      font-size:12px;
+      margin-bottom:6px;
+      text-align:left;
+    }
+    .chart-name strong { color:#f8fafc; }
+    .chart-name span { text-align:right; }
+    .bar-wrap {
+      height:12px;
+      border-radius:999px;
+      background:rgba(2,6,23,.72);
+      overflow:hidden;
+      border:1px solid rgba(125,211,252,.16);
+    }
+    .bar-wrap.weight-wrap { height:7px; margin-top:4px; opacity:.9; }
     .bar { height:100%; border-radius:999px; }
-    .bar.payout { background:linear-gradient(90deg, var(--gold), #ffe0a3); }
-    .bar.weight { background:linear-gradient(90deg, var(--red), var(--bronze)); }
-    table { width:100%; border-collapse:collapse; overflow:hidden; border-radius:14px; }
-    th, td { padding:10px 9px; border-bottom:1px solid rgba(216,170,106,.12); font-size:12px; vertical-align:middle; }
-    th { color:#ffe5bf; text-align:left; background:rgba(122,39,30,.35); text-transform:uppercase; font-size:10px; letter-spacing:.8px; }
+    .bar.payout { background:linear-gradient(90deg, var(--green), #e0f2fe); box-shadow:0 0 16px rgba(134,239,172,.20); }
+    .bar.weight { background:linear-gradient(90deg, var(--blue), var(--indigo)); box-shadow:0 0 14px rgba(56,189,248,.20); }
+    .table-wrap {
+      width:100%;
+      overflow:auto;
+      border-radius:14px;
+      border:1px solid rgba(125,211,252,.16);
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      min-width:760px;
+      background:rgba(2,6,23,.35);
+    }
+    th, td {
+      padding:10px 9px;
+      border-bottom:1px solid rgba(125,211,252,.12);
+      font-size:12px;
+      vertical-align:middle;
+      text-align:center;
+    }
+    th {
+      color:#e0f2fe;
+      background:rgba(30,41,59,.80);
+      text-transform:uppercase;
+      font-size:10px;
+      letter-spacing:.8px;
+      font-weight:950;
+    }
     tr:nth-child(even) td { background:rgba(255,255,255,.025); }
-    .num { text-align:right; white-space:nowrap; }
-    .strong { color:#ffdfbf; font-weight:900; }
-    .muted { color:var(--muted); font-size:11px; }
-    .footer { padding:14px 24px 22px; color:var(--muted); font-size:11px; text-align:center; }
+    .num { text-align:center; white-space:nowrap; }
+    .strong { color:var(--green); font-weight:950; }
+    td strong { color:#f8fafc; }
+    .footer {
+      padding:16px 10px 4px;
+      color:var(--muted);
+      font-size:11px;
+      text-align:center;
+      font-weight:800;
+    }
+    @media (max-width:900px) {
+      .stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width:760px) {
-      body { padding:10px; }
+      body { padding:8px; }
+      .hero { position:static; }
       .stats { grid-template-columns:1fr; }
-      .chart-name { display:block; }
-      .chart-name span { display:block; text-align:left; margin-top:2px; }
+      .chart-name { display:block; text-align:center; }
+      .chart-name span { display:block; text-align:center; margin-top:3px; }
+      h1 { font-size:18px; }
+      .title img { width:28px; height:28px; }
       th, td { font-size:11px; padding:7px 5px; }
-      h1 { font-size:26px; }
     }
   </style>
 </head>
@@ -2102,9 +2231,13 @@
   <main class="newsletter">
     <header class="hero">
       <div class="eyebrow">Ranked War Payout Helper</div>
-      <h1>Ranked War Payout Newsletter</h1>
+      <div class="title">
+        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
+        <h1>Ranked War Payout Newsletter</h1>
+      </div>
       <div class="subtitle">Generated ${esc(generatedAt)} · ${list.length} paid members</div>
     </header>
+
     <section class="content">
       <div class="stats">
         ${statCard("Total Payout", money(totalPayout), `${list.length} members paid`)}
@@ -2126,21 +2259,23 @@
 
       <section class="section">
         <h2>Detailed Payout Table</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Member</th>
-              <th class="num">Hits</th>
-              <th class="num">Assists</th>
-              <th class="num">Respect</th>
-              <th class="num">Weight</th>
-              <th class="num">Payout</th>
-              <th class="num">Share</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Member</th>
+                <th class="num">Hits</th>
+                <th class="num">Assists</th>
+                <th class="num">Respect</th>
+                <th class="num">Weight</th>
+                <th class="num">Payout</th>
+                <th class="num">Share</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
       </section>
     </section>
     <footer class="footer">Created with Ranked War Payout Helper. Review payouts before sending faction funds.</footer>
