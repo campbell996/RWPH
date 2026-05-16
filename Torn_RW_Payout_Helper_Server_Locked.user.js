@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.90
+// @version      1.1.91
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1700,8 +1700,8 @@
       #rw-payout-helper .rw-pay-all-panel {
         position: fixed;
         z-index: 2147483647;
-        inset: 70px 14px auto auto;
-        width: min(520px, calc(100vw - 28px));
+        inset: 70px auto auto 14px;
+        width: min(360px, calc(100vw - 28px));
         max-height: calc(100vh - 100px);
         overflow: auto;
         padding: 12px;
@@ -1783,8 +1783,8 @@
       }
       @media (max-width: 760px), (pointer: coarse) {
         #rw-payout-helper .rw-pay-all-panel {
-          inset: 60px 8px auto 8px;
-          width: auto;
+          inset: 60px auto auto 8px;
+          width: min(300px, calc(100vw - 16px));
           max-height: calc(100vh - 76px);
           padding: 9px;
         }
@@ -1849,6 +1849,7 @@
     try {
       if (typeof GM_openInTab === "function") {
         GM_openInTab(url, { active: true, insert: true, setParent: true });
+        setTimeout(() => closePanel(), 150);
         return true;
       }
     } catch (e) {
@@ -1856,6 +1857,7 @@
     }
     try {
       const tab = window.open(url, "_blank", "noopener,noreferrer");
+      if (tab) setTimeout(() => closePanel(), 150);
       return !!tab;
     } catch (e) {
       console.warn("window.open failed for Pay All controls tab:", e);
@@ -2357,11 +2359,12 @@
         position: fixed !important;
         z-index: 2147483647 !important;
         top: 78px !important;
-        right: 12px !important;
-        width: min(520px, calc(100vw - 24px)) !important;
-        max-height: calc(100vh - 96px) !important;
+        left: 12px !important;
+        right: auto !important;
+        width: min(360px, calc(100vw - 24px)) !important;
+        max-height: calc(100vh - 116px) !important;
         overflow: auto !important;
-        padding: 12px !important;
+        padding: 9px !important;
         border: 1px solid rgba(125,211,252,.28) !important;
         border-radius: 18px !important;
         background: radial-gradient(circle at 18% 0%, rgba(56,189,248,.18), transparent 34%), linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.96)) !important;
@@ -2372,17 +2375,17 @@
       }
       .rw-pay-all-panel[hidden] { display:none !important; }
       .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:center; align-items:center; padding: 0 28px 8px; }
-      .rw-pay-all-title { font-weight:950; color:#e0f2fe; font-size:15px; }
-      .rw-pay-all-note { color:#c7d2fe; font-size:12px; line-height:1.45; margin:0 24px 10px; }
+      .rw-pay-all-title { font-weight:950; color:#e0f2fe; font-size:13px; }
+      .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 8px; }
       .rw-pay-all-close { position:absolute; top:8px; right:8px; min-width:30px; min-height:28px; border-radius:10px; border:1px solid rgba(248,113,113,.35); background:rgba(127,29,29,.88); color:#fff; font-weight:950; cursor:pointer; }
-      .rw-pay-all-list { display:grid; gap:8px; }
-      .rw-pay-all-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:7px; align-items:center; padding:9px; border-radius:14px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.72); }
-      .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:900; color:#f8fafc; }
-      .rw-pay-all-payout { display:block; margin-top:2px; color:#86efac; font-weight:950; }
-      .rw-pay-all-copy { padding:7px 8px; min-height:28px; border-radius:10px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:11px; font-weight:950; cursor:pointer; }
+      .rw-pay-all-list { display:grid; gap:6px; }
+      .rw-pay-all-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; align-items:center; padding:7px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.72); }
+      .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:900; color:#f8fafc; }
+      .rw-pay-all-payout { display:block; margin-top:1px; color:#86efac; font-size:10px; font-weight:950; }
+      .rw-pay-all-copy { padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; }
       .rw-resize-handle { position:absolute; right:7px; bottom:7px; width:18px; height:18px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.62); border-bottom:2px solid rgba(125,211,252,.62); border-radius:0 0 8px 0; }
       @media (max-width: 760px), (pointer: coarse) {
-        .rw-pay-all-panel { inset: 64px 8px auto 8px !important; width: auto !important; max-height: calc(100vh - 80px) !important; }
+        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(300px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
         .rw-pay-all-row { grid-template-columns: 1fr; }
       }
     `;
@@ -2459,13 +2462,21 @@
   }
 
   function rwphMaybeOpenPayAllFromFactionControlsUrl() {
-    if (!(window.location.href || "").includes("/factions.php")) return;
-    if (!(window.location.href || "").includes("rwphPayAll=1")) return;
+    if (!(window.location.href || "").includes("/factions.php")) return false;
+    if (!(window.location.href || "").includes("rwphPayAll=1")) return false;
+
+    // In faction controls, show only the compact copy panel and keep the main RWPH panel closed.
+    rwphSetPanelOpenState(false);
+    setLauncherOpenState(false);
+    const mainPanel = document.getElementById("rw-payout-helper");
+    if (mainPanel) mainPanel.remove();
 
     setTimeout(() => {
+      closePanel();
       const rows = rwphGetStoredPayAllRows();
       openPayAllCopyPanel(rows || []);
     }, 900);
+    return true;
   }
 
   function buildPayoutText(rows) {
