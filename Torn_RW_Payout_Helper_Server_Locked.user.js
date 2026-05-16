@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.100
+// @version      1.1.101
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2050,53 +2050,78 @@
         }
       }
 
-      /* v1.1.100 black/gold war theme */
+      /* v1.1.101 Torn-style dark/red theme */
       #rw-payout-helper,
       #rw-payout-helper .rw-results-panel,
       #rwph-xanax-send-status,
       #rw-payout-helper .rw-pay-all-panel {
-        color:#f8e7b0 !important;
-        background:radial-gradient(circle at 12% -8%,rgba(245,158,11,.18),transparent 32%),linear-gradient(145deg,#050505,#121009 52%,#020202) !important;
-        border-color:rgba(234,179,8,.52) !important;
-        box-shadow:0 0 0 1px rgba(255,255,255,.04) inset,0 0 0 4px rgba(120,83,19,.16) inset,0 0 30px rgba(245,158,11,.18),0 22px 70px rgba(0,0,0,.88) !important;
+        color:#d7d7d7 !important;
+        background:linear-gradient(180deg,#262626 0%,#1b1b1b 100%) !important;
+        border:1px solid #444 !important;
+        border-radius:8px !important;
+        box-shadow:0 16px 42px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.045) !important;
       }
+      #rw-payout-helper::before,
+      #rw-payout-helper .rw-results-panel::before,
+      #rwph-xanax-send-status::before {
+        background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 24px),linear-gradient(180deg,rgba(255,255,255,.035),transparent 28%) !important;
+        opacity:.7 !important;
+      }
+      #rw-payout-helper::after { display:none !important; }
       #rw-payout-helper .rw-head,
       #rw-payout-helper .rw-results-panel .rw-head,
       #rwph-payment-helper-title,
       #rw-payout-helper .rw-pay-all-head {
-        background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000) !important;
-        color:#ffe49a !important;
-        border-color:rgba(234,179,8,.48) !important;
-        text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.28) !important;
+        background:linear-gradient(180deg,#333,#202020) !important;
+        color:#f1f1f1 !important;
+        border-color:#4a4a4a !important;
+        border-bottom:3px solid #8d2422 !important;
+        text-shadow:0 1px 0 #000 !important;
+        border-radius:7px 7px 0 0 !important;
       }
-      #rw-payout-helper::before,
-      #rw-payout-helper .rw-results-panel::before {
-        background:repeating-linear-gradient(135deg,rgba(234,179,8,.04) 0 2px,transparent 2px 18px),radial-gradient(circle at 18% 16%,rgba(255,206,87,.10),transparent 24%) !important;
+      #rw-payout-helper .rw-head::before,
+      #rw-payout-helper .rw-head::after {
+        background:linear-gradient(90deg,transparent,rgba(180,59,54,.9),transparent) !important;
       }
       #rw-payout-helper button,
       #rwph-xanax-send-status button,
       #rw-payout-helper a.btn,
       #rw-payout-helper .rw-pay-all-copy,
       #rw-payout-helper .rw-pay-all-undo {
-        background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f) !important;
-        border-color:rgba(250,204,21,.50) !important;
-        color:#fff6c9 !important;
+        background:linear-gradient(180deg,#b73a35,#7d1f1f) !important;
+        border:1px solid #5e1a1a !important;
+        border-radius:5px !important;
+        color:#fff !important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 8px rgba(0,0,0,.38) !important;
         text-shadow:0 1px 0 #000 !important;
       }
       #rw-payout-helper button.secondary,
       #rw-payout-helper .secondary,
       #rwph-xanax-send-status button.secondary,
       #rw-payout-helper a.btn.secondary {
-        background:linear-gradient(135deg,#080806,#44320e) !important;
-        border-color:rgba(234,179,8,.36) !important;
-        color:#f8e7b0 !important;
+        background:linear-gradient(180deg,#3c3c3c,#262626) !important;
+        border-color:#555 !important;
+        color:#e7e7e7 !important;
+      }
+      #rw-payout-helper button.danger,
+      #rwph-xanax-send-status button.danger {
+        background:linear-gradient(180deg,#cd4740,#7c1f1f) !important;
+        border-color:#5e1919 !important;
       }
       #rw-payout-helper input,
       #rw-payout-helper textarea,
       #rw-payout-helper select {
-        background:rgba(0,0,0,.68) !important;
-        border-color:rgba(234,179,8,.38) !important;
-        color:#fff3c4 !important;
+        background:#151515 !important;
+        border:1px solid #4b4b4b !important;
+        color:#eeeeee !important;
+        border-radius:5px !important;
+        box-shadow:inset 0 1px 4px rgba(0,0,0,.65) !important;
+      }
+      #rw-payout-helper input:focus,
+      #rw-payout-helper textarea:focus,
+      #rw-payout-helper select:focus {
+        border-color:#a73531 !important;
+        box-shadow:0 0 0 2px rgba(173,57,52,.18),inset 0 1px 4px rgba(0,0,0,.65) !important;
       }
       #rw-payout-helper .rw-summary,
       #rw-payout-helper .rw-card,
@@ -2106,10 +2131,15 @@
       #rw-payout-helper .rw-admin-box,
       #rw-payout-helper .rw-payment-box,
       #rw-payout-helper .rw-pay-all-row,
-      #rw-payout-helper .rw-pay-all-info {
-        background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86)) !important;
-        border-color:rgba(234,179,8,.28) !important;
+      #rw-payout-helper .rw-pay-all-info,
+      #rw-payout-helper .rw-tab-section {
+        background:linear-gradient(180deg,#242424,#1b1b1b) !important;
+        border:1px solid #3d3d3d !important;
+        color:#d7d7d7 !important;
+        border-radius:7px !important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 6px 18px rgba(0,0,0,.30) !important;
       }
+      #rw-payout-helper .rw-result-card::before { background:linear-gradient(90deg,#7b1f1f,#c3423a,#7b1f1f) !important; }
       #rw-payout-helper label,
       #rw-payout-helper .rw-how-title,
       #rw-payout-helper .rw-feature-group,
@@ -2117,28 +2147,28 @@
       #rw-payout-helper .rw-stat-value,
       #rw-payout-helper .rw-pay-all-title,
       #rw-payout-helper .rw-pay-all-member,
-      #rwph-xanax-send-status b { color:#ffd76a !important; }
+      #rwph-xanax-send-status b { color:#f0f0f0 !important; }
       #rw-payout-helper .rw-small,
       #rw-payout-helper .rw-muted,
       #rw-payout-helper .rw-how-list li,
       #rw-payout-helper .rw-how-intro,
       #rw-payout-helper .rw-pay-all-note,
-      #rw-payout-helper .rw-pay-all-info { color:#e8d39a !important; }
+      #rw-payout-helper .rw-pay-all-info { color:#c9c9c9 !important; }
       #rw-payout-helper .rw-result-payout,
       #rw-payout-helper .rw-pay-all-payout,
       #rw-payout-helper .rw-payment-code,
       #rw-payout-helper .rw-payment-recipient {
-        color:#fff0a6 !important;
-        background:rgba(234,179,8,.12) !important;
-        border-color:rgba(234,179,8,.32) !important;
+        color:#ffffff !important;
+        background:rgba(139,32,31,.22) !important;
+        border:1px solid rgba(175,58,52,.42) !important;
       }
       #rw-payout-launcher {
-        background:radial-gradient(circle at 50% 40%,rgba(250,204,21,.34),rgba(20,14,4,.98) 58%,#000 100%) !important;
-        border-color:rgba(250,204,21,.72) !important;
-        box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 0 22px rgba(234,179,8,.38),0 18px 34px rgba(0,0,0,.64) !important;
+        background:linear-gradient(180deg,#303030,#151515) !important;
+        border:1px solid #545454 !important;
+        box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 14px rgba(150,35,32,.35),0 12px 26px rgba(0,0,0,.65) !important;
       }
       #rw-payout-helper .rw-head span::before,
-      #rwph-payment-helper-title::before { filter:drop-shadow(0 0 8px rgba(250,204,21,.42)) sepia(.85) saturate(1.5) hue-rotate(350deg) !important; }
+      #rwph-payment-helper-title::before { filter:drop-shadow(0 0 6px rgba(170,50,45,.45)) grayscale(.2) saturate(.85) !important; }
 
     `;
   }
@@ -2448,15 +2478,17 @@
       h1 { font-size:18px; }
     }
   
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style>
 </head>
@@ -2680,15 +2712,17 @@
     h1 { margin:10px 0 6px; font-size:22px; }
     p { margin:0; color:#a5b4fc; font-weight:800; line-height:1.45; }
   
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style>
 </head>
@@ -3485,15 +3519,17 @@
       th, td { font-size:11px; padding:7px 5px; }
     }
   
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style>
 </head>
@@ -4215,15 +4251,17 @@
 
     panel.innerHTML = `
       <style>${panelBaseCss()}
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style>
       <div class="rw-head">
@@ -4418,7 +4456,7 @@
               <li><b>RWPH launcher logo:</b> opens the helper from the branded RWPH button on Torn.</li>
               <li><b>Logo panel titles:</b> panel titles include the RWPH logo.</li>
               <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
-              <li><b>Black and gold war theme:</b> panels use a black/gold war-command visual style.</li>
+              <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> the main panel, fallback results panel, and payment helper can be moved around.</li>
               <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
@@ -4447,13 +4485,13 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Results And Reports</div>
             <ul class="rw-how-list">
-              <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a black/gold war-command full-screen results page in a new tab where supported.</li>
+              <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a Torn-style full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
-              <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same black/gold war theme as the results tab.</li>
+              <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same Torn-style dark/red theme as the results tab.</li>
             </ul>
           </div>
 
@@ -4729,15 +4767,17 @@
 
     panel.innerHTML = `
       <style>${panelBaseCss()}
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style>
       <div class="rw-head">
@@ -4958,7 +4998,7 @@
               <li><b>RWPH launcher logo:</b> opens the helper from the branded RWPH button on Torn.</li>
               <li><b>Logo panel titles:</b> panel titles include the RWPH logo.</li>
               <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
-              <li><b>Black and gold war theme:</b> panels use a black/gold war-command visual style.</li>
+              <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> the main panel, fallback results panel, and payment helper can be moved around.</li>
               <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
@@ -4987,13 +5027,13 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Results And Reports</div>
             <ul class="rw-how-list">
-              <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a black/gold war-command full-screen results page in a new tab where supported.</li>
+              <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a Torn-style full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
-              <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same black/gold war theme as the results tab.</li>
+              <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same Torn-style dark/red theme as the results tab.</li>
             </ul>
           </div>
 
@@ -5287,16 +5327,18 @@
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
           try {
             preOpenedResultsTab.document.open();
-            preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#030303;color:#f8e7b0;font-family:Inter,Segoe UI,Arial,sans-serif;padding:20px;text-align:center}.box{max-width:520px;border:1px solid rgba(248,113,113,.35);border-radius:20px;background:linear-gradient(180deg,rgba(18,15,9,.96),rgba(3,3,3,.92));padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#ffd76a}p{color:#e8d39a;font-weight:800}
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+            preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121212;color:#d7d7d7;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center}.box{max-width:520px;border:1px solid #474747;border-radius:8px;background:linear-gradient(180deg,#242424,#1a1a1a);padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#f2f2f2}p{color:#c8c8c8;font-weight:800}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>You can close this tab and try Fetch + Calculate again.</p></div></body></html>`);
             preOpenedResultsTab.document.close();
@@ -5430,15 +5472,17 @@
     rwphApplyPanelLayout(panel);
 
     panel.innerHTML = `<style>${panelBaseCss()}
-    /* v1.1.100 black/gold war theme */
-    body{background:radial-gradient(circle at 10% -8%,rgba(245,158,11,.18),transparent 34%),linear-gradient(135deg,#000,#0b0904 50%,#030303)!important;color:#f8e7b0!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar{background:linear-gradient(180deg,rgba(20,16,9,.94),rgba(4,4,3,.86))!important;border-color:rgba(234,179,8,.34)!important;color:#f8e7b0!important;box-shadow:0 18px 50px rgba(0,0,0,.58),inset 0 0 0 1px rgba(255,255,255,.035)!important;}
-    header,.hero,.titlebar{background:linear-gradient(90deg,#000,rgba(85,60,14,.98),#000)!important;border-color:rgba(234,179,8,.46)!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#ffd76a!important;text-shadow:0 1px 0 #000,0 0 12px rgba(250,204,21,.20)!important;}
-    p,.muted,.label,td,li,span{color:#e8d39a!important;}
-    .btn,button,a.btn{background:linear-gradient(135deg,#171101,#5b4210 54%,#b7791f)!important;color:#fff6c9!important;border:1px solid rgba(250,204,21,.50)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(135deg,#080806,#44320e)!important;color:#f8e7b0!important;}
-    th{background:rgba(90,63,14,.54)!important;color:#ffe49a!important;}td,table{border-color:rgba(234,179,8,.20)!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#7c520d,#facc15)!important;}
+    /* v1.1.101 Torn-style dark/red theme */
+    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
+    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
+    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
+    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
+    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style><div class="rw-body"><div class="rw-muted">Checking license...</div></div>`;
 
