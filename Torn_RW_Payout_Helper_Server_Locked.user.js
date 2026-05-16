@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.94
+// @version      1.1.95
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2423,7 +2423,7 @@
           <ul>
             <li><b>Name + ID</b> copies/prefills the member.</li>
             <li><b>Amount</b> copies/prefills the payout money.</li>
-            <li>Open the correct add money/banking fields first if prefill cannot find them.</li>
+            <li>Open the correct add money/banking fields first. If Torn hides the amount field until a member is selected, press Name + ID first, then press Amount.</li>
             <li>You manually review and confirm every payment in Torn.</li>
           </ul>
         </div>
@@ -2457,11 +2457,16 @@
   }
 
   function rwphPayAllEditableFields() {
-    return Array.from(document.querySelectorAll("input[type='text'], input[type='search'], input[type='number'], input:not([type]), textarea, [contenteditable='true']"))
+    return Array.from(document.querySelectorAll("input, textarea, [contenteditable='true'], [role='textbox'], [role='spinbutton']"))
       .filter(rwphSendHelperVisible)
-      .filter((el) => !el.disabled && !el.readOnly)
-      .filter((el) => !el.closest?.("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel"));
+      .filter((el) => !el.disabled && !el.readOnly && el.getAttribute?.("aria-disabled") !== "true")
+      .filter((el) => !el.closest?.("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel"))
+      .filter((el) => {
+        const type = String(el.type || "").toLowerCase();
+        return !["hidden", "button", "submit", "reset", "checkbox", "radio", "file", "image", "password"].includes(type);
+      });
   }
+
 
   function rwphFindPayAllMemberField() {
     const fields = rwphPayAllEditableFields();
@@ -2483,24 +2488,82 @@
 
   function rwphFindPayAllAmountField() {
     const fields = rwphPayAllEditableFields();
-    const scored = fields.map((el) => {
+
+    const looksLikeAmount = (el) => {
       const meta = rwphPayAllFieldMeta(el);
+      const type = String(el.type || "").toLowerCase();
+      const inputMode = String(el.getAttribute?.("inputmode") || "").toLowerCase();
+      if (/\b(user|player|member|recipient|username|profile|name|id|message|comment|reason|note|search|filter)\b/.test(meta)) return false;
+      if (["number", "tel"].includes(type)) return true;
+      if (/\b(numeric|decimal)\b/.test(inputMode)) return true;
+      if (/\b(amount|money|cash|balance|dollar|payout|value|funds|give|transfer|deposit|add\s*money|add\s*to\s*balance)\b/.test(meta)) return true;
+      return false;
+    };
+
+    // Best case: Torn exposes useful field text, name, id, placeholder, type, role, or inputmode.
+    const scored = fields.map((el, index) => {
+      const meta = rwphPayAllFieldMeta(el);
+      const type = String(el.type || "").toLowerCase();
+      const inputMode = String(el.getAttribute?.("inputmode") || "").toLowerCase();
       let score = 0;
-      if (/\b(amount|money|cash|balance|dollar|payout|value)\b/.test(meta)) score += 9;
-      if (/\b(add|give|transfer)\b/.test(meta)) score += 2;
-      if (String(el.type || "").toLowerCase() === "number") score += 5;
-      if (/\b(user|player|member|recipient|name|id|message|comment|reason|note|search|filter)\b/.test(meta)) score -= 12;
+      if (/\b(amount|money|cash|balance|dollar|payout|value|funds)\b/.test(meta)) score += 14;
+      if (/\b(add\s*money|add\s*to\s*balance|give|transfer|deposit)\b/.test(meta)) score += 8;
+      if (["number", "tel"].includes(type)) score += 8;
+      if (/\b(numeric|decimal)\b/.test(inputMode)) score += 7;
+      if (el.getAttribute?.("role") === "spinbutton") score += 6;
+      if (/[$]/.test(meta)) score += 4;
+      if (/\b(user|player|member|recipient|username|profile|name|id|message|comment|reason|note|search|filter)\b/.test(meta)) score -= 25;
+      score += Math.min(index, 8) * 0.05;
       return { el, score };
     }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
 
-    return scored[0]?.el || fields.find((el) => String(el.type || "").toLowerCase() === "number") || null;
+    if (scored[0]?.el) return scored[0].el;
+
+    const numeric = fields.find(looksLikeAmount);
+    if (numeric) return numeric;
+
+    // Last-resort Torn fallback: after the member field is visible, use the next editable field that is not clearly text/member/message/search.
+    const memberField = rwphFindPayAllMemberField();
+    const startIndex = memberField ? fields.indexOf(memberField) + 1 : 0;
+    const afterMember = fields.slice(Math.max(0, startIndex)).find((el) => {
+      const meta = rwphPayAllFieldMeta(el);
+      const type = String(el.type || "").toLowerCase();
+      if (["search", "email", "url"].includes(type)) return false;
+      return !/\b(user|player|member|recipient|username|profile|name|id|message|comment|reason|note|search|filter)\b/.test(meta);
+    });
+    return afterMember || null;
   }
+
 
   function rwphSetPayAllFieldValue(el, value) {
     if (!el) return false;
-    if (el.getAttribute?.("contenteditable") === "true") return rwphSetContentEditable(el, value);
-    return rwphSendHelperSetValue(el, value);
+    if (el.getAttribute?.("contenteditable") === "true" || el.getAttribute?.("role") === "textbox") return rwphSetContentEditable(el, value);
+
+    const text = String(value ?? "");
+    el.focus?.();
+    el.click?.();
+
+    try {
+      const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, "value");
+      if (desc?.set) desc.set.call(el, text);
+      else el.value = text;
+    } catch {
+      try { el.value = text; } catch { return false; }
+    }
+
+    try { el.setAttribute?.("value", text); } catch {}
+    [
+      new InputEvent("beforeinput", { bubbles: true, cancelable: true, data: text, inputType: "insertText" }),
+      new InputEvent("input", { bubbles: true, cancelable: true, data: text, inputType: "insertText" }),
+      new Event("change", { bubbles: true }),
+      new KeyboardEvent("keyup", { bubbles: true, key: "0", code: "Digit0" }),
+      new Event("blur", { bubbles: true }),
+    ].forEach((evt) => { try { el.dispatchEvent(evt); } catch {} });
+
+    return true;
   }
+
 
   async function rwphPrefillPayAllMember(row) {
     const id = String(row?.id || "unknown");
