@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.76
+// @version      1.1.79
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -811,6 +811,26 @@
   }
 
 
+  function rwphScheduleLicenseLockback(expiresAt) {
+    const exp = Number(expiresAt || 0);
+    if (window.__rwphLicenseExpiryTimer) {
+      clearTimeout(window.__rwphLicenseExpiryTimer);
+      window.__rwphLicenseExpiryTimer = null;
+    }
+
+    if (!Number.isFinite(exp) || exp <= 0) return;
+
+    const msUntilExpiry = (exp * 1000) - Date.now();
+    if (msUntilExpiry <= 0) {
+      returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+      return;
+    }
+
+    window.__rwphLicenseExpiryTimer = setTimeout(() => {
+      returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+    }, Math.min(msUntilExpiry + 1000, 2147483647));
+  }
+
   async function getSavedLicenseInfo() {
     const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     const userKey =
@@ -824,7 +844,12 @@
 
     try {
       const result = await apiPost("/api/paywall/verify-token", { token, userKey });
+      if (result.valid && Number(result.expiresAt || 0) <= Math.floor(Date.now() / 1000)) {
+        GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+        return { valid: false, error: "License expired." };
+      }
       if (result.valid && result.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
+      if (result.valid && result.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
       return result;
     } catch (e) {
       return { valid: false, error: e.message || "License check failed." };
@@ -848,7 +873,10 @@
     if (!info.valid) {
       statusEl.textContent = "License check: " + (info.error || "No valid saved license found.");
       if (document.getElementById("rw-key")) {
-        returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+        const lockMsg = info.revoked
+          ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again."
+          : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.";
+        returnToLockedPanel(lockMsg);
       }
       return false;
     }
@@ -859,11 +887,15 @@
     return true;
   }
 
-  function returnToLockedPanel(message = "Your licence has expired. Buy Licence to unlock RWPH again.") {
+  function returnToLockedPanel(message = "Your licence has expired or was revoked. Buy Licence to unlock RWPH again.") {
     GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     if (window.__rwphLicenseMonitor) {
       clearInterval(window.__rwphLicenseMonitor);
       window.__rwphLicenseMonitor = null;
+    }
+    if (window.__rwphLicenseExpiryTimer) {
+      clearTimeout(window.__rwphLicenseExpiryTimer);
+      window.__rwphLicenseExpiryTimer = null;
     }
 
     const panel = document.getElementById("rw-payout-helper");
@@ -879,16 +911,23 @@
   function startLicenseExpiryMonitor() {
     if (window.__rwphLicenseMonitor) clearInterval(window.__rwphLicenseMonitor);
 
-    window.__rwphLicenseMonitor = setInterval(async () => {
+    const checkLicenseNow = async () => {
       const panel = document.getElementById("rw-payout-helper");
-      const mainKeyInput = document.getElementById("rw-key");
-      if (!panel || !mainKeyInput) return;
+      if (!panel || !document.getElementById("rw-key")) return;
 
       const info = await getSavedLicenseInfo();
       if (!info.valid) {
-        returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+        const lockMsg = info.revoked
+          ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again."
+          : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.";
+        returnToLockedPanel(lockMsg);
+        return;
       }
-    }, 60000);
+      if (info.expiresAt) rwphScheduleLicenseLockback(info.expiresAt);
+    };
+
+    checkLicenseNow();
+    window.__rwphLicenseMonitor = setInterval(checkLicenseNow, 10000);
   }
 
   async function verifySavedLicense() {
@@ -3145,7 +3184,7 @@
             <ul class="rw-how-list">
               <li><b>No backend, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, extend licences, auto-check payments, check expiration, or calculate payouts.</li>
               <li><b>Protected payout routes:</b> Fetch + Calculate is processed through the backend, so removing the locked screen from the userscript does not unlock the protected calculation routes.</li>
-              <li><b>Expired licence lockback:</b> when a saved licence expires, RWPH sends the user back to the locked panel.</li>
+              <li><b>Expired/revoked licence lockback:</b> when a saved licence expires or an admin revokes it, RWPH sends the user back to the locked panel.</li>
               <li><b>Backend database:</b> the server stores licences, trial usage, payment codes, used payment records, Xanax quantities, bonus tracking, and payment fingerprints.</li>
               <li><b>Per-user bonus tracking:</b> bonus progress is tracked by the paying user's Torn ID. Other users' Xanax purchases never count toward another user's bonus progress.</li>
             </ul>
@@ -3660,7 +3699,7 @@
             <ul class="rw-how-list">
               <li><b>No backend, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, extend licences, auto-check payments, check expiration, or calculate payouts.</li>
               <li><b>Protected payout routes:</b> Fetch + Calculate is processed through the backend, so removing the locked screen from the userscript does not unlock the protected calculation routes.</li>
-              <li><b>Expired licence lockback:</b> when a saved licence expires, RWPH sends the user back to the locked panel.</li>
+              <li><b>Expired/revoked licence lockback:</b> when a saved licence expires or an admin revokes it, RWPH sends the user back to the locked panel.</li>
               <li><b>Backend database:</b> the server stores licences, trial usage, payment codes, used payment records, Xanax quantities, bonus tracking, and payment fingerprints.</li>
               <li><b>Per-user bonus tracking:</b> bonus progress is tracked by the paying user's Torn ID. Other users' Xanax purchases never count toward another user's bonus progress.</li>
             </ul>
@@ -4096,7 +4135,7 @@
       } catch (e) {
         status.textContent = "Error: " + e.message;
         if (String(e.message).toLowerCase().includes("license") || String(e.message).toLowerCase().includes("licence")) {
-          returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
+          returnToLockedPanel(String(e.message).toLowerCase().includes("revoked") ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again." : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
         }
       }
     });
