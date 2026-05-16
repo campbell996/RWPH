@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.66
+// @version      1.1.67
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1367,6 +1367,7 @@
       #rwph-payment-helper-title {
         display: flex !important;
         align-items: center;
+        justify-content: center;
         gap: 8px;
       }
       #rwph-payment-helper-title::before {
@@ -1532,6 +1533,81 @@
           margin-right: 24px !important;
         }
       }
+      /* v1.1.67 center all panel content */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-results-panel,
+      #rw-payout-helper .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-summary,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-result-card,
+      #rw-payout-helper .rw-admin-license-card,
+      #rw-payout-helper .rw-payment-card,
+      #rw-payout-helper .rw-muted,
+      #rw-payout-helper .rw-small,
+      #rw-payout-helper label,
+      #rw-payout-helper input,
+      #rw-payout-helper button {
+        text-align: center !important;
+      }
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-head span,
+      #rwph-payment-helper-title {
+        justify-content: center !important;
+        text-align: center !important;
+        width: 100%;
+      }
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-row,
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-result-top,
+      #rw-payout-helper .rw-admin-license-top {
+        justify-content: center !important;
+        align-items: center !important;
+      }
+      #rw-payout-helper .rw-result-top,
+      #rw-payout-helper .rw-admin-license-top {
+        flex-direction: column !important;
+      }
+      #rw-payout-helper .rw-result-player,
+      #rw-payout-helper .rw-result-payout,
+      #rw-payout-helper .rw-result-id,
+      #rw-payout-helper .rw-result-name,
+      #rw-payout-helper .rw-payment-recipient,
+      #rw-payout-helper .rw-payment-code {
+        text-align: center !important;
+        width: 100%;
+      }
+      #rw-payout-helper .rw-card-list,
+      #rw-payout-helper .rw-admin-list {
+        align-items: stretch !important;
+      }
+      #rw-payout-helper .rw-stat-grid,
+      #rw-payout-helper .rw-card-list,
+      #rw-payout-helper .rw-admin-list {
+        justify-items: center !important;
+      }
+      #rw-payout-helper .rw-how-list {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        list-style-position: inside !important;
+        text-align: center !important;
+      }
+      #rw-payout-helper .rw-how-list li {
+        text-align: center !important;
+      }
+      #rw-payout-helper .rw-feature-group {
+        margin-left: 0 !important;
+        text-align: center !important;
+      }
+      #rw-payout-helper .rw-admin-license-top > div,
+      #rw-payout-helper .rw-result-top > div {
+        width: 100%;
+        text-align: center !important;
+      }
+      #rw-payout-helper input::placeholder { text-align: center !important; }
+
       #rw-payout-helper a { color: #7dd3fc !important; }
     `;
   }
@@ -1659,6 +1735,12 @@
     .stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:7px; margin:10px 0; }
     .stats div { padding:8px; border-radius:12px; background:rgba(15,23,42,.72); border:1px solid rgba(125,211,252,.12); }
     .stats b { display:block; color:#fff; margin-top:2px; }
+    /* v1.1.67 center fullscreen results content */
+    body, .app, .hero, .summary-card, .result-card, .result-name, .result-id, .payout, .stats div { text-align:center; }
+    .title, .toolbar, .result-top { justify-content:center; align-items:center; text-align:center; }
+    .result-top { flex-direction:column; }
+    .summary-card b, .stats b { text-align:center; }
+    .grid { justify-items:stretch; }
     @media (max-width:780px) {
       body { padding:8px; }
       .summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -2188,6 +2270,7 @@
         color: #eaf6ff;
         font: 12px Inter, Segoe UI, Arial, sans-serif;
         line-height: 1.45;
+        text-align: center;
         box-shadow: 0 18px 44px rgba(0,0,0,.55), 0 0 24px rgba(56,189,248,.12);
         backdrop-filter: blur(14px) saturate(1.2);
       `;
