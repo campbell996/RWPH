@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.107
+// @version      1.1.108
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2514,6 +2514,7 @@
 
     <section class="summary">
       <div class="summary-card"><span>Total payout</span><b>${esc(money(totalPayout))}</b></div>
+      <div class="summary-card"><span>War Source</span><b>${summary?.selectedWar?.timeSource === "current-ranked-war" ? "Current RW" : summary?.selectedWar?.timeSource === "last-ranked-war" ? "Last RW" : "Manual"}</b></div>
       <div class="summary-card"><span>Total weight</span><b>${Number(summary?.totalWeight || 0).toFixed(2)}</b></div>
       <div class="summary-card"><span>War Hits</span><b>${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)}</b></div>
       <div class="summary-card"><span>Assists</span><b>${Number(summary?.totalAssists || 0)}</b></div>
@@ -2800,6 +2801,7 @@
     return `
       <div class="rw-summary">
         <b>Total payout:</b> ${money(summary?.totalPayout || 0)}<br>
+        ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(summary.selectedWar.timeSource === "current-ranked-war" ? "Current ranked war" : summary.selectedWar.timeSource === "last-ranked-war" ? "Last ranked war" : "Manual fallback")}<br>` : ""}
         <b>Total weight:</b> ${Number(summary?.totalWeight || 0).toFixed(2)} |
         <b>Payable events:</b> ${Number(summary?.calcMeta?.payableEvents || 0)}<br>
         <b>War hits:</b> ${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)} |
@@ -4462,7 +4464,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Ranked War Payout Calculator</div>
             <ul class="rw-how-list">
-              <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
+              <li><b>Auto War Source:</b> Fetch + Calculate now uses the current ranked war automatically, or the most recently finished ranked war when there is no active war.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
               <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
               <li><b>War Hit Weight:</b> controls how much ranked-war hits count toward payout share. Default is 1.</li>
@@ -5002,7 +5004,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Ranked War Payout Calculator</div>
             <ul class="rw-how-list">
-              <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
+              <li><b>Auto War Source:</b> Fetch + Calculate now uses the current ranked war automatically, or the most recently finished ranked war when there is no active war.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
               <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
               <li><b>War Hit Weight:</b> controls how much ranked-war hits count toward payout share. Default is 1.</li>
