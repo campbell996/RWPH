@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.82
+// @version      1.1.87
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -32,8 +32,7 @@
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
-  const ADD_BALANCE_ALL_DELAY_MS = 1500;
-  const PAYMENT_ITEM_ID = "206";
+    const PAYMENT_ITEM_ID = "206";
   const PAYMENT_ITEM_NAME = "Xanax";
   const PAYMENT_RECEIVER_NAME = "Evil_Panda_420";
   const PAYMENT_RECEIVER_ID = "3236276";
@@ -1697,6 +1696,101 @@
       }
       #rw-payout-helper input::placeholder { text-align: center !important; }
 
+      #rw-payout-helper .rw-pay-all-panel {
+        position: fixed;
+        z-index: 2147483647;
+        inset: 70px 14px auto auto;
+        width: min(520px, calc(100vw - 28px));
+        max-height: calc(100vh - 100px);
+        overflow: auto;
+        padding: 12px;
+        border-radius: 18px;
+        border: 1px solid rgba(125,211,252,.28);
+        background:
+          radial-gradient(circle at 18% 0%, rgba(56,189,248,.20), transparent 34%),
+          linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.96));
+        box-shadow: 0 20px 60px rgba(0,0,0,.58), 0 0 28px rgba(56,189,248,.12);
+        backdrop-filter: blur(14px);
+        color: #f8fafc !important;
+        text-align: center !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel[hidden] { display:none !important; }
+      #rw-payout-helper .rw-pay-all-head {
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        gap:8px;
+        margin-bottom:10px;
+        cursor: move;
+        touch-action: none;
+      }
+      #rw-payout-helper .rw-pay-all-title {
+        font-size: 14px;
+        font-weight: 950;
+        color: #e0f2fe !important;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+      }
+      #rw-payout-helper .rw-pay-all-close {
+        position:absolute;
+        top:8px;
+        right:8px;
+        min-height: 26px;
+        padding: 3px 8px !important;
+      }
+      #rw-payout-helper .rw-pay-all-note {
+        color:#c7d2fe !important;
+        font-size: 11px;
+        line-height:1.45;
+        margin: 0 22px 10px;
+      }
+      #rw-payout-helper .rw-pay-all-list {
+        display:grid;
+        gap:8px;
+      }
+      #rw-payout-helper .rw-pay-all-row {
+        display:grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap:6px;
+        align-items:center;
+        padding:8px;
+        border-radius: 14px;
+        border:1px solid rgba(125,211,252,.16);
+        background: rgba(15,23,42,.72);
+      }
+      #rw-payout-helper .rw-pay-all-member {
+        min-width:0;
+        font-size: 11px;
+        font-weight: 900;
+        color:#f8fafc !important;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+      }
+      #rw-payout-helper .rw-pay-all-payout {
+        display:block;
+        margin-top:2px;
+        color:#86efac !important;
+        font-size: 11px;
+        font-weight: 950;
+      }
+      #rw-payout-helper .rw-pay-all-copy {
+        padding:5px 7px !important;
+        min-height: 26px !important;
+        font-size: 10px !important;
+        white-space:nowrap;
+      }
+      @media (max-width: 760px), (pointer: coarse) {
+        #rw-payout-helper .rw-pay-all-panel {
+          inset: 60px 8px auto 8px;
+          width: auto;
+          max-height: calc(100vh - 76px);
+          padding: 9px;
+        }
+        #rw-payout-helper .rw-pay-all-row {
+          grid-template-columns: 1fr;
+        }
+      }
       #rw-payout-helper a { color: #7dd3fc !important; }
     `;
   }
@@ -1715,7 +1809,6 @@
       weight: Number(r.weight || 0),
       respect: Number(r.respect || 0),
       payout: Number(r.payout || 0),
-      addBalanceUrl: buildFactionAddBalanceUrl(r.id || "unknown", r.payout || 0),
     }));
 
     const totalPayout = Number(summary?.totalPayout || 0) || list.reduce((sum, r) => sum + r.payout, 0);
@@ -1741,7 +1834,6 @@
           <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
           <div><span>Respect</span><b>${r.respect.toFixed(2)}</b></div>
         </div>
-        <button class="btn secondary" data-open-url="${esc(r.addBalanceUrl)}">Add Balance</button>
       </article>`).join("");
 
     return `<!doctype html>
@@ -1834,6 +1926,47 @@
     .title, .toolbar, .result-top { justify-content:center; align-items:center; text-align:center; }
     .result-top { flex-direction:column; }
     .summary-card b, .stats b { text-align:center; }
+    .pay-all-panel {
+      position:fixed;
+      z-index:9999;
+      inset:76px 16px auto auto;
+      width:min(560px, calc(100vw - 32px));
+      max-height:calc(100vh - 100px);
+      overflow:auto;
+      padding:14px;
+      border:1px solid rgba(125,211,252,.28);
+      border-radius:20px;
+      background:radial-gradient(circle at 18% 0%, rgba(56,189,248,.20), transparent 34%), linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.96));
+      box-shadow:0 20px 60px rgba(0,0,0,.58), 0 0 28px rgba(56,189,248,.12);
+      backdrop-filter:blur(14px);
+      text-align:center;
+    }
+    .pay-all-panel[hidden] { display:none !important; }
+    .pay-all-panel h2 { margin:0 0 6px; font-size:18px; color:#e0f2fe; }
+    .pay-all-note { margin:0 26px 12px; color:#c7d2fe; font-size:12px; line-height:1.45; }
+    .pay-all-close { position:absolute; top:10px; right:10px; padding:6px 9px; }
+    .pay-all-list { display:grid; gap:8px; }
+    .pay-all-row {
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) auto auto;
+      gap:7px;
+      align-items:center;
+      padding:9px;
+      border-radius:14px;
+      border:1px solid rgba(125,211,252,.16);
+      background:rgba(15,23,42,.72);
+    }
+    .pay-all-member {
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:12px;
+      font-weight:900;
+      color:#f8fafc;
+    }
+    .pay-all-payout { display:block; margin-top:2px; color:#86efac; font-weight:950; }
+    .copy-small { padding:7px 8px; font-size:11px; border-radius:10px; }
     .grid { justify-items:stretch; }
     @media (max-width:780px) {
       body { padding:8px; }
@@ -1852,8 +1985,8 @@
         <h1>Fetch + Calculate Results</h1>
       </div>
       <div class="toolbar">
-        <button class="btn" id="addAllBtn">Add Balance (All)</button>
         <button class="btn secondary" id="csvBtn">Export CSV</button>
+        <button class="btn secondary" id="payAllBtn">Pay All</button>
         <button class="btn secondary" id="newsletterBtn">Create HTML Newsletter</button>
         <button class="btn secondary" onclick="window.close()">Close Tab</button>
       </div>
@@ -1871,6 +2004,13 @@
 
     <section class="grid">${cards || `<div class="result-card">No payable or tracked attacks found.</div>`}</section>
   </main>
+
+  <aside class="pay-all-panel" id="payAllPanel" hidden>
+    <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
+    <h2>Pay All Copy Panel</h2>
+    <p class="pay-all-note">Open your Torn faction controls manually, then use these copy buttons. RWPH does not send or confirm faction money.</p>
+    <div class="pay-all-list" id="payAllList"></div>
+  </aside>
 
   <script>
     const rows = ${rowsJson};
@@ -1910,24 +2050,73 @@
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
-    function openAll() {
-      let index = 0;
-      const next = () => {
-        if (index >= rows.length) return;
-        const url = rows[index++].addBalanceUrl;
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
-        setTimeout(next, 1500);
-      };
-      next();
+    function escapeHtml(value) {
+      return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) {
+        return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[ch] || ch;
+      });
     }
 
-    document.addEventListener("click", (e) => {
-      const url = e.target?.getAttribute?.("data-open-url");
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(String(text || ""));
+        return true;
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = String(text || "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        return ok;
+      }
+    }
+
+    function renderPayAllPanel() {
+      const list = document.getElementById("payAllList");
+      if (!list) return;
+      list.innerHTML = rows.map(function(r, index) {
+        const name = r.name || ("Unknown " + (r.id || "unknown"));
+        const id = String(r.id || "unknown");
+        const payoutRaw = String(Math.round(Number(r.payout || 0)));
+        const display = money(r.payout || 0);
+        return '<div class="pay-all-row">'
+          + '<div class="pay-all-member">' + (index + 1) + '. ' + escapeHtml(name) + ' [' + escapeHtml(id) + ']'
+          + '<span class="pay-all-payout">' + escapeHtml(display) + '</span></div>'
+          + '<button class="btn secondary copy-small" data-copy-name="' + index + '">Name + ID</button>'
+          + '<button class="btn secondary copy-small" data-copy-amount="' + index + '">Amount</button>'
+          + '</div>';
+      }).join("") || '<div class="pay-all-row"><div class="pay-all-member">No payable members found.</div></div>';
+    }
+
+    function openPayAllPanel() {
+      renderPayAllPanel();
+      document.getElementById("payAllPanel").hidden = false;
+    }
+
+    document.getElementById("payAllPanel").addEventListener("click", async function(e) {
+      const nameBtn = e.target.closest("[data-copy-name]");
+      const amountBtn = e.target.closest("[data-copy-amount]");
+      if (nameBtn) {
+        const r = rows[Number(nameBtn.dataset.copyName)] || {};
+        const name = r.name || ("Unknown " + (r.id || "unknown"));
+        await copyText(name + " [" + (r.id || "unknown") + "]");
+        nameBtn.textContent = "Copied";
+        setTimeout(function() { nameBtn.textContent = "Name + ID"; }, 900);
+      }
+      if (amountBtn) {
+        const r = rows[Number(amountBtn.dataset.copyAmount)] || {};
+        await copyText(String(Math.round(Number(r.payout || 0))));
+        amountBtn.textContent = "Copied";
+        setTimeout(function() { amountBtn.textContent = "Amount"; }, 900);
+      }
     });
 
-    document.getElementById("addAllBtn").addEventListener("click", openAll);
     document.getElementById("csvBtn").addEventListener("click", exportCsv);
+    document.getElementById("payAllBtn").addEventListener("click", openPayAllPanel);
+    document.getElementById("payAllClose").addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
     document.getElementById("newsletterBtn").addEventListener("click", openNewsletter);
   </script>
 </body>
@@ -1972,8 +2161,8 @@
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)} |
         <b>Member names loaded:</b> ${Number(summary?.nameCount || 0)}
         <div class="rw-actions">
-          <button class="secondary" data-open-add-balance-all="1">Add Balance (All)</button>
           <button class="secondary" data-export-csv="1">Export CSV</button>
+          <button class="secondary" data-pay-all="1">Pay All</button>
           <button class="secondary" data-create-newsletter="1">Create HTML Newsletter</button>
         </div>
       </div>
@@ -2006,12 +2195,51 @@
                 <div class="rw-stat-box"><div class="rw-stat-label">Weight</div><div class="rw-stat-value">${weight.toFixed(2)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Respect</div><div class="rw-stat-value">${respect.toFixed(2)}</div></div>
               </div>
-              <div class="rw-actions">
-                <button class="secondary" data-fill-add-balance="${esc(buildFactionAddBalanceUrl(id, payout))}">Add Balance</button>
-              </div>
             </div>`;
         }).join("")}
       </div>`;
+  }
+
+  function renderPayAllCopyPanelHtml(rows) {
+    const safeRows = rows || [];
+    return `
+      <div id="rw-pay-all-panel" class="rw-pay-all-panel" hidden>
+        <button type="button" class="danger rw-pay-all-close" data-pay-all-close="1">×</button>
+        <div class="rw-pay-all-head">
+          <div class="rw-pay-all-title">Pay All Copy Panel</div>
+        </div>
+        <div class="rw-pay-all-note">Open your Torn faction controls manually, then use these copy buttons. RWPH does not send or confirm faction money.</div>
+        <div class="rw-pay-all-list">
+          ${safeRows.map((r, index) => {
+            const name = r.name || `Unknown ${r.id || "unknown"}`;
+            const id = String(r.id || "unknown");
+            const payout = Math.round(Number(r.payout || 0));
+            return `
+              <div class="rw-pay-all-row">
+                <div class="rw-pay-all-member">${index + 1}. ${esc(name)} [${esc(id)}]<span class="rw-pay-all-payout">${money(payout)}</span></div>
+                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-name="${index}">Name + ID</button>
+                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-amount="${index}">Amount</button>
+              </div>`;
+          }).join("") || `<div class="rw-pay-all-row"><div class="rw-pay-all-member">No payable members found.</div></div>`}
+        </div>
+      </div>`;
+  }
+
+  function closePayAllCopyPanel() {
+    const existing = document.getElementById("rw-pay-all-panel");
+    if (existing) existing.remove();
+  }
+
+  function openPayAllCopyPanel(rows) {
+    closePayAllCopyPanel();
+    const wrap = document.createElement("div");
+    wrap.innerHTML = renderPayAllCopyPanelHtml(rows || []);
+    const panel = wrap.firstElementChild;
+    const root = document.getElementById("rw-payout-helper") || document.body;
+    root.appendChild(panel);
+    panel.hidden = false;
+    makeDraggable(panel, ".rw-pay-all-head");
+    makeResizable(panel);
   }
 
   function buildPayoutText(rows) {
@@ -2024,13 +2252,6 @@
       })
       .join("\n");
   }
-
-  function buildFactionAddBalanceUrl(id, payout) {
-    const safeId = encodeURIComponent(String(id || ""));
-    const safePayout = encodeURIComponent(String(Math.max(0, Math.round(Number(payout || 0)))));
-    return `https://www.torn.com/factions.php?step=your#/tab=controls&addMoneyTo=${safeId}&money=${safePayout}`;
-  }
-
 
   function safeNumber(value) {
     const n = Number(value || 0);
@@ -2420,24 +2641,6 @@
     return filename;
   }
 
-  function openAddBalanceTab(url, active = true) {
-    try {
-      if (typeof GM_openInTab === "function") {
-        GM_openInTab(url, {
-          active,
-          insert: true,
-          setParent: true,
-        });
-        return true;
-      }
-    } catch {
-      // Fall back to normal window.open below.
-    }
-
-    const tab = window.open(url, "_blank", "noopener,noreferrer");
-    return !!tab;
-  }
-
   function setupXanaxPaymentButtonHandler() {
     document.addEventListener("click", (e) => {
       const btn = e.target.closest?.("[data-open-xanax-payment]");
@@ -2779,7 +2982,7 @@
         <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Code</button>
       </div>
       <div style="font-size:11px;color:#cbd5e1;margin-top:8px;line-height:1.35;">
-        Manual-safe mode: manually click your Xanax item, click <b>Send this item</b>, then click <b>Add Message</b>. After the fields are visible, use <b>Copy Receiver</b> and <b>Copy Code</b> to paste/copy the details. You choose the amount yourself and manually click Send/Confirm.
+        Manual-safe mode: manually click your Xanax item, click <b>Send this item</b>, then click <b>Add Message</b>. Use <b>Copy Receiver</b> to copy Evil_Panda_420 [3236276] and <b>Copy Code</b> to copy your payment code. You manually paste them, choose the amount yourself, and manually click Send/Confirm.
       </div>
     `;
   }
@@ -2824,12 +3027,8 @@
         window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
         window.__rwphPaymentHelperButtonState.receiverClicked = true;
 
-        const res = await rwphPasteReceiverIntoOpenForm();
-        if (res.ok) {
-          rwphRenderPaymentHelperPanel(currentCode, `Receiver pasted into the User ID field: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Review before sending.`);
-        } else {
-          rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
-        }
+        await copyText(PAYMENT_RECEIVER_TEXT).catch(() => false);
+        rwphRenderPaymentHelperPanel(currentCode, `Receiver copied: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Manually paste it into Torn.`);
         rwphMaybeAutoClosePaymentHelper();
       }
 
@@ -2838,12 +3037,8 @@
         window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
         window.__rwphPaymentHelperButtonState.codeClicked = true;
 
-        const res = await rwphPastePaymentCodeIntoOpenForm(currentCode);
-        if (res.ok) {
-          rwphRenderPaymentHelperPanel(currentCode, "Payment code pasted into the message field. Review before sending.");
-        } else {
-          rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
-        }
+        await copyText(currentCode).catch(() => false);
+        rwphRenderPaymentHelperPanel(currentCode, "Payment code copied. Manually paste it into the item message.");
         rwphMaybeAutoClosePaymentHelper();
       }
     });
@@ -2874,47 +3069,6 @@
       code,
       `Payment helper loaded. Auto-open, auto-fill, and auto-send are disabled. The payment code has been copied as a fallback. Manually open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, click <b>Send this item</b>, then click <b>Add Message</b>. After the fields are visible, use the two buttons below.`
     );
-  }
-
-  function renderPayoutQueue(rows) {
-    if (!rows || !rows.length) {
-      return `<div class="rw-muted">No payout queue available yet. Calculate results first.</div>`;
-    }
-
-    const total = rows.reduce((sum, r) => sum + Math.round(Number(r.payout || 0)), 0);
-
-    return `
-      <div class="rw-summary">
-        <b>Faction Balance Payout Queue</b><br>
-        Each member button opens Torn faction controls with <b>Add to balance</b> prefilled. You still review it, then click Add Money and Confirm in Torn.<br>
-        <b>Queue total:</b> ${money(total)} | <b>Members:</b> ${rows.length}
-        <div class="rw-actions">
-          <button class="secondary" data-copy-all-payouts="1">Copy All Payouts</button>
-          <button class="secondary" data-open-profile="https://www.torn.com/factions.php?step=your#/tab=controls">Open Faction Controls</button>
-        </div>
-      </div>
-      <div class="rw-card-list">
-        ${rows.map((r, index) => {
-          const id = String(r.id || "unknown");
-          const name = r.name || `Unknown ${id}`;
-          const payout = Math.round(Number(r.payout || 0));
-          const url = buildFactionAddBalanceUrl(id, payout);
-
-          return `
-            <div class="rw-result-card">
-              <div class="rw-result-top">
-                <div class="rw-result-player">
-                  <div class="rw-result-name">${index + 1}. ${esc(name)}</div>
-                  <div class="rw-result-id">Torn ID: ${esc(id)}</div>
-                </div>
-                <div class="rw-result-payout">${money(payout)}</div>
-              </div>
-              <div class="rw-actions">
-                <button class="secondary" data-fill-add-balance="${esc(url)}">Add Balance</button>
-              </div>
-            </div>`;
-        }).join("")}
-      </div>`;
   }
 
   function downloadCSV(rows) {
@@ -3200,7 +3354,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">What RWPH Is</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, export CSV records, create HTML payout reports, and prepare Torn faction balance payments.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, export CSV records, create HTML payout reports, and export payout records and create reports.
             </p>
             <p class="rw-how-intro">
               The Tampermonkey or Torn PDA script is the front-end panel. The backend server handles licence checks, trial claims, payment codes, payment detection, licence extensions, expiration checks, and protected payout calculations.
@@ -3226,7 +3380,6 @@
               <li><b>Torn API key:</b> users need to paste their own Torn API key. Saving it locally is optional.</li>
               <li><b>Limited Access key:</b> the key should be a Torn <b>Limited Access</b> API key, not a full-access key.</li>
               <li><b>Faction API access:</b> the API key must be able to use the faction API calls needed for ranked war data and member payout calculations.</li>
-              <li><b>Faction banking access:</b> payout managers need access to faction banking/faction controls in Torn to use Add Balance payment preparation.</li>
               <li><b>Backend online:</b> the RWPH backend server must be running and PAYWALL_API_BASE must point to the correct online server URL.</li>
               <li><b>Unlocked licence:</b> payout calculations require a valid RWPH licence, trial, or extension.</li>
             </ul>
@@ -3302,8 +3455,8 @@
             <ul class="rw-how-list">
               <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax send flow.</li>
               <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
-              <li><b>Copy Receiver:</b> copies or pastes Evil_Panda_420 [3236276] into the visible User ID field after the user manually opens the send form.</li>
-              <li><b>Copy Code:</b> copies or pastes the payment code into the visible Add Message field after the user manually opens the message box.</li>
+              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276]. The user manually pastes it into the Torn User ID field.</li>
+              <li><b>Copy Code:</b> copies the current payment code. The user manually pastes it into the Torn Add Message field.</li>
               <li><b>Auto-close helper:</b> the payment helper closes after Copy Receiver and Copy Code have both been clicked once.</li>
               <li><b>User confirms manually:</b> the user chooses the Xanax quantity and manually clicks Send/Confirm in Torn.</li>
             </ul>
@@ -3346,10 +3499,9 @@
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a modern full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
-              <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
-              <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
-              <li><b>Manual payout confirmation:</b> RWPH prepares payout pages only. It does not automatically send faction money.</li>
+              <li><b>No payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH uses copy-only payout tools.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
+              <li><b>Pay All:</b> opens a copy-only payout panel with each member, a Name + ID copy button, and an Amount copy button.</li>
               <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same modern theme as the results tab.</li>
             </ul>
           </div>
@@ -3358,11 +3510,10 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Add Balance</b> on a member card to open that member's prefilled faction controls page.</li>
-              <li>Use <b>Add Balance (All)</b> to open all member payout pages one at a time.</li>
-              <li>Review the member and amount inside Torn before confirming.</li>
-              <li>RWPH does not automatically send faction money. Final payment stays under your control.</li>
-              <li>Use <b>Export CSV</b> or <b>Create HTML Newsletter</b> for records and faction reports.</li>
+              <li>Use <b>Pay All</b> for copy-only payout prep, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
+              <li>RWPH no longer includes Add Balance or Add Balance (All). Use the copy-only Pay All panel, then manually pay inside Torn.</li>
+              <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
+              <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
             </ul>
           </div>
 
@@ -3377,8 +3528,7 @@
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked:</b> allow popups/tabs, or use the fallback results panel.</li>
-              <li><b>Add Balance tabs blocked:</b> allow popups/tabs for Torn, or use each member's Add Balance button one by one.</li>
-              <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
+              <li><b>Xanax helper is copy-only:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
@@ -3732,7 +3882,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">What RWPH Is</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, export CSV records, create HTML payout reports, and prepare Torn faction balance payments.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, export CSV records, create HTML payout reports, and export payout records and create reports.
             </p>
             <p class="rw-how-intro">
               The Tampermonkey or Torn PDA script is the front-end panel. The backend server handles licence checks, trial claims, payment codes, payment detection, licence extensions, expiration checks, and protected payout calculations.
@@ -3758,7 +3908,6 @@
               <li><b>Torn API key:</b> users need to paste their own Torn API key. Saving it locally is optional.</li>
               <li><b>Limited Access key:</b> the key should be a Torn <b>Limited Access</b> API key, not a full-access key.</li>
               <li><b>Faction API access:</b> the API key must be able to use the faction API calls needed for ranked war data and member payout calculations.</li>
-              <li><b>Faction banking access:</b> payout managers need access to faction banking/faction controls in Torn to use Add Balance payment preparation.</li>
               <li><b>Backend online:</b> the RWPH backend server must be running and PAYWALL_API_BASE must point to the correct online server URL.</li>
               <li><b>Unlocked licence:</b> payout calculations require a valid RWPH licence, trial, or extension.</li>
             </ul>
@@ -3834,8 +3983,8 @@
             <ul class="rw-how-list">
               <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax send flow.</li>
               <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
-              <li><b>Copy Receiver:</b> copies or pastes Evil_Panda_420 [3236276] into the visible User ID field after the user manually opens the send form.</li>
-              <li><b>Copy Code:</b> copies or pastes the payment code into the visible Add Message field after the user manually opens the message box.</li>
+              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276]. The user manually pastes it into the Torn User ID field.</li>
+              <li><b>Copy Code:</b> copies the current payment code. The user manually pastes it into the Torn Add Message field.</li>
               <li><b>Auto-close helper:</b> the payment helper closes after Copy Receiver and Copy Code have both been clicked once.</li>
               <li><b>User confirms manually:</b> the user chooses the Xanax quantity and manually clicks Send/Confirm in Torn.</li>
             </ul>
@@ -3878,10 +4027,9 @@
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a modern full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
-              <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
-              <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
-              <li><b>Manual payout confirmation:</b> RWPH prepares payout pages only. It does not automatically send faction money.</li>
+              <li><b>No payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH uses copy-only payout tools.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
+              <li><b>Pay All:</b> opens a copy-only payout panel with each member, a Name + ID copy button, and an Amount copy button.</li>
               <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same modern theme as the results tab.</li>
             </ul>
           </div>
@@ -3890,11 +4038,10 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Add Balance</b> on a member card to open that member's prefilled faction controls page.</li>
-              <li>Use <b>Add Balance (All)</b> to open all member payout pages one at a time.</li>
-              <li>Review the member and amount inside Torn before confirming.</li>
-              <li>RWPH does not automatically send faction money. Final payment stays under your control.</li>
-              <li>Use <b>Export CSV</b> or <b>Create HTML Newsletter</b> for records and faction reports.</li>
+              <li>Use <b>Pay All</b> for copy-only payout prep, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
+              <li>RWPH no longer includes Add Balance or Add Balance (All). Use the copy-only Pay All panel, then manually pay inside Torn.</li>
+              <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
+              <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
             </ul>
           </div>
 
@@ -3909,8 +4056,7 @@
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked:</b> allow popups/tabs, or use the fallback results panel.</li>
-              <li><b>Add Balance tabs blocked:</b> allow popups/tabs for Torn, or use each member's Add Balance button one by one.</li>
-              <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
+              <li><b>Xanax helper is copy-only:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
@@ -3988,7 +4134,7 @@
       });
     }
 
-    document.getElementById("rw-payout-helper").addEventListener("click", (e) => {
+    document.getElementById("rw-payout-helper").addEventListener("click", async (e) => {
       const status = document.getElementById("rw-status");
       const exportCsvBtn = e.target.closest("[data-export-csv]");
 
@@ -3996,6 +4142,39 @@
         if (!lastRows.length) return alert("Calculate results first.");
         downloadCSV(lastRows);
         if (status) status.textContent = "CSV exported from the results panel.";
+        return;
+      }
+
+      const payAllBtn = e.target.closest("[data-pay-all]");
+      if (payAllBtn) {
+        if (!lastRows.length) return alert("Calculate results first.");
+        openPayAllCopyPanel(lastRows);
+        if (status) status.textContent = "Pay All copy panel opened. Copy member details and payout amounts manually.";
+        return;
+      }
+
+      const payAllCloseBtn = e.target.closest("[data-pay-all-close]");
+      if (payAllCloseBtn) {
+        closePayAllCopyPanel();
+        return;
+      }
+
+      const payNameBtn = e.target.closest("[data-pay-copy-name]");
+      if (payNameBtn) {
+        const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
+        const name = row.name || `Unknown ${row.id || "unknown"}`;
+        await copyText(`${name} [${row.id || "unknown"}]`);
+        payNameBtn.textContent = "Copied";
+        setTimeout(() => { payNameBtn.textContent = "Name + ID"; }, 900);
+        return;
+      }
+
+      const payAmountBtn = e.target.closest("[data-pay-copy-amount]");
+      if (payAmountBtn) {
+        const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
+        await copyText(String(Math.round(Number(row.payout || 0))));
+        payAmountBtn.textContent = "Copied";
+        setTimeout(() => { payAmountBtn.textContent = "Amount"; }, 900);
         return;
       }
 
@@ -4012,67 +4191,6 @@
         }
         return;
       }
-
-      const openAllBtn = e.target.closest("[data-open-add-balance-all]");
-
-      if (openAllBtn) {
-        if (!lastRows.length) return alert("Calculate results first.");
-
-        const payableRows = lastRows.filter((r) => Math.round(Number(r.payout || 0)) > 0 && r.id);
-        if (!payableRows.length) return alert("No payable members to open.");
-
-        const confirmed = confirm(
-          `Open ${payableRows.length} Add Balance tabs one at a time?
-
-` +
-          `One tab will open every ${ADD_BALANCE_ALL_DELAY_MS / 1000} seconds. ` +
-          "Each tab will be prefilled only. You still need to review, click Add Money, and confirm in Torn."
-        );
-        if (!confirmed) return;
-
-        openAllBtn.disabled = true;
-        openAllBtn.textContent = "Opening...";
-
-        let index = 0;
-        let opened = 0;
-        let blocked = 0;
-
-        const openNext = () => {
-          if (index >= payableRows.length) {
-            openAllBtn.disabled = false;
-            openAllBtn.textContent = "Add Balance (All)";
-            status.textContent = blocked
-              ? `Finished. Opened ${opened}/${payableRows.length} Add Balance tabs. ${blocked} may have been blocked by your browser.`
-              : `Finished. Opened ${opened}/${payableRows.length} Add Balance tabs one at a time.`;
-            return;
-          }
-
-          const r = payableRows[index];
-          const payout = Math.round(Number(r.payout || 0));
-          const label = `${r.name || `Torn ID ${r.id}`} — ${money(payout)}`;
-          const url = buildFactionAddBalanceUrl(r.id, payout);
-          const ok = openAddBalanceTab(url, index === 0);
-
-          if (ok) opened += 1;
-          else blocked += 1;
-
-          status.textContent = `Opening Add Balance ${index + 1}/${payableRows.length}: ${label}`;
-          index += 1;
-
-          setTimeout(openNext, ADD_BALANCE_ALL_DELAY_MS);
-        };
-
-        openNext();
-        return;
-      }
-
-      const fillAddBalanceBtn = e.target.closest("[data-fill-add-balance]");
-      if (!fillAddBalanceBtn) return;
-
-      const url = fillAddBalanceBtn.getAttribute("data-fill-add-balance");
-
-      status.textContent = "Opening a new tab with Add Balance prefilled. Review before clicking Add Money and Confirm.";
-      openAddBalanceTab(url, true);
     });
 
     document.getElementById("rw-license-days").addEventListener("click", async () => {
