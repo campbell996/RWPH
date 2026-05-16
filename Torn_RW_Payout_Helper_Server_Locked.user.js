@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.91
+// @version      1.1.94
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2018,7 +2018,11 @@
     }
     .pay-all-panel[hidden] { display:none !important; }
     .pay-all-panel h2 { margin:0 0 6px; font-size:18px; color:#e0f2fe; }
-    .pay-all-note { margin:0 26px 12px; color:#c7d2fe; font-size:12px; line-height:1.45; }
+    .pay-all-note { margin:0 26px 10px; color:#c7d2fe; font-size:12px; line-height:1.45; }
+    .pay-all-info { margin:0 18px 12px; padding:10px 12px; border-radius:14px; border:1px solid rgba(125,211,252,.18); background:rgba(15,23,42,.66); color:#dbeafe; font-size:11px; line-height:1.45; text-align:left; }
+    .pay-all-info b { color:#e0f2fe; }
+    .pay-all-info ul { margin:6px 0 0 16px; padding:0; }
+    .pay-all-info li { margin:3px 0; }
     .pay-all-close { position:absolute; top:10px; right:10px; padding:6px 9px; }
     .pay-all-list { display:grid; gap:8px; }
     .pay-all-row {
@@ -2083,7 +2087,16 @@
   <aside class="pay-all-panel" id="payAllPanel" hidden>
     <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
     <h2>Pay All Copy Panel</h2>
-    <p class="pay-all-note">Use this copy-only list while paying manually in Torn faction controls. RWPH does not send, fill, or confirm faction money.</p>
+    <p class="pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</p>
+    <div class="pay-all-info">
+      <b>How to use Pay All:</b>
+      <ul>
+        <li><b>Name + ID</b> copies the member name and Torn ID, and tries to prefill the visible member field.</li>
+        <li><b>Amount</b> copies that member's payout amount, and tries to prefill the visible money field.</li>
+        <li>If a field is not visible, open the correct faction banking/add money area first, then press the button again.</li>
+        <li>You still manually review the member, amount, and final Torn confirmation. RWPH never clicks Add Money, Send, or Confirm.</li>
+      </ul>
+    </div>
     <div class="pay-all-list" id="payAllList"></div>
   </aside>
 
@@ -2376,7 +2389,11 @@
       .rw-pay-all-panel[hidden] { display:none !important; }
       .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:center; align-items:center; padding: 0 28px 8px; }
       .rw-pay-all-title { font-weight:950; color:#e0f2fe; font-size:13px; }
-      .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 8px; }
+      .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 7px; }
+      .rw-pay-all-info { margin:0 8px 8px; padding:8px 9px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.62); color:#dbeafe; font-size:9.5px; line-height:1.35; text-align:left; }
+      .rw-pay-all-info b { color:#e0f2fe; }
+      .rw-pay-all-info ul { margin:5px 0 0 13px; padding:0; }
+      .rw-pay-all-info li { margin:2px 0; }
       .rw-pay-all-close { position:absolute; top:8px; right:8px; min-width:30px; min-height:28px; border-radius:10px; border:1px solid rgba(248,113,113,.35); background:rgba(127,29,29,.88); color:#fff; font-weight:950; cursor:pointer; }
       .rw-pay-all-list { display:grid; gap:6px; }
       .rw-pay-all-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; align-items:center; padding:7px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.72); }
@@ -2400,7 +2417,16 @@
         <div class="rw-pay-all-head">
           <div class="rw-pay-all-title">Pay All Copy Panel</div>
         </div>
-        <div class="rw-pay-all-note">Use this copy-only list while paying manually in Torn faction controls. RWPH does not send, fill, or confirm faction money.</div>
+        <div class="rw-pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</div>
+        <div class="rw-pay-all-info">
+          <b>How to use:</b>
+          <ul>
+            <li><b>Name + ID</b> copies/prefills the member.</li>
+            <li><b>Amount</b> copies/prefills the payout money.</li>
+            <li>Open the correct add money/banking fields first if prefill cannot find them.</li>
+            <li>You manually review and confirm every payment in Torn.</li>
+          </ul>
+        </div>
         <div class="rw-pay-all-list">
           ${safeRows.map((r, index) => {
             const name = r.name || `Unknown ${r.id || "unknown"}`;
@@ -2420,6 +2446,78 @@
   function closePayAllCopyPanel() {
     const existing = document.getElementById("rw-pay-all-panel");
     if (existing) existing.remove();
+  }
+
+  function rwphPayAllFieldMeta(el) {
+    if (!el) return "";
+    const attrs = ["id", "class", "name", "placeholder", "aria-label", "title", "data-name", "data-id", "type", "role"];
+    const attrText = attrs.map((a) => String(el.getAttribute?.(a) || "")).join(" ");
+    const wrap = rwphSendHelperText(el.closest?.("label, div, li, tr, td, section, form") || el.parentElement || el);
+    return `${attrText} ${wrap}`.replace(/\s+/g, " ").toLowerCase();
+  }
+
+  function rwphPayAllEditableFields() {
+    return Array.from(document.querySelectorAll("input[type='text'], input[type='search'], input[type='number'], input:not([type]), textarea, [contenteditable='true']"))
+      .filter(rwphSendHelperVisible)
+      .filter((el) => !el.disabled && !el.readOnly)
+      .filter((el) => !el.closest?.("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel"));
+  }
+
+  function rwphFindPayAllMemberField() {
+    const fields = rwphPayAllEditableFields();
+    const scored = fields.map((el) => {
+      const meta = rwphPayAllFieldMeta(el);
+      let score = 0;
+      if (/\b(user|player|member|recipient|name|id|torn)\b/.test(meta)) score += 8;
+      if (/\b(to|add|target|search)\b/.test(meta)) score += 2;
+      if ((el.tagName || "").toLowerCase() === "input" && ["text", "search", ""].includes(String(el.type || "").toLowerCase())) score += 2;
+      if (/\b(amount|money|cash|balance|dollar|qty|quantity|message|comment|reason|note)\b/.test(meta)) score -= 12;
+      return { el, score };
+    }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+
+    return scored[0]?.el || fields.find((el) => {
+      const meta = rwphPayAllFieldMeta(el);
+      return !/\b(amount|money|cash|balance|dollar|qty|quantity|message|comment|reason|note)\b/.test(meta) && String(el.type || "").toLowerCase() !== "number";
+    }) || null;
+  }
+
+  function rwphFindPayAllAmountField() {
+    const fields = rwphPayAllEditableFields();
+    const scored = fields.map((el) => {
+      const meta = rwphPayAllFieldMeta(el);
+      let score = 0;
+      if (/\b(amount|money|cash|balance|dollar|payout|value)\b/.test(meta)) score += 9;
+      if (/\b(add|give|transfer)\b/.test(meta)) score += 2;
+      if (String(el.type || "").toLowerCase() === "number") score += 5;
+      if (/\b(user|player|member|recipient|name|id|message|comment|reason|note|search|filter)\b/.test(meta)) score -= 12;
+      return { el, score };
+    }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+
+    return scored[0]?.el || fields.find((el) => String(el.type || "").toLowerCase() === "number") || null;
+  }
+
+  function rwphSetPayAllFieldValue(el, value) {
+    if (!el) return false;
+    if (el.getAttribute?.("contenteditable") === "true") return rwphSetContentEditable(el, value);
+    return rwphSendHelperSetValue(el, value);
+  }
+
+  async function rwphPrefillPayAllMember(row) {
+    const id = String(row?.id || "unknown");
+    const name = row?.name || `Unknown ${id}`;
+    const value = `${name} [${id}]`;
+    const field = rwphFindPayAllMemberField();
+    const filled = rwphSetPayAllFieldValue(field, value);
+    await copyText(value).catch(() => false);
+    return { filled, value };
+  }
+
+  async function rwphPrefillPayAllAmount(row) {
+    const value = String(Math.round(Number(row?.payout || 0)));
+    const field = rwphFindPayAllAmountField();
+    const filled = rwphSetPayAllFieldValue(field, value);
+    await copyText(value).catch(() => false);
+    return { filled, value };
   }
 
   function openPayAllCopyPanel(rows) {
@@ -2444,9 +2542,8 @@
       const nameBtn = e.target.closest?.("[data-pay-copy-name]");
       if (nameBtn) {
         const row = safeRows[Number(nameBtn.dataset.payCopyName)] || {};
-        const name = row.name || `Unknown ${row.id || "unknown"}`;
-        await copyText(`${name} [${row.id || "unknown"}]`);
-        nameBtn.textContent = "Copied";
+        const result = await rwphPrefillPayAllMember(row);
+        nameBtn.textContent = result.filled ? "Prefilled" : "Copied";
         setTimeout(() => { nameBtn.textContent = "Name + ID"; }, 900);
         return;
       }
@@ -2454,8 +2551,8 @@
       const amountBtn = e.target.closest?.("[data-pay-copy-amount]");
       if (amountBtn) {
         const row = safeRows[Number(amountBtn.dataset.payCopyAmount)] || {};
-        await copyText(String(Math.round(Number(row.payout || 0))));
-        amountBtn.textContent = "Copied";
+        const result = await rwphPrefillPayAllAmount(row);
+        amountBtn.textContent = result.filled ? "Prefilled" : "Copied";
         setTimeout(() => { amountBtn.textContent = "Amount"; }, 900);
       }
     });
@@ -3146,11 +3243,11 @@
   }
 
   async function rwphFillXanaxSendForm(paymentCode) {
-    // Manual-only safety mode: never auto-open the send form or fill it automatically.
+    // Manual-only safety mode: never auto-open the send form. Prefill only happens after the user clicks helper buttons.
     await copyText(paymentCode).catch(() => false);
     return {
       ok: false,
-      error: "Copy-only mode is enabled. Manually open Xanax > Send this item > Add Message, then use Copy Receiver and Copy Code."
+      error: "Manual prefill mode is enabled. Manually open Xanax > Send this item > Add Message, then use Copy Receiver and Copy Code."
     };
   }
 
@@ -3207,7 +3304,7 @@
     return `
       <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(125,211,252,.36);background:rgba(15,23,42,.75);color:#e0f7ff;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
       <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 0 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
-      <div style="font-size:10.5px;color:#93c5fd;margin:2px 0 7px;line-height:1.25;">Copy-only helper • No auto-fill • No auto-send</div>
+      <div style="font-size:10.5px;color:#93c5fd;margin:2px 0 7px;line-height:1.25;">Prefill helper • User opens form manually • No auto-send</div>
       <div style="margin-bottom:7px;line-height:1.35;${isError ? 'color:#fca5a5;' : 'color:#dbeafe;'}">${message}</div>
       <div style="padding:9px;border-radius:11px;background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(2,6,23,.72));border:1px solid rgba(125,211,252,.22);margin:7px 0;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;">
         <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.5px;font-weight:900;margin-bottom:5px;">Send exactly this</div>
@@ -3221,7 +3318,7 @@
         <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Code</button>
       </div>
       <div style="font-size:11px;color:#cbd5e1;margin-top:8px;line-height:1.42;">
-        Manually open <b>Xanax</b>, click <b>Send this item</b>, click <b>Add Message</b>, then manually paste the copied receiver and code. Choose the amount yourself and manually press Send/Confirm. Wrong items or missing/incorrect codes need manual review.
+        Manually open <b>Xanax</b>, click <b>Send this item</b>, then click <b>Add Message</b>. After the fields are visible, use <b>Copy Receiver</b> and <b>Copy Code</b> to prefill/copy the receiver and payment code. Choose the amount yourself and manually press Send/Confirm. Wrong items or missing/incorrect codes need manual review.
       </div>
     `;
   }
@@ -3266,8 +3363,12 @@
         window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
         window.__rwphPaymentHelperButtonState.receiverClicked = true;
 
-        await copyText(PAYMENT_RECEIVER_TEXT).catch(() => false);
-        rwphRenderPaymentHelperPanel(currentCode, `Receiver copied: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Paste this into Torn's User ID/receiver field.`);
+        const res = await rwphPasteReceiverIntoOpenForm();
+        if (res.ok) {
+          rwphRenderPaymentHelperPanel(currentCode, `Receiver prefilled into the User ID field: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Review before sending.`);
+        } else {
+          rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
+        }
         rwphMaybeAutoClosePaymentHelper();
       }
 
@@ -3276,8 +3377,12 @@
         window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
         window.__rwphPaymentHelperButtonState.codeClicked = true;
 
-        await copyText(currentCode).catch(() => false);
-        rwphRenderPaymentHelperPanel(currentCode, "Payment code copied. Paste this exact code into the Add Message field.");
+        const res = await rwphPastePaymentCodeIntoOpenForm(currentCode);
+        if (res.ok) {
+          rwphRenderPaymentHelperPanel(currentCode, "Payment code prefilled into the Add Message field. Review before sending.");
+        } else {
+          rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
+        }
         rwphMaybeAutoClosePaymentHelper();
       }
     });
@@ -3680,8 +3785,8 @@
             <ul class="rw-how-list">
               <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax send flow.</li>
               <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
-              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276]. The user manually pastes it into the Torn User ID field.</li>
-              <li><b>Copy Code:</b> copies the current payment code. The user manually pastes it into the Torn Add Message field.</li>
+              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and tries to prefill the visible Torn User ID/receiver field after the user manually opens the send form.</li>
+              <li><b>Copy Code:</b> copies the current payment code and tries to prefill the visible Add Message field after the user manually opens the message box.</li>
               <li><b>Auto-close helper:</b> the payment helper closes after Copy Receiver and Copy Code have both been clicked once.</li>
               <li><b>User confirms manually:</b> the user chooses the Xanax quantity and manually clicks Send/Confirm in Torn.</li>
             </ul>
@@ -3724,9 +3829,9 @@
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a modern full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
-              <li><b>No payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH uses copy-only payout tools.</li>
+              <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small copy-only payout panel with each member, a Name + ID copy button, and an Amount copy button.</li>
+              <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
               <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same modern theme as the results tab.</li>
             </ul>
           </div>
@@ -3735,8 +3840,8 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Pay All</b> to open Torn faction controls with a copy-only member payout panel, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
-              <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All is copy-only; you manually paste and pay inside Torn.</li>
+              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
+              <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
               <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
               <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
             </ul>
@@ -4208,8 +4313,8 @@
             <ul class="rw-how-list">
               <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax send flow.</li>
               <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
-              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276]. The user manually pastes it into the Torn User ID field.</li>
-              <li><b>Copy Code:</b> copies the current payment code. The user manually pastes it into the Torn Add Message field.</li>
+              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and tries to prefill the visible Torn User ID/receiver field after the user manually opens the send form.</li>
+              <li><b>Copy Code:</b> copies the current payment code and tries to prefill the visible Add Message field after the user manually opens the message box.</li>
               <li><b>Auto-close helper:</b> the payment helper closes after Copy Receiver and Copy Code have both been clicked once.</li>
               <li><b>User confirms manually:</b> the user chooses the Xanax quantity and manually clicks Send/Confirm in Torn.</li>
             </ul>
@@ -4252,9 +4357,9 @@
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a modern full-screen results page in a new tab where supported.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, respect, and weighted score.</li>
-              <li><b>No payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH uses copy-only payout tools.</li>
+              <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small copy-only payout panel with each member, a Name + ID copy button, and an Amount copy button.</li>
+              <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
               <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same modern theme as the results tab.</li>
             </ul>
           </div>
@@ -4263,8 +4368,8 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Pay All</b> to open Torn faction controls with a copy-only member payout panel, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
-              <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All is copy-only; you manually paste and pay inside Torn.</li>
+              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
+              <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
               <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
               <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
             </ul>
@@ -4389,9 +4494,8 @@
       const payNameBtn = e.target.closest("[data-pay-copy-name]");
       if (payNameBtn) {
         const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
-        const name = row.name || `Unknown ${row.id || "unknown"}`;
-        await copyText(`${name} [${row.id || "unknown"}]`);
-        payNameBtn.textContent = "Copied";
+        const result = await rwphPrefillPayAllMember(row);
+        payNameBtn.textContent = result.filled ? "Prefilled" : "Copied";
         setTimeout(() => { payNameBtn.textContent = "Name + ID"; }, 900);
         return;
       }
@@ -4399,8 +4503,8 @@
       const payAmountBtn = e.target.closest("[data-pay-copy-amount]");
       if (payAmountBtn) {
         const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
-        await copyText(String(Math.round(Number(row.payout || 0))));
-        payAmountBtn.textContent = "Copied";
+        const result = await rwphPrefillPayAllAmount(row);
+        payAmountBtn.textContent = result.filled ? "Prefilled" : "Copied";
         setTimeout(() => { payAmountBtn.textContent = "Amount"; }, 900);
         return;
       }
