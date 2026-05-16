@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.59
+// @version      1.1.60
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -388,6 +388,10 @@
   function closePanel() {
     const panel = document.getElementById("rw-payout-helper");
     if (panel) panel.remove();
+
+    const resultsPanel = document.getElementById("rw-results-panel");
+    if (resultsPanel) resultsPanel.remove();
+
     setLauncherOpenState(false);
   }
 
@@ -681,12 +685,29 @@
         color: #f8efe7 !important;
         backdrop-filter: blur(14px);
       }
-      #rw-payout-helper .rw-results-panel[hidden] { display: none !important; }
-      #rw-payout-helper .rw-results-panel:not([hidden]) { display: block !important; }
-      #rw-payout-helper .rw-results-panel .rw-body { padding: 12px 10px 10px; }
-      #rw-payout-helper .rw-results-panel .rw-head { cursor: move; }
+      #rw-payout-helper .rw-results-panel[hidden],
+      #rw-results-panel[hidden] { display: none !important; }
+      #rw-payout-helper .rw-results-panel:not([hidden]),
+      #rw-results-panel:not([hidden]) { display: block !important; }
+      #rw-payout-helper .rw-results-panel .rw-body,
+      #rw-results-panel .rw-body { padding: 12px 10px 10px; }
+      #rw-payout-helper .rw-results-panel .rw-head,
+      #rw-results-panel .rw-head { cursor: move; }
+      #rw-results-panel.rw-results-panel {
+        position: fixed !important;
+        z-index: 1000002 !important;
+        right: 328px;
+        top: 90px;
+        width: 430px;
+        max-width: calc(100vw - 24px);
+        max-height: 78vh;
+        overflow: auto;
+        min-width: 280px;
+        min-height: 220px;
+      }
       @media (max-width: 760px) {
-        #rw-payout-helper .rw-results-panel {
+        #rw-payout-helper .rw-results-panel,
+        #rw-results-panel.rw-results-panel {
           right: 12px;
           left: 12px;
           top: 390px;
@@ -1053,7 +1074,8 @@
 
       /* v1.1.56 sleek modern theme */
       #rw-payout-helper,
-      #rw-payout-helper .rw-results-panel {
+      #rw-payout-helper .rw-results-panel,
+      #rw-results-panel.rw-results-panel {
         font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif !important;
         background:
           radial-gradient(circle at 16% 0%, rgba(56,189,248,.16), transparent 28%),
@@ -1078,7 +1100,8 @@
       }
       #rw-payout-helper::after { display: none !important; }
       #rw-payout-helper .rw-head,
-      #rw-payout-helper .rw-results-panel .rw-head {
+      #rw-payout-helper .rw-results-panel .rw-head,
+      #rw-results-panel .rw-head {
         background:
           linear-gradient(135deg, rgba(15,23,42,.94), rgba(30,41,59,.92) 50%, rgba(49,46,129,.84)) !important;
         color: #f8fdff !important;
@@ -1091,12 +1114,14 @@
       }
       #rw-payout-helper .rw-head::before,
       #rw-payout-helper .rw-head::after { display: none !important; }
-      #rw-payout-helper .rw-head span {
+      #rw-payout-helper .rw-head span,
+      #rw-results-panel .rw-head span {
         display: inline-flex !important;
         align-items: center;
         gap: 8px;
       }
-      #rw-payout-helper .rw-head span::before {
+      #rw-payout-helper .rw-head span::before,
+      #rw-results-panel .rw-head span::before {
         content: "";
         width: 18px;
         height: 18px;
@@ -1120,7 +1145,8 @@
         filter: drop-shadow(0 0 8px rgba(56,189,248,.24));
       }
       #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-results-panel .rw-body {
+      #rw-payout-helper .rw-results-panel .rw-body,
+      #rw-results-panel .rw-body {
         scrollbar-color: rgba(56,189,248,.45) rgba(15,23,42,.6);
       }
       #rw-payout-helper label,
@@ -1245,7 +1271,8 @@
         #rw-payout-helper > .rw-body {
           max-height: calc(42vh - 38px) !important;
         }
-        #rw-payout-helper .rw-results-panel {
+        #rw-payout-helper .rw-results-panel,
+        #rw-results-panel.rw-results-panel {
           width: 215px !important;
           min-width: 160px !important;
           min-height: 120px !important;
@@ -1254,7 +1281,8 @@
           left: auto !important;
           top: 250px !important;
         }
-        #rw-payout-helper .rw-results-panel .rw-body {
+        #rw-payout-helper .rw-results-panel .rw-body,
+        #rw-results-panel .rw-body {
           max-height: calc(40vh - 38px) !important;
           overflow: auto !important;
         }
@@ -2257,6 +2285,21 @@
   }
 
 
+  function detachResultsPanel(panel) {
+    if (!panel) return null;
+
+    // Keep results as an independent fixed window. When it lived inside the main
+    // RWPH panel, some desktop/browser layouts could briefly show it and then
+    // hide/clip it as the parent panel recalculated.
+    if (panel.parentElement !== document.body) {
+      document.body.appendChild(panel);
+    }
+
+    panel.style.position = "fixed";
+    panel.style.zIndex = "1000002";
+    return panel;
+  }
+
   function showPaywallScreen(panel) {
     const savedKey = GM_getValue(STORAGE_KEY, "");
     const savedAdminKey = GM_getValue(ADMIN_KEY_STORAGE_KEY, "");
@@ -2989,7 +3032,7 @@
 
     makeDraggable(panel);
     makeResizable(panel);
-    const mainResultsPanel = document.getElementById("rw-results-panel");
+    const mainResultsPanel = detachResultsPanel(document.getElementById("rw-results-panel"));
     makeDraggable(mainResultsPanel);
     makeResizable(mainResultsPanel);
     attachMoveLauncherButton();
@@ -3042,7 +3085,7 @@
       });
     }
 
-    document.getElementById("rw-payout-helper").addEventListener("click", (e) => {
+    const rwphActionClickHandler = (e) => {
       const status = document.getElementById("rw-status");
       const exportCsvBtn = e.target.closest("[data-export-csv]");
 
@@ -3060,9 +3103,9 @@
 
         try {
           const filename = createHtmlNewsletter(lastRows, lastSummary);
-          status.textContent = `HTML newsletter created: ${filename}. A preview tab should open and the file should download.`;
+          if (status) status.textContent = `HTML newsletter created: ${filename}. A preview tab should open and the file should download.`;
         } catch (err) {
-          status.textContent = "Newsletter error: " + err.message;
+          if (status) status.textContent = "Newsletter error: " + err.message;
         }
         return;
       }
@@ -3095,7 +3138,7 @@
           if (index >= payableRows.length) {
             openAllBtn.disabled = false;
             openAllBtn.textContent = "Add Balance (All)";
-            status.textContent = blocked
+            if (status) status.textContent = blocked
               ? `Finished. Opened ${opened}/${payableRows.length} Add Balance tabs. ${blocked} may have been blocked by your browser.`
               : `Finished. Opened ${opened}/${payableRows.length} Add Balance tabs one at a time.`;
             return;
@@ -3110,7 +3153,7 @@
           if (ok) opened += 1;
           else blocked += 1;
 
-          status.textContent = `Opening Add Balance ${index + 1}/${payableRows.length}: ${label}`;
+          if (status) status.textContent = `Opening Add Balance ${index + 1}/${payableRows.length}: ${label}`;
           index += 1;
 
           setTimeout(openNext, ADD_BALANCE_ALL_DELAY_MS);
@@ -3125,9 +3168,13 @@
 
       const url = fillAddBalanceBtn.getAttribute("data-fill-add-balance");
 
-      status.textContent = "Opening a new tab with Add Balance prefilled. Review before clicking Add Money and Confirm.";
+      if (status) status.textContent = "Opening a new tab with Add Balance prefilled. Review before clicking Add Money and Confirm.";
       openAddBalanceTab(url, true);
-    });
+    };
+
+    document.getElementById("rw-payout-helper").addEventListener("click", rwphActionClickHandler);
+    const detachedResultsPanel = document.getElementById("rw-results-panel");
+    if (detachedResultsPanel) detachedResultsPanel.addEventListener("click", rwphActionClickHandler);
 
     document.getElementById("rw-license-days").addEventListener("click", async () => {
       const status = document.getElementById("rw-status");
@@ -3199,14 +3246,17 @@
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
         results.innerHTML = renderRows(lastRows, lastSummary);
-        const resultsPanel = document.getElementById("rw-results-panel");
+        const resultsPanel = detachResultsPanel(document.getElementById("rw-results-panel"));
         if (resultsPanel) {
           resultsPanel.hidden = false;
           resultsPanel.removeAttribute("hidden");
           resultsPanel.style.display = "block";
           resultsPanel.style.visibility = "visible";
           resultsPanel.style.opacity = "1";
+          resultsPanel.style.pointerEvents = "auto";
           resultsPanel.scrollTop = 0;
+          makeDraggable(resultsPanel);
+          makeResizable(resultsPanel);
         }
         status.textContent = `Done. ${lastRows.length} members with payable contribution. Results opened in the separate results panel.`;
       } catch (e) {
