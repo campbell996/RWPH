@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.87
+// @version      1.1.89
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2123,28 +2123,104 @@
 </html>`;
   }
 
-  function openFullscreenResultsTab(rows, summary) {
-    const html = buildFullscreenResultsHtml(rows || [], summary || {});
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-
-    try {
-      if (typeof GM_openInTab === "function") {
-        GM_openInTab(url, {
-          active: true,
-          insert: true,
-          setParent: true,
-        });
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-        return true;
-      }
-    } catch (e) {
-      console.warn("Could not open fullscreen results with GM_openInTab:", e);
+  function buildResultsLoadingHtml() {
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RWPH Results Loading</title>
+  <style>
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      color:#f8fafc;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(56,189,248,.22), transparent 28%),
+        radial-gradient(circle at 88% 0%, rgba(99,102,241,.22), transparent 28%),
+        linear-gradient(180deg, #020617, #0f172a 44%, #020617);
+      padding:20px;
+      text-align:center;
     }
+    .box {
+      width:min(520px, 100%);
+      border:1px solid rgba(125,211,252,.28);
+      border-radius:22px;
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.86));
+      box-shadow:0 20px 60px rgba(0,0,0,.48), 0 0 24px rgba(56,189,248,.10);
+      padding:22px;
+    }
+    img { width:48px; height:48px; object-fit:contain; filter:drop-shadow(0 0 12px rgba(56,189,248,.35)); }
+    h1 { margin:10px 0 6px; font-size:22px; }
+    p { margin:0; color:#a5b4fc; font-weight:800; line-height:1.45; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
+    <h1>RWPH Results Loading</h1>
+    <p>Fetch + Calculate is running. This tab will fill with your payout results when the server finishes.</p>
+  </div>
+</body>
+</html>`;
+  }
 
-    const tab = window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-    return !!tab;
+  function openBlankResultsTab() {
+    try {
+      const tab = window.open("about:blank", "_blank");
+      if (!tab || tab.closed) return null;
+      try {
+        tab.document.open();
+        tab.document.write(buildResultsLoadingHtml());
+        tab.document.close();
+      } catch (writeError) {
+        console.warn("Could not write loading page to results tab:", writeError);
+      }
+      return tab;
+    } catch (e) {
+      console.warn("Could not pre-open fullscreen results tab:", e);
+      return null;
+    }
+  }
+
+  function writeFullscreenResultsTab(tab, rows, summary) {
+    if (!tab || tab.closed) return false;
+    const html = buildFullscreenResultsHtml(rows || [], summary || {});
+    try {
+      tab.document.open();
+      tab.document.write(html);
+      tab.document.close();
+      try { tab.focus(); } catch (_) {}
+      return true;
+    } catch (e) {
+      console.warn("Could not write fullscreen results into pre-opened tab:", e);
+      return false;
+    }
+  }
+
+  function openFullscreenResultsTab(rows, summary) {
+    const tab = openBlankResultsTab();
+    if (tab && writeFullscreenResultsTab(tab, rows, summary)) return true;
+
+    // Last-resort fallback for browsers that block document.write into a new tab.
+    // This avoids GM_openInTab/blob URLs because Torn PDA can close those tabs or block their button scripts.
+    try {
+      const html = buildFullscreenResultsHtml(rows || [], summary || {});
+      const fallback = window.open("about:blank", "_blank");
+      if (!fallback || fallback.closed) return false;
+      fallback.document.open();
+      fallback.document.write(html);
+      fallback.document.close();
+      return true;
+    } catch (e) {
+      console.warn("Could not open fullscreen results tab:", e);
+      return false;
+    }
   }
 
   function renderRows(rows, summary) {
@@ -2913,7 +2989,7 @@
     await copyText(paymentCode).catch(() => false);
     return {
       ok: false,
-      error: "Auto-open and auto-fill are disabled. Manually open Xanax > Send this item > Add Message, then use Copy Receiver and Copy Code."
+      error: "Copy-only mode is enabled. Manually open Xanax > Send this item > Add Message, then use Copy Receiver and Copy Code."
     };
   }
 
@@ -2969,20 +3045,22 @@
     const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
     return `
       <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(125,211,252,.36);background:rgba(15,23,42,.75);color:#e0f7ff;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
-      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
-      <div style="margin-bottom:6px;${isError ? 'color:#fca5a5;' : ''}">${message}</div>
-      <div style="padding:8px;border-radius:9px;background:rgba(2,6,23,.58);border:1px solid rgba(125,211,252,.16);margin:7px 0;">
-        <div><b>Item:</b> ${esc(PAYMENT_ITEM_NAME)}</div>
-        <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
-        <div><b>Message:</b> <span style="font-weight:900;color:#bae6fd;">${esc(code)}</span></div>
-        <div style="font-size:11px;color:#93c5fd;margin-top:4px;">Saved for about ${left} minute(s).</div>
+      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 0 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
+      <div style="font-size:10.5px;color:#93c5fd;margin:2px 0 7px;line-height:1.25;">Copy-only helper • No auto-fill • No auto-send</div>
+      <div style="margin-bottom:7px;line-height:1.35;${isError ? 'color:#fca5a5;' : 'color:#dbeafe;'}">${message}</div>
+      <div style="padding:9px;border-radius:11px;background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(2,6,23,.72));border:1px solid rgba(125,211,252,.22);margin:7px 0;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;">
+        <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.5px;font-weight:900;margin-bottom:5px;">Send exactly this</div>
+        <div><b>Item:</b> ${esc(PAYMENT_ITEM_NAME)} <span style="color:#93c5fd;font-size:10px;">only</span></div>
+        <div><b>Receiver:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
+        <div><b>Message:</b> <span style="font-weight:950;color:#bae6fd;word-break:break-word;">${esc(code)}</span></div>
+        <div style="font-size:11px;color:#93c5fd;margin-top:5px;">Code expires in about ${left} minute(s). RWPH checks automatically.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
         <button id="rwph-copy-receiver" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Receiver</button>
         <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Code</button>
       </div>
-      <div style="font-size:11px;color:#cbd5e1;margin-top:8px;line-height:1.35;">
-        Manual-safe mode: manually click your Xanax item, click <b>Send this item</b>, then click <b>Add Message</b>. Use <b>Copy Receiver</b> to copy Evil_Panda_420 [3236276] and <b>Copy Code</b> to copy your payment code. You manually paste them, choose the amount yourself, and manually click Send/Confirm.
+      <div style="font-size:11px;color:#cbd5e1;margin-top:8px;line-height:1.42;">
+        Manually open <b>Xanax</b>, click <b>Send this item</b>, click <b>Add Message</b>, then manually paste the copied receiver and code. Choose the amount yourself and manually press Send/Confirm. Wrong items or missing/incorrect codes need manual review.
       </div>
     `;
   }
@@ -3028,7 +3106,7 @@
         window.__rwphPaymentHelperButtonState.receiverClicked = true;
 
         await copyText(PAYMENT_RECEIVER_TEXT).catch(() => false);
-        rwphRenderPaymentHelperPanel(currentCode, `Receiver copied: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Manually paste it into Torn.`);
+        rwphRenderPaymentHelperPanel(currentCode, `Receiver copied: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Paste this into Torn's User ID/receiver field.`);
         rwphMaybeAutoClosePaymentHelper();
       }
 
@@ -3038,7 +3116,7 @@
         window.__rwphPaymentHelperButtonState.codeClicked = true;
 
         await copyText(currentCode).catch(() => false);
-        rwphRenderPaymentHelperPanel(currentCode, "Payment code copied. Manually paste it into the item message.");
+        rwphRenderPaymentHelperPanel(currentCode, "Payment code copied. Paste this exact code into the Add Message field.");
         rwphMaybeAutoClosePaymentHelper();
       }
     });
@@ -3067,7 +3145,7 @@
     await copyText(code).catch(() => false);
     rwphRenderPaymentHelperPanel(
       code,
-      `Payment helper loaded. Auto-open, auto-fill, and auto-send are disabled. The payment code has been copied as a fallback. Manually open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, click <b>Send this item</b>, then click <b>Add Message</b>. After the fields are visible, use the two buttons below.`
+      `Payment helper loaded. This helper is copy-only and never sends items. Send <b>${esc(PAYMENT_ITEM_NAME)}</b> only to <b>${esc(PAYMENT_RECEIVER_TEXT)}</b> with the exact payment code as the message. Use the buttons below, then manually paste and confirm in Torn.`
     );
   }
 
@@ -3527,7 +3605,7 @@
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
-              <li><b>Results tab blocked:</b> allow popups/tabs, or use the fallback results panel.</li>
+              <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely.</li>
               <li><b>Xanax helper is copy-only:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
@@ -4055,7 +4133,7 @@
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
-              <li><b>Results tab blocked:</b> allow popups/tabs, or use the fallback results panel.</li>
+              <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely.</li>
               <li><b>Xanax helper is copy-only:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
@@ -4269,10 +4347,13 @@
       if (!from || !to || to <= from) return alert("Enter a valid start/end date and time.");
       if (totalPayout <= 0) return alert("Enter a payout pool greater than 0.");
 
+      let preOpenedResultsTab = null;
+
       try {
         GM_setValue(STORAGE_KEY, userKey);
         results.innerHTML = "";
         status.textContent = "Server is verifying license and calculating payouts...";
+        preOpenedResultsTab = openBlankResultsTab();
 
         const result = await apiPost("/api/calc/rw-payout", {
           userKey,
@@ -4290,7 +4371,7 @@
         lastSummary = result.summary || {};
         results.innerHTML = renderRows(lastRows, lastSummary);
 
-        const openedResultsTab = openFullscreenResultsTab(lastRows, lastSummary);
+        const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
         if (openedResultsTab) {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
@@ -4312,6 +4393,13 @@
           status.textContent = `Done. ${lastRows.length} members with payable contribution. Popup blocked, so results opened in the panel.`;
         }
       } catch (e) {
+        if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
+          try {
+            preOpenedResultsTab.document.open();
+            preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#020617;color:#f8fafc;font-family:Inter,Segoe UI,Arial,sans-serif;padding:20px;text-align:center}.box{max-width:520px;border:1px solid rgba(248,113,113,.35);border-radius:20px;background:linear-gradient(180deg,rgba(30,41,59,.96),rgba(2,6,23,.9));padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#fecaca}p{color:#cbd5e1;font-weight:800}</style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>You can close this tab and try Fetch + Calculate again.</p></div></body></html>`);
+            preOpenedResultsTab.document.close();
+          } catch (_) {}
+        }
         status.textContent = "Error: " + e.message;
         if (String(e.message).toLowerCase().includes("license") || String(e.message).toLowerCase().includes("licence")) {
           returnToLockedPanel(String(e.message).toLowerCase().includes("revoked") ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again." : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
