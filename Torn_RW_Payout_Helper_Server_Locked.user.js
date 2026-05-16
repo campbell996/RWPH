@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.54
+// @version      1.1.56
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -283,20 +283,20 @@
       width: "42px",
       height: "36px",
       padding: "0 5px",
-      borderRadius: "10px",
-      border: "1px solid rgba(209, 166, 99, .78)",
-      background: "linear-gradient(180deg, rgba(94,30,21,.98) 0%, rgba(129,42,27,.98) 18%, rgba(63,25,18,.98) 18.5%, rgba(34,28,26,.98) 100%)",
-      color: "#fff4de",
-      boxShadow: "0 0 0 1px rgba(255,255,255,.06) inset, 0 -6px 0 rgba(210,165,92,.12) inset, 0 0 14px rgba(177,63,37,.16), 0 18px 34px rgba(0,0,0,.62)",
-      font: "800 10px Arial, sans-serif",
+      borderRadius: "13px",
+      border: "1px solid rgba(125, 211, 252, .65)",
+      background: "linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.96) 48%, rgba(49,46,129,.92))",
+      color: "#e0f7ff",
+      boxShadow: "0 0 0 1px rgba(255,255,255,.07) inset, 0 0 18px rgba(56,189,248,.28), 0 16px 32px rgba(0,0,0,.55)",
+      font: "900 10px Inter, Segoe UI, Arial, sans-serif",
       letterSpacing: ".3px",
-      textShadow: "0 1px 0 rgba(0,0,0,.55), 0 0 10px rgba(255,188,102,.18)",
+      textShadow: "0 1px 0 rgba(0,0,0,.55), 0 0 10px rgba(56,189,248,.40)",
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       textAlign: "center",
-      backdropFilter: "blur(8px)",
+      backdropFilter: "blur(12px)",
       overflow: "hidden",
     };
 
@@ -1037,6 +1037,162 @@
         border-color: rgba(226, 171, 102, .34) !important;
         box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 0 18px rgba(255,137,58,.07), 0 10px 24px rgba(0,0,0,.36);
       }
+
+
+      /* v1.1.56 sleek modern theme */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-results-panel {
+        font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif !important;
+        background:
+          radial-gradient(circle at 16% 0%, rgba(56,189,248,.16), transparent 28%),
+          radial-gradient(circle at 88% 8%, rgba(129,140,248,.13), transparent 30%),
+          linear-gradient(180deg, rgba(8,13,25,.97), rgba(15,23,42,.96) 54%, rgba(10,15,28,.98)) !important;
+        color: #eaf6ff !important;
+        border: 1px solid rgba(125,211,252,.28) !important;
+        border-radius: 18px !important;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,.06) inset,
+          0 18px 55px rgba(0,0,0,.66),
+          0 0 34px rgba(56,189,248,.10) !important;
+        backdrop-filter: blur(18px) saturate(1.2) !important;
+        text-shadow: none !important;
+      }
+      #rw-payout-helper::before {
+        background:
+          linear-gradient(135deg, rgba(255,255,255,.045) 0 1px, transparent 1px 18px),
+          linear-gradient(90deg, rgba(56,189,248,.035), transparent 42%, rgba(129,140,248,.035)) !important;
+        opacity: .62 !important;
+        mix-blend-mode: screen !important;
+      }
+      #rw-payout-helper::after { display: none !important; }
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-results-panel .rw-head {
+        background:
+          linear-gradient(135deg, rgba(15,23,42,.94), rgba(30,41,59,.92) 50%, rgba(49,46,129,.84)) !important;
+        color: #f8fdff !important;
+        border-bottom: 1px solid rgba(125,211,252,.24) !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 12px 24px rgba(2,8,23,.22) !important;
+        border-radius: 18px 18px 0 0 !important;
+        letter-spacing: .6px !important;
+        text-transform: uppercase !important;
+        text-shadow: 0 0 12px rgba(56,189,248,.24) !important;
+      }
+      #rw-payout-helper .rw-head::before,
+      #rw-payout-helper .rw-head::after { display: none !important; }
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-results-panel .rw-body {
+        scrollbar-color: rgba(56,189,248,.45) rgba(15,23,42,.6);
+      }
+      #rw-payout-helper label,
+      #rw-payout-helper .rw-how-title,
+      #rw-payout-helper .rw-payment-title,
+      #rw-payout-helper .rw-result-name,
+      #rw-payout-helper .rw-admin-license-name {
+        color: #dff8ff !important;
+        text-shadow: 0 0 10px rgba(56,189,248,.14) !important;
+        font-weight: 850 !important;
+      }
+      #rw-payout-helper input {
+        background: linear-gradient(180deg, rgba(2,6,23,.78), rgba(15,23,42,.78)) !important;
+        border: 1px solid rgba(148,163,184,.24) !important;
+        color: #f8fbff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.05) inset !important;
+      }
+      #rw-payout-helper input:focus {
+        border-color: rgba(56,189,248,.80) !important;
+        box-shadow: 0 0 0 3px rgba(56,189,248,.15), 0 0 18px rgba(129,140,248,.11) !important;
+      }
+      #rw-payout-helper input::placeholder { color: rgba(203,213,225,.62) !important; }
+      #rw-payout-helper button {
+        background: linear-gradient(135deg, rgba(14,165,233,.95), rgba(79,70,229,.88)) !important;
+        border: 1px solid rgba(125,211,252,.36) !important;
+        color: #f8fdff !important;
+        box-shadow: 0 10px 22px rgba(14,165,233,.14), 0 1px 0 rgba(255,255,255,.10) inset !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.38) !important;
+        transition: transform .12s ease, filter .12s ease, box-shadow .12s ease !important;
+      }
+      #rw-payout-helper button:hover {
+        filter: brightness(1.08) saturate(1.08) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 13px 26px rgba(14,165,233,.18), 0 1px 0 rgba(255,255,255,.10) inset !important;
+      }
+      #rw-payout-helper button.secondary,
+      #rw-payout-helper .rw-tab-btn {
+        background: linear-gradient(180deg, rgba(30,41,59,.90), rgba(15,23,42,.90)) !important;
+        border-color: rgba(148,163,184,.23) !important;
+        color: #dff8ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.06) inset !important;
+      }
+      #rw-payout-helper button.danger {
+        background: linear-gradient(135deg, rgba(244,63,94,.95), rgba(153,27,27,.92)) !important;
+        border-color: rgba(251,113,133,.36) !important;
+      }
+      #rw-payout-helper .rw-tab-btn.active {
+        background: linear-gradient(135deg, rgba(14,165,233,.94), rgba(99,102,241,.88)) !important;
+        border-color: rgba(125,211,252,.44) !important;
+      }
+      #rw-payout-helper .rw-muted,
+      #rw-payout-helper .rw-small,
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list li,
+      #rw-payout-helper .rw-how-note,
+      #rw-payout-helper .rw-payment-instruction,
+      #rw-payout-helper .rw-payment-note {
+        color: #cbd5e1 !important;
+        text-shadow: none !important;
+      }
+      #rw-payout-helper .rw-summary,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-result-card,
+      #rw-payout-helper .rw-admin-license-card,
+      #rw-payout-helper .rw-payment-card,
+      #rw-payout-helper .rw-stat-box,
+      #rw-payout-helper .rw-code,
+      #rw-results-panel .rw-summary,
+      #rw-results-panel .rw-result-card {
+        background: linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.58)) !important;
+        border: 1px solid rgba(125,211,252,.18) !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+        color: #eaf6ff !important;
+      }
+      #rw-payout-helper .rw-result-card::before {
+        background: linear-gradient(90deg, rgba(56,189,248,.95), rgba(99,102,241,.95), rgba(34,211,238,.95)) !important;
+      }
+      #rw-payout-helper .rw-stat-label,
+      #rw-payout-helper .rw-result-id {
+        color: #93c5fd !important;
+      }
+      #rw-payout-helper .rw-stat-value,
+      #rw-payout-helper .rw-result-payout,
+      #rw-payout-helper .rw-payment-code,
+      #rw-payout-helper .rw-payment-recipient,
+      #rw-payout-helper .rw-summary b,
+      #rw-payout-helper .rw-how-list li b {
+        color: #f8fdff !important;
+        text-shadow: 0 0 10px rgba(56,189,248,.14) !important;
+      }
+      #rw-payout-helper .rw-result-payout,
+      #rw-payout-helper .rw-payment-code { color: #bae6fd !important; }
+      #rw-payout-helper .rw-feature-group,
+      #rw-payout-helper .rw-lock-pay-heading {
+        background: linear-gradient(135deg, rgba(14,165,233,.20), rgba(99,102,241,.16)) !important;
+        border: 1px solid rgba(125,211,252,.30) !important;
+        color: #e0f7ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 22px rgba(14,165,233,.08) !important;
+        text-shadow: 0 0 12px rgba(56,189,248,.18) !important;
+      }
+      #rw-payout-helper .rw-payment-card {
+        background:
+          radial-gradient(circle at 20% 0%, rgba(34,211,238,.18), transparent 35%),
+          linear-gradient(180deg, rgba(15,23,42,.88), rgba(2,6,23,.72)) !important;
+      }
+      #rw-payout-helper .rw-resize-handle {
+        border-right-color: rgba(56,189,248,.78) !important;
+        border-bottom-color: rgba(56,189,248,.78) !important;
+        opacity: .95 !important;
+      }
+      #rw-payout-helper a { color: #7dd3fc !important; }
     `;
   }
 
@@ -1440,18 +1596,19 @@
         z-index: 1000000;
         max-width: 360px;
         padding: 12px 14px;
-        border-radius: 12px;
-        border: 1px solid rgba(224, 171, 96, .45);
-        background: linear-gradient(180deg, rgba(55,28,23,.98), rgba(24,21,20,.98));
-        color: #fff2dd;
-        font: 12px Arial, sans-serif;
-        line-height: 1.4;
-        box-shadow: 0 14px 34px rgba(0,0,0,.45), 0 0 20px rgba(181,84,38,.18);
+        border-radius: 16px;
+        border: 1px solid rgba(125,211,252,.35);
+        background: radial-gradient(circle at 18% 0%, rgba(56,189,248,.16), transparent 32%), linear-gradient(180deg, rgba(8,13,25,.97), rgba(15,23,42,.96));
+        color: #eaf6ff;
+        font: 12px Inter, Segoe UI, Arial, sans-serif;
+        line-height: 1.45;
+        box-shadow: 0 18px 44px rgba(0,0,0,.55), 0 0 24px rgba(56,189,248,.12);
+        backdrop-filter: blur(14px) saturate(1.2);
       `;
       document.body.appendChild(box);
     }
 
-    box.style.borderColor = isError ? "rgba(255,90,90,.65)" : "rgba(224,171,96,.45)";
+    box.style.borderColor = isError ? "rgba(251,113,133,.70)" : "rgba(125,211,252,.35)";
     box.innerHTML = message;
     makeDraggable(box, "#rwph-payment-helper-title");
     makeResizable(box);
@@ -1691,20 +1848,20 @@
   function rwphPaymentHelperHtml(code, message, isError = false) {
     const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
     return `
-      <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(224,171,96,.36);background:rgba(0,0,0,.28);color:#fff2dd;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
-      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#fff2dd;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
-      <div style="margin-bottom:6px;${isError ? 'color:#ffb4a8;' : ''}">${message}</div>
-      <div style="padding:8px;border-radius:9px;background:rgba(0,0,0,.22);margin:7px 0;">
+      <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(125,211,252,.36);background:rgba(15,23,42,.75);color:#e0f7ff;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
+      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
+      <div style="margin-bottom:6px;${isError ? 'color:#fca5a5;' : ''}">${message}</div>
+      <div style="padding:8px;border-radius:9px;background:rgba(2,6,23,.58);border:1px solid rgba(125,211,252,.16);margin:7px 0;">
         <div><b>Item:</b> ${esc(PAYMENT_ITEM_NAME)}</div>
         <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
-        <div><b>Message:</b> <span style="font-weight:900;color:#ffe3bd;">${esc(code)}</span></div>
-        <div style="font-size:11px;color:#cfaa8e;margin-top:4px;">Saved for about ${left} minute(s).</div>
+        <div><b>Message:</b> <span style="font-weight:900;color:#bae6fd;">${esc(code)}</span></div>
+        <div style="font-size:11px;color:#93c5fd;margin-top:4px;">Saved for about ${left} minute(s).</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
-        <button id="rwph-copy-receiver" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(224,171,96,.4);background:#5f1a13;color:#fff2dd;font-weight:800;cursor:pointer;">Copy Receiver</button>
-        <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(224,171,96,.4);background:#5f1a13;color:#fff2dd;font-weight:800;cursor:pointer;">Copy Code</button>
+        <button id="rwph-copy-receiver" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Receiver</button>
+        <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Code</button>
       </div>
-      <div style="font-size:11px;color:#cfaa8e;margin-top:8px;line-height:1.35;">
+      <div style="font-size:11px;color:#cbd5e1;margin-top:8px;line-height:1.35;">
         Manual-safe mode: manually click your Xanax item, click <b>Send this item</b>, then click <b>Add Message</b>. After the fields are visible, use <b>Copy Receiver</b> and <b>Copy Code</b> to paste/copy the details. You choose the amount yourself and manually click Send/Confirm.
       </div>
     `;
@@ -2096,78 +2253,113 @@
                 <div id="rw-paywall-how-section" class="rw-tab-section" hidden>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">All Features</div>
-            <p class="rw-how-intro">Ranked War Payout Helper is a server-side locked payout tool for Torn ranked wars. The userscript shows the panel, but the important checks and calculations happen on your backend server.</p>
+            <div class="rw-how-title">What RWPH Is</div>
+            <p class="rw-how-intro">
+              Ranked War Payout Helper is a server-side locked payout helper for Torn ranked wars. It helps payout managers fetch war activity, calculate fair payout shares, review every member result, export reports, and prepare faction balance payments.
+            </p>
+            <p class="rw-how-intro">
+              The userscript is only the front-end panel. Unlocking, trial checks, payment checks, expiration checks, and payout calculations all require the RWPH backend server.
+            </p>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">Important Server-Side Protection</div>
             <ul class="rw-how-list">
-              <li class="rw-feature-group">Server-side protection</li>
-              <li><b>Server-side license checks:</b> trials, payments, admin actions, expiration checks, and payout calculations all go through your backend.</li>
-              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, users cannot unlock, claim trials, check payments, check expiration, or calculate payouts.</li>
-              <li><b>Harder to bypass:</b> removing the visible paywall from Tampermonkey does not unlock the protected calculation routes. The server still rejects unlicensed users.</li>
-              <li><b>Backend database:</b> the server stores licenses, trial claims, payment codes, and payment records in paywall-db.json.</li>
-
-              <li class="rw-feature-group">Panel and layout</li>
-              <li><b>RWPH launcher:</b> opens the helper from a small button on Torn.</li>
-              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the chosen position.</li>
-              <li><b>Ranked-war theme:</b> compact dark faction-banner styling made to fit Torn.</li>
-
-              <li class="rw-feature-group">Unlocking access</li>
-              <li><b>Locked screen:</b> users can unlock with a paid license, a 2 day free trial, or an admin-granted license.</li>
-              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side trial. Clearing Tampermonkey storage does not reset it.</li>
-              <li><b>Start Payment:</b> generates a unique payment code for that user.</li>
-              <li><b>Saved payment code:</b> unused payment codes stay saved locally for 10 minutes so Check Payment can reuse them.</li>
-              <li><b>Xanax payment:</b> Each Xanax you send to Evil_Panda_420 [3236276] will add 15 days to your licence. Also make sure to add the exact payment code as the message.</li>
-              <li><b>Check Payment:</b> asks the backend to check the owner account for the correct item and matching message, then grants the license if found.</li>
-              <li><b>Your Expiration:</b> shows who the license belongs to, how much time is left, and the expiry date/time.</li>
-
-              <li class="rw-feature-group">Xanax payment helper</li>
-              <li><b>RWPH Xanax Payment Helper:</b> opens Torn items and shows a helper box for the payment step.</li>
-              <li><b>Copy Receiver:</b> copies or pastes Evil_Panda_420 [3236276] into the open User ID field.</li>
-              <li><b>Copy Code:</b> copies or pastes the payment code into the open Add Message field.</li>
-              <li><b>Safe send flow:</b> the helper does not click final Send or Confirm. Users must review the item, amount, receiver, and message before sending.</li>
-
-              <li class="rw-feature-group">War payout calculator</li>
-              <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
-              <li><b>Manual war times:</b> users can set exact start and finish date/time manually.</li>
-              <li><b>Total payout pool:</b> enter the full amount to split between members.</li>
-              <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
-              <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
-              <li><b>Ranked-war filtering:</b> option to count only attacks flagged as ranked-war attacks.</li>
-              <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
-              <li><b>Fetch + Calculate:</b> verifies the license, fetches Torn data, calculates server-side, and returns payout results.</li>
-              <li><b>Member result cards:</b> show member name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
-
-              <li class="rw-feature-group">Payout actions and exports</li>
-              <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and payout amount prefilled.</li>
-              <li><b>Add Balance (All):</b> opens every member's prefilled Add Balance tab one at a time from one button press.</li>
-              <li><b>Manual confirmation:</b> Add Balance prepares the Torn page only. It does not automatically send faction money.</li>
-              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file with member IDs, names, stats, weights, and payouts.</li>
-              <li><b>Create HTML Newsletter:</b> creates a styled war payout report with totals, averages, chart-style payout section, and full member table.</li>
+              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, claim trials, check payments, check expiration, or calculate payouts.</li>
+              <li><b>Server-side calculation:</b> payout calculations are protected on the backend, not only inside Tampermonkey.</li>
+              <li><b>Harder to bypass:</b> removing the visible locked screen from the userscript does not unlock the protected backend routes.</li>
+              <li><b>Backend database:</b> licenses, trial claims, payment codes, and payment records are saved by the backend.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">How Users Unlock Access</div>
+            <div class="rw-how-title">All Features</div>
             <ul class="rw-how-list">
-              <li>Install Tampermonkey and the latest Ranked War Payout Helper userscript.</li>
-              <li>Open Torn and click the RWPH launcher button.</li>
-              <li>Paste a Torn API key into the locked screen.</li>
-              <li>Use either <b>2 Day Free Trial</b> or <b>Start Payment</b>.</li>
-              <li>For payment, send 1x or more Xanax to Evil_Panda_420 [3236276] with the exact payment code as the message.</li>
-              <li>Click <b>Check Payment</b>. If the server finds the matching item and message, the panel unlocks.</li>
+              <li class="rw-feature-group">Access and licence features</li>
+              <li><b>Locked screen:</b> users unlock with a paid licence, 2 day free trial, or admin-granted licence.</li>
+              <li><b>Save Key:</b> saves the Torn API key from the locked panel so users do not need to paste it every time.</li>
+              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side 2 day trial.</li>
+              <li><b>Start Payment:</b> creates a unique payment code for the user.</li>
+              <li><b>Saved payment code:</b> unused payment codes stay available for 10 minutes so Check Payment can reuse them.</li>
+              <li><b>Xanax payment:</b> each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the licence. The exact payment code must be used as the item message.</li>
+              <li><b>Check Payment:</b> asks the backend to verify the correct Xanax and matching payment message.</li>
+              <li><b>Your Expiration:</b> shows the licensed user, remaining time, and expiry date/time.</li>
+
+              <li class="rw-feature-group">Panel and mobile features</li>
+              <li><b>RWPH launcher:</b> opens the helper from a small button on Torn.</li>
+              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the position.</li>
+              <li><b>Draggable panels:</b> the main panel, results panel, and Xanax helper can be moved around the screen.</li>
+              <li><b>Resizable panels:</b> panels have a bottom-right resize handle so you can make them bigger or smaller.</li>
+              <li><b>Torn PDA support:</b> drag and resize support works with touch controls as well as desktop mouse controls.</li>
+              <li><b>Ranked-war theme:</b> compact dark faction-banner styling designed to fit Torn.</li>
+
+              <li class="rw-feature-group">Xanax payment helper</li>
+              <li><b>Open Xanax Send Page:</b> opens the Torn items page and loads the RWPH Xanax Payment Helper.</li>
+              <li><b>Manual-safe helper:</b> it does not auto-open Send this item, does not auto-click Add Message, and does not send items.</li>
+              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and can paste it into the visible User ID field after the user manually opens the form.</li>
+              <li><b>Copy Code:</b> copies the payment code and can paste it into the visible Add Message field after the user manually opens the message box.</li>
+              <li><b>User confirmation required:</b> the user chooses the Xanax amount and manually clicks Send/Confirm.</li>
+
+              <li class="rw-feature-group">Ranked war payout calculator</li>
+              <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
+              <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
+              <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
+              <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
+              <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
+              <li><b>Ranked-war filtering:</b> option to count only attacks flagged as ranked-war attacks.</li>
+              <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
+              <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn data, calculates payouts server-side, and returns results.</li>
+
+              <li class="rw-feature-group">Results and payout tools</li>
+              <li><b>Separate results panel:</b> Fetch + Calculate results open in their own draggable and resizable panel.</li>
+              <li><b>Member result cards:</b> show name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
+              <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
+              <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
+              <li><b>Manual payout confirmation:</b> RWPH prepares pages only. It does not automatically send faction money.</li>
+              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file from the results toolbar.</li>
+              <li><b>Create HTML Newsletter:</b> creates a styled war payout report with totals, averages, chart-style payouts, and a full member table.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">How To Unlock Access</div>
+            <ul class="rw-how-list">
+              <li>Install the latest Ranked War Payout Helper userscript.</li>
+              <li>Open Torn and click the <b>RWPH</b> launcher button.</li>
+              <li>Paste your Torn API key into <b>Your Torn API Key -Limited Access-</b>.</li>
+              <li>Click <b>Save Key</b> if you want the key saved locally in Tampermonkey/Torn PDA storage.</li>
+              <li>Use <b>2 Day Free Trial</b>, or click <b>Start Payment</b> to generate a payment code.</li>
+              <li>For payment, send Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the item message.</li>
+              <li>Each Xanax adds <b>15 days</b> to your licence.</li>
+              <li>Click <b>Check Payment</b>. If the server finds the matching item and message, your licence unlocks or extends.</li>
               <li>Click <b>Your Expiration</b> anytime to check how long is left.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">How To Use The Xanax Payment Helper</div>
+            <ul class="rw-how-list">
+              <li>Click <b>Start Payment</b> first so you have a payment code.</li>
+              <li>Click <b>Open Xanax Send Page</b>.</li>
+              <li>Manually click your Xanax item.</li>
+              <li>Manually click <b>Send this item</b>.</li>
+              <li>Manually click <b>Add Message</b>.</li>
+              <li>Use <b>Copy Receiver</b> and <b>Copy Code</b> to copy or paste the needed details.</li>
+              <li>Choose the amount of Xanax you want to send.</li>
+              <li>Review the receiver, amount, and message yourself, then manually click Send/Confirm.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">How To Calculate Payouts</div>
             <ul class="rw-how-list">
-              <li>Unlock the helper first. The backend will not calculate without a valid license.</li>
-              <li>Paste the user's Torn API key in the Payout tab.</li>
-              <li>Click <b>Auto-fill War Times</b>, or manually set the war start/end times.</li>
+              <li>Unlock RWPH first. The backend will not calculate without a valid licence.</li>
+              <li>Paste the Torn API key in the Payout tab if it is not already saved.</li>
+              <li>Click <b>Auto-fill War Times</b>, or manually set the war start and finish times.</li>
               <li>Enter the total payout pool.</li>
-              <li>Adjust hit and assist weights if needed.</li>
+              <li>Adjust hit weight, assist weight, ranked-war filtering, and chain fallback if needed.</li>
               <li>Click <b>Fetch + Calculate</b>.</li>
-              <li>Review every member result before paying anyone.</li>
+              <li>Review every member result in the separate results panel before paying anyone.</li>
             </ul>
           </div>
 
@@ -2176,25 +2368,27 @@
             <ul class="rw-how-list">
               <li>Use <b>Add Balance</b> on a member card to open that member's prefilled faction controls page.</li>
               <li>Use <b>Add Balance (All)</b> to open every member's prefilled page one at a time.</li>
-              <li>Review the member, amount, and faction controls page before confirming.</li>
-              <li>The helper never sends faction money by itself. Final payment stays under your control inside Torn.</li>
+              <li>Review the member and amount inside Torn before confirming.</li>
+              <li>RWPH does not automatically send faction money. Final payment stays under your control.</li>
+              <li>Use <b>Export CSV</b> for spreadsheet records.</li>
+              <li>Use <b>Create HTML Newsletter</b> to make a styled payout report for sharing.</li>
             </ul>
-          </div>
-
-          <div class="rw-how-box">
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">Troubleshooting</div>
             <ul class="rw-how-list">
-              <li><b>Failed to fetch:</b> backend server is offline, ngrok is closed, or PAYWALL_API_BASE is wrong.</li>
-              <li><b>Cannot unlock:</b> check the user's API key, exact payment code, receiver, item, and backend console.</li>
-              <li><b>Cannot calculate:</b> check license status, API key access, war times, and server health.</li>
+              <li><b>Panel will not unlock:</b> check your API key, licence status, backend server, and payment code.</li>
+              <li><b>Failed to fetch:</b> the backend server may be offline, ngrok may be closed, or PAYWALL_API_BASE may be wrong.</li>
+              <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
+              <li><b>Results panel not visible:</b> close/reopen RWPH, run Fetch + Calculate again, or refresh Torn.</li>
+              <li><b>Drag/resize not working on Torn PDA:</b> update to the latest version and use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Add Balance tabs blocked:</b> allow popups/tabs for Torn, or use each member's Add Balance button one by one.</li>
-              <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and code after opening Send this item and Add Message.</li>
-              <li><b>Server test:</b> open your backend URL plus /health. If /health fails, the userscript cannot work online.</li>
+              <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
+              <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
           </div>
+
       </div>
       <div id="rw-results-panel" class="rw-results-panel" hidden>
         <div class="rw-head">
@@ -2560,78 +2754,113 @@
                 <div id="rw-how-tab-section" class="rw-tab-section" hidden>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">All Features</div>
-            <p class="rw-how-intro">Ranked War Payout Helper is a server-side locked payout tool for Torn ranked wars. The userscript shows the panel, but the important checks and calculations happen on your backend server.</p>
+            <div class="rw-how-title">What RWPH Is</div>
+            <p class="rw-how-intro">
+              Ranked War Payout Helper is a server-side locked payout helper for Torn ranked wars. It helps payout managers fetch war activity, calculate fair payout shares, review every member result, export reports, and prepare faction balance payments.
+            </p>
+            <p class="rw-how-intro">
+              The userscript is only the front-end panel. Unlocking, trial checks, payment checks, expiration checks, and payout calculations all require the RWPH backend server.
+            </p>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">Important Server-Side Protection</div>
             <ul class="rw-how-list">
-              <li class="rw-feature-group">Server-side protection</li>
-              <li><b>Server-side license checks:</b> trials, payments, admin actions, expiration checks, and payout calculations all go through your backend.</li>
-              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, users cannot unlock, claim trials, check payments, check expiration, or calculate payouts.</li>
-              <li><b>Harder to bypass:</b> removing the visible paywall from Tampermonkey does not unlock the protected calculation routes. The server still rejects unlicensed users.</li>
-              <li><b>Backend database:</b> the server stores licenses, trial claims, payment codes, and payment records in paywall-db.json.</li>
-
-              <li class="rw-feature-group">Panel and layout</li>
-              <li><b>RWPH launcher:</b> opens the helper from a small button on Torn.</li>
-              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the chosen position.</li>
-              <li><b>Ranked-war theme:</b> compact dark faction-banner styling made to fit Torn.</li>
-
-              <li class="rw-feature-group">Unlocking access</li>
-              <li><b>Locked screen:</b> users can unlock with a paid license, a 2 day free trial, or an admin-granted license.</li>
-              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side trial. Clearing Tampermonkey storage does not reset it.</li>
-              <li><b>Start Payment:</b> generates a unique payment code for that user.</li>
-              <li><b>Saved payment code:</b> unused payment codes stay saved locally for 10 minutes so Check Payment can reuse them.</li>
-              <li><b>Xanax payment:</b> Each Xanax you send to Evil_Panda_420 [3236276] will add 15 days to your licence. Also make sure to add the exact payment code as the message.</li>
-              <li><b>Check Payment:</b> asks the backend to check the owner account for the correct item and matching message, then grants the license if found.</li>
-              <li><b>Your Expiration:</b> shows who the license belongs to, how much time is left, and the expiry date/time.</li>
-
-              <li class="rw-feature-group">Xanax payment helper</li>
-              <li><b>RWPH Xanax Payment Helper:</b> opens Torn items and shows a helper box for the payment step.</li>
-              <li><b>Copy Receiver:</b> copies or pastes Evil_Panda_420 [3236276] into the open User ID field.</li>
-              <li><b>Copy Code:</b> copies or pastes the payment code into the open Add Message field.</li>
-              <li><b>Safe send flow:</b> the helper does not click final Send or Confirm. Users must review the item, amount, receiver, and message before sending.</li>
-
-              <li class="rw-feature-group">War payout calculator</li>
-              <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
-              <li><b>Manual war times:</b> users can set exact start and finish date/time manually.</li>
-              <li><b>Total payout pool:</b> enter the full amount to split between members.</li>
-              <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
-              <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
-              <li><b>Ranked-war filtering:</b> option to count only attacks flagged as ranked-war attacks.</li>
-              <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
-              <li><b>Fetch + Calculate:</b> verifies the license, fetches Torn data, calculates server-side, and returns payout results.</li>
-              <li><b>Member result cards:</b> show member name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
-
-              <li class="rw-feature-group">Payout actions and exports</li>
-              <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and payout amount prefilled.</li>
-              <li><b>Add Balance (All):</b> opens every member's prefilled Add Balance tab one at a time from one button press.</li>
-              <li><b>Manual confirmation:</b> Add Balance prepares the Torn page only. It does not automatically send faction money.</li>
-              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file with member IDs, names, stats, weights, and payouts.</li>
-              <li><b>Create HTML Newsletter:</b> creates a styled war payout report with totals, averages, chart-style payout section, and full member table.</li>
+              <li><b>No server, no unlock:</b> if the backend is offline, ngrok is closed, or PAYWALL_API_BASE is wrong, RWPH cannot unlock, claim trials, check payments, check expiration, or calculate payouts.</li>
+              <li><b>Server-side calculation:</b> payout calculations are protected on the backend, not only inside Tampermonkey.</li>
+              <li><b>Harder to bypass:</b> removing the visible locked screen from the userscript does not unlock the protected backend routes.</li>
+              <li><b>Backend database:</b> licenses, trial claims, payment codes, and payment records are saved by the backend.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">How Users Unlock Access</div>
+            <div class="rw-how-title">All Features</div>
             <ul class="rw-how-list">
-              <li>Install Tampermonkey and the latest Ranked War Payout Helper userscript.</li>
-              <li>Open Torn and click the RWPH launcher button.</li>
-              <li>Paste a Torn API key into the locked screen.</li>
-              <li>Use either <b>2 Day Free Trial</b> or <b>Start Payment</b>.</li>
-              <li>For payment, send 1x or more Xanax to Evil_Panda_420 [3236276] with the exact payment code as the message.</li>
-              <li>Click <b>Check Payment</b>. If the server finds the matching item and message, the panel unlocks.</li>
+              <li class="rw-feature-group">Access and licence features</li>
+              <li><b>Locked screen:</b> users unlock with a paid licence, 2 day free trial, or admin-granted licence.</li>
+              <li><b>Save Key:</b> saves the Torn API key from the locked panel so users do not need to paste it every time.</li>
+              <li><b>2 Day Free Trial:</b> each Torn account can claim one server-side 2 day trial.</li>
+              <li><b>Start Payment:</b> creates a unique payment code for the user.</li>
+              <li><b>Saved payment code:</b> unused payment codes stay available for 10 minutes so Check Payment can reuse them.</li>
+              <li><b>Xanax payment:</b> each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the licence. The exact payment code must be used as the item message.</li>
+              <li><b>Check Payment:</b> asks the backend to verify the correct Xanax and matching payment message.</li>
+              <li><b>Your Expiration:</b> shows the licensed user, remaining time, and expiry date/time.</li>
+
+              <li class="rw-feature-group">Panel and mobile features</li>
+              <li><b>RWPH launcher:</b> opens the helper from a small button on Torn.</li>
+              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the position.</li>
+              <li><b>Draggable panels:</b> the main panel, results panel, and Xanax helper can be moved around the screen.</li>
+              <li><b>Resizable panels:</b> panels have a bottom-right resize handle so you can make them bigger or smaller.</li>
+              <li><b>Torn PDA support:</b> drag and resize support works with touch controls as well as desktop mouse controls.</li>
+              <li><b>Ranked-war theme:</b> compact dark faction-banner styling designed to fit Torn.</li>
+
+              <li class="rw-feature-group">Xanax payment helper</li>
+              <li><b>Open Xanax Send Page:</b> opens the Torn items page and loads the RWPH Xanax Payment Helper.</li>
+              <li><b>Manual-safe helper:</b> it does not auto-open Send this item, does not auto-click Add Message, and does not send items.</li>
+              <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and can paste it into the visible User ID field after the user manually opens the form.</li>
+              <li><b>Copy Code:</b> copies the payment code and can paste it into the visible Add Message field after the user manually opens the message box.</li>
+              <li><b>User confirmation required:</b> the user chooses the Xanax amount and manually clicks Send/Confirm.</li>
+
+              <li class="rw-feature-group">Ranked war payout calculator</li>
+              <li><b>Auto-fill War Times:</b> fills the current or most recently finished ranked war times where available.</li>
+              <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
+              <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
+              <li><b>Normal hit weight:</b> controls how much regular attacks count toward payout share.</li>
+              <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
+              <li><b>Ranked-war filtering:</b> option to count only attacks flagged as ranked-war attacks.</li>
+              <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
+              <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn data, calculates payouts server-side, and returns results.</li>
+
+              <li class="rw-feature-group">Results and payout tools</li>
+              <li><b>Separate results panel:</b> Fetch + Calculate results open in their own draggable and resizable panel.</li>
+              <li><b>Member result cards:</b> show name, Torn ID, payout amount, attacks, assists, respect, and weighted score.</li>
+              <li><b>Add Balance:</b> opens Torn faction controls in a new tab with that member and amount prefilled where supported.</li>
+              <li><b>Add Balance (All):</b> opens every member payout tab one at a time from one button press.</li>
+              <li><b>Manual payout confirmation:</b> RWPH prepares pages only. It does not automatically send faction money.</li>
+              <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file from the results toolbar.</li>
+              <li><b>Create HTML Newsletter:</b> creates a styled war payout report with totals, averages, chart-style payouts, and a full member table.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">How To Unlock Access</div>
+            <ul class="rw-how-list">
+              <li>Install the latest Ranked War Payout Helper userscript.</li>
+              <li>Open Torn and click the <b>RWPH</b> launcher button.</li>
+              <li>Paste your Torn API key into <b>Your Torn API Key -Limited Access-</b>.</li>
+              <li>Click <b>Save Key</b> if you want the key saved locally in Tampermonkey/Torn PDA storage.</li>
+              <li>Use <b>2 Day Free Trial</b>, or click <b>Start Payment</b> to generate a payment code.</li>
+              <li>For payment, send Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the item message.</li>
+              <li>Each Xanax adds <b>15 days</b> to your licence.</li>
+              <li>Click <b>Check Payment</b>. If the server finds the matching item and message, your licence unlocks or extends.</li>
               <li>Click <b>Your Expiration</b> anytime to check how long is left.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">How To Use The Xanax Payment Helper</div>
+            <ul class="rw-how-list">
+              <li>Click <b>Start Payment</b> first so you have a payment code.</li>
+              <li>Click <b>Open Xanax Send Page</b>.</li>
+              <li>Manually click your Xanax item.</li>
+              <li>Manually click <b>Send this item</b>.</li>
+              <li>Manually click <b>Add Message</b>.</li>
+              <li>Use <b>Copy Receiver</b> and <b>Copy Code</b> to copy or paste the needed details.</li>
+              <li>Choose the amount of Xanax you want to send.</li>
+              <li>Review the receiver, amount, and message yourself, then manually click Send/Confirm.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">How To Calculate Payouts</div>
             <ul class="rw-how-list">
-              <li>Unlock the helper first. The backend will not calculate without a valid license.</li>
-              <li>Paste the user's Torn API key in the Payout tab.</li>
-              <li>Click <b>Auto-fill War Times</b>, or manually set the war start/end times.</li>
+              <li>Unlock RWPH first. The backend will not calculate without a valid licence.</li>
+              <li>Paste the Torn API key in the Payout tab if it is not already saved.</li>
+              <li>Click <b>Auto-fill War Times</b>, or manually set the war start and finish times.</li>
               <li>Enter the total payout pool.</li>
-              <li>Adjust hit and assist weights if needed.</li>
+              <li>Adjust hit weight, assist weight, ranked-war filtering, and chain fallback if needed.</li>
               <li>Click <b>Fetch + Calculate</b>.</li>
-              <li>Review every member result before paying anyone.</li>
+              <li>Review every member result in the separate results panel before paying anyone.</li>
             </ul>
           </div>
 
@@ -2640,25 +2869,27 @@
             <ul class="rw-how-list">
               <li>Use <b>Add Balance</b> on a member card to open that member's prefilled faction controls page.</li>
               <li>Use <b>Add Balance (All)</b> to open every member's prefilled page one at a time.</li>
-              <li>Review the member, amount, and faction controls page before confirming.</li>
-              <li>The helper never sends faction money by itself. Final payment stays under your control inside Torn.</li>
+              <li>Review the member and amount inside Torn before confirming.</li>
+              <li>RWPH does not automatically send faction money. Final payment stays under your control.</li>
+              <li>Use <b>Export CSV</b> for spreadsheet records.</li>
+              <li>Use <b>Create HTML Newsletter</b> to make a styled payout report for sharing.</li>
             </ul>
-          </div>
-
-          <div class="rw-how-box">
           </div>
 
           <div class="rw-how-box">
             <div class="rw-how-title">Troubleshooting</div>
             <ul class="rw-how-list">
-              <li><b>Failed to fetch:</b> backend server is offline, ngrok is closed, or PAYWALL_API_BASE is wrong.</li>
-              <li><b>Cannot unlock:</b> check the user's API key, exact payment code, receiver, item, and backend console.</li>
-              <li><b>Cannot calculate:</b> check license status, API key access, war times, and server health.</li>
+              <li><b>Panel will not unlock:</b> check your API key, licence status, backend server, and payment code.</li>
+              <li><b>Failed to fetch:</b> the backend server may be offline, ngrok may be closed, or PAYWALL_API_BASE may be wrong.</li>
+              <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
+              <li><b>Results panel not visible:</b> close/reopen RWPH, run Fetch + Calculate again, or refresh Torn.</li>
+              <li><b>Drag/resize not working on Torn PDA:</b> update to the latest version and use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Add Balance tabs blocked:</b> allow popups/tabs for Torn, or use each member's Add Balance button one by one.</li>
-              <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and code after opening Send this item and Add Message.</li>
-              <li><b>Server test:</b> open your backend URL plus /health. If /health fails, the userscript cannot work online.</li>
+              <li><b>Xanax helper will not paste:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
+              <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
           </div>
+
       </div>
       <div id="rw-results-panel" class="rw-results-panel" hidden>
         <div class="rw-head">
