@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.96
+// @version      1.1.97
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1794,6 +1794,261 @@
         }
       }
       #rw-payout-helper a { color: #7dd3fc !important; }
+
+
+      /* v1.1.97 COMPLETE LAYOUT REFRESH - dashboard panels */
+      #rw-payout-helper {
+        width: 520px !important;
+        max-width: calc(100vw - 22px) !important;
+        border-radius: 30px !important;
+        background:
+          radial-gradient(circle at 20% -10%, rgba(34,211,238,.20), transparent 28%),
+          radial-gradient(circle at 92% 0%, rgba(99,102,241,.22), transparent 32%),
+          linear-gradient(145deg, rgba(2,6,23,.98), rgba(15,23,42,.96) 48%, rgba(8,13,28,.98)) !important;
+        border: 1px solid rgba(125,211,252,.26) !important;
+        box-shadow: 0 28px 80px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.07), 0 0 42px rgba(56,189,248,.12) !important;
+      }
+      #rw-payout-helper::before,
+      #rw-payout-helper::after { display:none !important; }
+      #rw-payout-helper .rw-head {
+        min-height: 58px !important;
+        padding: 14px 58px 14px 18px !important;
+        border-radius: 28px 28px 0 0 !important;
+        background:
+          linear-gradient(135deg, rgba(14,165,233,.20), rgba(99,102,241,.20)),
+          rgba(15,23,42,.74) !important;
+        border-bottom: 1px solid rgba(125,211,252,.20) !important;
+        justify-content: center !important;
+      }
+      #rw-payout-helper .rw-head span {
+        padding: 0 !important;
+        font-size: 13px !important;
+        letter-spacing: 1.15px !important;
+      }
+      #rw-payout-helper .rw-head button[id$="close"],
+      #rw-payout-helper #rw-close {
+        position: absolute !important;
+        right: 12px !important;
+        top: 10px !important;
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        border-radius: 14px !important;
+      }
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-results-panel .rw-body {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        padding: 14px !important;
+        max-height: calc(84vh - 58px) !important;
+      }
+      #rw-payout-helper .rw-small,
+      #rw-payout-helper .rw-muted {
+        margin: 0 !important;
+        padding: 10px 12px !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(125,211,252,.14) !important;
+        background: rgba(15,23,42,.46) !important;
+      }
+      #rw-payout-helper .rw-tabs {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+        margin: 0 !important;
+        padding: 6px !important;
+        border-radius: 18px !important;
+        background: rgba(2,6,23,.52) !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+      }
+      #rw-payout-helper .rw-tab-btn {
+        margin: 0 !important;
+        min-height: 34px !important;
+        border-radius: 14px !important;
+        padding: 8px 6px !important;
+        font-size: 10px !important;
+      }
+      #rw-payout-helper .rw-tab-section:not([hidden]) {
+        display: grid !important;
+        gap: 12px !important;
+        padding: 0 !important;
+      }
+      #rw-payout-helper label {
+        display: grid !important;
+        gap: 7px !important;
+        margin: 0 !important;
+        padding: 11px !important;
+        border-radius: 18px !important;
+        border: 1px solid rgba(125,211,252,.14) !important;
+        background: linear-gradient(180deg, rgba(15,23,42,.52), rgba(2,6,23,.30)) !important;
+      }
+      #rw-payout-helper input {
+        margin: 0 !important;
+        min-height: 38px !important;
+        border-radius: 13px !important;
+      }
+      #rw-payout-helper .rw-row {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+      }
+      #rw-payout-helper .rw-actions {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      #rw-payout-helper .rw-actions button,
+      #rw-payout-helper .rw-actions a,
+      #rw-payout-helper button {
+        margin-top: 0 !important;
+        min-height: 38px !important;
+        border-radius: 14px !important;
+      }
+      #rw-payout-helper .rw-summary,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-payment-card,
+      #rw-payout-helper .rw-admin-license-card {
+        border-radius: 22px !important;
+        padding: 14px !important;
+        background:
+          linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38)) !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+      }
+      #rw-payout-helper .rw-how-box {
+        display: grid !important;
+        gap: 8px !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+      }
+      #rw-payout-helper .rw-how-title,
+      #rw-payout-helper .rw-payment-title {
+        font-size: 13px !important;
+        text-transform: uppercase !important;
+        letter-spacing: .9px !important;
+      }
+      #rw-payout-helper .rw-how-list {
+        display: grid !important;
+        gap: 6px !important;
+        list-style: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      #rw-payout-helper .rw-how-list li {
+        padding: 8px 10px !important;
+        border-radius: 13px !important;
+        background: rgba(2,6,23,.32) !important;
+        border: 1px solid rgba(125,211,252,.08) !important;
+      }
+      #rw-payout-helper .rw-feature-group,
+      #rw-payout-helper .rw-lock-pay-heading {
+        border-radius: 18px !important;
+        padding: 10px 12px !important;
+      }
+      #rw-payout-helper .rw-stat-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+      }
+      #rw-payout-helper .rw-results-panel {
+        width: min(860px, calc(100vw - 28px)) !important;
+        right: 18px !important;
+        left: auto !important;
+        top: 84px !important;
+        border-radius: 30px !important;
+        background:
+          radial-gradient(circle at 18% 0%, rgba(34,211,238,.18), transparent 30%),
+          linear-gradient(145deg, rgba(2,6,23,.98), rgba(15,23,42,.96)) !important;
+      }
+      #rw-payout-helper .rw-card-list {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+        gap: 10px !important;
+      }
+      #rw-payout-helper .rw-result-card {
+        display: grid !important;
+        gap: 10px !important;
+        border-radius: 22px !important;
+        padding: 14px !important;
+      }
+      #rw-payout-helper .rw-result-top {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 6px !important;
+      }
+      #rw-payout-helper .rw-result-payout {
+        display: inline-flex !important;
+        justify-content: center !important;
+        justify-self: center !important;
+        width: auto !important;
+        padding: 7px 10px !important;
+        border-radius: 999px !important;
+        background: rgba(34,197,94,.13) !important;
+        border: 1px solid rgba(134,239,172,.16) !important;
+      }
+      #rw-payout-helper .rw-stat-box {
+        border-radius: 15px !important;
+        padding: 9px !important;
+      }
+      #rwph-xanax-send-status {
+        width: min(460px, calc(100vw - 24px)) !important;
+        border-radius: 28px !important;
+        padding: 16px !important;
+        background:
+          radial-gradient(circle at 20% -8%, rgba(34,211,238,.22), transparent 30%),
+          radial-gradient(circle at 92% 0%, rgba(99,102,241,.20), transparent 34%),
+          linear-gradient(145deg, rgba(2,6,23,.98), rgba(15,23,42,.98)) !important;
+        border: 1px solid rgba(125,211,252,.26) !important;
+        box-shadow: 0 26px 80px rgba(0,0,0,.70), 0 0 36px rgba(56,189,248,.14) !important;
+        text-align: center !important;
+      }
+      #rwph-xanax-send-status button {
+        border-radius: 14px !important;
+        padding: 9px 11px !important;
+        min-height: 36px !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel {
+        width: min(320px, calc(100vw - 22px)) !important;
+        inset: 72px auto auto 12px !important;
+        border-radius: 26px !important;
+        padding: 12px !important;
+        background:
+          radial-gradient(circle at 0% 0%, rgba(56,189,248,.20), transparent 30%),
+          linear-gradient(180deg, rgba(2,6,23,.98), rgba(15,23,42,.96)) !important;
+      }
+      #rw-payout-helper .rw-pay-all-row {
+        grid-template-columns: 1fr !important;
+        gap: 7px !important;
+        border-radius: 16px !important;
+      }
+      #rw-payout-helper .rw-pay-all-copy {
+        width: 100% !important;
+      }
+      @media (max-width: 760px), (pointer: coarse) {
+        #rw-payout-helper {
+          width: min(360px, calc(100vw - 16px)) !important;
+          min-width: 220px !important;
+          max-height: 76vh !important;
+        }
+        #rw-payout-helper .rw-row,
+        #rw-payout-helper .rw-stat-grid {
+          grid-template-columns: 1fr !important;
+        }
+        #rw-payout-helper .rw-actions,
+        #rw-payout-helper .rw-tabs {
+          grid-template-columns: 1fr !important;
+        }
+        #rw-payout-helper .rw-results-panel {
+          width: min(360px, calc(100vw - 16px)) !important;
+          left: 8px !important;
+          right: 8px !important;
+          top: 76px !important;
+          max-height: 72vh !important;
+        }
+        #rw-payout-helper .rw-card-list {
+          grid-template-columns: 1fr !important;
+        }
+      }
     `;
   }
 
@@ -2049,6 +2304,45 @@
     .pay-all-payout { display:block; margin-top:2px; color:#86efac; font-weight:950; }
     .copy-small { padding:7px 8px; font-size:11px; border-radius:10px; }
     .grid { justify-items:stretch; }
+
+    /* v1.1.97 fullscreen results layout refresh */
+    .app {
+      display:grid;
+      grid-template-columns: 290px minmax(0,1fr);
+      grid-template-areas: "hero summary" "hero results";
+      gap:16px;
+      align-items:start;
+    }
+    .hero {
+      grid-area: hero;
+      position: sticky;
+      top: 18px;
+      min-height: calc(100vh - 36px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(56,189,248,.22), transparent 35%),
+        linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.88));
+    }
+    .title { flex-direction: column; text-align:center; }
+    .title img { width:64px; height:64px; }
+    .toolbar { display:grid; grid-template-columns:1fr; width:100%; }
+    .btn { width:100%; text-align:center; }
+    .summary { grid-area: summary; grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .grid { grid-area: results; grid-template-columns: repeat(auto-fill, minmax(245px,1fr)); }
+    .result-card { border-radius:24px; padding:14px; }
+    .result-top { display:grid; grid-template-columns:1fr; gap:8px; }
+    .payout { justify-self:center; padding:7px 10px; border-radius:999px; background:rgba(134,239,172,.12); border:1px solid rgba(134,239,172,.16); }
+    .stats { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    @media (max-width: 900px) {
+      .app { display:block; }
+      .hero { position:static; min-height:0; }
+      .summary { grid-template-columns:repeat(2, minmax(0,1fr)); }
+      .toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
     @media (max-width:780px) {
       body { padding:8px; }
       .summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -2999,6 +3293,48 @@
       font-size:11px;
       text-align:center;
       font-weight:800;
+    }
+
+    /* v1.1.97 newsletter dashboard layout refresh */
+    .newsletter {
+      display:grid;
+      grid-template-columns: 310px minmax(0,1fr);
+      grid-template-areas: "hero content" "hero footer";
+      gap:16px;
+      align-items:start;
+      max-width:1380px;
+    }
+    .hero {
+      grid-area:hero;
+      position:sticky;
+      top:18px;
+      min-height:calc(100vh - 36px);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      border-radius:30px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(56,189,248,.22), transparent 36%),
+        radial-gradient(circle at 50% 95%, rgba(99,102,241,.16), transparent 34%),
+        linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.90));
+    }
+    .title { flex-direction:column; }
+    .title img { width:72px; height:72px; }
+    h1 { font-size:26px; line-height:1.08; }
+    .content { grid-area:content; display:grid; gap:16px; }
+    .stats { grid-template-columns:repeat(4, minmax(0,1fr)); margin-bottom:0; }
+    .section { margin-top:0; border-radius:26px; padding:16px; }
+    .chart-row { max-width:none; display:grid; grid-template-columns: 220px 1fr; gap:10px; align-items:center; }
+    .chart-name { display:block; margin-bottom:0; }
+    .chart-name span { display:block; text-align:left; margin-top:3px; }
+    .bar-wrap.weight-wrap { grid-column: 2; }
+    .footer { grid-area:footer; }
+    @media (max-width: 980px) {
+      .newsletter { display:block; }
+      .hero { position:static; min-height:0; }
+      .stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .chart-row { display:block; }
+      .chart-name span { text-align:center; }
     }
     @media (max-width:900px) {
       .stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
