@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.51
+// @version      1.1.53
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -589,6 +589,8 @@
         width: 300px;
         max-height: 78vh;
         overflow: visible;
+        min-width: 240px;
+        min-height: 220px;
         background:
           linear-gradient(180deg, rgba(28,20,18,.98) 0%, rgba(38,25,22,.98) 9%, rgba(21,19,18,.98) 9.5%, rgba(24,21,20,.98) 100%) !important;
         color: #f8efe7 !important;
@@ -656,6 +658,8 @@
         max-width: calc(100vw - 24px);
         max-height: 78vh;
         overflow: auto;
+        min-width: 280px;
+        min-height: 220px;
         background:
           linear-gradient(180deg, rgba(28,20,18,.98) 0%, rgba(38,25,22,.98) 9%, rgba(21,19,18,.98) 9.5%, rgba(24,21,20,.98) 100%) !important;
         border: 1px solid rgba(186,136,87,.30);
@@ -667,7 +671,7 @@
       #rw-payout-helper .rw-results-panel[hidden] { display: none !important; }
       #rw-payout-helper .rw-results-panel:not([hidden]) { display: block !important; }
       #rw-payout-helper .rw-results-panel .rw-body { padding: 12px 10px 10px; }
-      #rw-payout-helper .rw-results-panel .rw-head { cursor: default; }
+      #rw-payout-helper .rw-results-panel .rw-head { cursor: move; }
       @media (max-width: 760px) {
         #rw-payout-helper .rw-results-panel {
           right: 12px;
@@ -692,6 +696,19 @@
       #rw-payout-helper .rw-head span {
         display: inline-block;
         padding: 0 24px;
+      }
+      #rw-payout-helper .rw-resize-handle {
+        position: absolute;
+        right: 7px;
+        bottom: 7px;
+        width: 15px;
+        height: 15px;
+        z-index: 5;
+        cursor: nwse-resize;
+        border-right: 2px solid rgba(230,186,116,.72);
+        border-bottom: 2px solid rgba(230,186,116,.72);
+        border-radius: 0 0 8px 0;
+        opacity: .9;
       }
 
       #rw-payout-helper label { display: block; margin-top: 10px; color: #e9c59f !important; font-weight: 700; text-shadow: 0 0 8px rgba(255,140,66,.06); }
@@ -926,6 +943,93 @@
         color: #cfaa8e !important;
         font-size: 10px;
         line-height: 1.45;
+      }
+
+      /* v1.1.53 readability boost */
+      #rw-payout-helper,
+      #rw-results-panel {
+        color: #fff8ef !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,.42);
+      }
+      #rw-payout-helper .rw-lock-pay-heading {
+        margin: 0 0 9px;
+        padding: 9px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 216, 139, .48);
+        background:
+          radial-gradient(circle at 12% 10%, rgba(255,207,123,.22), transparent 30%),
+          linear-gradient(180deg, rgba(133,48,28,.98), rgba(62,28,22,.96));
+        color: #fff0c8 !important;
+        font-size: 12px;
+        font-weight: 950;
+        line-height: 1.28;
+        text-align: center;
+        letter-spacing: .35px;
+        text-transform: uppercase;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.05) inset, 0 0 18px rgba(255,156,70,.14);
+        text-shadow: 0 1px 0 rgba(0,0,0,.65), 0 0 12px rgba(255,198,112,.22);
+      }
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-head span {
+        color: #fff3dd !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.72), 0 0 12px rgba(255,188,102,.22);
+      }
+      #rw-payout-helper label,
+      #rw-payout-helper .rw-how-title,
+      #rw-payout-helper .rw-feature-group,
+      #rw-payout-helper .rw-payment-title,
+      #rw-payout-helper .rw-result-name,
+      #rw-payout-helper .rw-admin-license-name {
+        color: #ffe3b8 !important;
+        font-weight: 950 !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.58), 0 0 10px rgba(255,172,85,.14);
+      }
+      #rw-payout-helper .rw-small,
+      #rw-payout-helper .rw-muted,
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list li,
+      #rw-payout-helper .rw-how-note,
+      #rw-payout-helper .rw-payment-instruction,
+      #rw-payout-helper .rw-payment-note {
+        color: #f4d8bf !important;
+        font-weight: 700;
+        line-height: 1.5;
+      }
+      #rw-payout-helper .rw-how-list li b,
+      #rw-payout-helper .rw-summary b,
+      #rw-payout-helper .rw-stat-value,
+      #rw-payout-helper .rw-result-payout,
+      #rw-payout-helper .rw-payment-code,
+      #rw-payout-helper .rw-payment-recipient {
+        color: #fff5e9 !important;
+        font-weight: 950 !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.58), 0 0 10px rgba(255,188,102,.12);
+      }
+      #rw-payout-helper .rw-result-id,
+      #rw-payout-helper .rw-stat-label {
+        color: #e8bd95 !important;
+        font-weight: 800;
+      }
+      #rw-payout-helper input {
+        color: #fffaf3 !important;
+        font-weight: 850;
+      }
+      #rw-payout-helper input::placeholder {
+        color: rgba(255,226,190,.65) !important;
+      }
+      #rw-payout-helper button {
+        color: #fff7ed !important;
+        font-weight: 950 !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.56);
+      }
+      #rw-payout-helper .rw-summary,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-result-card,
+      #rw-results-panel .rw-summary,
+      #rw-results-panel .rw-result-card {
+        border-color: rgba(226, 171, 102, .34) !important;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 0 18px rgba(255,137,58,.07), 0 10px 24px rgba(0,0,0,.36);
       }
     `;
   }
@@ -1343,6 +1447,8 @@
 
     box.style.borderColor = isError ? "rgba(255,90,90,.65)" : "rgba(224,171,96,.45)";
     box.innerHTML = message;
+    makeDraggable(box, "#rwph-payment-helper-title");
+    makeResizable(box);
   }
 
   function rwphNodeMeta(el) {
@@ -1580,7 +1686,7 @@
     const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
     return `
       <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(224,171,96,.36);background:rgba(0,0,0,.28);color:#fff2dd;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
-      <div style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#fff2dd;">RWPH Xanax Payment Helper</div>
+      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 6px 0;color:#fff2dd;cursor:move;">RWPH Xanax Payment Helper</div>
       <div style="margin-bottom:6px;${isError ? 'color:#ffb4a8;' : ''}">${message}</div>
       <div style="padding:8px;border-radius:9px;background:rgba(0,0,0,.22);margin:7px 0;">
         <div><b>Item:</b> ${esc(PAYMENT_ITEM_NAME)}</div>
@@ -1737,23 +1843,33 @@
     URL.revokeObjectURL(url);
   }
 
-  function makeDraggable(panel) {
-    const head = panel.querySelector(".rw-head");
-    if (!head) return;
+  function makeDraggable(panel, handleSelector = ".rw-head") {
+    if (!panel || panel.dataset.rwphDragReady === "1") return;
+    panel.dataset.rwphDragReady = "1";
 
     let dragging = false;
     let startX = 0;
     let startY = 0;
-    let startRight = 0;
+    let startLeft = 0;
     let startTop = 0;
 
-    head.addEventListener("mousedown", (e) => {
-      if (e.target.tagName === "BUTTON") return;
+    panel.addEventListener("mousedown", (e) => {
+      const handle = e.target.closest?.(handleSelector);
+      if (!handle || !panel.contains(handle)) return;
+      if (e.target.closest?.("button, input, textarea, select, a, .rw-resize-handle")) return;
+
+      const rect = panel.getBoundingClientRect();
       dragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      startRight = Number.parseInt(getComputedStyle(panel).right, 10);
-      startTop = Number.parseInt(getComputedStyle(panel).top, 10);
+      startLeft = rect.left;
+      startTop = rect.top;
+
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.position = "fixed";
       e.preventDefault();
     });
 
@@ -1761,14 +1877,85 @@
       if (!dragging) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      panel.style.right = `${startRight - dx}px`;
-      panel.style.top = `${Math.max(10, startTop + dy)}px`;
+      const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+      const maxTop = Math.max(8, window.innerHeight - 40);
+      panel.style.left = `${Math.min(Math.max(8, startLeft + dx), maxLeft)}px`;
+      panel.style.top = `${Math.min(Math.max(8, startTop + dy), maxTop)}px`;
     });
 
     document.addEventListener("mouseup", () => {
       dragging = false;
     });
   }
+
+  function makeResizable(panel) {
+    if (!panel) return;
+
+    let handle = Array.from(panel.children || []).find((child) => child.classList?.contains("rw-resize-handle"));
+    if (!handle) {
+      handle = document.createElement("div");
+      handle.className = "rw-resize-handle";
+      handle.title = "Drag to resize";
+      handle.style.position = "absolute";
+      handle.style.right = "7px";
+      handle.style.bottom = "7px";
+      handle.style.width = "15px";
+      handle.style.height = "15px";
+      handle.style.zIndex = "5";
+      handle.style.cursor = "nwse-resize";
+      handle.style.borderRight = "2px solid rgba(230,186,116,.72)";
+      handle.style.borderBottom = "2px solid rgba(230,186,116,.72)";
+      handle.style.borderRadius = "0 0 8px 0";
+      handle.style.opacity = ".9";
+      panel.appendChild(handle);
+    }
+
+    if (panel.dataset.rwphResizeReady === "1") return;
+    panel.dataset.rwphResizeReady = "1";
+
+    let resizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    panel.addEventListener("mousedown", (e) => {
+      const resizeHandle = e.target.closest?.(".rw-resize-handle");
+      if (!resizeHandle || !panel.contains(resizeHandle)) return;
+      resizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = panel.offsetWidth || panel.getBoundingClientRect().width || 300;
+      startHeight = panel.offsetHeight || panel.getBoundingClientRect().height || 240;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.position = "fixed";
+      panel.style.maxHeight = "none";
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!resizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const minWidth = panel.classList?.contains("rw-results-panel") ? 280 : 240;
+      const minHeight = 180;
+      const maxWidth = Math.max(minWidth, window.innerWidth - 16);
+      const maxHeight = Math.max(minHeight, window.innerHeight - 16);
+      panel.style.width = `${Math.min(Math.max(minWidth, startWidth + dx), maxWidth)}px`;
+      panel.style.height = `${Math.min(Math.max(minHeight, startHeight + dy), maxHeight)}px`;
+      panel.style.overflow = "auto";
+    });
+
+    document.addEventListener("mouseup", () => {
+      resizing = false;
+    });
+  }
+
 
   function showPaywallScreen(panel) {
     const savedKey = GM_getValue(STORAGE_KEY, "");
@@ -1781,6 +1968,7 @@
         <button id="rw-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
       </div>
       <div class="rw-body">
+        <div class="rw-lock-pay-heading">Each Xanax will extend your licence by 15 days</div>
         <div class="rw-small">
           This version is server-locked. The backend verifies your license and performs the payout calculation server-side.
         </div>
@@ -1797,6 +1985,7 @@
           </label>
           <div class="rw-actions">
             <button id="rw-start-payment">Start Payment</button>
+            <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">2 Day Free Trial</button>
             <button id="rw-check-payment" class="secondary">Check Payment</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
@@ -1961,6 +2150,10 @@
       </div>`;
 
     makeDraggable(panel);
+    makeResizable(panel);
+    const lockedResultsPanel = document.getElementById("rw-results-panel");
+    makeDraggable(lockedResultsPanel);
+    makeResizable(lockedResultsPanel);
     attachMoveLauncherButton();
     document.getElementById("rw-move-launcher-admin").addEventListener("click", cycleLauncherCorner);
     document.getElementById("rw-close").addEventListener("click", closePanel);
@@ -1989,6 +2182,15 @@
     payTabBtn.addEventListener("click", () => switchLockedTab("unlock"));
     adminTabBtn.addEventListener("click", () => switchLockedTab("admin"));
     howTabBtn.addEventListener("click", () => switchLockedTab("how"));
+
+    const lockedSaveKeyBtn = document.getElementById("rw-paywall-save-key");
+    if (lockedSaveKeyBtn) {
+      lockedSaveKeyBtn.addEventListener("click", () => {
+        const key = document.getElementById("rw-paywall-key").value.trim();
+        GM_setValue(STORAGE_KEY, key);
+        document.getElementById("rw-paywall-status").textContent = key ? "API key saved locally." : "Saved blank API key locally.";
+      });
+    }
 
     document.getElementById("rw-start-payment").addEventListener("click", async () => {
       const status = document.getElementById("rw-paywall-status");
@@ -2412,6 +2614,10 @@
       </div>`;
 
     makeDraggable(panel);
+    makeResizable(panel);
+    const mainResultsPanel = document.getElementById("rw-results-panel");
+    makeDraggable(mainResultsPanel);
+    makeResizable(mainResultsPanel);
     attachMoveLauncherButton();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
