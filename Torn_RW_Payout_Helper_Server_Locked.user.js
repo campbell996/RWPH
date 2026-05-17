@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.196
+// @version      1.1.197
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -3953,6 +3953,62 @@
         font-weight: 900 !important;
       }
 
+
+
+      /* v1.1.197: stronger readable text across every RWPH panel */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-results-panel,
+      #rw-payout-helper .rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      #rw-wrong-payment-panel,
+      .rwph-info-popup-panel {
+        color: #f4fbff !important;
+        -webkit-font-smoothing: antialiased !important;
+        text-rendering: optimizeLegibility !important;
+      }
+      #rw-payout-helper :is(h1,h2,h3,h4,.rw-head,.rw-head span,.rw-how-title,.rw-summary,.rw-card-title,.rw-member-name,.rw-admin-title,.rw-payment-title,.rw-result-name,.rw-pay-all-title,strong,b),
+      #rwph-xanax-send-status :is(h1,h2,h3,h4,.rwph-xanax-title,.rwph-xanax-payment-title,strong,b),
+      #rw-wrong-payment-panel :is(h1,h2,h3,h4,strong,b),
+      .rwph-info-popup-panel :is(h1,h2,h3,h4,.rwph-info-popup-title,strong,b) {
+        color: #ffffff !important;
+        font-weight: 950 !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,.95), 0 0 14px rgba(125,211,252,.28) !important;
+      }
+      #rw-payout-helper :is(p,li,span,small,div,label,td,th,.rw-muted,.rw-small,.rw-how-intro,.rw-how-list li,.rw-help-section-card,.rw-help-api-card,.rw-summary,.rw-result-card,.rw-admin-box),
+      #rwph-xanax-send-status :is(p,li,span,small,div,label,td,th,.rwph-xanax-note,.rwph-xanax-muted),
+      #rw-wrong-payment-panel :is(p,li,span,small,div,label),
+      .rwph-info-popup-panel :is(p,li,span,small,div,label) {
+        color: #e6f6ff !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,.72) !important;
+      }
+      #rw-payout-helper :is(.rw-muted,.rw-small,.rw-help-note,.rw-how-intro,.rw-how-list li),
+      #rwph-xanax-send-status :is(.rwph-xanax-note,.rwph-xanax-muted),
+      .rwph-info-popup-panel .rwph-info-popup-message {
+        color: #dbeafe !important;
+      }
+      #rw-payout-helper :is(button,a.btn,.rw-tab-btn,.rw-pay-all-copy,.rw-pay-all-undo),
+      #rwph-xanax-send-status button,
+      #rw-wrong-payment-panel button,
+      .rwph-info-popup-panel button {
+        color: #ffffff !important;
+        font-weight: 950 !important;
+        letter-spacing: .28px !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,1), 0 0 12px rgba(125,211,252,.34) !important;
+      }
+      #rw-payout-helper :is(input,textarea,select),
+      #rwph-xanax-send-status :is(input,textarea,select),
+      #rw-wrong-payment-panel :is(input,textarea,select) {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,.75) !important;
+      }
+      #rw-payout-helper :is(input,textarea)::placeholder,
+      #rwph-xanax-send-status :is(input,textarea)::placeholder,
+      #rw-wrong-payment-panel :is(input,textarea)::placeholder {
+        color: #bfdbfe !important;
+        opacity: .9 !important;
+      }
+
       /* v1.1.142 unified scroll polish: one scroll body per panel/tab, no nested admin/help/tool scroll panes */
       #rw-payout-helper > .rw-body,
       #rw-payout-helper .rw-results-panel > .rw-body {
@@ -4723,6 +4779,36 @@
       color:#e0f2fe!important;
     }
     .newsletter-zone .newsletter-top-btn:hover{filter:brightness(1.10)!important;}
+
+
+
+    /* v1.1.197: stronger readable text on fullscreen results and payments pages */
+    body,.app,.hero,.grid,.summary,.result-card,.stat,.toolbar,.box,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card{
+      color:#f4fbff!important;
+      -webkit-font-smoothing:antialiased!important;
+      text-rendering:optimizeLegibility!important;
+    }
+    h1,h2,h3,h4,.title,.member-name,.value,.payout,strong,b,.summary .value,.stat .value{
+      color:#ffffff!important;
+      font-weight:950!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.95),0 0 14px rgba(125,211,252,.28)!important;
+    }
+    p,li,span,small,td,th,.muted,.label,.close-hint,.newsletter-choice-note,.newsletter-use-note,.results-action-note{
+      color:#e6f6ff!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.72)!important;
+    }
+    .btn,button,a.btn{
+      color:#ffffff!important;
+      font-weight:950!important;
+      letter-spacing:.28px!important;
+      text-shadow:0 1px 1px rgba(0,0,0,1),0 0 12px rgba(125,211,252,.34)!important;
+    }
+    input,textarea,select{
+      color:#ffffff!important;
+      font-weight:800!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.75)!important;
+    }
+    input::placeholder,textarea::placeholder{color:#bfdbfe!important;opacity:.9!important;}
 
     /* v1.1.135: compact results toolbar/sidebar so every action fits cleanly */
     .app{grid-template-columns:260px minmax(0,1fr)!important;gap:12px!important;}
