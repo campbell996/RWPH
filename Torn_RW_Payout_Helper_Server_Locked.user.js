@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.154
+// @version      1.1.155
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1002,7 +1002,7 @@
   // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
-  // v1.1.154: compacted the Xanax Payment Helper and made its timer reuse the main saved Payment Code Ready expiry so refreshes do not restart it.
+  // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -4137,7 +4137,7 @@
       <li>Applying your weights and splitting the payout pool across members.</li>
       <li>Building the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
     </ul>
-    <div class="wait-note">Estimated wait: small wars often load in 10-30 seconds. Bigger wars or slower Torn/API responses can take 1-3 minutes.</div>
+    <div class="wait-note">Estimated wait: small wars often load in 10-30 seconds. Bigger wars or slower Torn/API responses can take 1-3 minutes. If Torn rate-limits the API, RWPH will pause and retry automatically, so it may take a little longer instead of failing straight away.</div>
   </div>
   <script>
     (function(){
@@ -7113,7 +7113,7 @@
       try {
         GM_setValue(STORAGE_KEY, userKey);
         results.innerHTML = "";
-        status.textContent = "Server is verifying licence, fetching attacks, classifying war/assist/outside/retal hits, applying separate war, outside, retaliation, and assist weights, and calculating payouts...";
+        status.textContent = "Server is verifying licence, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...";
         preOpenedResultsTab = openBlankResultsTab();
 
         const result = await apiPost("/api/calc/rw-payout", {
@@ -7172,7 +7172,7 @@
     .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
-  </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>You can close this tab and try Fetch + Calculate again.</p></div></body></html>`);
+  </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>${String(e.message || e).toLowerCase().includes("too many requests") || String(e.message || e).toLowerCase().includes("rate limit") ? "Torn is rate limiting API requests right now. RWPH now retries automatically, but if this still appears wait 1-3 minutes before running Fetch + Calculate again." : "You can close this tab and try Fetch + Calculate again."}</p></div></body></html>`);
             preOpenedResultsTab.document.close();
           } catch (_) {}
         }
