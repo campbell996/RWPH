@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.180
+// @version      1.1.181
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1644,6 +1644,22 @@
   async function verifySavedLicense() {
     const info = await getSavedLicenseInfo();
     return !!info.valid;
+  }
+
+  async function rwphCheckLicenseOnPanelOpen() {
+    const info = await getSavedLicenseInfo();
+
+    if (!info.valid) {
+      GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+      const message = info.revoked
+        ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again."
+        : (info.error || "No active licence found. Buy Licence, Extend Licence, or use Unlock Panel after your licence is active.");
+      return { valid: false, info, message };
+    }
+
+    if (info.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, info.token);
+    if (info.expiresAt) rwphScheduleLicenseLockback(info.expiresAt);
+    return { valid: true, info, message: "Licence active." };
   }
 
   function panelBaseCss() {
@@ -7129,6 +7145,7 @@
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
+              When the RWPH panel first opens, it immediately checks the saved licence with the server before showing the unlocked payout tools.
             </p>
           </div>
 
@@ -7756,6 +7773,7 @@
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
+              When the RWPH panel first opens, it immediately checks the saved licence with the server before showing the unlocked payout tools.
             </p>
           </div>
 
@@ -8410,9 +8428,14 @@
     panel.innerHTML = `<style>${panelBaseCss()}
   </style><div class="rw-body"><div class="rw-muted">Checking license...</div></div>`;
 
-    const valid = await verifySavedLicense();
-    if (!valid) {
+    const licenseState = await rwphCheckLicenseOnPanelOpen();
+    if (!document.body.contains(panel)) return;
+    if (!licenseState.valid) {
       showPaywallScreen(panel);
+      setTimeout(() => {
+        const status = document.getElementById("rw-paywall-status");
+        if (status) status.textContent = licenseState.message || "Licence check failed. Unlock Panel when your licence is active.";
+      }, 0);
       return;
     }
 
