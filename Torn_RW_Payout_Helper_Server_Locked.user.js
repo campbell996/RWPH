@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.140
+// @version      1.1.141
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -407,7 +407,7 @@
         <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(59,130,246,.55));pointer-events:none;" />
         <span>Payment Needs Manual Review</span>
       </div>
-      <div style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;">
+      <div class="rwph-floating-panel-body" style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;overflow-y:auto;overflow-x:hidden;min-height:0;">
         ${esc(message || `You sent the payment wrong. Licence days are only automatically added when ${PAYMENT_ITEM_NAME} is sent with the exact payment code in the item message. Your licence will be manually added ASAP.`)}
       </div>
       <button id="rw-wrong-payment-close" type="button" style="width:100%;padding:10px 12px;border-radius:14px;border:1px solid rgba(125,211,252,.45);background:linear-gradient(135deg,rgba(37,99,235,.95),rgba(79,70,229,.95));color:#fff;font-weight:950;cursor:pointer;">Close</button>
@@ -958,7 +958,7 @@
   }
 
   // v1.1.133: admin licence cards show time left and the Fill button copies both Torn ID and name.
-  // v1.1.140: panel open state is now tab/page scoped; RWPH panels auto-close on Torn page changes, stay open when switching browser tabs, and reopen after refresh on the same page.
+  // v1.1.141: panel open state is now tab/page scoped; RWPH panels auto-close on Torn page changes, stay open when switching browser tabs, and reopen after refresh on the same page.
   // v1.1.139: hidden white outer panel scrollbars while keeping blue internal RWPH scrollbars.
   // v1.1.138: moving/resizing is enabled for all RWPH floating panels, including Pay All/manual-review helpers.
   // v1.1.137: removed the Add Balance removal sentence from Help panel wording.
@@ -2725,6 +2725,159 @@
         background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.92)) !important;
       }
 
+      /* v1.1.141 scroll + corner resize polish: one inner blue scrollbar, pinned headers, four-corner resizing */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-results-panel,
+      #rw-payout-helper .rw-pay-all-panel,
+      #rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      #rw-wrong-payment-panel {
+        overflow:hidden !important;
+        overflow-x:hidden !important;
+        display:flex !important;
+        flex-direction:column !important;
+        min-height:120px !important;
+      }
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-results-panel .rw-head,
+      #rw-payout-helper .rw-pay-all-head,
+      #rw-pay-all-panel .rw-pay-all-head,
+      #rwph-xanax-send-status #rwph-payment-helper-title,
+      #rw-wrong-payment-panel .rwph-floating-panel-head {
+        flex:0 0 auto !important;
+        position:sticky !important;
+        top:0 !important;
+        z-index:20 !important;
+      }
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-results-panel .rw-body,
+      #rw-payout-helper .rw-pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-list,
+      #rwph-xanax-send-status .rwph-xanax-scroll,
+      #rw-wrong-payment-panel .rwph-floating-panel-body {
+        flex:1 1 auto !important;
+        min-height:0 !important;
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+        overscroll-behavior:contain !important;
+        scrollbar-width:thin !important;
+        scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36) !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-scroll {
+        padding:0 2px 2px !important;
+      }
+      #rw-wrong-payment-panel .rwph-floating-panel-body {
+        padding:0 2px 2px !important;
+        scrollbar-width:thin !important;
+        scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36) !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar,
+      #rwph-xanax-send-status .rwph-xanax-scroll::-webkit-scrollbar,
+      #rw-wrong-payment-panel .rwph-floating-panel-body::-webkit-scrollbar {
+        width:8px !important;
+        height:8px !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar-track,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar-track,
+      #rwph-xanax-send-status .rwph-xanax-scroll::-webkit-scrollbar-track,
+      #rw-wrong-payment-panel .rwph-floating-panel-body::-webkit-scrollbar-track {
+        background:rgba(15,23,42,.34) !important;
+        border-radius:999px !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar-thumb,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar-thumb,
+      #rwph-xanax-send-status .rwph-xanax-scroll::-webkit-scrollbar-thumb,
+      #rw-wrong-payment-panel .rwph-floating-panel-body::-webkit-scrollbar-thumb {
+        background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.88)) !important;
+        border:2px solid rgba(15,23,42,.50) !important;
+        border-radius:999px !important;
+      }
+      #rw-payout-helper .rw-resize-handle,
+      #rw-pay-all-panel .rw-resize-handle,
+      #rwph-xanax-send-status .rw-resize-handle,
+      #rw-wrong-payment-panel .rw-resize-handle {
+        position:absolute !important;
+        width:18px !important;
+        height:18px !important;
+        z-index:30 !important;
+        touch-action:none !important;
+        -webkit-user-select:none !important;
+        user-select:none !important;
+        opacity:.95 !important;
+        background:rgba(2,6,23,.18) !important;
+      }
+      #rw-payout-helper .rw-resize-handle-se,
+      #rw-pay-all-panel .rw-resize-handle-se,
+      #rwph-xanax-send-status .rw-resize-handle-se,
+      #rw-wrong-payment-panel .rw-resize-handle-se {
+        right:5px !important;
+        bottom:5px !important;
+        cursor:nwse-resize !important;
+        border-right:2px solid rgba(56,189,248,.88) !important;
+        border-bottom:2px solid rgba(56,189,248,.88) !important;
+        border-left:0 !important;
+        border-top:0 !important;
+        border-radius:0 0 8px 0 !important;
+      }
+      #rw-payout-helper .rw-resize-handle-sw,
+      #rw-pay-all-panel .rw-resize-handle-sw,
+      #rwph-xanax-send-status .rw-resize-handle-sw,
+      #rw-wrong-payment-panel .rw-resize-handle-sw {
+        left:5px !important;
+        bottom:5px !important;
+        cursor:nesw-resize !important;
+        border-left:2px solid rgba(56,189,248,.88) !important;
+        border-bottom:2px solid rgba(56,189,248,.88) !important;
+        border-right:0 !important;
+        border-top:0 !important;
+        border-radius:0 0 0 8px !important;
+      }
+      #rw-payout-helper .rw-resize-handle-ne,
+      #rw-pay-all-panel .rw-resize-handle-ne,
+      #rwph-xanax-send-status .rw-resize-handle-ne,
+      #rw-wrong-payment-panel .rw-resize-handle-ne {
+        right:5px !important;
+        top:5px !important;
+        cursor:nesw-resize !important;
+        border-right:2px solid rgba(56,189,248,.88) !important;
+        border-top:2px solid rgba(56,189,248,.88) !important;
+        border-left:0 !important;
+        border-bottom:0 !important;
+        border-radius:0 8px 0 0 !important;
+      }
+      #rw-payout-helper .rw-resize-handle-nw,
+      #rw-pay-all-panel .rw-resize-handle-nw,
+      #rwph-xanax-send-status .rw-resize-handle-nw,
+      #rw-wrong-payment-panel .rw-resize-handle-nw {
+        left:5px !important;
+        top:5px !important;
+        cursor:nwse-resize !important;
+        border-left:2px solid rgba(56,189,248,.88) !important;
+        border-top:2px solid rgba(56,189,248,.88) !important;
+        border-right:0 !important;
+        border-bottom:0 !important;
+        border-radius:8px 0 0 0 !important;
+      }
+      #rw-payout-helper .rw-resize-handle:hover,
+      #rw-pay-all-panel .rw-resize-handle:hover,
+      #rwph-xanax-send-status .rw-resize-handle:hover,
+      #rw-wrong-payment-panel .rw-resize-handle:hover {
+        opacity:1 !important;
+        filter:drop-shadow(0 0 6px rgba(56,189,248,.65)) !important;
+      }
+      #rw-payout-helper .rw-pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-list {
+        padding-right:3px !important;
+      }
+
+
     `;
   }
 
@@ -2956,7 +3109,9 @@
       inset:76px 16px auto auto;
       width:min(560px, calc(100vw - 32px));
       max-height:calc(100vh - 100px);
-      overflow:auto;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
       padding:14px;
       border:1px solid rgba(125,211,252,.28);
       border-radius:20px;
@@ -2967,8 +3122,12 @@
     }
     .pay-all-panel[hidden] { display:none !important; }
     .pay-all-panel h2 { margin:0 0 6px; font-size:18px; color:#e0f2fe; }
-    .pay-all-head { cursor:move; touch-action:none; -webkit-user-select:none; user-select:none; padding:2px 34px 6px; }
-    .resize-handle { position:absolute; right:7px; bottom:7px; width:20px; height:20px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.70); border-bottom:2px solid rgba(125,211,252,.70); border-radius:0 0 8px 0; touch-action:none; }
+    .pay-all-head { cursor:move; touch-action:none; -webkit-user-select:none; user-select:none; padding:2px 34px 6px; position:sticky; top:0; z-index:5; flex:0 0 auto; }
+    .resize-handle { position:absolute; width:20px; height:20px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
+    .resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 8px 0; }
+    .resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 0 8px; }
+    .resize-handle-ne { right:7px; top:7px; cursor:nesw-resize; border-right:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:0 8px 0 0; }
+    .resize-handle-nw { left:7px; top:7px; cursor:nwse-resize; border-left:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:8px 0 0 0; }
     .pay-all-note { margin:0 26px 10px; color:#c7d2fe; font-size:12px; line-height:1.45; }
     .pay-all-info { margin:0 18px 12px; padding:10px 12px; border-radius:14px; border:1px solid rgba(125,211,252,.18); background:rgba(15,23,42,.66); color:#dbeafe; font-size:11px; line-height:1.45; text-align:left; }
     .pay-all-info b { color:#e0f2fe; }
@@ -2976,7 +3135,10 @@
     .pay-all-info li { margin:3px 0; }
     .pay-all-close { position:absolute; top:10px; right:10px; padding:6px 9px; }
     .pay-all-undo { margin:0 0 10px; padding:7px 10px; font-size:11px; border-radius:10px; }
-    .pay-all-list { display:grid; gap:8px; }
+    .pay-all-list { display:grid; gap:8px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36); }
+    .pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
+    .pay-all-list::-webkit-scrollbar-track { background:rgba(15,23,42,.34); border-radius:999px; }
+    .pay-all-list::-webkit-scrollbar-thumb { background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.88)); border:2px solid rgba(15,23,42,.50); border-radius:999px; }
     .pay-all-row {
       display:grid;
       grid-template-columns:minmax(0, 1fr) auto auto;
@@ -3189,7 +3351,10 @@
     </div>
     <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Undo Last Disappear</button>
     <div class="pay-all-list" id="payAllList"></div>
-    <div class="resize-handle" title="Drag to resize"></div>
+    <div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>
+    <div class="resize-handle resize-handle-ne" data-resize-dir="ne" title="Resize from top-right"></div>
+    <div class="resize-handle resize-handle-sw" data-resize-dir="sw" title="Resize from bottom-left"></div>
+    <div class="resize-handle resize-handle-se" data-resize-dir="se" title="Resize from bottom-right"></div>
   </aside>
 
   <script>
@@ -3263,15 +3428,25 @@
       panel.dataset.moveResizeReady = "1";
       const layoutKey = "rwph_fullscreen_pay_all_layout";
       const handle = panel.querySelector(handleSelector);
-      const resizeHandle = panel.querySelector(".resize-handle");
       let dragging = false;
       let resizing = false;
+      let activeDir = "se";
       let startX = 0;
       let startY = 0;
       let startLeft = 0;
       let startTop = 0;
       let startWidth = 0;
       let startHeight = 0;
+
+      ["nw", "ne", "sw", "se"].forEach(function(dir) {
+        if (!panel.querySelector(".resize-handle-" + dir)) {
+          const h = document.createElement("div");
+          h.className = "resize-handle resize-handle-" + dir;
+          h.dataset.resizeDir = dir;
+          h.title = dir === "nw" ? "Resize from top-left" : dir === "ne" ? "Resize from top-right" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
+          panel.appendChild(h);
+        }
+      });
 
       function point(e) {
         const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
@@ -3289,15 +3464,16 @@
           const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
           const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
           const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
-          const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - 40));
-          panel.style.left = left + "px";
-          panel.style.top = top + "px";
-          panel.style.right = "auto";
-          panel.style.bottom = "auto";
-          panel.style.inset = "auto auto auto auto";
-          panel.style.width = width + "px";
-          panel.style.height = height + "px";
-          panel.style.maxHeight = "none";
+          const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - height - 8));
+          panel.style.setProperty("left", left + "px", "important");
+          panel.style.setProperty("top", top + "px", "important");
+          panel.style.setProperty("right", "auto", "important");
+          panel.style.setProperty("bottom", "auto", "important");
+          panel.style.setProperty("inset", "auto auto auto auto", "important");
+          panel.style.setProperty("width", width + "px", "important");
+          panel.style.setProperty("height", height + "px", "important");
+          panel.style.setProperty("max-height", "none", "important");
+          panel.style.setProperty("overflow", "hidden", "important");
         } catch (_) {}
       }
       function beginDrag(e) {
@@ -3306,32 +3482,53 @@
         const rect = panel.getBoundingClientRect();
         dragging = true;
         startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top;
-        panel.style.left = rect.left + "px"; panel.style.top = rect.top + "px"; panel.style.right = "auto"; panel.style.bottom = "auto"; panel.style.inset = "auto auto auto auto";
+        panel.style.setProperty("left", rect.left + "px", "important"); panel.style.setProperty("top", rect.top + "px", "important"); panel.style.setProperty("right", "auto", "important"); panel.style.setProperty("bottom", "auto", "important"); panel.style.setProperty("inset", "auto auto auto auto", "important");
         e.preventDefault();
       }
       function beginResize(e) {
-        if (!resizeHandle || !e.target.closest(".resize-handle")) return;
+        const resizeHandle = e.target.closest(".resize-handle");
+        if (!resizeHandle || !panel.contains(resizeHandle)) return;
         const p = point(e);
         const rect = panel.getBoundingClientRect();
         resizing = true;
-        startX = p.x; startY = p.y; startWidth = rect.width; startHeight = rect.height;
-        panel.style.left = rect.left + "px"; panel.style.top = rect.top + "px"; panel.style.right = "auto"; panel.style.bottom = "auto"; panel.style.inset = "auto auto auto auto"; panel.style.maxHeight = "none";
+        activeDir = resizeHandle.dataset.resizeDir || (resizeHandle.className.match(/resize-handle-(nw|ne|sw|se)/) || [])[1] || "se";
+        startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top; startWidth = rect.width; startHeight = rect.height;
+        panel.style.setProperty("left", rect.left + "px", "important"); panel.style.setProperty("top", rect.top + "px", "important"); panel.style.setProperty("right", "auto", "important"); panel.style.setProperty("bottom", "auto", "important"); panel.style.setProperty("inset", "auto auto auto auto", "important"); panel.style.setProperty("max-height", "none", "important"); panel.style.setProperty("overflow", "hidden", "important");
         e.preventDefault();
       }
       function move(e) {
         const p = point(e);
         if (dragging) {
           const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-          const maxTop = Math.max(8, window.innerHeight - 40);
-          panel.style.left = Math.min(Math.max(8, startLeft + p.x - startX), maxLeft) + "px";
-          panel.style.top = Math.min(Math.max(8, startTop + p.y - startY), maxTop) + "px";
+          const maxTop = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
+          panel.style.setProperty("left", Math.min(Math.max(8, startLeft + p.x - startX), maxLeft) + "px", "important");
+          panel.style.setProperty("top", Math.min(Math.max(8, startTop + p.y - startY), maxTop) + "px", "important");
           e.preventDefault();
         }
         if (resizing) {
           const minWidth = 250, minHeight = 180;
-          panel.style.width = Math.min(Math.max(minWidth, startWidth + p.x - startX), Math.max(minWidth, window.innerWidth - 16)) + "px";
-          panel.style.height = Math.min(Math.max(minHeight, startHeight + p.y - startY), Math.max(minHeight, window.innerHeight - 16)) + "px";
-          panel.style.overflow = "auto";
+          const maxWidth = Math.max(minWidth, window.innerWidth - 16);
+          const maxHeight = Math.max(minHeight, window.innerHeight - 16);
+          const dx = p.x - startX;
+          const dy = p.y - startY;
+          let width = startWidth;
+          let height = startHeight;
+          let left = startLeft;
+          let top = startTop;
+          if (activeDir.includes("e")) width = startWidth + dx;
+          if (activeDir.includes("s")) height = startHeight + dy;
+          if (activeDir.includes("w")) width = startWidth - dx;
+          if (activeDir.includes("n")) height = startHeight - dy;
+          width = Math.min(Math.max(minWidth, width), maxWidth);
+          height = Math.min(Math.max(minHeight, height), maxHeight);
+          if (activeDir.includes("w")) left = startLeft + (startWidth - width);
+          if (activeDir.includes("n")) top = startTop + (startHeight - height);
+          left = Math.min(Math.max(8, left), Math.max(8, window.innerWidth - width - 8));
+          top = Math.min(Math.max(8, top), Math.max(8, window.innerHeight - height - 8));
+          panel.style.setProperty("left", left + "px", "important");
+          panel.style.setProperty("top", top + "px", "important");
+          panel.style.setProperty("width", width + "px", "important");
+          panel.style.setProperty("height", height + "px", "important");
           e.preventDefault();
         }
       }
@@ -3342,13 +3539,15 @@
       }
       apply();
       if (handle) { handle.addEventListener("mousedown", beginDrag); handle.addEventListener("touchstart", beginDrag, { passive:false }); }
-      if (resizeHandle) { resizeHandle.addEventListener("mousedown", beginResize); resizeHandle.addEventListener("touchstart", beginResize, { passive:false }); }
+      panel.addEventListener("mousedown", beginResize);
+      panel.addEventListener("touchstart", beginResize, { passive:false });
       document.addEventListener("mousemove", move);
       document.addEventListener("touchmove", move, { passive:false });
       document.addEventListener("mouseup", end);
       document.addEventListener("touchend", end);
       document.addEventListener("touchcancel", end);
     }
+
 
     function hidePayAllButton(btn, label) {
       if (!btn) return;
@@ -3716,7 +3915,9 @@
         right: auto !important;
         width: min(360px, calc(100vw - 24px)) !important;
         max-height: calc(100vh - 116px) !important;
-        overflow: auto !important;
+        overflow: hidden !important;
+        display:flex !important;
+        flex-direction:column !important;
         padding: 9px !important;
         border: 1px solid rgba(125,211,252,.28) !important;
         border-radius: 18px !important;
@@ -3727,7 +3928,7 @@
         text-align: center !important;
       }
       .rw-pay-all-panel[hidden] { display:none !important; }
-      .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:center; align-items:center; padding: 0 28px 8px; }
+      .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:center; align-items:center; padding: 0 28px 8px; position:sticky; top:0; z-index:5; flex:0 0 auto; }
       .rw-pay-all-title { font-weight:950; color:#e0f2fe; font-size:13px; }
       .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 7px; }
       .rw-pay-all-info { margin:0 8px 8px; padding:8px 9px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.62); color:#dbeafe; font-size:9.5px; line-height:1.35; text-align:left; }
@@ -3736,12 +3937,19 @@
       .rw-pay-all-info li { margin:2px 0; }
       .rw-pay-all-close { position:absolute; top:8px; right:8px; min-width:30px; min-height:28px; border-radius:10px; border:1px solid rgba(248,113,113,.35); background:rgba(127,29,29,.88); color:#fff; font-weight:950; cursor:pointer; }
       .rw-pay-all-undo { margin:0 0 8px; padding:6px 8px; min-height:26px; border-radius:10px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; }
-      .rw-pay-all-list { display:grid; gap:6px; }
+      .rw-pay-all-list { display:grid; gap:6px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36); }
+      .rw-pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
+      .rw-pay-all-list::-webkit-scrollbar-track { background:rgba(15,23,42,.34); border-radius:999px; }
+      .rw-pay-all-list::-webkit-scrollbar-thumb { background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.88)); border:2px solid rgba(15,23,42,.50); border-radius:999px; }
       .rw-pay-all-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; align-items:center; padding:7px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.72); }
       .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:900; color:#f8fafc; }
       .rw-pay-all-payout { display:block; margin-top:1px; color:#86efac; font-size:10px; font-weight:950; }
       .rw-pay-all-copy { padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; }
-      .rw-resize-handle { position:absolute; right:7px; bottom:7px; width:18px; height:18px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.62); border-bottom:2px solid rgba(125,211,252,.62); border-radius:0 0 8px 0; }
+      .rw-resize-handle { position:absolute; width:18px; height:18px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
+      .rw-resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 8px 0; }
+      .rw-resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 0 8px; }
+      .rw-resize-handle-ne { right:7px; top:7px; cursor:nesw-resize; border-right:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:0 8px 0 0; }
+      .rw-resize-handle-nw { left:7px; top:7px; cursor:nwse-resize; border-left:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:8px 0 0 0; }
       @media (max-width: 760px), (pointer: coarse) {
         .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(300px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
         .rw-pay-all-row { grid-template-columns: 1fr; }
@@ -4977,10 +5185,11 @@
     return `
       <button id="rwph-close-helper" type="button" title="Close">×</button>
       <div id="rwph-payment-helper-title">RWPH Payment Helper</div>
-      <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
-      <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
+      <div class="rwph-xanax-scroll">
+        <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
+        <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
 
-      <div class="rwph-xanax-detail-card">
+        <div class="rwph-xanax-detail-card">
         <div class="rwph-xanax-detail-title">Required payment details</div>
         <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
         <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
@@ -5004,8 +5213,9 @@
         6. Choose the Xanax amount, review everything, then manually Send/Confirm.
       </div>
 
-      <div class="rwph-xanax-safety-note">
-        RWPH never clicks Send, never clicks Confirm, and never sends items for you. Only Xanax with the exact payment code can auto-add licence time. Wrong items or missing/incorrect codes need manual review.
+        <div class="rwph-xanax-safety-note">
+          RWPH never clicks Send, never clicks Confirm, and never sends items for you. Only Xanax with the exact payment code can auto-add licence time. Wrong items or missing/incorrect codes need manual review.
+        </div>
       </div>
     `;
   }
@@ -5132,6 +5342,11 @@
     el.style.userSelect = "none";
   }
 
+  function rwphSetPanelStyle(panel, prop, value) {
+    if (!panel) return;
+    panel.style.setProperty(prop, String(value), "important");
+  }
+
   function makeDraggable(panel, handleSelector = ".rw-head") {
     if (!panel || panel.dataset.rwphDragReady === "1") return;
     panel.dataset.rwphDragReady = "1";
@@ -5156,14 +5371,14 @@
       startLeft = rect.left;
       startTop = rect.top;
 
-      panel.style.left = `${rect.left}px`;
-      panel.style.top = `${rect.top}px`;
-      panel.style.right = "auto";
-      panel.style.bottom = "auto";
-      panel.style.position = "fixed";
-      panel.style.transform = "none";
-      panel.style.maxWidth = "calc(100vw - 16px)";
-      panel.style.maxHeight = "calc(100vh - 16px)";
+      rwphSetPanelStyle(panel, "left", `${rect.left}px`);
+      rwphSetPanelStyle(panel, "top", `${rect.top}px`);
+      rwphSetPanelStyle(panel, "right", "auto");
+      rwphSetPanelStyle(panel, "bottom", "auto");
+      rwphSetPanelStyle(panel, "position", "fixed");
+      rwphSetPanelStyle(panel, "transform", "none");
+      rwphSetPanelStyle(panel, "max-width", "calc(100vw - 16px)");
+      rwphSetPanelStyle(panel, "max-height", "calc(100vh - 16px)");
 
       rwphBlockTouchDefaults(handle);
       e.preventDefault?.();
@@ -5177,8 +5392,8 @@
       const dy = point.y - startY;
       const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
       const maxTop = Math.max(8, window.innerHeight - 40);
-      panel.style.left = `${Math.min(Math.max(8, startLeft + dx), maxLeft)}px`;
-      panel.style.top = `${Math.min(Math.max(8, startTop + dy), maxTop)}px`;
+      rwphSetPanelStyle(panel, "left", `${Math.min(Math.max(8, startLeft + dx), maxLeft)}px`);
+      rwphSetPanelStyle(panel, "top", `${Math.min(Math.max(8, startTop + dy), maxTop)}px`);
       e.preventDefault?.();
     }
 
@@ -5201,56 +5416,83 @@
   function makeResizable(panel) {
     if (!panel) return;
 
-    let handle = Array.from(panel.children || []).find((child) => child.classList?.contains("rw-resize-handle"));
-    if (!handle) {
-      handle = document.createElement("div");
-      handle.className = "rw-resize-handle";
-      handle.title = "Drag to resize";
-      handle.style.position = "absolute";
-      handle.style.right = "7px";
-      handle.style.bottom = "7px";
-      handle.style.width = "22px";
-      handle.style.height = "22px";
-      handle.style.zIndex = "5";
-      handle.style.cursor = "nwse-resize";
-      handle.style.touchAction = "none";
-      handle.style.webkitUserSelect = "none";
-      handle.style.userSelect = "none";
-      handle.style.borderRight = "2px solid rgba(230,186,116,.72)";
-      handle.style.borderBottom = "2px solid rgba(230,186,116,.72)";
-      handle.style.borderRadius = "0 0 8px 0";
-      handle.style.opacity = ".9";
-      panel.appendChild(handle);
-    }
-    rwphBlockTouchDefaults(handle);
+    if (!panel.style.position) rwphSetPanelStyle(panel, "position", "fixed");
+    rwphSetPanelStyle(panel, "overflow", "hidden");
+
+    const handleDefs = [
+      { dir: "nw", title: "Resize from top-left" },
+      { dir: "ne", title: "Resize from top-right" },
+      { dir: "sw", title: "Resize from bottom-left" },
+      { dir: "se", title: "Resize from bottom-right" },
+    ];
+
+    handleDefs.forEach(({ dir, title }) => {
+      let handle = panel.querySelector(`:scope > .rw-resize-handle-${dir}`);
+      if (!handle) {
+        handle = document.createElement("div");
+        handle.className = `rw-resize-handle rw-resize-handle-${dir}`;
+        handle.dataset.rwphResizeDir = dir;
+        handle.title = title;
+        panel.appendChild(handle);
+      }
+      rwphBlockTouchDefaults(handle);
+    });
+
+    // Remove the legacy single corner resize handles if an older saved/rendered panel left one behind.
+    Array.from(panel.children || []).forEach((child) => {
+      if (child.classList?.contains("rw-resize-handle") && !child.dataset.rwphResizeDir) {
+        child.dataset.rwphResizeDir = "se";
+        child.classList.add("rw-resize-handle-se");
+        child.title = "Resize from bottom-right";
+      }
+    });
 
     if (panel.dataset.rwphResizeReady === "1") return;
     panel.dataset.rwphResizeReady = "1";
 
     let resizing = false;
+    let activeDir = "se";
     let startX = 0;
     let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
     let startWidth = 0;
     let startHeight = 0;
+
+    function panelMinimums() {
+      const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
+      const isResultsPanel = panel.classList?.contains("rw-results-panel");
+      const isXanaxHelper = panel.id === "rwph-xanax-send-status";
+      const isPayAll = panel.id === "rw-pay-all-panel" || panel.classList?.contains("rw-pay-all-panel");
+      const minWidth = mobilePanel
+        ? (isResultsPanel ? 170 : (isXanaxHelper ? 240 : (isPayAll ? 240 : 170)))
+        : (isResultsPanel ? 280 : (isXanaxHelper ? 300 : (isPayAll ? 260 : 240)));
+      const minHeight = mobilePanel ? (isXanaxHelper ? 180 : 120) : 180;
+      return { minWidth, minHeight };
+    }
 
     function beginResize(e) {
       const resizeHandle = e.target.closest?.(".rw-resize-handle");
       if (!resizeHandle || !panel.contains(resizeHandle)) return;
       const point = rwphGetPoint(e);
+      const rect = panel.getBoundingClientRect();
       resizing = true;
+      activeDir = resizeHandle.dataset.rwphResizeDir || (resizeHandle.className.match(/rw-resize-handle-(nw|ne|sw|se)/)?.[1]) || "se";
       startX = point.x;
       startY = point.y;
-      startWidth = panel.offsetWidth || panel.getBoundingClientRect().width || 300;
-      startHeight = panel.offsetHeight || panel.getBoundingClientRect().height || 240;
-      const rect = panel.getBoundingClientRect();
-      panel.style.left = `${rect.left}px`;
-      panel.style.top = `${rect.top}px`;
-      panel.style.right = "auto";
-      panel.style.bottom = "auto";
-      panel.style.position = "fixed";
-      panel.style.transform = "none";
-      panel.style.maxWidth = "none";
-      panel.style.maxHeight = "none";
+      startLeft = rect.left;
+      startTop = rect.top;
+      startWidth = rect.width || panel.offsetWidth || 300;
+      startHeight = rect.height || panel.offsetHeight || 240;
+      rwphSetPanelStyle(panel, "left", `${rect.left}px`);
+      rwphSetPanelStyle(panel, "top", `${rect.top}px`);
+      rwphSetPanelStyle(panel, "right", "auto");
+      rwphSetPanelStyle(panel, "bottom", "auto");
+      rwphSetPanelStyle(panel, "position", "fixed");
+      rwphSetPanelStyle(panel, "transform", "none");
+      rwphSetPanelStyle(panel, "max-width", "none");
+      rwphSetPanelStyle(panel, "max-height", "none");
+      rwphSetPanelStyle(panel, "overflow", "hidden");
       e.preventDefault?.();
       e.stopPropagation?.();
     }
@@ -5260,16 +5502,34 @@
       const point = rwphGetPoint(e);
       const dx = point.x - startX;
       const dy = point.y - startY;
-      const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
-      const isResultsPanel = panel.classList?.contains("rw-results-panel");
-      const isXanaxHelper = panel.id === "rwph-xanax-send-status";
-      const minWidth = mobilePanel ? (isResultsPanel ? 160 : (isXanaxHelper ? 240 : 150)) : (isResultsPanel ? 280 : (isXanaxHelper ? 300 : 240));
-      const minHeight = mobilePanel ? (isXanaxHelper ? 180 : 110) : 180;
+      const { minWidth, minHeight } = panelMinimums();
       const maxWidth = Math.max(minWidth, window.innerWidth - 16);
       const maxHeight = Math.max(minHeight, window.innerHeight - 16);
-      panel.style.width = `${Math.min(Math.max(minWidth, startWidth + dx), maxWidth)}px`;
-      panel.style.height = `${Math.min(Math.max(minHeight, startHeight + dy), maxHeight)}px`;
-      panel.style.overflow = "auto";
+
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+      let newLeft = startLeft;
+      let newTop = startTop;
+
+      if (activeDir.includes("e")) newWidth = startWidth + dx;
+      if (activeDir.includes("s")) newHeight = startHeight + dy;
+      if (activeDir.includes("w")) newWidth = startWidth - dx;
+      if (activeDir.includes("n")) newHeight = startHeight - dy;
+
+      newWidth = Math.min(Math.max(minWidth, newWidth), maxWidth);
+      newHeight = Math.min(Math.max(minHeight, newHeight), maxHeight);
+
+      if (activeDir.includes("w")) newLeft = startLeft + (startWidth - newWidth);
+      if (activeDir.includes("n")) newTop = startTop + (startHeight - newHeight);
+
+      newLeft = Math.min(Math.max(8, newLeft), Math.max(8, window.innerWidth - newWidth - 8));
+      newTop = Math.min(Math.max(8, newTop), Math.max(8, window.innerHeight - newHeight - 8));
+
+      rwphSetPanelStyle(panel, "left", `${newLeft}px`);
+      rwphSetPanelStyle(panel, "top", `${newTop}px`);
+      rwphSetPanelStyle(panel, "width", `${newWidth}px`);
+      rwphSetPanelStyle(panel, "height", `${newHeight}px`);
+      rwphSetPanelStyle(panel, "overflow", "hidden");
       e.preventDefault?.();
     }
 
@@ -5503,7 +5763,7 @@
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Pay All helper, and manual-review popup.</li>
-              <li><b>Resizable panels:</b> all RWPH floating panels have a bottom-right resize handle and save their size/position after refresh.</li>
+              <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -5570,7 +5830,7 @@
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely. After a successful calculation, use Reopen Results within 10 minutes to try opening the last results again.</li>
               <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
-              <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
+              <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the corner resize handles to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
           </div>
@@ -6081,7 +6341,7 @@
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Pay All helper, and manual-review popup.</li>
-              <li><b>Resizable panels:</b> all RWPH floating panels have a bottom-right resize handle and save their size/position after refresh.</li>
+              <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -6147,7 +6407,7 @@
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely. After a successful calculation, use Reopen Results within 10 minutes to try opening the last results again.</li>
               <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
-              <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
+              <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the corner resize handles to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
           </div>
