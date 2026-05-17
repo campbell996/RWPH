@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.158
+// @version      1.1.160
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -62,136 +62,261 @@
   }
 
 
-  function rwphEnsureToastStack() {
-    if (!document.getElementById("rwph-toast-style")) {
-      const style = document.createElement("style");
-      style.id = "rwph-toast-style";
-      style.textContent = `
-        #rwph-toast-stack {
-          position: fixed !important;
-          right: 18px !important;
-          bottom: 18px !important;
-          z-index: 2147483647 !important;
-          width: min(360px, calc(100vw - 28px)) !important;
-          display: grid !important;
-          gap: 9px !important;
-          pointer-events: none !important;
-          font-family: Inter, Arial, sans-serif !important;
-        }
-        .rwph-toast {
-          pointer-events: auto !important;
-          position: relative !important;
-          overflow: hidden !important;
-          border-radius: 16px !important;
-          border: 1px solid rgba(56, 189, 248, .38) !important;
-          background: linear-gradient(135deg, rgba(3, 7, 18, .98), rgba(15, 23, 42, .96), rgba(8, 47, 73, .92)) !important;
-          box-shadow: 0 18px 50px rgba(0, 0, 0, .48), 0 0 26px rgba(56, 189, 248, .18) !important;
-          color: #e0f7ff !important;
-          padding: 11px 12px 11px 13px !important;
-          transform: translateY(8px) scale(.98) !important;
-          opacity: 0 !important;
-          animation: rwph-toast-in .18s ease-out forwards !important;
-        }
-        .rwph-toast::before {
-          content: "" !important;
-          position: absolute !important;
-          inset: 0 auto 0 0 !important;
-          width: 4px !important;
-          background: linear-gradient(180deg, #38bdf8, #22c55e) !important;
-          box-shadow: 0 0 14px rgba(56, 189, 248, .48) !important;
-        }
-        .rwph-toast.rwph-toast-error { border-color: rgba(248, 113, 113, .48) !important; }
-        .rwph-toast.rwph-toast-error::before { background: linear-gradient(180deg, #fb7185, #f97316) !important; }
-        .rwph-toast.rwph-toast-warn { border-color: rgba(250, 204, 21, .48) !important; }
-        .rwph-toast.rwph-toast-warn::before { background: linear-gradient(180deg, #facc15, #f97316) !important; }
-        .rwph-toast-title {
-          margin: 0 0 4px 0 !important;
-          color: #ffffff !important;
-          font-size: 12px !important;
-          line-height: 1.15 !important;
-          font-weight: 950 !important;
-          letter-spacing: .4px !important;
-          text-transform: uppercase !important;
-        }
-        .rwph-toast-message {
-          margin: 0 !important;
-          color: #bdefff !important;
-          font-size: 12px !important;
-          line-height: 1.35 !important;
-          font-weight: 800 !important;
-          overflow-wrap: anywhere !important;
-        }
-        .rwph-toast-timer {
-          position: absolute !important;
-          left: 0 !important;
-          right: 0 !important;
-          bottom: 0 !important;
-          height: 2px !important;
-          background: rgba(56, 189, 248, .72) !important;
-          transform-origin: left center !important;
-          animation: rwph-toast-timer var(--rwph-toast-ttl, 10s) linear forwards !important;
-        }
-        @keyframes rwph-toast-in { to { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes rwph-toast-timer { to { transform: scaleX(0); } }
-        @media (max-width: 520px) {
-          #rwph-toast-stack { right: 10px !important; bottom: 10px !important; width: calc(100vw - 20px) !important; }
-          .rwph-toast { border-radius: 14px !important; padding: 10px 11px 10px 12px !important; }
-        }
-      `;
-      document.head.appendChild(style);
+  function rwphPopupClamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function rwphFindCurrentPopupAnchor(anchorEl) {
+    const panelSelectors = [
+      "#rw-payout-helper",
+      "#rw-results-panel",
+      "#rw-pay-all-panel",
+      "#rwph-xanax-send-status",
+      "#rw-wrong-payment-panel",
+      "#rw-pay-all-copy-panel",
+      ".rwph-floating-panel"
+    ];
+    const joined = panelSelectors.join(",");
+
+    if (anchorEl && anchorEl.closest) {
+      const panel = anchorEl.closest(joined);
+      if (panel) return panel;
     }
 
-    let stack = document.getElementById("rwph-toast-stack");
+    const active = document.activeElement;
+    if (active && active.closest) {
+      const panel = active.closest(joined);
+      if (panel) return panel;
+    }
+
+    const visiblePanels = [];
+    for (const selector of panelSelectors) {
+      for (const panel of Array.from(document.querySelectorAll(selector))) {
+        const rect = panel.getBoundingClientRect();
+        if (rect.width > 20 && rect.height > 20) visiblePanels.push(panel);
+      }
+    }
+
+    visiblePanels.sort((a, b) => {
+      const za = Number(getComputedStyle(a).zIndex) || 0;
+      const zb = Number(getComputedStyle(b).zIndex) || 0;
+      return zb - za;
+    });
+    return visiblePanels[0] || null;
+  }
+
+  function rwphEnsureInfoPopupStyle() {
+    if (document.getElementById("rwph-info-popup-style")) return;
+    const style = document.createElement("style");
+    style.id = "rwph-info-popup-style";
+    style.textContent = `
+      .rwph-info-popup-stack {
+        position: fixed !important;
+        z-index: 2147483647 !important;
+        display: grid !important;
+        gap: 8px !important;
+        pointer-events: none !important;
+        font-family: Inter, Arial, sans-serif !important;
+        max-height: min(42vh, 330px) !important;
+        overflow: hidden !important;
+      }
+      .rwph-info-popup-panel {
+        pointer-events: auto !important;
+        position: relative !important;
+        overflow: hidden !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(56, 189, 248, .42) !important;
+        background: linear-gradient(135deg, rgba(3, 7, 18, .98), rgba(15, 23, 42, .97), rgba(8, 47, 73, .94)) !important;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, .52), 0 0 28px rgba(56, 189, 248, .2) !important;
+        color: #e0f7ff !important;
+        padding: 11px 34px 13px 14px !important;
+        transform: translateY(-4px) scale(.985) !important;
+        opacity: 0 !important;
+        animation: rwph-info-popup-in .18s ease-out forwards !important;
+      }
+      .rwph-info-popup-panel::before {
+        content: "" !important;
+        position: absolute !important;
+        inset: 0 auto 0 0 !important;
+        width: 4px !important;
+        background: linear-gradient(180deg, #38bdf8, #22c55e) !important;
+        box-shadow: 0 0 14px rgba(56, 189, 248, .48) !important;
+      }
+      .rwph-info-popup-panel.rwph-info-popup-error { border-color: rgba(248, 113, 113, .52) !important; }
+      .rwph-info-popup-panel.rwph-info-popup-error::before { background: linear-gradient(180deg, #fb7185, #f97316) !important; }
+      .rwph-info-popup-panel.rwph-info-popup-warn { border-color: rgba(250, 204, 21, .52) !important; }
+      .rwph-info-popup-panel.rwph-info-popup-warn::before { background: linear-gradient(180deg, #facc15, #f97316) !important; }
+      .rwph-info-popup-title {
+        margin: 0 0 5px 0 !important;
+        color: #ffffff !important;
+        font-size: 12px !important;
+        line-height: 1.15 !important;
+        font-weight: 950 !important;
+        letter-spacing: .45px !important;
+        text-transform: uppercase !important;
+      }
+      .rwph-info-popup-message {
+        margin: 0 !important;
+        color: #bdefff !important;
+        font-size: 12px !important;
+        line-height: 1.35 !important;
+        font-weight: 800 !important;
+        overflow-wrap: anywhere !important;
+        white-space: pre-wrap !important;
+      }
+      .rwph-info-popup-close {
+        position: absolute !important;
+        top: 7px !important;
+        right: 7px !important;
+        width: 22px !important;
+        height: 22px !important;
+        display: grid !important;
+        place-items: center !important;
+        border: 1px solid rgba(148, 163, 184, .32) !important;
+        border-radius: 999px !important;
+        background: rgba(15, 23, 42, .86) !important;
+        color: #e0f7ff !important;
+        cursor: pointer !important;
+        font-size: 14px !important;
+        line-height: 1 !important;
+        font-weight: 950 !important;
+      }
+      .rwph-info-popup-close:hover {
+        background: rgba(56, 189, 248, .18) !important;
+        border-color: rgba(56, 189, 248, .52) !important;
+      }
+      .rwph-info-popup-timer {
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: 2px !important;
+        background: rgba(56, 189, 248, .76) !important;
+        transform-origin: left center !important;
+        animation: rwph-info-popup-timer var(--rwph-info-popup-ttl, 30s) linear forwards !important;
+      }
+      @keyframes rwph-info-popup-in { to { transform: translateY(0) scale(1); opacity: 1; } }
+      @keyframes rwph-info-popup-timer { to { transform: scaleX(0); } }
+      @media (max-width: 520px) {
+        .rwph-info-popup-stack { width: calc(100vw - 20px) !important; left: 10px !important; }
+        .rwph-info-popup-panel { border-radius: 14px !important; padding: 10px 32px 12px 12px !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function rwphSafeAnchorId(panel) {
+    if (!panel) return "fallback";
+    if (!panel.id) panel.dataset.rwphPopupAnchorId = panel.dataset.rwphPopupAnchorId || `anon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return String(panel.id || panel.dataset.rwphPopupAnchorId).replace(/[^a-zA-Z0-9_-]/g, "_");
+  }
+
+  function rwphPositionInfoPopupStack(stack, panel) {
+    const margin = 8;
+    if (!panel) {
+      stack.style.setProperty("right", "18px", "important");
+      stack.style.setProperty("bottom", "18px", "important");
+      stack.style.setProperty("left", "auto", "important");
+      stack.style.setProperty("top", "auto", "important");
+      stack.style.setProperty("width", "min(380px, calc(100vw - 28px))", "important");
+      return;
+    }
+
+    const rect = panel.getBoundingClientRect();
+    const width = Math.min(Math.max(260, rect.width), Math.min(430, window.innerWidth - (margin * 2)));
+    const left = rwphPopupClamp(rect.left, margin, Math.max(margin, window.innerWidth - width - margin));
+    const topWanted = rect.bottom + margin;
+    const top = rwphPopupClamp(topWanted, margin, Math.max(margin, window.innerHeight - 120));
+
+    stack.style.setProperty("left", `${Math.round(left)}px`, "important");
+    stack.style.setProperty("top", `${Math.round(top)}px`, "important");
+    stack.style.setProperty("right", "auto", "important");
+    stack.style.setProperty("bottom", "auto", "important");
+    stack.style.setProperty("width", `${Math.round(width)}px`, "important");
+  }
+
+  function rwphEnsureInfoPopupStack(anchorEl) {
+    rwphEnsureInfoPopupStyle();
+    const panel = rwphFindCurrentPopupAnchor(anchorEl);
+    const anchorId = rwphSafeAnchorId(panel);
+    const stackId = `rwph-info-popup-stack-${anchorId}`;
+    let stack = document.getElementById(stackId);
     if (!stack) {
       stack = document.createElement("div");
-      stack.id = "rwph-toast-stack";
+      stack.id = stackId;
+      stack.className = "rwph-info-popup-stack";
       document.body.appendChild(stack);
+    }
+    stack.__rwphAnchorPanel = panel || null;
+    rwphPositionInfoPopupStack(stack, panel);
+    if (!stack.dataset.rwphRepositionReady) {
+      stack.dataset.rwphRepositionReady = "1";
+      const reposition = () => {
+        if (!document.body.contains(stack)) return;
+        const livePanel = stack.__rwphAnchorPanel && document.body.contains(stack.__rwphAnchorPanel) ? stack.__rwphAnchorPanel : null;
+        rwphPositionInfoPopupStack(stack, livePanel);
+      };
+      window.addEventListener("resize", reposition, { passive: true });
+      window.addEventListener("scroll", reposition, { passive: true });
+      setInterval(reposition, 1500);
     }
     return stack;
   }
 
-  function rwphShowToast(message, mode = "info", ttlMs = 10000, title = "RWPH Info") {
-    const stack = rwphEnsureToastStack();
-    const toast = document.createElement("div");
+  function rwphShowToast(message, mode = "info", ttlMs = 30000, title = "RWPH Info", anchorEl = null) {
+    const stack = rwphEnsureInfoPopupStack(anchorEl);
+    const popup = document.createElement("div");
     const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
-    toast.className = `rwph-toast rwph-toast-${safeMode}`;
-    toast.style.setProperty("--rwph-toast-ttl", `${Math.max(1000, Number(ttlMs) || 10000)}ms`);
+    const ttl = Math.max(30000, Number(ttlMs) || 30000);
+    popup.className = `rwph-info-popup-panel rwph-info-popup-${safeMode}`;
+    popup.style.setProperty("--rwph-info-popup-ttl", `${ttl}ms`);
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "rwph-info-popup-close";
+    close.setAttribute("aria-label", "Close RWPH info popup");
+    close.textContent = "×";
 
     const titleEl = document.createElement("div");
-    titleEl.className = "rwph-toast-title";
+    titleEl.className = "rwph-info-popup-title";
     titleEl.textContent = title;
 
     const msgEl = document.createElement("div");
-    msgEl.className = "rwph-toast-message";
+    msgEl.className = "rwph-info-popup-message";
     msgEl.textContent = String(message || "Done.");
 
     const timerEl = document.createElement("div");
-    timerEl.className = "rwph-toast-timer";
+    timerEl.className = "rwph-info-popup-timer";
 
-    toast.appendChild(titleEl);
-    toast.appendChild(msgEl);
-    toast.appendChild(timerEl);
-    stack.appendChild(toast);
+    popup.appendChild(close);
+    popup.appendChild(titleEl);
+    popup.appendChild(msgEl);
+    popup.appendChild(timerEl);
+    stack.appendChild(popup);
 
-    const removeToast = () => {
-      toast.style.transition = "opacity .18s ease, transform .18s ease";
-      toast.style.opacity = "0";
-      toast.style.transform = "translateY(8px) scale(.98)";
-      setTimeout(() => toast.remove(), 220);
+    const removePopup = () => {
+      if (!popup.isConnected) return;
+      popup.style.transition = "opacity .18s ease, transform .18s ease";
+      popup.style.opacity = "0";
+      popup.style.transform = "translateY(-4px) scale(.985)";
+      setTimeout(() => {
+        popup.remove();
+        if (stack && stack.children.length === 0) stack.remove();
+      }, 220);
     };
-    toast.addEventListener("click", removeToast, { once: true });
-    setTimeout(removeToast, Math.max(1000, Number(ttlMs) || 10000));
-    return toast;
+    close.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); removePopup(); }, { once: true });
+    setTimeout(removePopup, ttl);
+    return popup;
   }
 
 
   function rwphToastPanelInfo(statusEl, message, mode = "info", title = "RWPH Info", readyText = "Ready.") {
-    rwphShowToast(message, mode, 10000, title);
+    rwphShowToast(message, mode, 30000, title, statusEl);
     if (statusEl) statusEl.textContent = readyText;
   }
 
   function rwphToastPanelError(statusEl, message, title = "RWPH Error", readyText = "Ready.") {
-    rwphShowToast(message, "error", 10000, title);
+    rwphShowToast(message, "error", 30000, title, statusEl);
     if (statusEl) statusEl.textContent = readyText;
   }
 
@@ -677,6 +802,17 @@
       .join(" ");
   }
 
+  function updateLauncherCornerButtonLabels() {
+    const label = launcherCornerLabel(getLauncherCorner());
+    ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.textContent = label;
+      btn.title = `Launcher is currently at ${label}. Click to move it to the next corner.`;
+      btn.setAttribute("aria-label", `Launcher corner: ${label}`);
+    });
+  }
+
   function getLauncherCorner() {
     const saved = GM_getValue(LAUNCHER_CORNER_STORAGE_KEY, "bottom-right");
     return LAUNCHER_CORNERS.includes(saved) ? saved : "bottom-right";
@@ -685,6 +821,7 @@
   function setLauncherCorner(corner) {
     GM_setValue(LAUNCHER_CORNER_STORAGE_KEY, corner);
     updateLauncherButtonPosition();
+    updateLauncherCornerButtonLabels();
   }
 
   function getLauncherPositionStyle(corner) {
@@ -743,6 +880,7 @@
     const corner = getLauncherCorner();
     applyStyle(btn, getLauncherPositionStyle(corner));
     btn.title = `Open Ranked War Payout Helper (${launcherCornerLabel(corner)})`;
+    updateLauncherCornerButtonLabels();
   }
 
   function rwphLauncherLogoHtml() {
@@ -985,11 +1123,13 @@
   }
 
   function attachMoveLauncherButton() {
-    const btn = document.getElementById("rw-move-launcher");
-    if (!btn) return;
-
-    btn.addEventListener("click", cycleLauncherCorner);
-    btn.textContent = `Move Button Corner (${launcherCornerLabel(getLauncherCorner())})`;
+    ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn || btn.dataset.rwphCornerReady === "1") return;
+      btn.dataset.rwphCornerReady = "1";
+      btn.addEventListener("click", cycleLauncherCorner);
+    });
+    updateLauncherCornerButtonLabels();
   }
 
   function closePanel() {
@@ -1142,8 +1282,9 @@
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
   // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
-  // v1.1.157: info-style button feedback now appears as bottom-corner toast popups for 10 seconds instead of filling the panel footer.
-  // v1.1.158: expanded bottom-corner toast popups across Admin, Results, Payments, and Xanax helper panel feedback.
+  // v1.1.157: info-style button feedback moved out of the panel footer.
+  // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
+  // v1.1.159: feedback now appears as closable popup panels below the active RWPH panel and auto-closes after 30 seconds.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -4013,25 +4154,60 @@
     }
 
     function showToast(message, mode) {
-      var stack = document.getElementById("rwphFullToastStack");
+      var active = document.activeElement;
+      var toolbar = (active && active.closest && active.closest('#payAllPanel')) || document.querySelector('.newsletter-zone') || document.querySelector('.hero') || document.body;
+      var stack = document.getElementById("rwphFullPopupPanelStack");
       if (!stack) {
         stack = document.createElement("div");
-        stack.id = "rwphFullToastStack";
-        stack.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:2147483647;display:flex;flex-direction:column;gap:8px;max-width:min(360px,calc(100vw - 28px));pointer-events:none";
+        stack.id = "rwphFullPopupPanelStack";
+        stack.style.cssText = "position:fixed;z-index:2147483647;display:grid;gap:8px;max-height:min(42vh,330px);overflow:hidden;pointer-events:none;font-family:Arial,Helvetica,sans-serif";
         document.body.appendChild(stack);
       }
-      var toast = document.createElement("div");
+      function positionStack() {
+        var rect = toolbar && toolbar.getBoundingClientRect ? toolbar.getBoundingClientRect() : null;
+        if (!rect || rect.width < 20 || rect.height < 20) {
+          stack.style.cssText += ";right:14px;bottom:14px;width:min(380px,calc(100vw - 28px));left:auto;top:auto";
+          return;
+        }
+        var margin = 8;
+        var width = Math.min(Math.max(260, rect.width), Math.min(430, window.innerWidth - margin * 2));
+        var left = Math.min(Math.max(margin, rect.left), Math.max(margin, window.innerWidth - width - margin));
+        var top = Math.min(Math.max(margin, rect.bottom + margin), Math.max(margin, window.innerHeight - 120));
+        stack.style.left = Math.round(left) + "px";
+        stack.style.top = Math.round(top) + "px";
+        stack.style.right = "auto";
+        stack.style.bottom = "auto";
+        stack.style.width = Math.round(width) + "px";
+      }
+      positionStack();
+      window.addEventListener('resize', positionStack, { passive:true });
+      window.addEventListener('scroll', positionStack, { passive:true });
+
+      var panel = document.createElement("div");
       var warn = mode === "warn";
-      toast.style.cssText = "pointer-events:auto;position:relative;overflow:hidden;border-radius:14px;padding:11px 13px 12px;background:linear-gradient(135deg,rgba(8,16,34,.98),rgba(15,32,64,.96));border:1px solid " + (warn ? "rgba(250,204,21,.55)" : "rgba(56,189,248,.5)") + ";color:#dff7ff;font:800 12px/1.35 Arial,Helvetica,sans-serif;box-shadow:0 14px 36px rgba(0,0,0,.46);cursor:pointer";
-      toast.textContent = String(message || "Done.");
-      stack.appendChild(toast);
+      panel.style.cssText = "pointer-events:auto;position:relative;overflow:hidden;border-radius:16px;padding:11px 34px 13px 14px;background:linear-gradient(135deg,rgba(3,7,18,.98),rgba(15,23,42,.97),rgba(8,47,73,.94));border:1px solid " + (warn ? "rgba(250,204,21,.55)" : "rgba(56,189,248,.5)") + ";color:#dff7ff;font:800 12px/1.35 Arial,Helvetica,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.52),0 0 28px rgba(56,189,248,.2);transform:translateY(-4px);opacity:0;transition:opacity .18s ease,transform .18s ease";
+      var close = document.createElement("button");
+      close.type = "button";
+      close.setAttribute("aria-label", "Close RWPH info popup");
+      close.textContent = "×";
+      close.style.cssText = "position:absolute;top:7px;right:7px;width:22px;height:22px;display:grid;place-items:center;border:1px solid rgba(148,163,184,.32);border-radius:999px;background:rgba(15,23,42,.86);color:#e0f7ff;cursor:pointer;font:950 14px/1 Arial,Helvetica,sans-serif";
+      var title = document.createElement("div");
+      title.textContent = warn ? "RWPH Warning" : "RWPH Info";
+      title.style.cssText = "margin:0 0 5px;color:#fff;font:950 12px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.45px;text-transform:uppercase";
+      var text = document.createElement("div");
+      text.textContent = String(message || "Done.");
+      text.style.cssText = "color:#bdefff;font:800 12px/1.35 Arial,Helvetica,sans-serif;overflow-wrap:anywhere;white-space:pre-wrap";
+      panel.appendChild(close);
+      panel.appendChild(title);
+      panel.appendChild(text);
+      stack.appendChild(panel);
       var bar = document.createElement("div");
-      bar.style.cssText = "position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(56,189,248,.75);transform-origin:left center;transition:transform 10s linear";
-      toast.appendChild(bar);
-      setTimeout(function(){ bar.style.transform = "scaleX(0)"; }, 30);
-      function remove(){ toast.style.opacity = "0"; toast.style.transform = "translateY(8px)"; setTimeout(function(){ toast.remove(); }, 220); }
-      toast.addEventListener("click", remove, { once:true });
-      setTimeout(remove, 10000);
+      bar.style.cssText = "position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(56,189,248,.76);transform-origin:left center;transition:transform 30s linear";
+      panel.appendChild(bar);
+      setTimeout(function(){ panel.style.opacity = "1"; panel.style.transform = "translateY(0)"; bar.style.transform = "scaleX(0)"; }, 30);
+      function remove(){ panel.style.opacity = "0"; panel.style.transform = "translateY(-4px)"; setTimeout(function(){ panel.remove(); if (!stack.children.length) stack.remove(); }, 220); }
+      close.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); remove(); }, { once:true });
+      setTimeout(remove, 30000);
     }
 
     const payAllUndoStack = [];
@@ -6291,7 +6467,7 @@
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
-            <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
+            <button id="rw-move-launcher" class="secondary">${launcherCornerLabel(getLauncherCorner())}</button>
           </div>
           <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock if you already have a licence, or Buy Licence to start a new payment.</div>
           <div id="rw-paywall-code"></div>
@@ -6310,7 +6486,7 @@
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
-              <button id="rw-move-launcher-admin" class="secondary">Move Button Corner</button>
+              <button id="rw-move-launcher-admin" class="secondary">${launcherCornerLabel(getLauncherCorner())}</button>
             </div>
 
             <label>Player Torn ID
@@ -6457,12 +6633,12 @@
             <ul class="rw-how-list">
               <li><b>RWPH launcher logo:</b> opens the helper from the branded RWPH button on Torn.</li>
               <li><b>Logo panel titles:</b> panel titles include the RWPH logo.</li>
-              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
+              <li><b>Launcher corner button:</b> the button is named by its current corner: Bottom Right, Bottom Left, Top Left, or Top Right. Click it to move the RWPH launcher to the next corner.</li>
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Payments helper, and manual-review popup.</li>
               <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
-              <li><b>Popup feedback:</b> save, admin, result, newsletter, payment-helper, and copy/prefill feedback appears as a small bottom-corner popup for 10 seconds instead of filling panel status areas.</li>
+              <li><b>Popup feedback:</b> save, admin, result, newsletter, payment-helper, and copy/prefill feedback appears as a small popup panel below the active RWPH panel, includes a close cross, and auto-disappears after 30 seconds.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -6550,7 +6726,6 @@
     const lockedResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(lockedResultsPanel);
     attachMoveLauncherButton();
-    document.getElementById("rw-move-launcher-admin").addEventListener("click", cycleLauncherCorner);
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
     const payTabBtn = document.getElementById("rw-paywall-tab-pay");
@@ -6874,7 +7049,7 @@
           </div>
           <div class="rw-actions" id="rw-last-results-actions">
             <button id="rw-reopen-last-results" class="secondary" type="button" hidden>Reopen Results</button>
-            <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
+            <button id="rw-move-launcher" class="secondary">${launcherCornerLabel(getLauncherCorner())}</button>
           </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
@@ -7040,12 +7215,12 @@
             <ul class="rw-how-list">
               <li><b>RWPH launcher logo:</b> opens the helper from the branded RWPH button on Torn.</li>
               <li><b>Logo panel titles:</b> panel titles include the RWPH logo.</li>
-              <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
+              <li><b>Launcher corner button:</b> the button is named by its current corner: Bottom Right, Bottom Left, Top Left, or Top Right. Click it to move the RWPH launcher to the next corner.</li>
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Payments helper, and manual-review popup.</li>
               <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
-              <li><b>Popup feedback:</b> save, admin, result, newsletter, payment-helper, and copy/prefill feedback appears as a small bottom-corner popup for 10 seconds instead of filling panel status areas.</li>
+              <li><b>Popup feedback:</b> save, admin, result, newsletter, payment-helper, and copy/prefill feedback appears as a small popup panel below the active RWPH panel, includes a close cross, and auto-disappears after 30 seconds.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
