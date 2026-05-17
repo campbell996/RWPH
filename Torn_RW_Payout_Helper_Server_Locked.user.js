@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.178
+// @version      1.1.179
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -3671,6 +3671,57 @@
         border-color: rgba(125,211,252,.42) !important;
       }
 
+      /* v1.1.179: one matching button style across every RWPH panel */
+      #rw-payout-helper button,
+      #rw-payout-helper button.secondary,
+      #rw-payout-helper button.danger,
+      #rw-payout-helper .rw-tab-btn,
+      #rw-payout-helper .rw-tab-btn.active,
+      #rw-payout-helper a.btn,
+      #rw-payout-helper a.btn.secondary,
+      #rw-payout-helper .secondary,
+      #rw-payout-helper .rw-pay-all-copy,
+      #rw-payout-helper .rw-pay-all-undo,
+      #rwph-xanax-send-status button,
+      #rwph-xanax-send-status button.secondary,
+      #rwph-xanax-send-status button.danger,
+      #rw-wrong-payment-panel button,
+      .rwph-info-popup-panel button {
+        background: linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important;
+        border: 1px solid rgba(125,211,252,.24) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.75) !important;
+      }
+      #rw-payout-helper button:hover,
+      #rw-payout-helper a.btn:hover,
+      #rwph-xanax-send-status button:hover,
+      #rw-wrong-payment-panel button:hover,
+      .rwph-info-popup-panel button:hover {
+        filter: brightness(1.08) !important;
+        border-color: rgba(125,211,252,.42) !important;
+      }
+
+      /* v1.1.179: API ToS / Usage rows use the exact same Help card shell */
+      #rw-payout-helper .rw-help-api-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        margin-top: 8px !important;
+      }
+      #rw-payout-helper .rw-help-api-grid > .rw-help-api-card {
+        display: block !important;
+        margin-top: 0 !important;
+        padding: 8px 9px !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        background: linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38)) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+        box-sizing: border-box !important;
+      }
 
 
       /* v1.1.177: every Help card now uses the exact same card shell as API ToS / Usage Table cards */
@@ -4462,9 +4513,9 @@
     header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
     h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
     p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border:1px solid rgba(125,211,252,.24)!important;border-left:4px solid rgba(56,189,248,.66)!important;border-radius:7px!important;box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important;text-shadow:0 1px 0 rgba(0,0,0,.75)!important;}
     .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
     /* v1.1.119 newsletter payout chart color match */
@@ -5004,9 +5055,9 @@
     header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
     h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
     p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border:1px solid rgba(125,211,252,.24)!important;border-left:4px solid rgba(56,189,248,.66)!important;border-radius:7px!important;box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important;text-shadow:0 1px 0 rgba(0,0,0,.75)!important;}
     .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
     /* v1.1.132 Torn newsletter chart bars match the legend dots: payout = green top bar, weighted contribution = blue bottom bar */
     .bar.payout{background:linear-gradient(90deg,var(--green),#e0f2fe)!important;box-shadow:0 0 16px rgba(134,239,172,.22)!important;}
@@ -5999,9 +6050,9 @@
     header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
     h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
     p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border:1px solid rgba(125,211,252,.24)!important;border-left:4px solid rgba(56,189,248,.66)!important;border-radius:7px!important;box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important;text-shadow:0 1px 0 rgba(0,0,0,.75)!important;}
     .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style>
@@ -7220,42 +7271,42 @@
             <div class="rw-how-title">API ToS / Usage Table</div>
             <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
             <div class="rw-help-api-grid" role="table" aria-label="API ToS / Usage Table">
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">API key purpose</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Data read</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Backend use</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> The backend should only be run/hosted by someone you trust and should keep server secrets private.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Local storage</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Server storage</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Server owners should avoid logging API keys and should keep backups/private files secure.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Licence checks</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Payments</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> RWPH can prepare payout rows, copy details, and help prefill payment information.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">What RWPH does not do</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> If a future change adds new API/data use, update this Help text before users rely on it.</div>
@@ -7847,42 +7898,42 @@
             <div class="rw-how-title">API ToS / Usage Table</div>
             <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
             <div class="rw-help-api-grid" role="table" aria-label="API ToS / Usage Table">
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">API key purpose</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Data read</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Backend use</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> The backend should only be run/hosted by someone you trust and should keep server secrets private.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Local storage</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Server storage</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Server owners should avoid logging API keys and should keep backups/private files secure.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Licence checks</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">Payments</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> RWPH can prepare payout rows, copy details, and help prefill payment information.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</div>
               </div>
-              <div class="rw-help-api-card" role="row">
+              <div class="rw-help-api-card rw-help-section-card" role="row">
                 <div class="rw-help-api-title">What RWPH does not do</div>
                 <div class="rw-help-api-text"><b>What RWPH does:</b> Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</div>
                 <div class="rw-help-api-text"><b>Responsible use:</b> If a future change adds new API/data use, update this Help text before users rely on it.</div>
@@ -8212,9 +8263,9 @@
     header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
     h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
     p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,#b43b36,#7f201f)!important;color:#fff!important;border:1px solid #5f1a1a!important;border-radius:5px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 2px 5px rgba(0,0,0,.35)!important;}
+    .btn,button,a.btn{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border:1px solid rgba(125,211,252,.24)!important;border-left:4px solid rgba(56,189,248,.66)!important;border-radius:7px!important;box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important;text-shadow:0 1px 0 rgba(0,0,0,.75)!important;}
     .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
+    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
   </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>${String(e.message || e).toLowerCase().includes("too many requests") || String(e.message || e).toLowerCase().includes("rate limit") ? "Torn is rate limiting API requests right now. RWPH now retries automatically, but if this still appears wait 1-3 minutes before running Fetch + Calculate again." : "You can close this tab and try Fetch + Calculate again."}</p></div></body></html>`);
