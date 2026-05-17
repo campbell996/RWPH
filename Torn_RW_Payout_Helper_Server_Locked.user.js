@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.190
+// @version      1.1.192
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1508,6 +1508,8 @@
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
   // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
+  // v1.1.191: results loading timer now counts past 59 seconds and loading step dots turn green as stages progress.
+  // v1.1.192: results loading step dots now turn green from live server progress for licence, attack fetch, sorting, weighting, and final build stages.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
   // v1.1.159: feedback now appears as closable popup panels below the active RWPH panel and auto-closes after 30 seconds.
@@ -5225,8 +5227,12 @@
     .loading-time { margin:12px auto 0; display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border:1px solid rgba(56,189,248,.35); border-radius:999px; background:rgba(56,189,248,.09); color:#e0f2fe; font-weight:900; box-shadow:0 0 18px rgba(56,189,248,.08); }
     .loading-dot { width:8px; height:8px; border-radius:999px; background:#38bdf8; box-shadow:0 0 12px rgba(56,189,248,.75); animation:rwphLoadPulse 1.2s ease-in-out infinite; }
     .loading-list { margin:14px 0 0; padding:0; display:grid; gap:7px; text-align:left; list-style:none; }
-    .loading-list li { display:flex; gap:8px; align-items:flex-start; color:#d7d7d7; font-size:13px; font-weight:800; line-height:1.35; padding:8px 9px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.035); }
-    .loading-list li::before { content:""; flex:0 0 auto; width:7px; height:7px; margin-top:5px; border-radius:999px; background:#38bdf8; box-shadow:0 0 10px rgba(56,189,248,.35); }
+    .loading-list li { display:flex; gap:8px; align-items:flex-start; color:#d7d7d7; font-size:13px; font-weight:800; line-height:1.35; padding:8px 9px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.035); transition:border-color .2s ease, background .2s ease, color .2s ease; }
+    .loading-list li::before { content:""; flex:0 0 auto; width:7px; height:7px; margin-top:5px; border-radius:999px; background:#38bdf8; box-shadow:0 0 10px rgba(56,189,248,.35); transition:background .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .loading-list li.rwph-load-step-active { border-color:rgba(56,189,248,.28); background:rgba(56,189,248,.07); color:#e0f2fe; }
+    .loading-list li.rwph-load-step-active::before { transform:scale(1.16); box-shadow:0 0 13px rgba(56,189,248,.70); }
+    .loading-list li.rwph-load-step-done { border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08); color:#dcfce7; }
+    .loading-list li.rwph-load-step-done::before { background:#22c55e; box-shadow:0 0 13px rgba(34,197,94,.75); transform:scale(1.05); }
     .wait-note { margin-top:12px; padding:10px; border:1px solid rgba(250,204,21,.20); border-radius:8px; background:rgba(250,204,21,.07); color:#fef3c7; font-size:13px; font-weight:900; line-height:1.4; }
     @keyframes rwphLoadPulse { 0%,100%{transform:scale(.85);opacity:.65;} 50%{transform:scale(1.18);opacity:1;} }
   
@@ -5255,11 +5261,11 @@
     <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0 sec</b></span></div>
     <p class="loading-note">RWPH is working through the war data now. Please leave this tab open until the results replace this screen.</p>
     <ul class="loading-list" aria-label="What RWPH is loading">
-      <li>Verifying your licence with the server.</li>
-      <li>Fetching the attack log for the selected start and finish times.</li>
-      <li>Sorting war hits, outside hits, retals, and assists.</li>
-      <li>Applying your weights and splitting the payout pool across members.</li>
-      <li>Building the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
+      <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence with the server.</li>
+      <li data-rwph-load-step="1">Fetches the attack log for the selected start and finish times.</li>
+      <li data-rwph-load-step="2">Sorts war hits, outside hits, retals, and assists.</li>
+      <li data-rwph-load-step="3">Applies your weights and splits the payout pool across members.</li>
+      <li data-rwph-load-step="4">Builds the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
     </ul>
     <div class="wait-note">Estimated wait: small wars often load in 10-30 seconds. Bigger wars or slower Torn/API responses can take 1-3 minutes. If Torn rate-limits the API, RWPH will pause and retry automatically, so it may take a little longer instead of failing straight away.</div>
   </div>
@@ -5267,16 +5273,31 @@
     (function(){
       var started = Date.now();
       var el = document.getElementById("rwph-load-seconds");
+      var steps = Array.prototype.slice.call(document.querySelectorAll("[data-rwph-load-step]"));
+      var stepDoneAtSeconds = [3, 12, 22, 35, 50];
       function formatElapsed(total){
-        var mins = Math.floor(total / 60);
-        var secs = total % 60;
-        if (mins) return mins + " min " + String(secs).padStart(2, "0") + " sec";
-        return secs + " " + (secs === 1 ? "sec" : "secs");
+        return total + " " + (total === 1 ? "sec" : "secs");
       }
+      function updateStepDots(total){
+        // Dots are completed by live server progress, not by elapsed time.
+      }
+      window.rwphSetLoadingStepDone = function(stepIndex){
+        var doneIndex = Number(stepIndex || 0);
+        steps.forEach(function(step, index){
+          if (index <= doneIndex) {
+            step.classList.add("rwph-load-step-done");
+            step.classList.remove("rwph-load-step-active");
+          } else {
+            step.classList.remove("rwph-load-step-done");
+            step.classList.toggle("rwph-load-step-active", index === doneIndex + 1);
+          }
+        });
+      };
       function tick(){
         if (!el) return;
         var total = Math.max(0, Math.floor((Date.now() - started) / 1000));
         el.textContent = formatElapsed(total);
+        updateStepDots(total);
       }
       tick();
       window.rwphLoadingTimer = setInterval(tick, 1000);
@@ -5288,10 +5309,7 @@
 
   function rwphFormatResultsLoadingElapsed(startedAt) {
     const total = Math.max(0, Math.floor((Date.now() - Number(startedAt || Date.now())) / 1000));
-    const mins = Math.floor(total / 60);
-    const secs = total % 60;
-    if (mins) return `${mins} min ${String(secs).padStart(2, "0")} sec`;
-    return `${secs} ${secs === 1 ? "sec" : "secs"}`;
+    return `${total} ${total === 1 ? "sec" : "secs"}`;
   }
 
   function rwphStartResultsLoadingCounter(tab, startedAt) {
@@ -5320,6 +5338,58 @@
     timer = setInterval(tick, 1000);
     setTimeout(tick, 120);
     setTimeout(tick, 1100);
+  }
+
+  function rwphSetResultsLoadingStepDone(tab, stepIndex) {
+    try {
+      if (!tab || tab.closed || !tab.window || typeof tab.window.rwphSetLoadingStepDone !== "function") return;
+      tab.window.rwphSetLoadingStepDone(Number(stepIndex || 0));
+    } catch (_) {}
+  }
+
+  function rwphStartResultsProgressPolling(tab, progressId) {
+    const id = String(progressId || "").trim();
+    if (!id) return () => {};
+    let stopped = false;
+    let pending = false;
+    let timer = null;
+
+    const poll = () => {
+      if (stopped || pending) return;
+      try {
+        if (!tab || tab.closed) {
+          stopped = true;
+          if (timer) clearInterval(timer);
+          return;
+        }
+      } catch (_) {}
+      pending = true;
+      GM_xmlhttpRequest({
+        method: "POST",
+        url: `${PAYWALL_API_BASE}/api/calc/progress`,
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify({ progressId: id }),
+        timeout: 15000,
+        onload: (res) => {
+          pending = false;
+          try {
+            const json = JSON.parse(res.responseText || "{}");
+            if (json && json.ok && Number(json.step) >= 0) {
+              rwphSetResultsLoadingStepDone(tab, Number(json.step));
+            }
+          } catch (_) {}
+        },
+        onerror: () => { pending = false; },
+        ontimeout: () => { pending = false; },
+      });
+    };
+
+    timer = setInterval(poll, 1200);
+    setTimeout(poll, 180);
+    return () => {
+      stopped = true;
+      if (timer) clearInterval(timer);
+    };
   }
 
   function openBlankResultsTab() {
@@ -8536,16 +8606,20 @@
       if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0) return alert("Weights cannot be negative.");
 
       let preOpenedResultsTab = null;
+      let stopProgressPolling = null;
+      const progressId = `rwph-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
         results.innerHTML = "";
         status.textContent = "Server is verifying licence, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...";
         preOpenedResultsTab = openBlankResultsTab();
+        stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
 
         const result = await apiPost("/api/calc/rw-payout", {
           userKey,
           token,
+          progressId,
           from,
           to,
           totalPayout,
@@ -8561,6 +8635,11 @@
         rwphSaveLastResults(lastRows, lastSummary);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
+        if (stopProgressPolling) {
+          stopProgressPolling();
+          stopProgressPolling = null;
+        }
+        rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4);
         const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
         if (openedResultsTab) {
           const resultsPanel = document.getElementById("rw-results-panel");
@@ -8583,6 +8662,10 @@
           rwphToastPanelInfo(status, `Done. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}. Popup blocked, so results opened in the panel.`, "warn", "RWPH Results");
         }
       } catch (e) {
+        if (stopProgressPolling) {
+          stopProgressPolling();
+          stopProgressPolling = null;
+        }
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
           try {
             preOpenedResultsTab.document.open();
