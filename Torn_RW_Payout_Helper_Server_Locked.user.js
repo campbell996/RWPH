@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.129
+// @version      1.1.134
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -821,6 +821,8 @@
     return result;
   }
 
+  // v1.1.133: admin licence cards show time left and the Fill button copies both Torn ID and name.
+  // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   function renderAdminLicenses(licenses) {
     if (!licenses || !licenses.length) {
       return `<div class="rw-muted">No active licenses found.</div>`;
@@ -838,10 +840,11 @@
                 <div class="rw-result-id">Torn ID: ${esc(license.tornId || "unknown")}</div>
               </div>
               <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
-                <button class="secondary rw-admin-fill-revoke" data-torn-id="${esc(license.tornId || "")}" style="margin:0;padding:5px 8px;">Fill Revoke</button>
+                <button class="secondary rw-admin-fill-revoke" data-torn-id="${esc(license.tornId || "")}" data-name="${esc(license.name || `User ${license.tornId}`)}" style="margin:0;padding:5px 8px;">Fill</button>
               </div>
             </div>
             <div class="rw-muted" style="margin-top:6px;">
+              Days left: ${esc(formatLicenseDaysLeft(license.expiresAt))}<br>
               Expires: ${esc(formatUnixDate(license.expiresAt))}<br>
               ${license.manualGrant ? "Manual grant" : "Payment/license record"}
             </div>
@@ -905,7 +908,8 @@
     const hours = Math.floor((secondsLeft % 86400) / 3600);
 
     if (days >= 1) return `${days} day${days === 1 ? "" : "s"}, ${hours} hour${hours === 1 ? "" : "s"}`;
-    return `${hours} hour${hours === 1 ? "" : "s"}`;
+    if (hours >= 1) return `${hours} hour${hours === 1 ? "" : "s"}`;
+    return "Under 1 hour";
   }
 
   async function showLicenseDays(statusEl) {
@@ -2091,6 +2095,164 @@
         }
       }
 
+
+
+      /* v1.1.132 compact Xanax helper layout: keep every control inside the helper panel */
+      #rwph-xanax-send-status {
+        box-sizing:border-box !important;
+        width:min(420px, calc(100vw - 24px)) !important;
+        max-width:calc(100vw - 24px) !important;
+        max-height:calc(100vh - 24px) !important;
+        overflow:auto !important;
+        overflow-x:hidden !important;
+        padding:12px !important;
+        text-align:left !important;
+        overscroll-behavior:contain !important;
+        scrollbar-width:thin !important;
+      }
+      #rwph-xanax-send-status,
+      #rwph-xanax-send-status * {
+        box-sizing:border-box !important;
+      }
+      #rwph-xanax-send-status * {
+        max-width:100% !important;
+        overflow-wrap:anywhere !important;
+      }
+      #rwph-xanax-send-status #rwph-close-helper {
+        position:absolute !important;
+        top:7px !important;
+        right:8px !important;
+        width:24px !important;
+        height:24px !important;
+        min-height:24px !important;
+        padding:0 !important;
+        border-radius:999px !important;
+        line-height:20px !important;
+        font-size:15px !important;
+      }
+      #rwph-xanax-send-status #rwph-payment-helper-title {
+        display:block !important;
+        margin:0 32px 6px 0 !important;
+        padding:8px 10px !important;
+        font-weight:900 !important;
+        font-size:13px !important;
+        line-height:1.15 !important;
+        cursor:move !important;
+        touch-action:none !important;
+        -webkit-user-select:none !important;
+        user-select:none !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-helper-subtitle {
+        font-size:10.5px !important;
+        color:#93c5fd !important;
+        margin:0 0 7px !important;
+        line-height:1.25 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-helper-message {
+        margin:0 0 8px !important;
+        line-height:1.32 !important;
+        color:#dbeafe !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-helper-message.rwph-xanax-helper-error {
+        color:#fca5a5 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-detail-card {
+        padding:9px !important;
+        border-radius:10px !important;
+        background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(2,6,23,.76)) !important;
+        border:1px solid rgba(125,211,252,.22) !important;
+        margin:7px 0 !important;
+        box-shadow:0 0 0 1px rgba(255,255,255,.03) inset !important;
+        line-height:1.32 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-detail-title {
+        font-size:10px !important;
+        color:#93c5fd !important;
+        text-transform:uppercase !important;
+        letter-spacing:.5px !important;
+        font-weight:900 !important;
+        margin-bottom:6px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-code {
+        display:inline-block !important;
+        font-weight:950 !important;
+        color:#bae6fd !important;
+        word-break:break-word !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-small-blue,
+      #rwph-xanax-send-status .rwph-xanax-expiry {
+        color:#93c5fd !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-small-blue { font-size:10px !important; }
+      #rwph-xanax-send-status .rwph-xanax-expiry {
+        font-size:10.5px !important;
+        margin-top:6px !important;
+        line-height:1.25 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions {
+        display:grid !important;
+        grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+        gap:6px !important;
+        margin-top:8px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions button {
+        width:100% !important;
+        min-width:0 !important;
+        white-space:normal !important;
+        line-height:1.12 !important;
+        padding:8px 6px !important;
+        min-height:34px !important;
+        font-weight:800 !important;
+        cursor:pointer !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-steps {
+        font-size:10.8px !important;
+        color:#e8d39a !important;
+        margin-top:9px !important;
+        line-height:1.35 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-safety-note {
+        font-size:10.4px !important;
+        color:#fca5a5 !important;
+        margin-top:8px !important;
+        line-height:1.3 !important;
+        border-top:1px solid rgba(248,113,113,.22) !important;
+        padding-top:7px !important;
+        padding-right:20px !important;
+      }
+      @media (max-width:420px), (pointer:coarse) {
+        #rwph-xanax-send-status {
+          right:6px !important;
+          bottom:6px !important;
+          width:calc(100vw - 12px) !important;
+          min-width:0 !important;
+          max-width:calc(100vw - 12px) !important;
+          max-height:calc(100vh - 12px) !important;
+          padding:8px !important;
+          font-size:10.5px !important;
+        }
+        #rwph-xanax-send-status #rwph-payment-helper-title {
+          font-size:11.5px !important;
+          padding:7px 8px !important;
+          margin-right:30px !important;
+        }
+        #rwph-xanax-send-status .rwph-xanax-detail-card {
+          padding:7px !important;
+          margin:6px 0 !important;
+        }
+        #rwph-xanax-send-status .rwph-xanax-actions {
+          grid-template-columns:1fr !important;
+          gap:5px !important;
+        }
+        #rwph-xanax-send-status .rwph-xanax-steps {
+          font-size:10.3px !important;
+          line-height:1.3 !important;
+        }
+        #rwph-xanax-send-status .rwph-xanax-safety-note {
+          font-size:10px !important;
+        }
+      }
+
       /* v1.1.102 Torn-style dark/red theme */
       #rw-payout-helper,
       #rw-payout-helper .rw-results-panel,
@@ -2497,9 +2659,11 @@
       position: sticky;
       top: 18px;
       min-height: calc(100vh - 36px);
+      max-height: calc(100vh - 36px);
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 14px;
       border-radius: 28px;
       background:
@@ -2513,7 +2677,10 @@
     .newsletter-choice-note { margin:0 0 2px; color:#d7d7d7; font-size:11px; font-weight:800; line-height:1.35; }
     .newsletter-use-note { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(184,136,89,.22); background:rgba(34,24,18,.64); color:#ead7bd; font-size:11px; font-weight:800; line-height:1.38; text-align:center; }
     .close-hint { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.58); color:#cbd5e1; font-size:11px; font-weight:800; line-height:1.35; text-align:center; }
-    .toolbar { display:grid; grid-template-columns:1fr; width:100%; margin-top:auto; }
+    .results-action-zone { display:grid; gap:8px; margin:10px 0 0; padding-top:12px; border-top:1px solid rgba(125,211,252,.18); }
+    .results-action-zone .btn { width:100%; }
+    .results-action-note { margin:0; color:#c8c8c8; font-size:11px; font-weight:800; line-height:1.35; }
+    .toolbar { display:grid; grid-template-columns:1fr; width:100%; margin-top:0; }
     .btn { width:100%; text-align:center; }
     .summary { grid-area: summary; grid-template-columns: repeat(4, minmax(0,1fr)); }
     .grid { grid-area: results; grid-template-columns: repeat(auto-fill, minmax(245px,1fr)); }
@@ -2523,7 +2690,7 @@
     .stats { grid-template-columns: repeat(3,minmax(0,1fr)); }
     @media (max-width: 900px) {
       .app { display:block; }
-      .hero { position:static; min-height:0; }
+      .hero { position:static; min-height:0; max-height:none; overflow:visible; }
       .summary { grid-template-columns:repeat(2, minmax(0,1fr)); }
       .toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
@@ -2553,9 +2720,19 @@
     .bar.payout{background:linear-gradient(90deg,#138a55,#24d18a,#b7f7d6)!important;box-shadow:0 0 16px rgba(36,209,138,.28)!important;}
     .bar.weight{background:linear-gradient(90deg,#2563eb,#38bdf8,#bae6fd)!important;box-shadow:0 0 14px rgba(56,189,248,.32)!important;}
 
-    /* v1.1.129 extra newsletter theme buttons */
-    #newsletterCyberBtn{background:linear-gradient(180deg,#00d5ff,#5533ff)!important;border-color:#10d9ff!important;box-shadow:0 0 18px rgba(0,213,255,.25),inset 0 1px 0 rgba(255,255,255,.22)!important;}
-    #newsletterLedgerBtn{background:linear-gradient(180deg,#d4a24f,#704214)!important;border-color:#d4a24f!important;box-shadow:0 0 14px rgba(212,162,79,.20),inset 0 1px 0 rgba(255,255,255,.18)!important;}
+    /* v1.1.134: keep all newsletter buttons in the midnight-blue results-panel style */
+    .newsletter-zone .newsletter-top-btn,
+    #newsletterBtn,
+    #newsletterCyberBtn,
+    #newsletterLedgerBtn,
+    #newsletterCrimsonBtn,
+    #newsletterGoldBtn{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.88))!important;
+      border-color:rgba(125,211,252,.28)!important;
+      box-shadow:0 10px 24px rgba(2,6,23,.42), inset 0 1px 0 rgba(255,255,255,.08)!important;
+      color:#e0f2fe!important;
+    }
+    .newsletter-zone .newsletter-top-btn:hover{filter:brightness(1.10)!important;}
 
   </style>
 </head>
@@ -2575,10 +2752,11 @@
         <p class="newsletter-choice-note">Each newsletter button creates the same payout data with a different report style/theme.</p>
         <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
         <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Fetch + Calculate, the main RWPH panel shows <b>Reopen Results</b> for 10 minutes so you can bring this page back if needed.</p>
-      </div>
-      <div class="toolbar">
-        <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
-        <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Pay All</a>
+        <div class="results-action-zone" aria-label="Results actions">
+          <p class="results-action-note"><b>Results actions:</b> Export CSV for records, or use Pay All to open Torn faction controls with the payment helper.</p>
+          <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
+          <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Pay All</a>
+        </div>
       </div>
     </section>
 
@@ -2800,6 +2978,9 @@
     .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
     .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
+    /* v1.1.132 Torn newsletter chart bars match the legend dots: payout = green top bar, weighted contribution = blue bottom bar */
+    .bar.payout{background:linear-gradient(90deg,var(--green),#e0f2fe)!important;box-shadow:0 0 16px rgba(134,239,172,.22)!important;}
+    .bar.weight{background:linear-gradient(90deg,var(--blue),var(--indigo))!important;box-shadow:0 0 14px rgba(56,189,248,.22)!important;}
 
   </style>
 </head>
@@ -4042,10 +4223,14 @@
         right: 18px;
         bottom: 18px;
         z-index: 1000000;
-        width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "180px" : "auto"};
-        max-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vw - 16px)" : "360px"};
-        min-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "150px" : "0"};
-        padding: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "8px 9px" : "12px 14px"};
+        width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "min(330px, calc(100vw - 12px))" : "min(420px, calc(100vw - 24px))"};
+        max-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vw - 12px)" : "calc(100vw - 24px)"};
+        min-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "240px" : "300px"};
+        max-height: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vh - 12px)" : "calc(100vh - 24px)"};
+        overflow: auto;
+        overflow-x: hidden;
+        box-sizing: border-box;
+        padding: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "8px" : "12px"};
         border-radius: 16px;
         border: 1px solid rgba(125,211,252,.35);
         background: radial-gradient(circle at 18% 0%, rgba(56,189,248,.16), transparent 32%), linear-gradient(180deg, rgba(8,13,25,.97), rgba(15,23,42,.96));
@@ -4300,26 +4485,26 @@
   function rwphPaymentHelperHtml(code, message, isError = false) {
     const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
     return `
-      <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(125,211,252,.36);background:rgba(15,23,42,.75);color:#e0f7ff;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
-      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 0 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Payment Helper</div>
-      <div style="font-size:10.5px;color:#93c5fd;margin:2px 0 8px;line-height:1.25;">Xanax licence payment • Prefill/copy only • You confirm manually</div>
-      <div style="margin-bottom:8px;line-height:1.35;${isError ? 'color:#fca5a5;' : 'color:#dbeafe;'}">${message}</div>
+      <button id="rwph-close-helper" type="button" title="Close">×</button>
+      <div id="rwph-payment-helper-title">RWPH Payment Helper</div>
+      <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
+      <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
 
-      <div style="padding:9px;border-radius:11px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(2,6,23,.76));border:1px solid rgba(125,211,252,.22);margin:7px 0;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;">
-        <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.5px;font-weight:900;margin-bottom:6px;">Required payment details</div>
-        <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span style="color:#93c5fd;font-size:10px;">only</span></div>
+      <div class="rwph-xanax-detail-card">
+        <div class="rwph-xanax-detail-title">Required payment details</div>
+        <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
         <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
-        <div><b>Message code:</b> <span style="font-weight:950;color:#bae6fd;word-break:break-word;">${esc(code)}</span></div>
+        <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
         <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
-        <div style="font-size:11px;color:#93c5fd;margin-top:6px;">Code expires in about ${left} minute(s). RWPH checks automatically after you send.</div>
+        <div class="rwph-xanax-expiry">Code expires in about ${left} minute(s). RWPH checks automatically after you send.</div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
-        <button id="rwph-copy-receiver" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Receiver</button>
-        <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Code</button>
+      <div class="rwph-xanax-actions">
+        <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
+        <button id="rwph-copy-code" type="button">Copy Code</button>
       </div>
 
-      <div style="font-size:11px;color:#e8d39a;margin-top:9px;line-height:1.45;">
+      <div class="rwph-xanax-steps">
         <b>How to use:</b><br>
         1. Open your <b>Xanax</b> item.<br>
         2. Click <b>Send this item</b> yourself.<br>
@@ -4329,7 +4514,7 @@
         6. Choose the Xanax amount, review everything, then manually Send/Confirm.
       </div>
 
-      <div style="font-size:10.5px;color:#fca5a5;margin-top:8px;line-height:1.35;border-top:1px solid rgba(248,113,113,.22);padding-top:7px;">
+      <div class="rwph-xanax-safety-note">
         RWPH never clicks Send, never clicks Confirm, and never sends items for you. Only Xanax with the exact payment code can auto-add licence time. Wrong items or missing/incorrect codes need manual review.
       </div>
     `;
@@ -4585,8 +4770,8 @@
       const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
       const isResultsPanel = panel.classList?.contains("rw-results-panel");
       const isXanaxHelper = panel.id === "rwph-xanax-send-status";
-      const minWidth = mobilePanel ? (isResultsPanel ? 160 : (isXanaxHelper ? 150 : 150)) : (isResultsPanel ? 280 : 240);
-      const minHeight = mobilePanel ? 110 : 180;
+      const minWidth = mobilePanel ? (isResultsPanel ? 160 : (isXanaxHelper ? 240 : 150)) : (isResultsPanel ? 280 : (isXanaxHelper ? 300 : 240));
+      const minHeight = mobilePanel ? (isXanaxHelper ? 180 : 110) : 180;
       const maxWidth = Math.max(minWidth, window.innerWidth - 16);
       const maxHeight = Math.max(minHeight, window.innerHeight - 16);
       panel.style.width = `${Math.min(Math.max(minWidth, startWidth + dx), maxWidth)}px`;
@@ -4664,7 +4849,7 @@
 
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
-              <button id="rw-admin-list">List Licenses</button>
+              <button id="rw-admin-list">List Licences</button>
               <button id="rw-move-launcher-admin" class="secondary">Move Button Corner</button>
             </div>
           </div>
@@ -4852,7 +5037,7 @@
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
+              <li><b>Pay All:</b> on the fullscreen results page, Pay All now sits inside the left results panel under the newsletter section, beside Export CSV. It opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
               <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
               <li><b>Cyber Neon Newsletter</b>, <b>War Ledger Newsletter</b>, <b>Crimson Raid Newsletter</b>, and <b>Victory Gold Newsletter</b> are extra results-page newsletter buttons. They use the same payout data, but each creates a different themed HTML report.</li>
               <li><b>Using newsletters in Torn faction newsletters:</b> choose a newsletter style, open the downloaded HTML report, copy the finished content or HTML source your faction newsletter editor accepts, paste it into Torn faction newsletters, preview it, then send only after reviewing.</li>
@@ -5051,17 +5236,22 @@
       const adminKey = getAdminKeyFromInput();
 
       GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-      status.textContent = "Loading licenses from server...";
+      status.textContent = "Loading licences from server...";
       results.innerHTML = "";
 
       const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
       results.innerHTML = renderAdminLicenses(result.licenses || []);
-      status.textContent = `Loaded ${(result.licenses || []).length} license(s).`;
+      status.textContent = `Loaded ${(result.licenses || []).length} licence(s).`;
 
       results.querySelectorAll(".rw-admin-fill-revoke").forEach((btn) => {
         btn.addEventListener("click", () => {
-          document.getElementById("rw-admin-torn-id").value = btn.dataset.tornId || "";
-          document.getElementById("rw-admin-status").textContent = `Filled Torn ID ${btn.dataset.tornId || ""} for revoke/grant.`;
+          const filledId = btn.dataset.tornId || "";
+          const filledName = btn.dataset.name || (filledId ? `User ${filledId}` : "");
+          document.getElementById("rw-admin-torn-id").value = filledId;
+          document.getElementById("rw-admin-name").value = filledName;
+          document.getElementById("rw-admin-status").textContent = filledName
+            ? `Filled ${filledName} (${filledId}) into the admin form.`
+            : `Filled Torn ID ${filledId} into the admin form.`;
         });
       });
     }
@@ -5238,7 +5428,7 @@
 
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
-              <button id="rw-admin-list">List Licenses</button>
+              <button id="rw-admin-list">List Licences</button>
             </div>
           </div>
 
@@ -5765,17 +5955,22 @@
       const adminKey = getAdminKeyFromInput();
 
       GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-      status.textContent = "Loading licenses from server...";
+      status.textContent = "Loading licences from server...";
       results.innerHTML = "";
 
       const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
       results.innerHTML = renderAdminLicenses(result.licenses || []);
-      status.textContent = `Loaded ${(result.licenses || []).length} license(s).`;
+      status.textContent = `Loaded ${(result.licenses || []).length} licence(s).`;
 
       results.querySelectorAll(".rw-admin-fill-revoke").forEach((btn) => {
         btn.addEventListener("click", () => {
-          document.getElementById("rw-admin-torn-id").value = btn.dataset.tornId || "";
-          document.getElementById("rw-admin-status").textContent = `Filled Torn ID ${btn.dataset.tornId || ""} for revoke/grant.`;
+          const filledId = btn.dataset.tornId || "";
+          const filledName = btn.dataset.name || (filledId ? `User ${filledId}` : "");
+          document.getElementById("rw-admin-torn-id").value = filledId;
+          document.getElementById("rw-admin-name").value = filledName;
+          document.getElementById("rw-admin-status").textContent = filledName
+            ? `Filled ${filledName} (${filledId}) into the admin form.`
+            : `Filled Torn ID ${filledId} into the admin form.`;
         });
       });
     }
