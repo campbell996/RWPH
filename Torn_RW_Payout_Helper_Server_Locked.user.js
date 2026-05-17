@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.149
+// @version      1.1.153
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -963,17 +963,20 @@
   // v1.1.141: panel open state is now tab/page scoped; RWPH panels auto-close on Torn page changes, stay open when switching browser tabs, and reopen after refresh on the same page.
   // v1.1.142: unified panel scrolling so each panel/tab uses one clean scroll area instead of split/nested scroll panels.
   // v1.1.139: hidden white outer panel scrollbars while keeping blue internal RWPH scrollbars.
-  // v1.1.138: moving/resizing is enabled for all RWPH floating panels, including Pay All/manual-review helpers.
+  // v1.1.138: moving/resizing is enabled for all RWPH floating panels, including Payments/manual-review helpers.
   // v1.1.137: removed the Add Balance removal sentence from Help panel wording.
   // v1.1.136: clearer payment expiry timers, auto-close on licence payment flow, and tighter panel fit.
+  // v1.1.151: Buy Licence and Extend Licence now match the Fetch + Calculate button background.
+  // v1.1.153: Results loading tab now explains what is loading and gives rough wait-time guidance.
   // v1.1.144: main panel licence controls rearranged so Your Expiration sits under Extend Licence and Lock sits under Save Key.
   // v1.1.145: swapped the main panel positions so Reopen Results appears above Fetch + Calculate after results are available.
   // v1.1.146: restored the Xanax Payment Helper action buttons by moving them high in the helper body and forcing them visible inside the panel.
   // v1.1.147: Xanax Payment Helper now reuses the main Payment Code Ready expiry timer and gives it a stronger highlighted style.
   // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
+  // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
-  // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Pay All controls fit neatly.
+  // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
     if (!licenses || !licenses.length) {
       return `<div class="rw-muted">No active licenses found.</div>`;
@@ -1300,6 +1303,11 @@
         box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 -4px 0 rgba(79,22,18,.55) inset, 0 10px 22px rgba(0,0,0,.40);
       }
       #rw-payout-helper button:hover { filter: brightness(1.08); }
+      #rw-payout-helper #rw-start-payment,
+      #rw-payout-helper #rw-extend-licence {
+        background: linear-gradient(180deg, rgba(149,58,34,.98), rgba(181,84,38,.96) 18%, rgba(108,40,24,.98) 18.5%, rgba(88,30,22,.98) 100%) !important;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 -4px 0 rgba(79,22,18,.55) inset, 0 10px 22px rgba(0,0,0,.40) !important;
+      }
       #rw-payout-helper button.secondary { background: linear-gradient(180deg, rgba(70,57,45,.95), rgba(50,42,36,.95) 18%, rgba(36,31,28,.95) 100%) !important; box-shadow: 0 -3px 0 rgba(36,27,24,.45) inset; }
       #rw-payout-helper button.danger { background: linear-gradient(180deg, rgba(126,28,24,.98), rgba(164,40,30,.96) 18%, rgba(95,21,20,.98) 100%) !important; box-shadow: 0 -3px 0 rgba(65,15,14,.45) inset; }
       #rw-payout-helper .rw-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -3220,7 +3228,7 @@
     try {
       GM_setValue(PAY_ALL_ROWS_STORAGE_KEY, JSON.stringify({ createdAt: Date.now(), rows: rows || [] }));
     } catch (e) {
-      console.warn("Could not save Pay All rows:", e);
+      console.warn("Could not save Payments rows:", e);
     }
   }
 
@@ -3233,7 +3241,7 @@
       if (Date.now() - Number(parsed.createdAt || 0) > 6 * 60 * 60 * 1000) return [];
       return parsed.rows;
     } catch (e) {
-      console.warn("Could not load Pay All rows:", e);
+      console.warn("Could not load Payments rows:", e);
       return [];
     }
   }
@@ -3248,14 +3256,14 @@
         return true;
       }
     } catch (e) {
-      console.warn("GM_openInTab failed for Pay All controls tab:", e);
+      console.warn("GM_openInTab failed for Payments controls tab:", e);
     }
     try {
       const tab = window.open(url, "_blank", "noopener,noreferrer");
       if (tab) setTimeout(() => closePanel(), 150);
       return !!tab;
     } catch (e) {
-      console.warn("window.open failed for Pay All controls tab:", e);
+      console.warn("window.open failed for Payments controls tab:", e);
       return false;
     }
   }
@@ -3617,9 +3625,9 @@
         <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
         <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Fetch + Calculate, the main RWPH panel shows <b>Reopen Results</b> for 10 minutes so you can bring this page back if needed.</p>
         <div class="results-action-zone" aria-label="Results actions">
-          <p class="results-action-note"><b>Results actions:</b> Export CSV for records, or use Pay All to open Torn faction controls with the payment helper.</p>
+          <p class="results-action-note"><b>Results actions:</b> Export CSV for records, or use Payments to open Torn faction controls with the payment helper.</p>
           <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
-          <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Pay All</a>
+          <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
         </div>
       </div>
     </section>
@@ -3643,10 +3651,10 @@
 
   <aside class="pay-all-panel" id="payAllPanel" hidden>
     <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
-    <h2 class="pay-all-head">Pay All Copy Panel</h2>
+    <h2 class="pay-all-head">Payments Copy Panel</h2>
     <p class="pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</p>
     <div class="pay-all-info">
-      <b>How to use Pay All:</b>
+      <b>How to use Payments:</b>
       <ul>
         <li><b>Name + ID</b> copies the member name and Torn ID, and tries to prefill the visible member field.</li>
         <li><b>Amount</b> copies that member's payout amount, and tries to prefill the visible money field.</li>
@@ -3963,6 +3971,14 @@
     img { width:48px; height:48px; object-fit:contain; filter:drop-shadow(0 0 12px rgba(56,189,248,.35)); }
     h1 { margin:10px 0 6px; font-size:22px; }
     p { margin:0; color:#a5b4fc; font-weight:800; line-height:1.45; }
+    .loading-note { margin-top:10px; color:#c8d3f7; font-weight:800; font-size:13px; }
+    .loading-time { margin:12px auto 0; display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border:1px solid rgba(56,189,248,.35); border-radius:999px; background:rgba(56,189,248,.09); color:#e0f2fe; font-weight:900; box-shadow:0 0 18px rgba(56,189,248,.08); }
+    .loading-dot { width:8px; height:8px; border-radius:999px; background:#38bdf8; box-shadow:0 0 12px rgba(56,189,248,.75); animation:rwphLoadPulse 1.2s ease-in-out infinite; }
+    .loading-list { margin:14px 0 0; padding:0; display:grid; gap:7px; text-align:left; list-style:none; }
+    .loading-list li { display:flex; gap:8px; align-items:flex-start; color:#d7d7d7; font-size:13px; font-weight:800; line-height:1.35; padding:8px 9px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.035); }
+    .loading-list li::before { content:""; flex:0 0 auto; width:7px; height:7px; margin-top:5px; border-radius:999px; background:#38bdf8; box-shadow:0 0 10px rgba(56,189,248,.35); }
+    .wait-note { margin-top:12px; padding:10px; border:1px solid rgba(250,204,21,.20); border-radius:8px; background:rgba(250,204,21,.07); color:#fef3c7; font-size:13px; font-weight:900; line-height:1.4; }
+    @keyframes rwphLoadPulse { 0%,100%{transform:scale(.85);opacity:.65;} 50%{transform:scale(1.18);opacity:1;} }
   
     /* v1.1.102 Torn-style dark/red theme */
     body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
@@ -3986,7 +4002,32 @@
     <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
     <h1>RWPH Results Loading</h1>
     <p>Fetch + Calculate is running. This tab will fill with your payout results when the server finishes.</p>
+    <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0s</b></span></div>
+    <p class="loading-note">RWPH is working through the war data now. Please leave this tab open until the results replace this screen.</p>
+    <ul class="loading-list" aria-label="What RWPH is loading">
+      <li>Verifying your licence with the server.</li>
+      <li>Fetching the attack log for the selected start and finish times.</li>
+      <li>Sorting war hits, outside hits, retals, and assists.</li>
+      <li>Applying your weights and splitting the payout pool across members.</li>
+      <li>Building the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
+    </ul>
+    <div class="wait-note">Estimated wait: small wars often load in 10-30 seconds. Bigger wars or slower Torn/API responses can take 1-3 minutes.</div>
   </div>
+  <script>
+    (function(){
+      var started = Date.now();
+      var el = document.getElementById("rwph-load-seconds");
+      function tick(){
+        if (!el) return;
+        var total = Math.max(0, Math.floor((Date.now() - started) / 1000));
+        var mins = Math.floor(total / 60);
+        var secs = total % 60;
+        el.textContent = mins ? (mins + "m " + String(secs).padStart(2, "0") + "s") : (secs + "s");
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
 </body>
 </html>`;
   }
@@ -4169,7 +4210,7 @@
         </div>
         <div class="rw-actions">
           <button class="secondary" data-export-csv="1">Export CSV</button>
-          <button class="secondary" data-pay-all="1">Pay All</button>
+          <button class="secondary" data-pay-all="1">Payments</button>
         </div>
       </div>
       <div class="rw-card-list">
@@ -4273,7 +4314,7 @@
       <div id="rw-pay-all-panel" class="rw-pay-all-panel" hidden>
         <button type="button" class="danger rw-pay-all-close" data-pay-all-close="1">×</button>
         <div class="rw-pay-all-head">
-          <div class="rw-pay-all-title">Pay All Copy Panel</div>
+          <div class="rw-pay-all-title">Payments Copy Panel</div>
         </div>
         <div class="rw-pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</div>
         <div class="rw-pay-all-info">
@@ -5502,16 +5543,17 @@
         <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
         <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
 
-        ${rwphPaymentExpiryHtml(expiresAtMs, "rw-payment-expiry rwph-xanax-expiry rwph-xanax-expiry-hero")}
-        <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send while this timer is active.</div>
-
-        <div class="rwph-xanax-actions" aria-label="Xanax payment helper actions">
-          <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
-          <button id="rwph-copy-code" type="button">Copy Code</button>
-        </div>
-
         <div class="rwph-xanax-detail-card">
           <div class="rwph-xanax-detail-title">Required payment details</div>
+
+          ${rwphPaymentExpiryHtml(expiresAtMs, "rw-payment-expiry rwph-xanax-expiry rwph-xanax-expiry-hero")}
+          <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send while this timer is active.</div>
+
+          <div class="rwph-xanax-actions" aria-label="Xanax payment helper actions">
+            <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
+            <button id="rwph-copy-code" type="button">Copy Code</button>
+          </div>
+
           <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
           <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
           <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
@@ -5902,7 +5944,7 @@
           <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock</button>
-            <button id="rw-start-payment" class="secondary">Buy Licence</button>
+            <button id="rw-start-payment">Buy Licence</button>
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
@@ -6075,7 +6117,7 @@
               <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
-              <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Pay All helper, and manual-review popup.</li>
+              <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Payments helper, and manual-review popup.</li>
               <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
@@ -6114,8 +6156,8 @@
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Pay All:</b> on the fullscreen results page, Pay All now sits inside the left results panel under the newsletter section, beside Export CSV. It opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
-              <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
+              <li><b>Payments:</b> on the fullscreen results page, Payments now sits inside the left results panel under the newsletter section, beside Export CSV. It opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
+              <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Payments.</li>
               <li><b>Cyber Neon Newsletter</b>, <b>War Ledger Newsletter</b>, <b>Crimson Raid Newsletter</b>, and <b>Victory Gold Newsletter</b> are extra results-page newsletter buttons. They use the same payout data, but each creates a different themed HTML report.</li>
               <li><b>Using newsletters in Torn faction newsletters:</b> choose a newsletter style, open the downloaded HTML report, copy the finished content or HTML source your faction newsletter editor accepts, paste it into Torn faction newsletters, preview it, then send only after reviewing.</li>
             </ul>
@@ -6125,8 +6167,8 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / the higher <b>Create Torn Newsletter</b> button for records and reports.</li>
-              <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
+              <li>Use <b>Payments</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / the higher <b>Create Torn Newsletter</b> button for records and reports.</li>
+              <li>RWPH no longer includes Add Balance or Add Balance (All). Payments can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
               <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
               <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
             </ul>
@@ -6443,7 +6485,7 @@
           </label>
           <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
           <div class="rw-actions rw-licence-control-grid">
-            <button id="rw-extend-licence" class="secondary">Extend Licence</button>
+            <button id="rw-extend-licence">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
             <button id="rw-license-days" class="secondary">Your Expiration</button>
             <button id="rw-lock" class="secondary">Lock Panel</button>
@@ -6652,7 +6694,7 @@
               <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
-              <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Pay All helper, and manual-review popup.</li>
+              <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Payments helper, and manual-review popup.</li>
               <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
@@ -6690,8 +6732,8 @@
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
-              <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
+              <li><b>Payments:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
+              <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Payments.</li>
               <li><b>Cyber Neon Newsletter</b>, <b>War Ledger Newsletter</b>, <b>Crimson Raid Newsletter</b>, and <b>Victory Gold Newsletter</b> are extra results-page newsletter buttons. They use the same payout data, but each creates a different themed HTML report.</li>
               <li><b>Using newsletters in Torn faction newsletters:</b> choose a newsletter style, open the downloaded HTML report, copy the finished content or HTML source your faction newsletter editor accepts, paste it into Torn faction newsletters, preview it, then send only after reviewing.</li>
             </ul>
@@ -6701,8 +6743,8 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / the higher <b>Create Torn Newsletter</b> button for records and reports.</li>
-              <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
+              <li>Use <b>Payments</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / the higher <b>Create Torn Newsletter</b> button for records and reports.</li>
+              <li>RWPH no longer includes Add Balance or Add Balance (All). Payments can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
               <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
               <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
             </ul>
@@ -6813,8 +6855,8 @@
         if (!lastRows.length) return alert("Calculate results first.");
         const opened = rwphOpenPayAllInFactionControls(lastRows);
         if (status) status.textContent = opened
-          ? "Pay All opened in Torn faction controls. Use the copy-only panel there."
-          : "Popup blocked. Pay All data was saved; open faction controls and use the RWPH Pay All link again.";
+          ? "Payments opened in Torn faction controls. Use the copy-only panel there."
+          : "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.";
         return;
       }
 
