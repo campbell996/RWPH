@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.173
+// @version      1.1.175
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1476,6 +1476,7 @@
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
   // v1.1.159: feedback now appears as closable popup panels below the active RWPH panel and auto-closes after 30 seconds.
+  // v1.1.175: Xanax Payment Helper close button now matches the main panel close button style and stays visible in the pinned header area.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -2945,15 +2946,20 @@
       }
       #rwph-xanax-send-status #rwph-close-helper {
         position:absolute !important;
-        top:7px !important;
-        right:8px !important;
-        width:24px !important;
-        height:24px !important;
-        min-height:24px !important;
+        top:10px !important;
+        right:12px !important;
+        width:36px !important;
+        height:36px !important;
+        min-width:36px !important;
+        min-height:36px !important;
         padding:0 !important;
-        border-radius:999px !important;
-        line-height:20px !important;
-        font-size:15px !important;
+        border-radius:14px !important;
+        line-height:1 !important;
+        font-size:20px !important;
+        font-weight:950 !important;
+        display:grid !important;
+        place-items:center !important;
+        z-index:70 !important;
       }
       #rwph-xanax-send-status #rwph-payment-helper-title {
         display:block !important;
@@ -3044,6 +3050,29 @@
         border-top:1px solid rgba(248,113,113,.22) !important;
         padding-top:7px !important;
         padding-right:20px !important;
+      }
+
+      /* v1.1.175: make the Xanax Payment Helper close button match the main panel close button */
+      #rwph-xanax-send-status #rwph-close-helper {
+        position:absolute !important;
+        top:10px !important;
+        right:12px !important;
+        width:36px !important;
+        height:36px !important;
+        min-width:36px !important;
+        min-height:36px !important;
+        padding:0 !important;
+        border-radius:14px !important;
+        display:grid !important;
+        place-items:center !important;
+        font-size:20px !important;
+        font-weight:950 !important;
+        line-height:1 !important;
+        z-index:90 !important;
+      }
+      #rwph-xanax-send-status #rwph-payment-helper-title {
+        padding-right:50px !important;
+        min-height:40px !important;
       }
       @media (max-width:420px), (pointer:coarse) {
         #rwph-xanax-send-status {
@@ -3564,6 +3593,34 @@
         opacity:1 !important;
         filter:drop-shadow(0 0 6px rgba(56,189,248,.65)) !important;
       }
+
+
+      /* v1.1.174: Help API ToS cards match the midnight-blue Help section theme */
+      #rw-payout-helper .rw-help-api-grid .rw-help-api-card,
+      #rw-payout-helper .rw-help-api-card {
+        background: linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38)) !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+      }
+      #rw-payout-helper .rw-help-api-card *,
+      #rw-payout-helper .rw-help-api-title,
+      #rw-payout-helper .rw-help-api-text,
+      #rw-payout-helper .rw-help-api-text b {
+        color: #eaf6ff !important;
+      }
+      #rw-payout-helper .rw-help-api-title {
+        color: #f8fbff !important;
+        text-shadow: 0 0 10px rgba(56,189,248,.16) !important;
+      }
+      #rw-payout-helper .rw-help-api-text {
+        color: #cbd5e1 !important;
+      }
+      #rw-payout-helper .rw-help-api-text b {
+        color: #f8fbff !important;
+      }
+
       /* v1.1.142 unified scroll polish: one scroll body per panel/tab, no nested admin/help/tool scroll panes */
       #rw-payout-helper > .rw-body,
       #rw-payout-helper .rw-results-panel > .rw-body {
@@ -6437,7 +6494,7 @@
     const expiresAtMs = Number(rwphPaymentExpiryForCode(code));
     setTimeout(rwphStartExpiryTimer, 0);
     return `
-      <button id="rwph-close-helper" type="button" title="Close">×</button>
+      <button id="rwph-close-helper" class="danger" type="button" title="Close" aria-label="Close Xanax Payment Helper">×</button>
       <div id="rwph-payment-helper-title">RWPH Payment Helper</div>
       <div class="rwph-xanax-scroll">
         <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
