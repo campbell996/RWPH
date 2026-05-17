@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.193
+// @version      1.1.195
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1511,6 +1511,8 @@
   // v1.1.191: results loading timer now counts past 59 seconds and loading step dots turn green as stages progress.
   // v1.1.192: results loading step dots now turn green from live server progress for licence, attack fetch, sorting, weighting, and final build stages.
   // v1.1.193: loading dots now update the loading tab DOM directly so Torn PDA/phone can show green stages reliably.
+  // v1.1.194: loading dots now light the remaining calculation stages in order before the results page replaces the loading screen.
+  // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
   // v1.1.159: feedback now appears as closable popup panels below the active RWPH panel and auto-closes after 30 seconds.
@@ -5189,7 +5191,7 @@
 </html>`;
   }
 
-  function buildResultsLoadingHtml() {
+  function buildResultsLoadingHtml(progressId = "") {
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -5275,6 +5277,9 @@
       var started = Date.now();
       var el = document.getElementById("rwph-load-seconds");
       var steps = Array.prototype.slice.call(document.querySelectorAll("[data-rwph-load-step]"));
+      var rwphProgressId = ${JSON.stringify(String(progressId || ""))};
+      var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
+      var highestDoneStep = -1;
       var stepDoneAtSeconds = [3, 12, 22, 35, 50];
       function formatElapsed(total){
         return total + " " + (total === 1 ? "sec" : "secs");
@@ -5283,17 +5288,38 @@
         // Dots are completed by live server progress, not by elapsed time.
       }
       window.rwphSetLoadingStepDone = function(stepIndex){
-        var doneIndex = Number(stepIndex || 0);
+        var doneIndex = Number(stepIndex);
+        if (!isFinite(doneIndex)) return;
+        doneIndex = Math.max(0, Math.min(4, Math.floor(doneIndex)));
+        highestDoneStep = Math.max(highestDoneStep, doneIndex);
         steps.forEach(function(step, index){
-          if (index <= doneIndex) {
+          if (index <= highestDoneStep) {
             step.classList.add("rwph-load-step-done");
             step.classList.remove("rwph-load-step-active");
           } else {
             step.classList.remove("rwph-load-step-done");
-            step.classList.toggle("rwph-load-step-active", index === doneIndex + 1);
+            step.classList.toggle("rwph-load-step-active", index === highestDoneStep + 1);
           }
         });
       };
+      window.addEventListener("message", function(event){
+        var data = event && event.data;
+        if (!data || data.rwphType !== "rwph-calc-progress") return;
+        window.rwphSetLoadingStepDone(data.step);
+      });
+      function pollProgressFromLoadingTab(){
+        if (!rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
+        fetch(rwphApiBase + "/api/calc/progress", {
+          method: "POST",
+          mode: "cors",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ progressId: rwphProgressId })
+        }).then(function(res){ return res && res.json ? res.json() : null; })
+          .then(function(json){
+            if (json && json.ok && Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
+          }).catch(function(){});
+      }
       function tick(){
         if (!el) return;
         var total = Math.max(0, Math.floor((Date.now() - started) / 1000));
@@ -5302,6 +5328,8 @@
       }
       tick();
       window.rwphLoadingTimer = setInterval(tick, 1000);
+      pollProgressFromLoadingTab();
+      window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 650);
     })();
   </script>
 </body>
@@ -5341,11 +5369,26 @@
     setTimeout(tick, 1100);
   }
 
+  function rwphPostResultsLoadingStep(tab, stepIndex) {
+    const doneIndex = Math.max(0, Math.min(4, Number(stepIndex || 0)));
+    try {
+      if (tab && !tab.closed && typeof tab.postMessage === "function") {
+        tab.postMessage({ rwphType: "rwph-calc-progress", step: doneIndex }, "*");
+      }
+    } catch (_) {}
+    try {
+      if (tab && tab.window && typeof tab.window.postMessage === "function") {
+        tab.window.postMessage({ rwphType: "rwph-calc-progress", step: doneIndex }, "*");
+      }
+    } catch (_) {}
+  }
+
   function rwphSetResultsLoadingStepDone(tab, stepIndex) {
-    const doneIndex = Number(stepIndex || 0);
+    const doneIndex = Math.max(0, Math.min(4, Number(stepIndex || 0)));
     try {
       if (!tab || tab.closed) return;
-      // Direct DOM update is more reliable on Torn PDA/phone than calling a function inside the new tab.
+      rwphPostResultsLoadingStep(tab, doneIndex);
+      // Direct DOM update helps Torn PDA/phone; postMessage helps PC/desktop popups.
       const doc = tab.document;
       const steps = doc && doc.querySelectorAll ? Array.prototype.slice.call(doc.querySelectorAll("[data-rwph-load-step]")) : [];
       if (steps.length) {
@@ -5365,11 +5408,29 @@
       }
     } catch (_) {
       try {
+        rwphPostResultsLoadingStep(tab, doneIndex);
         if (tab && tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
           tab.window.rwphSetLoadingStepDone(doneIndex);
         }
       } catch (__) {}
     }
+  }
+
+  function rwphSleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+  }
+
+  async function rwphShowResultsLoadingCompletion(tab) {
+    try {
+      if (!tab || tab.closed) return;
+      // v1.1.194: after the server returns, later calculation stages can finish too fast to see.
+      // Light the remaining loading dots in order before replacing the loading page with results.
+      for (let step = 1; step <= 4; step += 1) {
+        rwphSetResultsLoadingStepDone(tab, step);
+        await rwphSleep(220);
+      }
+      await rwphSleep(420);
+    } catch (_) {}
   }
 
   function rwphStartResultsProgressPolling(tab, progressId) {
@@ -5409,22 +5470,22 @@
       });
     };
 
-    timer = setInterval(poll, 1200);
-    setTimeout(poll, 180);
+    timer = setInterval(poll, 650);
+    setTimeout(poll, 80);
     return () => {
       stopped = true;
       if (timer) clearInterval(timer);
     };
   }
 
-  function openBlankResultsTab() {
+  function openBlankResultsTab(progressId = "") {
     try {
       const tab = window.open("about:blank", "_blank");
       if (!tab || tab.closed) return null;
       const rwphLoadingStartedAt = Date.now();
       try {
         tab.document.open();
-        tab.document.write(buildResultsLoadingHtml());
+        tab.document.write(buildResultsLoadingHtml(progressId));
         tab.document.close();
         rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt);
       } catch (writeError) {
@@ -8638,8 +8699,9 @@
         GM_setValue(STORAGE_KEY, userKey);
         results.innerHTML = "";
         status.textContent = "Server is verifying licence, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...";
-        preOpenedResultsTab = openBlankResultsTab();
+        preOpenedResultsTab = openBlankResultsTab(progressId);
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
+        rwphSetResultsLoadingStepDone(preOpenedResultsTab, 0);
 
         const result = await apiPost("/api/calc/rw-payout", {
           userKey,
@@ -8664,7 +8726,7 @@
           stopProgressPolling();
           stopProgressPolling = null;
         }
-        rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4);
+        await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
         const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
         if (openedResultsTab) {
           const resultsPanel = document.getElementById("rw-results-panel");
