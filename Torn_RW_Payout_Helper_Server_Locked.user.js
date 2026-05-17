@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.170
+// @version      1.1.173
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -31,6 +31,7 @@
   const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
+  const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAST_RESULTS_TTL_MS = 10 * 60 * 1000;
@@ -446,6 +447,64 @@
   function rwphToastPanelError(statusEl, message, title = "RWPH Error", readyText = "Ready.") {
     rwphShowToast(message, "error", 30000, title, statusEl);
     if (statusEl) statusEl.textContent = readyText;
+  }
+
+  function rwphQueueCrossTabPopup(context, message, mode = "info", title = "RWPH Info") {
+    try {
+      const payload = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        context: String(context || "general"),
+        message: String(message || "Done."),
+        mode: ["info", "warn", "error"].includes(mode) ? mode : "info",
+        title: String(title || "RWPH Info"),
+        createdAt: Date.now(),
+      };
+      GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, JSON.stringify(payload));
+      return payload.id;
+    } catch (e) {
+      console.warn("Could not queue RWPH popup for new tab:", e);
+      return "";
+    }
+  }
+
+  function rwphClearCrossTabPopup(expectedContext = "") {
+    try {
+      if (!expectedContext) {
+        GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+        return;
+      }
+      const raw = GM_getValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+      const payload = raw ? JSON.parse(raw) : null;
+      if (!payload || payload.context === expectedContext) GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+    } catch (_) {
+      GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+    }
+  }
+
+  function rwphConsumeCrossTabPopup(context, anchorElOrSelector = null, delayMs = 350) {
+    try {
+      const raw = GM_getValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+      if (!raw) return false;
+      const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!payload || !payload.message) return false;
+      if (Date.now() - Number(payload.createdAt || 0) > 2 * 60 * 1000) {
+        GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+        return false;
+      }
+      const wanted = Array.isArray(context) ? context.map(String) : [String(context || "general")];
+      if (!wanted.includes(String(payload.context || "general")) && !wanted.includes("*")) return false;
+      GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
+      setTimeout(() => {
+        let anchor = null;
+        if (typeof anchorElOrSelector === "string") anchor = document.querySelector(anchorElOrSelector);
+        else anchor = anchorElOrSelector;
+        rwphShowToast(payload.message, payload.mode || "info", 30000, payload.title || "RWPH Info", anchor);
+      }, Math.max(0, Number(delayMs) || 0));
+      return true;
+    } catch (e) {
+      console.warn("Could not consume RWPH popup for new tab:", e);
+      return false;
+    }
   }
 
   async function copyText(value) {
@@ -1951,6 +2010,43 @@
       #rw-payout-helper .rw-how-list li b {
         color: #fff2dd !important;
       }
+      #rw-payout-helper .rw-help-api-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      #rw-payout-helper .rw-help-api-card {
+        padding: 8px 9px;
+        border-radius: 10px;
+        border: 1px solid rgba(184,136,89,.18);
+        background: linear-gradient(180deg, rgba(44,32,27,.84), rgba(28,24,22,.84));
+        color: #f8efe7 !important;
+        box-sizing: border-box;
+      }
+      #rw-payout-helper .rw-help-api-card,
+      #rw-payout-helper .rw-help-api-card * {
+        color: #f8efe7 !important;
+      }
+      #rw-payout-helper .rw-help-api-title {
+        margin: 0 0 5px;
+        color: #fff2dd !important;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: .2px;
+        text-shadow: 0 1px 0 rgba(0,0,0,.58), 0 0 10px rgba(255,172,85,.14);
+      }
+      #rw-payout-helper .rw-help-api-text {
+        margin: 4px 0 0;
+        color: #ead3bf !important;
+        font-size: 10px;
+        line-height: 1.42;
+        overflow-wrap: anywhere;
+      }
+      #rw-payout-helper .rw-help-api-text b {
+        color: #fff2dd !important;
+        font-weight: 900;
+      }
       #rw-payout-helper .rw-feature-group {
         list-style: none;
         margin: 12px 0 6px -16px !important;
@@ -1975,6 +2071,17 @@
         background: linear-gradient(180deg, rgba(58,26,21,.76), rgba(31,27,24,.86));
         color: #f8efe7 !important;
         box-sizing: border-box;
+      }
+      #rw-payout-helper .rw-api-tos-card,
+      #rw-payout-helper .rw-api-tos-card *,
+      #rw-payout-helper .rw-api-tos-content,
+      #rw-payout-helper .rw-api-tos-content *,
+      #rw-payout-helper .rw-api-tos-table,
+      #rw-payout-helper .rw-api-tos-table *,
+      #rw-payout-helper .rw-api-tos-table tbody,
+      #rw-payout-helper .rw-api-tos-table tr,
+      #rw-payout-helper .rw-api-tos-table td {
+        color: #f8efe7 !important;
       }
       #rw-payout-helper details.rw-api-tos-card {
         padding: 0;
@@ -2054,6 +2161,11 @@
         width: 34%;
         color: #fff2dd !important;
         font-weight: 900;
+      }
+      #rw-payout-helper .rw-api-tos-card .rw-api-tos-title,
+      #rw-payout-helper .rw-api-tos-card .rw-api-tos-table td:first-child,
+      #rw-payout-helper .rw-api-tos-card .rw-api-tos-table th {
+        color: #ffffff !important;
       }
       #rw-payout-helper .rw-api-tos-table tr:last-child td {
         border-bottom: 0;
@@ -5304,6 +5416,7 @@
     document.body.appendChild(panel);
     panel.hidden = false;
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
+    rwphConsumeCrossTabPopup("payments", panel, 550);
     const payAllUndoStack = [];
 
     panel.addEventListener("click", async (e) => {
@@ -6454,6 +6567,7 @@
       code,
       `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the receiver and code.`
     );
+    rwphConsumeCrossTabPopup("xanax-payment", "#rwph-xanax-send-status", 650);
   }
 
   function downloadCSV(rows) {
@@ -6946,22 +7060,47 @@
           <div class="rw-how-box">
             <div class="rw-how-title">API ToS / Usage Table</div>
             <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
-            <div class="rw-api-tos-table-wrap">
-              <table class="rw-api-tos-table">
-                <thead>
-                  <tr><th>Area</th><th>What RWPH does</th><th>Responsible-use note</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>API key purpose</td><td>Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</td><td>Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</td></tr>
-                  <tr><td>Data read</td><td>Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</td><td>Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</td></tr>
-                  <tr><td>Backend use</td><td>The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</td><td>The backend should only be run/hosted by someone you trust and should keep server secrets private.</td></tr>
-                  <tr><td>Local storage</td><td>When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</td><td>Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</td></tr>
-                  <tr><td>Server storage</td><td>The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</td><td>Server owners should avoid logging API keys and should keep backups/private files secure.</td></tr>
-                  <tr><td>Licence checks</td><td>Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</td><td>Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</td></tr>
-                  <tr><td>Payments</td><td>RWPH can prepare payout rows, copy details, and help prefill payment information.</td><td>RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</td></tr>
-                  <tr><td>What RWPH does not do</td><td>Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</td><td>If a future change adds new API/data use, update this Help text before users rely on it.</td></tr>
-                </tbody>
-              </table>
+            <div class="rw-help-api-grid" role="table" aria-label="API ToS / Usage Table">
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">API key purpose</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Data read</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Backend use</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> The backend should only be run/hosted by someone you trust and should keep server secrets private.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Local storage</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Server storage</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Server owners should avoid logging API keys and should keep backups/private files secure.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Licence checks</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Payments</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> RWPH can prepare payout rows, copy details, and help prefill payment information.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">What RWPH does not do</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> If a future change adds new API/data use, update this Help text before users rely on it.</div>
+              </div>
             </div>
             <div class="rw-manual-warning">Manual confirmation required: RWPH can calculate, copy, and prefill, but Torn money payments and Xanax sends must always be checked and confirmed by you inside Torn.</div>
           </div>
@@ -7093,9 +7232,16 @@
         }
 
         savePendingPayment(result);
-        rwphToastPanelInfo(status, result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.", "info", "RWPH Payment");
+        const helperMessage = result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
+        rwphQueueCrossTabPopup("xanax-payment", helperMessage, "info", "RWPH Payment");
         codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
-        openXanaxPaymentPage(result.code, paymentTab);
+        const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
+        if (!openedPaymentHelper) {
+          rwphClearCrossTabPopup("xanax-payment");
+          rwphToastPanelInfo(status, "Payment code created, but the Xanax helper tab was blocked. Allow popups or click the helper button in the payment card.", "warn", "RWPH Payment");
+        } else if (status) {
+          status.textContent = "Xanax Payment Helper opened in the new tab.";
+        }
         updatePendingPaymentUi();
         startAutoPaymentCheck(userKey, "unlock");
         setTimeout(closePanel, 150);
@@ -7541,22 +7687,47 @@
           <div class="rw-how-box">
             <div class="rw-how-title">API ToS / Usage Table</div>
             <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
-            <div class="rw-api-tos-table-wrap">
-              <table class="rw-api-tos-table">
-                <thead>
-                  <tr><th>Area</th><th>What RWPH does</th><th>Responsible-use note</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>API key purpose</td><td>Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</td><td>Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</td></tr>
-                  <tr><td>Data read</td><td>Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</td><td>Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</td></tr>
-                  <tr><td>Backend use</td><td>The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</td><td>The backend should only be run/hosted by someone you trust and should keep server secrets private.</td></tr>
-                  <tr><td>Local storage</td><td>When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</td><td>Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</td></tr>
-                  <tr><td>Server storage</td><td>The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</td><td>Server owners should avoid logging API keys and should keep backups/private files secure.</td></tr>
-                  <tr><td>Licence checks</td><td>Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</td><td>Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</td></tr>
-                  <tr><td>Payments</td><td>RWPH can prepare payout rows, copy details, and help prefill payment information.</td><td>RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</td></tr>
-                  <tr><td>What RWPH does not do</td><td>Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</td><td>If a future change adds new API/data use, update this Help text before users rely on it.</td></tr>
-                </tbody>
-              </table>
+            <div class="rw-help-api-grid" role="table" aria-label="API ToS / Usage Table">
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">API key purpose</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Data read</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Backend use</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> The backend should only be run/hosted by someone you trust and should keep server secrets private.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Local storage</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Server storage</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Server owners should avoid logging API keys and should keep backups/private files secure.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Licence checks</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">Payments</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> RWPH can prepare payout rows, copy details, and help prefill payment information.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</div>
+              </div>
+              <div class="rw-help-api-card" role="row">
+                <div class="rw-help-api-title">What RWPH does not do</div>
+                <div class="rw-help-api-text"><b>What RWPH does:</b> Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</div>
+                <div class="rw-help-api-text"><b>Responsible use:</b> If a future change adds new API/data use, update this Help text before users rely on it.</div>
+              </div>
             </div>
             <div class="rw-manual-warning">Manual confirmation required: RWPH can calculate, copy, and prefill, but Torn money payments and Xanax sends must always be checked and confirmed by you inside Torn.</div>
           </div>
@@ -7674,15 +7845,19 @@
       const payAllBtn = e.target.closest("[data-pay-all]");
       if (payAllBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
+        rwphQueueCrossTabPopup("payments", "Payments opened in Torn faction controls. Use the copy-only panel there.", "info", "RWPH Payments");
         const opened = rwphOpenPayAllInFactionControls(lastRows);
-        rwphToastPanelInfo(
-          status,
-          opened
-            ? "Payments opened in Torn faction controls. Use the copy-only panel there."
-            : "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.",
-          opened ? "info" : "warn",
-          "RWPH Payments"
-        );
+        if (!opened) {
+          rwphClearCrossTabPopup("payments");
+          rwphToastPanelInfo(
+            status,
+            "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.",
+            "warn",
+            "RWPH Payments"
+          );
+        } else if (status) {
+          status.textContent = "Payments helper opened in the new tab.";
+        }
         return;
       }
 
@@ -7751,9 +7926,16 @@
 
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });
         savePendingPayment(result);
-        rwphToastPanelInfo(status, result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.", "info", "RWPH Payment");
+        const helperMessage = result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
+        rwphQueueCrossTabPopup("xanax-payment", helperMessage, "info", "RWPH Payment");
         if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
-        openXanaxPaymentPage(result.code, paymentTab);
+        const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
+        if (!openedPaymentHelper) {
+          rwphClearCrossTabPopup("xanax-payment");
+          rwphToastPanelInfo(status, "Extension code created, but the Xanax helper tab was blocked. Allow popups or click the helper button in the payment card.", "warn", "RWPH Payment");
+        } else if (status) {
+          status.textContent = "Xanax Payment Helper opened in the new tab.";
+        }
         updatePendingPaymentUi();
         startAutoPaymentCheck(userKey, "extend");
         setTimeout(closePanel, 150);
