@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.181
+// @version      1.1.183
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1452,6 +1452,37 @@
     return result;
   }
 
+  async function removeAdminLicenseDaysFromCurrentForm(statusEl, skipConfirm = false) {
+    const adminKey = document.getElementById("rw-admin-key")?.value.trim();
+    const tornId = document.getElementById("rw-admin-torn-id")?.value.trim();
+    const name = document.getElementById("rw-admin-name")?.value.trim() || `User ${tornId}`;
+    const days = Number(document.getElementById("rw-admin-days")?.value || 30);
+
+    if (!adminKey) throw new Error("Enter your admin key first.");
+    if (!tornId) throw new Error("Enter a Torn ID first.");
+    if (!days || days <= 0) throw new Error("Enter valid days to remove.");
+
+    if (!skipConfirm && !confirm(`Remove ${days} licence day(s) from ${name} (${tornId})?`)) return null;
+
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    if (statusEl) statusEl.textContent = `Removing ${days} licence day(s) from ${name} (${tornId})...`;
+
+    const result = await adminRequest("POST", "/api/admin/remove", adminKey, { tornId, name, days });
+
+    if (statusEl) {
+      const previousText = result.previousExpiresAt ? ` Previous expiry: ${formatUnixDate(result.previousExpiresAt)}.` : "";
+      const endedText = result.expiredNow ? " Licence is now expired." : "";
+      rwphToastPanelInfo(
+        statusEl,
+        `Removed ${result.days || days} licence day(s) from ${result.name || name} (${result.tornId || tornId}).${previousText} New expiry: ${formatUnixDate(result.expiresAt)}.${endedText}`,
+        result.expiredNow ? "warn" : "info",
+        "RWPH Admin"
+      );
+    }
+
+    return result;
+  }
+
   // v1.1.133: admin licence cards show time left and the Fill button copies both Torn ID and name.
   // v1.1.141: panel open state is now tab/page scoped; RWPH panels auto-close on Torn page changes, stay open when switching browser tabs, and reopen after refresh on the same page.
   // v1.1.142: unified panel scrolling so each panel/tab uses one clean scroll area instead of split/nested scroll panels.
@@ -1479,6 +1510,7 @@
   // v1.1.175: Xanax Payment Helper close button now matches the main panel close button style and stays visible in the pinned header area.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
+  // v1.1.183: Admin Remove replaces Revoke and subtracts licence days from the selected licence expiry. The old /api/admin/revoke alias has been removed.
   function renderAdminLicenses(licenses) {
     if (!licenses || !licenses.length) {
       return `<div class="rw-muted">No active licenses found.</div>`;
@@ -7128,7 +7160,7 @@
             <div class="rw-actions">
               <button id="rw-admin-grant">Grant License</button>
               <button id="rw-admin-extend" class="secondary">Extend License</button>
-              <button id="rw-admin-revoke" class="danger">Revoke License</button>
+              <button id="rw-admin-revoke" class="danger">Remove</button>
             </div>
           </div>
 
@@ -7241,8 +7273,8 @@
               <li><b>List Licences:</b> shows licence holders, expiry dates, and how many days each licence has left.</li>
               <li><b>Fill:</b> fills the selected licence's Torn ID and name into the admin form.</li>
               <li><b>Grant License:</b> creates or replaces a licence for the entered Torn ID/name/days.</li>
-              <li><b>Extend License:</b> adds days to the selected licence.</li>
-              <li><b>Revoke License:</b> removes the licence for the entered Torn ID.</li>
+              <li><b>Extend License:</b> adds the entered number of days to the selected licence.</li>
+              <li><b>Remove:</b> removes the entered number of days from the selected licence expiry. If enough days are removed, the licence expires instead of being hard-revoked.</li>
               <li><b>Unified scroll:</b> admin tools are inside one scrollable panel so the tools stay together.</li>
             </ul>
           </div>
@@ -7277,7 +7309,7 @@
               <li><b>Manual payment confirmation:</b> Torn money payments and Xanax licence payments must always be reviewed and confirmed by the user inside Torn. Do not send anything blindly from helper text.</li>
               <li><b>Follow Torn rules:</b> use RWPH only in ways allowed by Torn, your faction rules, and your own server/licence setup.</li>
               <li><b>Keep secrets private:</b> do not share your Torn API key, ADMIN_KEY, PAYWALL_SECRET, or private server URL with people you do not trust.</li>
-              <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and revoking licences correctly.</li>
+              <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and removing licence days correctly.</li>
               <li><b>Keeping RWPH working:</b> we will always do our best to keep the script working and up to date when Torn, browsers, or Torn PDA change.</li>
               <li><b>Server uptime:</b> we aim to keep the RWPH server online 24/7. It may be temporarily unavailable during updates, maintenance, hosting problems, Torn/API issues, or other major problems.</li>
               <li><b>No guarantee:</b> Torn API limits, browser/Torn PDA behaviour, server downtime, or changed Torn pages can affect results. Recheck important payouts before publishing or paying.</li>
@@ -7611,23 +7643,11 @@
 
     document.getElementById("rw-admin-revoke").addEventListener("click", async () => {
       const status = document.getElementById("rw-admin-status");
-
       try {
-        const adminKey = getAdminKeyFromInput();
-        const tornId = document.getElementById("rw-admin-torn-id").value.trim();
-
-        if (!tornId) return alert("Enter the player's Torn ID.");
-        if (!confirm(`Revoke license for Torn ID ${tornId}?`)) return;
-
-        GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-        status.textContent = `Revoking license for Torn ID ${tornId}...`;
-
-        await adminRequest("POST", "/api/admin/revoke", adminKey, { tornId });
-
-        rwphToastPanelInfo(status, `Revoked license for Torn ID ${tornId}.`, "info", "RWPH Admin");
-        await refreshAdminLicenses();
+        const result = await removeAdminLicenseDaysFromCurrentForm(status);
+        if (result) await refreshAdminLicenses();
       } catch (e) {
-        rwphToastPanelError(status, "Admin revoke error: " + e.message, "RWPH Admin");
+        rwphToastPanelError(status, "Admin remove error: " + e.message, "RWPH Admin");
       }
     });
   }
@@ -7756,7 +7776,7 @@
             <div class="rw-actions">
               <button id="rw-admin-grant">Grant License</button>
               <button id="rw-admin-extend" class="secondary">Extend License</button>
-              <button id="rw-admin-revoke" class="danger">Revoke License</button>
+              <button id="rw-admin-revoke" class="danger">Remove</button>
             </div>
           </div>
 
@@ -7869,8 +7889,8 @@
               <li><b>List Licences:</b> shows licence holders, expiry dates, and how many days each licence has left.</li>
               <li><b>Fill:</b> fills the selected licence's Torn ID and name into the admin form.</li>
               <li><b>Grant License:</b> creates or replaces a licence for the entered Torn ID/name/days.</li>
-              <li><b>Extend License:</b> adds days to the selected licence.</li>
-              <li><b>Revoke License:</b> removes the licence for the entered Torn ID.</li>
+              <li><b>Extend License:</b> adds the entered number of days to the selected licence.</li>
+              <li><b>Remove:</b> removes the entered number of days from the selected licence expiry. If enough days are removed, the licence expires instead of being hard-revoked.</li>
               <li><b>Unified scroll:</b> admin tools are inside one scrollable panel so the tools stay together.</li>
             </ul>
           </div>
@@ -7905,7 +7925,7 @@
               <li><b>Manual payment confirmation:</b> Torn money payments and Xanax licence payments must always be reviewed and confirmed by the user inside Torn. Do not send anything blindly from helper text.</li>
               <li><b>Follow Torn rules:</b> use RWPH only in ways allowed by Torn, your faction rules, and your own server/licence setup.</li>
               <li><b>Keep secrets private:</b> do not share your Torn API key, ADMIN_KEY, PAYWALL_SECRET, or private server URL with people you do not trust.</li>
-              <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and revoking licences correctly.</li>
+              <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and removing licence days correctly.</li>
               <li><b>Keeping RWPH working:</b> we will always do our best to keep the script working and up to date when Torn, browsers, or Torn PDA change.</li>
               <li><b>Server uptime:</b> we aim to keep the RWPH server online 24/7. It may be temporarily unavailable during updates, maintenance, hosting problems, Torn/API issues, or other major problems.</li>
               <li><b>No guarantee:</b> Torn API limits, browser/Torn PDA behaviour, server downtime, or changed Torn pages can affect results. Recheck important payouts before publishing or paying.</li>
@@ -8393,23 +8413,11 @@
 
     document.getElementById("rw-admin-revoke").addEventListener("click", async () => {
       const status = document.getElementById("rw-admin-status");
-
       try {
-        const adminKey = getAdminKeyFromInput();
-        const tornId = document.getElementById("rw-admin-torn-id").value.trim();
-
-        if (!tornId) return alert("Enter the player's Torn ID.");
-        if (!confirm(`Revoke license for Torn ID ${tornId}?`)) return;
-
-        GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-        status.textContent = `Revoking license for Torn ID ${tornId}...`;
-
-        await adminRequest("POST", "/api/admin/revoke", adminKey, { tornId });
-
-        rwphToastPanelInfo(status, `Revoked license for Torn ID ${tornId}.`, "info", "RWPH Admin");
-        await refreshAdminLicenses();
+        const result = await removeAdminLicenseDaysFromCurrentForm(status);
+        if (result) await refreshAdminLicenses();
       } catch (e) {
-        rwphToastPanelError(status, "Admin revoke error: " + e.message, "RWPH Admin");
+        rwphToastPanelError(status, "Admin remove error: " + e.message, "RWPH Admin");
       }
     });
   }
