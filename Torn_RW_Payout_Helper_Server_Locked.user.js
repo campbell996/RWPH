@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.156
+// @version      1.1.158
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -59,6 +59,140 @@
       '"': "&quot;",
       "'": "&#039;",
     }[c]));
+  }
+
+
+  function rwphEnsureToastStack() {
+    if (!document.getElementById("rwph-toast-style")) {
+      const style = document.createElement("style");
+      style.id = "rwph-toast-style";
+      style.textContent = `
+        #rwph-toast-stack {
+          position: fixed !important;
+          right: 18px !important;
+          bottom: 18px !important;
+          z-index: 2147483647 !important;
+          width: min(360px, calc(100vw - 28px)) !important;
+          display: grid !important;
+          gap: 9px !important;
+          pointer-events: none !important;
+          font-family: Inter, Arial, sans-serif !important;
+        }
+        .rwph-toast {
+          pointer-events: auto !important;
+          position: relative !important;
+          overflow: hidden !important;
+          border-radius: 16px !important;
+          border: 1px solid rgba(56, 189, 248, .38) !important;
+          background: linear-gradient(135deg, rgba(3, 7, 18, .98), rgba(15, 23, 42, .96), rgba(8, 47, 73, .92)) !important;
+          box-shadow: 0 18px 50px rgba(0, 0, 0, .48), 0 0 26px rgba(56, 189, 248, .18) !important;
+          color: #e0f7ff !important;
+          padding: 11px 12px 11px 13px !important;
+          transform: translateY(8px) scale(.98) !important;
+          opacity: 0 !important;
+          animation: rwph-toast-in .18s ease-out forwards !important;
+        }
+        .rwph-toast::before {
+          content: "" !important;
+          position: absolute !important;
+          inset: 0 auto 0 0 !important;
+          width: 4px !important;
+          background: linear-gradient(180deg, #38bdf8, #22c55e) !important;
+          box-shadow: 0 0 14px rgba(56, 189, 248, .48) !important;
+        }
+        .rwph-toast.rwph-toast-error { border-color: rgba(248, 113, 113, .48) !important; }
+        .rwph-toast.rwph-toast-error::before { background: linear-gradient(180deg, #fb7185, #f97316) !important; }
+        .rwph-toast.rwph-toast-warn { border-color: rgba(250, 204, 21, .48) !important; }
+        .rwph-toast.rwph-toast-warn::before { background: linear-gradient(180deg, #facc15, #f97316) !important; }
+        .rwph-toast-title {
+          margin: 0 0 4px 0 !important;
+          color: #ffffff !important;
+          font-size: 12px !important;
+          line-height: 1.15 !important;
+          font-weight: 950 !important;
+          letter-spacing: .4px !important;
+          text-transform: uppercase !important;
+        }
+        .rwph-toast-message {
+          margin: 0 !important;
+          color: #bdefff !important;
+          font-size: 12px !important;
+          line-height: 1.35 !important;
+          font-weight: 800 !important;
+          overflow-wrap: anywhere !important;
+        }
+        .rwph-toast-timer {
+          position: absolute !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          height: 2px !important;
+          background: rgba(56, 189, 248, .72) !important;
+          transform-origin: left center !important;
+          animation: rwph-toast-timer var(--rwph-toast-ttl, 10s) linear forwards !important;
+        }
+        @keyframes rwph-toast-in { to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes rwph-toast-timer { to { transform: scaleX(0); } }
+        @media (max-width: 520px) {
+          #rwph-toast-stack { right: 10px !important; bottom: 10px !important; width: calc(100vw - 20px) !important; }
+          .rwph-toast { border-radius: 14px !important; padding: 10px 11px 10px 12px !important; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    let stack = document.getElementById("rwph-toast-stack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.id = "rwph-toast-stack";
+      document.body.appendChild(stack);
+    }
+    return stack;
+  }
+
+  function rwphShowToast(message, mode = "info", ttlMs = 10000, title = "RWPH Info") {
+    const stack = rwphEnsureToastStack();
+    const toast = document.createElement("div");
+    const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
+    toast.className = `rwph-toast rwph-toast-${safeMode}`;
+    toast.style.setProperty("--rwph-toast-ttl", `${Math.max(1000, Number(ttlMs) || 10000)}ms`);
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "rwph-toast-title";
+    titleEl.textContent = title;
+
+    const msgEl = document.createElement("div");
+    msgEl.className = "rwph-toast-message";
+    msgEl.textContent = String(message || "Done.");
+
+    const timerEl = document.createElement("div");
+    timerEl.className = "rwph-toast-timer";
+
+    toast.appendChild(titleEl);
+    toast.appendChild(msgEl);
+    toast.appendChild(timerEl);
+    stack.appendChild(toast);
+
+    const removeToast = () => {
+      toast.style.transition = "opacity .18s ease, transform .18s ease";
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(8px) scale(.98)";
+      setTimeout(() => toast.remove(), 220);
+    };
+    toast.addEventListener("click", removeToast, { once: true });
+    setTimeout(removeToast, Math.max(1000, Number(ttlMs) || 10000));
+    return toast;
+  }
+
+
+  function rwphToastPanelInfo(statusEl, message, mode = "info", title = "RWPH Info", readyText = "Ready.") {
+    rwphShowToast(message, mode, 10000, title);
+    if (statusEl) statusEl.textContent = readyText;
+  }
+
+  function rwphToastPanelError(statusEl, message, title = "RWPH Error", readyText = "Ready.") {
+    rwphShowToast(message, "error", 10000, title);
+    if (statusEl) statusEl.textContent = readyText;
   }
 
   async function copyText(value) {
@@ -492,10 +626,11 @@
 
       if (mode === "extend" || document.getElementById("rw-key")) {
         const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-        if (status) status.textContent = `Licence extended.${paidQtyText}`;
-        if (status) await showLicenseDays(status);
+        rwphToastPanelInfo(status, `Licence extended.${paidQtyText}`, "info", "RWPH Payment");
+        if (status) await showLicenseDays(status, { toast: true });
       } else {
-        setPaymentStatus(`Unlocked.${paidQtyText} Loading tool...`, mode);
+        rwphShowToast(`Unlocked.${paidQtyText} Loading tool...`, "info", 10000, "RWPH Payment");
+        setPaymentStatus("Ready.", mode);
         closePanel();
         createPanel();
       }
@@ -647,9 +782,7 @@
     setLauncherCorner(next);
 
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    if (status) {
-      status.textContent = `Panel button moved to ${launcherCornerLabel(next)}.`;
-    }
+    rwphToastPanelInfo(status, `Panel button moved to ${launcherCornerLabel(next)}.`, "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
@@ -950,9 +1083,12 @@
     const result = await adminRequest("POST", "/api/admin/grant-owner", adminKey, { days: 10000 });
 
     if (statusEl) {
-      statusEl.textContent =
-        `Admin key saved. Owner license granted to ${result.name || "Owner"} ` +
-        `(${result.tornId}) until ${formatUnixDate(result.expiresAt)}.`;
+      rwphToastPanelInfo(
+        statusEl,
+        `Admin key saved. Owner license granted to ${result.name || "Owner"} (${result.tornId}) until ${formatUnixDate(result.expiresAt)}.`,
+        "info",
+        "RWPH Admin"
+      );
     }
 
     return result;
@@ -977,10 +1113,12 @@
 
     if (statusEl) {
       const previousText = result.previousExpiresAt ? ` Previous expiry: ${formatUnixDate(result.previousExpiresAt)}.` : "";
-      statusEl.textContent =
-        `Extended license for ${result.name || name} (${result.tornId || tornId}) by ${result.days || days} day(s).` +
-        previousText +
-        ` New expiry: ${formatUnixDate(result.expiresAt)}.`;
+      rwphToastPanelInfo(
+        statusEl,
+        `Extended license for ${result.name || name} (${result.tornId || tornId}) by ${result.days || days} day(s).${previousText} New expiry: ${formatUnixDate(result.expiresAt)}.`,
+        "info",
+        "RWPH Admin"
+      );
     }
 
     return result;
@@ -1004,6 +1142,8 @@
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
   // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
+  // v1.1.157: info-style button feedback now appears as bottom-corner toast popups for 10 seconds instead of filling the panel footer.
+  // v1.1.158: expanded bottom-corner toast popups across Admin, Results, Payments, and Xanax helper panel feedback.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -1095,11 +1235,20 @@
     return "Under 1 hour";
   }
 
-  async function showLicenseDays(statusEl) {
+  async function showLicenseDays(statusEl, options = {}) {
     const info = await getSavedLicenseInfo();
+    const useToast = !!options.toast;
+    const writeInfo = (message, mode = "info") => {
+      if (useToast) {
+        rwphShowToast(message, mode, 10000, mode === "error" ? "RWPH Licence" : "RWPH Info");
+        if (statusEl && options.clearPanelStatus !== false) statusEl.textContent = options.readyText || "Ready.";
+      } else if (statusEl) {
+        statusEl.textContent = message;
+      }
+    };
 
     if (!info.valid) {
-      statusEl.textContent = "License check: " + (info.error || "No valid saved license found.");
+      writeInfo("License check: " + (info.error || "No valid saved license found."), "error");
       if (document.getElementById("rw-key")) {
         const lockMsg = info.revoked
           ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again."
@@ -1109,9 +1258,10 @@
       return false;
     }
 
-    statusEl.textContent =
+    writeInfo(
       `License active for ${info.name || "this user"} (${info.tornId || "unknown"}). ` +
-      `Time left: ${formatLicenseDaysLeft(info.expiresAt)}. Expires: ${formatUnixDate(info.expiresAt)}.`;
+      `Time left: ${formatLicenseDaysLeft(info.expiresAt)}. Expires: ${formatUnixDate(info.expiresAt)}.`
+    );
     return true;
   }
 
@@ -3862,6 +4012,28 @@
       }
     }
 
+    function showToast(message, mode) {
+      var stack = document.getElementById("rwphFullToastStack");
+      if (!stack) {
+        stack = document.createElement("div");
+        stack.id = "rwphFullToastStack";
+        stack.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:2147483647;display:flex;flex-direction:column;gap:8px;max-width:min(360px,calc(100vw - 28px));pointer-events:none";
+        document.body.appendChild(stack);
+      }
+      var toast = document.createElement("div");
+      var warn = mode === "warn";
+      toast.style.cssText = "pointer-events:auto;position:relative;overflow:hidden;border-radius:14px;padding:11px 13px 12px;background:linear-gradient(135deg,rgba(8,16,34,.98),rgba(15,32,64,.96));border:1px solid " + (warn ? "rgba(250,204,21,.55)" : "rgba(56,189,248,.5)") + ";color:#dff7ff;font:800 12px/1.35 Arial,Helvetica,sans-serif;box-shadow:0 14px 36px rgba(0,0,0,.46);cursor:pointer";
+      toast.textContent = String(message || "Done.");
+      stack.appendChild(toast);
+      var bar = document.createElement("div");
+      bar.style.cssText = "position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(56,189,248,.75);transform-origin:left center;transition:transform 10s linear";
+      toast.appendChild(bar);
+      setTimeout(function(){ bar.style.transform = "scaleX(0)"; }, 30);
+      function remove(){ toast.style.opacity = "0"; toast.style.transform = "translateY(8px)"; setTimeout(function(){ toast.remove(); }, 220); }
+      toast.addEventListener("click", remove, { once:true });
+      setTimeout(remove, 10000);
+    }
+
     const payAllUndoStack = [];
 
     function setupMoveResize(panel, handleSelector) {
@@ -4042,12 +4214,16 @@
       if (nameBtn) {
         const r = rows[Number(nameBtn.dataset.copyName)] || {};
         const name = r.name || ("Unknown " + (r.id || "unknown"));
-        await copyText(name + " [" + (r.id || "unknown") + "]");
+        var value = name + " [" + (r.id || "unknown") + "]";
+        await copyText(value);
+        showToast("Name + ID copied: " + value, "info");
         hidePayAllButton(nameBtn, "Name + ID");
       }
       if (amountBtn) {
         const r = rows[Number(amountBtn.dataset.copyAmount)] || {};
-        await copyText(String(Math.round(Number(r.payout || 0))));
+        var amountValue = String(Math.round(Number(r.payout || 0)));
+        await copyText(amountValue);
+        showToast("Amount copied: " + amountValue, "info");
         hidePayAllButton(amountBtn, "Amount");
       }
     });
@@ -4318,8 +4494,7 @@
     rwphUpdateLastResultsButton();
 
     if (!payload) {
-      if (status) status.textContent = "Last results expired. Run Fetch + Calculate again.";
-      alert("Last results expired. Run Fetch + Calculate again.");
+      rwphToastPanelError(status, "Last results expired. Run Fetch + Calculate again.", "RWPH Results");
       return;
     }
 
@@ -4327,7 +4502,7 @@
     lastSummary = payload.summary || {};
     const opened = openFullscreenResultsTab(lastRows, lastSummary);
     if (opened) {
-      if (status) status.textContent = "Last Fetch + Calculate results reopened in a fullscreen tab.";
+      rwphToastPanelInfo(status, "Last Fetch + Calculate results reopened in a fullscreen tab.", "info", "RWPH Results");
       return;
     }
 
@@ -4341,7 +4516,7 @@
       resultsPanel.style.opacity = "1";
       resultsPanel.scrollTop = 0;
     }
-    if (status) status.textContent = "Popup blocked. Last results reopened in the panel instead.";
+    rwphToastPanelInfo(status, "Popup blocked. Last results reopened in the panel instead.", "warn", "RWPH Results");
   }
 
   function rwphWarSourceLabel(value) {
@@ -4703,7 +4878,8 @@
       const nameBtn = e.target.closest?.("[data-pay-copy-name]");
       if (nameBtn) {
         const row = safeRows[Number(nameBtn.dataset.payCopyName)] || {};
-        await rwphPrefillPayAllMember(row);
+        const res = await rwphPrefillPayAllMember(row);
+        rwphShowToast(res.filled ? `Name copied and prefilled: ${res.value}` : `Name copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
         rwphHidePayAllActionButton(nameBtn, "Name + ID", payAllUndoStack);
         return;
       }
@@ -4711,7 +4887,8 @@
       const amountBtn = e.target.closest?.("[data-pay-copy-amount]");
       if (amountBtn) {
         const row = safeRows[Number(amountBtn.dataset.payCopyAmount)] || {};
-        await rwphPrefillPayAllAmount(row);
+        const res = await rwphPrefillPayAllAmount(row);
+        rwphShowToast(res.filled ? `Amount copied and prefilled: ${res.value}` : `Amount copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
         rwphHidePayAllActionButton(amountBtn, "Amount", payAllUndoStack);
       }
     });
@@ -5785,9 +5962,9 @@
 
         const res = await rwphPasteReceiverIntoOpenForm();
         if (res.ok) {
-          rwphRenderPaymentHelperPanel(currentCode, `Receiver prefilled into the User ID field: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b>. Review before sending.`);
+          rwphShowToast(`Receiver copied/prefilled: ${PAYMENT_RECEIVER_TEXT}. Review before sending.`, "info", 10000, "RWPH Payment Helper");
         } else {
-          rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
+          rwphShowToast(res.error, "warn", 10000, "RWPH Payment Helper");
         }
         rwphMaybeAutoClosePaymentHelper();
       }
@@ -5799,9 +5976,9 @@
 
         const res = await rwphPastePaymentCodeIntoOpenForm(currentCode);
         if (res.ok) {
-          rwphRenderPaymentHelperPanel(currentCode, "Payment code prefilled into the Add Message field. Review before sending.");
+          rwphShowToast("Payment code copied/prefilled into the Add Message field. Review before sending.", "info", 10000, "RWPH Payment Helper");
         } else {
-          rwphRenderPaymentHelperPanel(currentCode, esc(res.error), true);
+          rwphShowToast(res.error, "warn", 10000, "RWPH Payment Helper");
         }
         rwphMaybeAutoClosePaymentHelper();
       }
@@ -6285,6 +6462,7 @@
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Payments helper, and manual-review popup.</li>
               <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
+              <li><b>Popup feedback:</b> save, admin, result, newsletter, payment-helper, and copy/prefill feedback appears as a small bottom-corner popup for 10 seconds instead of filling panel status areas.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -6407,7 +6585,9 @@
       lockedSaveKeyBtn.addEventListener("click", () => {
         const key = document.getElementById("rw-paywall-key").value.trim();
         GM_setValue(STORAGE_KEY, key);
-        document.getElementById("rw-paywall-status").textContent = key ? "API key saved locally." : "Saved blank API key locally.";
+        const msg = key ? "API key saved locally." : "Saved blank API key locally.";
+        const status = document.getElementById("rw-paywall-status");
+        rwphToastPanelInfo(status, msg, "info", "RWPH Info");
       });
     }
 
@@ -6421,12 +6601,12 @@
         status.textContent = "Checking licence...";
         const info = await getSavedLicenseInfo();
         if (!info.valid) {
-          status.textContent = "Unlock failed: " + (info.error || (info.revoked ? "Licence revoked." : "No active licence found."));
+          rwphToastPanelError(status, "Unlock failed: " + (info.error || (info.revoked ? "Licence revoked." : "No active licence found.")), "RWPH Licence");
           return;
         }
 
         if (info.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, info.token);
-        status.textContent = "Licence active. Unlocking RWPH...";
+        rwphToastPanelInfo(status, "Licence active. Unlocking RWPH...", "info", "RWPH Licence");
         clearPendingPayment();
         closePanel();
         createPanel();
@@ -6450,14 +6630,14 @@
           closePreOpenedPaymentTab(paymentTab);
           clearPendingPayment();
           GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-          status.textContent = "Existing license found. Loading tool...";
+          rwphToastPanelInfo(status, "Existing license found. Loading tool...", "info", "RWPH Licence");
           closePanel();
           createPanel();
           return;
         }
 
         savePendingPayment(result);
-        status.textContent = result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
+        rwphToastPanelInfo(status, result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.", "info", "RWPH Payment");
         codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
         openXanaxPaymentPage(result.code, paymentTab);
         updatePendingPaymentUi();
@@ -6465,7 +6645,7 @@
         setTimeout(closePanel, 150);
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
-        status.textContent = "Payment start error: " + e.message;
+        rwphToastPanelError(status, "Payment start error: " + e.message, "RWPH Payment");
       }
     });
 
@@ -6488,11 +6668,11 @@
         if (!result.token) throw new Error(result.message || "Trial did not return a license token.");
 
         GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-        status.textContent = `${result.message || "7 day free trial activated."} Loading tool...`;
+        rwphToastPanelInfo(status, `${result.message || "7 day free trial activated."} Loading tool...`, "info", "RWPH Trial");
         closePanel();
         createPanel();
       } catch (e) {
-        status.textContent = "Free trial error: " + e.message;
+        rwphToastPanelError(status, "Free trial error: " + e.message, "RWPH Trial");
       }
     });
 
@@ -6502,8 +6682,8 @@
 
     document.getElementById("rw-check-license-days").addEventListener("click", async () => {
       const status = document.getElementById("rw-paywall-status");
-      status.textContent = "Checking saved license...";
-      await showLicenseDays(status);
+      if (status) status.textContent = "Checking saved license...";
+      await showLicenseDays(status, { toast: true });
     });
 
     function getAdminKeyFromInput() {
@@ -6523,7 +6703,7 @@
 
       const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
       results.innerHTML = renderAdminLicenses(result.licenses || []);
-      status.textContent = `Loaded ${(result.licenses || []).length} licence(s).`;
+      rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
 
       results.querySelectorAll(".rw-admin-fill-revoke").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -6531,9 +6711,12 @@
           const filledName = btn.dataset.name || (filledId ? `User ${filledId}` : "");
           document.getElementById("rw-admin-torn-id").value = filledId;
           document.getElementById("rw-admin-name").value = filledName;
-          document.getElementById("rw-admin-status").textContent = filledName
-            ? `Filled ${filledName} (${filledId}) into the admin form.`
-            : `Filled Torn ID ${filledId} into the admin form.`;
+          rwphToastPanelInfo(
+            document.getElementById("rw-admin-status"),
+            filledName ? `Filled ${filledName} (${filledId}) into the admin form.` : `Filled Torn ID ${filledId} into the admin form.`,
+            "info",
+            "RWPH Admin"
+          );
         });
       });
     }
@@ -6551,7 +6734,7 @@
         await grantOwnerLicenseFromAdminKey(adminKey, status);
         await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin key saved, but owner license grant failed: " + e.message;
+        rwphToastPanelError(status, "Admin key saved, but owner license grant failed: " + e.message, "RWPH Admin");
       }
     });
 
@@ -6559,7 +6742,7 @@
       try {
         await refreshAdminLicenses();
       } catch (e) {
-        document.getElementById("rw-admin-status").textContent = "Admin list error: " + e.message;
+        rwphToastPanelError(document.getElementById("rw-admin-status"), "Admin list error: " + e.message, "RWPH Admin");
       }
     });
 
@@ -6580,10 +6763,10 @@
 
         const result = await adminRequest("POST", "/api/admin/grant", adminKey, { tornId, name, days });
 
-        status.textContent = `Granted license to ${result.name || name} (${result.tornId || tornId}) until ${formatUnixDate(result.expiresAt)}.`;
+        rwphToastPanelInfo(status, `Granted license to ${result.name || name} (${result.tornId || tornId}) until ${formatUnixDate(result.expiresAt)}.`, "info", "RWPH Admin");
         await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin grant error: " + e.message;
+        rwphToastPanelError(status, "Admin grant error: " + e.message, "RWPH Admin");
       }
     });
 
@@ -6593,7 +6776,7 @@
         const result = await extendAdminLicenseFromCurrentForm(status);
         if (result) await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin extend error: " + e.message;
+        rwphToastPanelError(status, "Admin extend error: " + e.message, "RWPH Admin");
       }
     });
 
@@ -6612,10 +6795,10 @@
 
         await adminRequest("POST", "/api/admin/revoke", adminKey, { tornId });
 
-        status.textContent = `Revoked license for Torn ID ${tornId}.`;
+        rwphToastPanelInfo(status, `Revoked license for Torn ID ${tornId}.`, "info", "RWPH Admin");
         await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin revoke error: " + e.message;
+        rwphToastPanelError(status, "Admin revoke error: " + e.message, "RWPH Admin");
       }
     });
   }
@@ -6862,6 +7045,7 @@
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
               <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Payments helper, and manual-review popup.</li>
               <li><b>Resizable panels:</b> all RWPH floating panels have a four-corner resize handles and save their size/position after refresh.</li>
+              <li><b>Popup feedback:</b> save, admin, result, newsletter, payment-helper, and copy/prefill feedback appears as a small bottom-corner popup for 10 seconds instead of filling panel status areas.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -6983,7 +7167,8 @@
     document.getElementById("rw-save").addEventListener("click", () => {
       const key = document.getElementById("rw-key").value.trim();
       GM_setValue(STORAGE_KEY, key);
-      document.getElementById("rw-status").textContent = "API key saved locally.";
+      const status = document.getElementById("rw-status");
+      rwphToastPanelInfo(status, "API key saved locally.", "info", "RWPH Info");
     });
 
     const reopenLastResultsBtn = document.getElementById("rw-reopen-last-results");
@@ -7012,7 +7197,7 @@
       if (exportCsvBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
         downloadCSV(lastRows);
-        if (status) status.textContent = "CSV exported from the results panel.";
+        rwphToastPanelInfo(status, "CSV exported from the results panel.", "info", "RWPH Results");
         return;
       }
 
@@ -7020,9 +7205,14 @@
       if (payAllBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
         const opened = rwphOpenPayAllInFactionControls(lastRows);
-        if (status) status.textContent = opened
-          ? "Payments opened in Torn faction controls. Use the copy-only panel there."
-          : "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.";
+        rwphToastPanelInfo(
+          status,
+          opened
+            ? "Payments opened in Torn faction controls. Use the copy-only panel there."
+            : "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.",
+          opened ? "info" : "warn",
+          "RWPH Payments"
+        );
         return;
       }
 
@@ -7041,7 +7231,8 @@
       const payNameBtn = e.target.closest("[data-pay-copy-name]");
       if (payNameBtn) {
         const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
-        await rwphPrefillPayAllMember(row);
+        const res = await rwphPrefillPayAllMember(row);
+        rwphShowToast(res.filled ? `Name copied and prefilled: ${res.value}` : `Name copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
         rwphHidePayAllActionButton(payNameBtn, "Name + ID", rwphPayAllInlineUndoStack);
         return;
       }
@@ -7049,7 +7240,8 @@
       const payAmountBtn = e.target.closest("[data-pay-copy-amount]");
       if (payAmountBtn) {
         const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
-        await rwphPrefillPayAllAmount(row);
+        const res = await rwphPrefillPayAllAmount(row);
+        rwphShowToast(res.filled ? `Amount copied and prefilled: ${res.value}` : `Amount copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
         rwphHidePayAllActionButton(payAmountBtn, "Amount", rwphPayAllInlineUndoStack);
         return;
       }
@@ -7061,9 +7253,9 @@
 
         try {
           const filename = createHtmlNewsletter(lastRows, lastSummary);
-          status.textContent = `HTML newsletter created: ${filename}. A preview tab should open and the file should download.`;
+          rwphToastPanelInfo(status, `HTML newsletter created: ${filename}. A preview tab should open and the file should download.`, "info", "RWPH Newsletter");
         } catch (err) {
-          status.textContent = "Newsletter error: " + err.message;
+          rwphToastPanelError(status, "Newsletter error: " + err.message, "RWPH Newsletter");
         }
         return;
       }
@@ -7071,8 +7263,8 @@
 
     document.getElementById("rw-license-days").addEventListener("click", async () => {
       const status = document.getElementById("rw-status");
-      status.textContent = "Checking saved license...";
-      await showLicenseDays(status);
+      if (status) status.textContent = "Checking saved license...";
+      await showLicenseDays(status, { toast: true });
     });
 
     document.getElementById("rw-extend-licence").addEventListener("click", async () => {
@@ -7089,7 +7281,7 @@
 
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });
         savePendingPayment(result);
-        status.textContent = result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
+        rwphToastPanelInfo(status, result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.", "info", "RWPH Payment");
         if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
         openXanaxPaymentPage(result.code, paymentTab);
         updatePendingPaymentUi();
@@ -7097,7 +7289,7 @@
         setTimeout(closePanel, 150);
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
-        status.textContent = "Extend licence error: " + e.message;
+        rwphToastPanelError(status, "Extend licence error: " + e.message, "RWPH Payment");
       }
     });
 
@@ -7124,9 +7316,10 @@
         document.getElementById("rw-from").value = toDateTimeLocalValue(war.start);
         document.getElementById("rw-to").value = toDateTimeLocalValue(war.end);
         const type = war.isActive ? "current active war" : "most recently finished war";
-        status.textContent = `Auto-filled ${type}: ${readableTime(war.start)} to ${readableTime(war.end)}.`;
+        const msg = `Auto-filled ${type}: ${readableTime(war.start)} to ${readableTime(war.end)}.`;
+        rwphToastPanelInfo(status, msg, "info", "RWPH Info");
       } catch (e) {
-        status.textContent = "Auto-fill error: " + e.message;
+        rwphToastPanelError(status, "Auto-fill error: " + e.message, "RWPH War Times");
       }
     });
 
@@ -7183,7 +7376,7 @@
             resultsPanel.setAttribute("hidden", "");
             resultsPanel.style.display = "none";
           }
-          status.textContent = `Done. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}. Results opened in a fullscreen new tab.`;
+          rwphToastPanelInfo(status, `Done. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}. Results opened in a fullscreen new tab.`, "info", "RWPH Results");
         } else {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
@@ -7194,7 +7387,7 @@
             resultsPanel.style.opacity = "1";
             resultsPanel.scrollTop = 0;
           }
-          status.textContent = `Done. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}. Popup blocked, so results opened in the panel.`;
+          rwphToastPanelInfo(status, `Done. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}. Popup blocked, so results opened in the panel.`, "warn", "RWPH Results");
         }
       } catch (e) {
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
@@ -7217,7 +7410,7 @@
             preOpenedResultsTab.document.close();
           } catch (_) {}
         }
-        status.textContent = "Error: " + e.message;
+        rwphToastPanelError(status, "Error: " + e.message, "RWPH Results");
         if (String(e.message).toLowerCase().includes("license") || String(e.message).toLowerCase().includes("licence")) {
           returnToLockedPanel(String(e.message).toLowerCase().includes("revoked") ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again." : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
         }
@@ -7241,7 +7434,7 @@
 
       const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
       results.innerHTML = renderAdminLicenses(result.licenses || []);
-      status.textContent = `Loaded ${(result.licenses || []).length} licence(s).`;
+      rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
 
       results.querySelectorAll(".rw-admin-fill-revoke").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -7249,9 +7442,12 @@
           const filledName = btn.dataset.name || (filledId ? `User ${filledId}` : "");
           document.getElementById("rw-admin-torn-id").value = filledId;
           document.getElementById("rw-admin-name").value = filledName;
-          document.getElementById("rw-admin-status").textContent = filledName
-            ? `Filled ${filledName} (${filledId}) into the admin form.`
-            : `Filled Torn ID ${filledId} into the admin form.`;
+          rwphToastPanelInfo(
+            document.getElementById("rw-admin-status"),
+            filledName ? `Filled ${filledName} (${filledId}) into the admin form.` : `Filled Torn ID ${filledId} into the admin form.`,
+            "info",
+            "RWPH Admin"
+          );
         });
       });
     }
@@ -7269,7 +7465,7 @@
         await grantOwnerLicenseFromAdminKey(adminKey, status);
         await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin key saved, but owner license grant failed: " + e.message;
+        rwphToastPanelError(status, "Admin key saved, but owner license grant failed: " + e.message, "RWPH Admin");
       }
     });
 
@@ -7277,7 +7473,7 @@
       try {
         await refreshAdminLicenses();
       } catch (e) {
-        document.getElementById("rw-admin-status").textContent = "Admin list error: " + e.message;
+        rwphToastPanelError(document.getElementById("rw-admin-status"), "Admin list error: " + e.message, "RWPH Admin");
       }
     });
 
@@ -7298,10 +7494,10 @@
 
         const result = await adminRequest("POST", "/api/admin/grant", adminKey, { tornId, name, days });
 
-        status.textContent = `Granted license to ${result.name || name} (${result.tornId || tornId}) until ${formatUnixDate(result.expiresAt)}.`;
+        rwphToastPanelInfo(status, `Granted license to ${result.name || name} (${result.tornId || tornId}) until ${formatUnixDate(result.expiresAt)}.`, "info", "RWPH Admin");
         await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin grant error: " + e.message;
+        rwphToastPanelError(status, "Admin grant error: " + e.message, "RWPH Admin");
       }
     });
 
@@ -7311,7 +7507,7 @@
         const result = await extendAdminLicenseFromCurrentForm(status);
         if (result) await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin extend error: " + e.message;
+        rwphToastPanelError(status, "Admin extend error: " + e.message, "RWPH Admin");
       }
     });
 
@@ -7330,10 +7526,10 @@
 
         await adminRequest("POST", "/api/admin/revoke", adminKey, { tornId });
 
-        status.textContent = `Revoked license for Torn ID ${tornId}.`;
+        rwphToastPanelInfo(status, `Revoked license for Torn ID ${tornId}.`, "info", "RWPH Admin");
         await refreshAdminLicenses();
       } catch (e) {
-        status.textContent = "Admin revoke error: " + e.message;
+        rwphToastPanelError(status, "Admin revoke error: " + e.message, "RWPH Admin");
       }
     });
   }
