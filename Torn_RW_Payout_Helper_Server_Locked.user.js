@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.141
+// @version      1.1.143
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -959,10 +959,12 @@
 
   // v1.1.133: admin licence cards show time left and the Fill button copies both Torn ID and name.
   // v1.1.141: panel open state is now tab/page scoped; RWPH panels auto-close on Torn page changes, stay open when switching browser tabs, and reopen after refresh on the same page.
+  // v1.1.142: unified panel scrolling so each panel/tab uses one clean scroll area instead of split/nested scroll panels.
   // v1.1.139: hidden white outer panel scrollbars while keeping blue internal RWPH scrollbars.
   // v1.1.138: moving/resizing is enabled for all RWPH floating panels, including Pay All/manual-review helpers.
   // v1.1.137: removed the Add Balance removal sentence from Help panel wording.
   // v1.1.136: clearer payment expiry timers, auto-close on licence payment flow, and tighter panel fit.
+  // v1.1.143: main panel licence controls rearranged so Your Expiration sits under Extend Licence and Lock sits under Save Key.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Pay All controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -2581,6 +2583,15 @@
       #rw-payout-helper .rw-newsletter-actions button {
         flex-basis:100% !important;
       }
+      #rw-payout-helper .rw-licence-control-grid {
+        display:grid !important;
+        grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+        gap:6px !important;
+      }
+      #rw-payout-helper .rw-licence-control-grid button {
+        width:100% !important;
+        flex:unset !important;
+      }
       #rw-payout-helper input,
       #rw-payout-helper textarea,
       #rw-payout-helper select {
@@ -2872,6 +2883,97 @@
         opacity:1 !important;
         filter:drop-shadow(0 0 6px rgba(56,189,248,.65)) !important;
       }
+      /* v1.1.142 unified scroll polish: one scroll body per panel/tab, no nested admin/help/tool scroll panes */
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-results-panel > .rw-body {
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+        min-height:0 !important;
+      }
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-summary,
+      #rw-payout-helper .rw-payment-card,
+      #rw-payout-helper .rw-card-list,
+      #rw-payout-helper .rw-admin-list,
+      #rw-payout-helper .rw-newsletter-actions,
+      #rw-payout-helper .rw-result-actions {
+        max-height:none !important;
+        overflow:visible !important;
+        overflow-x:visible !important;
+        overflow-y:visible !important;
+        scrollbar-width:none !important;
+      }
+      #rw-payout-helper .rw-tab-section::-webkit-scrollbar,
+      #rw-payout-helper .rw-admin-box::-webkit-scrollbar,
+      #rw-payout-helper .rw-how-box::-webkit-scrollbar,
+      #rw-payout-helper .rw-summary::-webkit-scrollbar,
+      #rw-payout-helper .rw-payment-card::-webkit-scrollbar,
+      #rw-payout-helper .rw-card-list::-webkit-scrollbar,
+      #rw-payout-helper .rw-admin-list::-webkit-scrollbar,
+      #rw-payout-helper .rw-newsletter-actions::-webkit-scrollbar,
+      #rw-payout-helper .rw-result-actions::-webkit-scrollbar {
+        width:0 !important;
+        height:0 !important;
+        background:transparent !important;
+      }
+      #rw-payout-helper .rw-admin-unified-panel,
+      #rw-payout-helper .rw-unified-tab-panel:not([hidden]) {
+        display:grid !important;
+        gap:10px !important;
+        min-width:0 !important;
+      }
+      #rw-payout-helper .rw-admin-unified-panel > .rw-small,
+      #rw-payout-helper .rw-admin-unified-panel > label,
+      #rw-payout-helper .rw-admin-unified-panel > .rw-actions {
+        margin-top:0 !important;
+      }
+      #rw-payout-helper .rw-admin-unified-panel .rw-actions {
+        padding-bottom:2px !important;
+      }
+      #rw-payout-helper #rw-admin-results,
+      #rw-payout-helper #rw-admin-status,
+      #rw-payout-helper #rw-status,
+      #rw-payout-helper #rw-results-placeholder,
+      #rw-payout-helper #rw-main-payment-code,
+      #rw-payout-helper #rw-paywall-code,
+      #rw-payout-helper #rw-paywall-status {
+        min-width:0 !important;
+        overflow-wrap:anywhere !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel,
+      #rw-pay-all-panel {
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+        scrollbar-width:thin !important;
+        scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36) !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel::-webkit-scrollbar,
+      #rw-pay-all-panel::-webkit-scrollbar {
+        width:8px !important;
+        height:8px !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel::-webkit-scrollbar-track,
+      #rw-pay-all-panel::-webkit-scrollbar-track {
+        background:rgba(15,23,42,.34) !important;
+        border-radius:999px !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel::-webkit-scrollbar-thumb,
+      #rw-pay-all-panel::-webkit-scrollbar-thumb {
+        background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.88)) !important;
+        border:2px solid rgba(15,23,42,.50) !important;
+        border-radius:999px !important;
+      }
+      #rw-payout-helper .rw-pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-list,
+      #rw-pay-all-panel .pay-all-list {
+        max-height:none !important;
+        overflow:visible !important;
+        flex:0 0 auto !important;
+        scrollbar-width:none !important;
+      }
+
       #rw-payout-helper .rw-pay-all-list,
       #rw-pay-all-panel .rw-pay-all-list {
         padding-right:3px !important;
@@ -5597,8 +5699,8 @@
           <div id="rw-paywall-code"></div>
         </div>
 
-        <div id="rw-paywall-admin-section" class="rw-tab-section" hidden>
-          <div class="rw-admin-box">
+        <div id="rw-paywall-admin-section" class="rw-tab-section rw-unified-tab-panel" hidden>
+          <div class="rw-admin-box rw-admin-unified-panel">
             <div class="rw-small">
               Admin tools are available here even while the helper is locked. Keep your admin key private.
             </div>
@@ -5612,9 +5714,7 @@
               <button id="rw-admin-list">List Licences</button>
               <button id="rw-move-launcher-admin" class="secondary">Move Button Corner</button>
             </div>
-          </div>
 
-          <div class="rw-admin-box">
             <label>Player Torn ID
               <input id="rw-admin-torn-id" type="text" placeholder="Example: 1234567">
             </label>
@@ -5767,6 +5867,7 @@
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
+              <li><b>Unified scrolling:</b> each tab and helper now uses one clean scroll area so you do not get split admin/tool scroll panels or weird nested scrolling.</li>
               <li><b>Refresh persistence:</b> RWPH remembers the open state, active tab, form values, and panel positions/sizes after refresh.</li>
             </ul>
           </div>
@@ -6128,9 +6229,11 @@
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
           <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
-          <div class="rw-actions">
+          <div class="rw-actions rw-licence-control-grid">
             <button id="rw-extend-licence" class="secondary">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
+            <button id="rw-license-days" class="secondary">Your Expiration</button>
+            <button id="rw-lock" class="secondary">Lock</button>
           </div>
           <div class="rw-row">
             <label>War start date/time
@@ -6164,9 +6267,7 @@
           </div>
           <div class="rw-actions">
             <button id="rw-run">Fetch + Calculate</button>
-            <button id="rw-license-days" class="secondary">Your Expiration</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
-            <button id="rw-lock" class="secondary">Lock</button>
           </div>
           <div class="rw-actions" id="rw-last-results-actions" hidden>
             <button id="rw-reopen-last-results" class="secondary" type="button">Reopen Results</button>
@@ -6176,8 +6277,8 @@
           <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after Fetch + Calculate.</div>
         </div>
 
-        <div id="rw-admin-tab-section" class="rw-tab-section" hidden>
-          <div class="rw-admin-box">
+        <div id="rw-admin-tab-section" class="rw-tab-section rw-unified-tab-panel" hidden>
+          <div class="rw-admin-box rw-admin-unified-panel">
             <div class="rw-small">
               Admin tools call your backend directly. Keep your admin key private.
             </div>
@@ -6190,9 +6291,7 @@
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
             </div>
-          </div>
 
-          <div class="rw-admin-box">
             <label>Player Torn ID
               <input id="rw-admin-torn-id" type="text" placeholder="Example: 1234567">
             </label>
@@ -6345,6 +6444,7 @@
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
+              <li><b>Unified scrolling:</b> each tab and helper now uses one clean scroll area so you do not get split admin/tool scroll panels or weird nested scrolling.</li>
               <li><b>Refresh persistence:</b> RWPH remembers the open state, active tab, form values, and panel positions/sizes after refresh.</li>
             </ul>
           </div>
