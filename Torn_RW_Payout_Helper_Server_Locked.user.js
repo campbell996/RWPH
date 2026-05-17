@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.192
+// @version      1.1.193
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1510,6 +1510,7 @@
   // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
   // v1.1.191: results loading timer now counts past 59 seconds and loading step dots turn green as stages progress.
   // v1.1.192: results loading step dots now turn green from live server progress for licence, attack fetch, sorting, weighting, and final build stages.
+  // v1.1.193: loading dots now update the loading tab DOM directly so Torn PDA/phone can show green stages reliably.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
   // v1.1.159: feedback now appears as closable popup panels below the active RWPH panel and auto-closes after 30 seconds.
@@ -5341,10 +5342,34 @@
   }
 
   function rwphSetResultsLoadingStepDone(tab, stepIndex) {
+    const doneIndex = Number(stepIndex || 0);
     try {
-      if (!tab || tab.closed || !tab.window || typeof tab.window.rwphSetLoadingStepDone !== "function") return;
-      tab.window.rwphSetLoadingStepDone(Number(stepIndex || 0));
-    } catch (_) {}
+      if (!tab || tab.closed) return;
+      // Direct DOM update is more reliable on Torn PDA/phone than calling a function inside the new tab.
+      const doc = tab.document;
+      const steps = doc && doc.querySelectorAll ? Array.prototype.slice.call(doc.querySelectorAll("[data-rwph-load-step]")) : [];
+      if (steps.length) {
+        steps.forEach((step, index) => {
+          if (index <= doneIndex) {
+            step.classList.add("rwph-load-step-done");
+            step.classList.remove("rwph-load-step-active");
+          } else {
+            step.classList.remove("rwph-load-step-done");
+            step.classList.toggle("rwph-load-step-active", index === doneIndex + 1);
+          }
+        });
+        return;
+      }
+      if (tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
+        tab.window.rwphSetLoadingStepDone(doneIndex);
+      }
+    } catch (_) {
+      try {
+        if (tab && tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
+          tab.window.rwphSetLoadingStepDone(doneIndex);
+        }
+      } catch (__) {}
+    }
   }
 
   function rwphStartResultsProgressPolling(tab, progressId) {
