@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.111
+// @version      1.1.112
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2514,7 +2514,7 @@
 
     <section class="summary">
       <div class="summary-card"><span>Total payout</span><b>${esc(money(totalPayout))}</b></div>
-      <div class="summary-card"><span>War Source</span><b>${summary?.selectedWar?.timeSource === "current-ranked-war" ? "Current RW" : summary?.selectedWar?.timeSource === "last-ranked-war" ? "Last RW" : "Manual"}</b></div>
+      <div class="summary-card"><span>War Source</span><b>${rwphWarSourceLabel(summary?.selectedWar?.timeSource)}</b></div>
       <div class="summary-card"><span>Total weight</span><b>${Number(summary?.totalWeight || 0).toFixed(2)}</b></div>
       <div class="summary-card"><span>War Hits</span><b>${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)}</b></div>
       <div class="summary-card"><span>Assists</span><b>${Number(summary?.totalAssists || 0)}</b></div>
@@ -2795,13 +2795,22 @@
     }
   }
 
+  function rwphWarSourceLabel(value) {
+    if (value === "current-ranked-war-report") return "Current RW Report";
+    if (value === "last-ranked-war-report") return "Last RW Report";
+    if (value === "current-ranked-war") return "Current RW";
+    if (value === "last-ranked-war") return "Last RW";
+    if (value === "manual-fallback") return "Manual";
+    return value ? String(value) : "Manual";
+  }
+
   function renderRows(rows, summary) {
     if (!rows || !rows.length) return `<div class="rw-muted">No payable or tracked attacks found.</div>`;
 
     return `
       <div class="rw-summary">
         <b>Total payout:</b> ${money(summary?.totalPayout || 0)}<br>
-        ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(summary.selectedWar.timeSource === "current-ranked-war" ? "Current ranked war" : summary.selectedWar.timeSource === "last-ranked-war" ? "Last ranked war" : "Manual fallback")}<br>` : ""}
+        ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(rwphWarSourceLabel(summary.selectedWar.timeSource))}<br>` : ""}
         <b>Total weight:</b> ${Number(summary?.totalWeight || 0).toFixed(2)} |
         <b>Payable events:</b> ${Number(summary?.calcMeta?.payableEvents || 0)}<br>
         <b>War hits:</b> ${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)} |
@@ -4464,18 +4473,18 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Ranked War Payout Calculator</div>
             <ul class="rw-how-list">
-              <li><b>Auto War Source:</b> Fetch + Calculate now uses the current ranked war automatically, or the most recently finished ranked war when there is no active war.</li>
+              <li><b>Auto War Source:</b> Fetch + Calculate now uses Torn's ranked war report directly: the current ranked war report while a war is active, or the most recent finished ranked war report when no war is active.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
               <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
               <li><b>War Hit Weight:</b> controls how much ranked-war hits count toward payout share. Default is 1.</li>
-              <li><b>Outside Hit Weight:</b> controls how much outside hits count when ranked-war only is off. Default is 1.</li>
-              <li><b>Retaliation Hit Weight:</b> controls how much retaliation hits count when ranked-war only is off. Default is 1.</li>
-              <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
+              <li><b>Outside Hit Weight:</b> is kept for compatibility, but ranked war report mode does not include outside-hit totals from Torn. Default is 1.</li>
+              <li><b>Retaliation Hit Weight:</b> is kept for compatibility, but ranked war report mode does not include retaliation-hit totals from Torn. Default is 1.</li>
+              <li><b>Assist weight:</b> is kept for compatibility, but ranked war report mode does not include assists from Torn. Default is 0.</li>
               <li><b>Automatic hit detection:</b> RWPH now automatically uses the selected ranked-war opponent and war window. The old ranked-war-only and chain-fallback checkboxes have been removed.</li>
-              <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
+              <li><b>Report source:</b> War Hits and Payable Respect now come from Torn's rankedwarreport member attacks and score fields.</li>
               <li><b>Hit categories:</b> results now separate war hits, assists, outside hits, and retaliation hits for every member.</li>
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, payable respect, and payout.</li>
-              <li><b>Improved hit rules:</b> War Hits take priority over retals, assists stay separate, failed attacks are skipped, and retals only count when Torn gives explicit retaliation evidence.</li>
+              <li><b>Improved hit rules:</b> Ranked war report mode uses Torn's report as the source of truth, so it avoids overcounting mixed attack logs.</li>
             </ul>
           </div>
 
@@ -5002,17 +5011,17 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Ranked War Payout Calculator</div>
             <ul class="rw-how-list">
-              <li><b>Auto War Source:</b> Fetch + Calculate now uses the current ranked war automatically, or the most recently finished ranked war when there is no active war.</li>
+              <li><b>Auto War Source:</b> Fetch + Calculate now uses Torn's ranked war report directly: the current ranked war report while a war is active, or the most recent finished ranked war report when no war is active.</li>
               <li><b>Manual war time inputs:</b> users can enter exact start and finish date/time manually.</li>
               <li><b>Total payout pool:</b> enter the total money pool to split between members.</li>
               <li><b>War Hit Weight:</b> controls how much ranked-war hits count toward payout share. Default is 1.</li>
-              <li><b>Outside Hit Weight:</b> controls how much outside hits count when ranked-war only is off. Default is 1.</li>
-              <li><b>Retaliation Hit Weight:</b> controls how much retaliation hits count when ranked-war only is off. Default is 1.</li>
-              <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
-              <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
+              <li><b>Outside Hit Weight:</b> is kept for compatibility, but ranked war report mode does not include outside-hit totals from Torn. Default is 1.</li>
+              <li><b>Retaliation Hit Weight:</b> is kept for compatibility, but ranked war report mode does not include retaliation-hit totals from Torn. Default is 1.</li>
+              <li><b>Assist weight:</b> is kept for compatibility, but ranked war report mode does not include assists from Torn. Default is 0.</li>
+              <li><b>Report source:</b> War Hits and Payable Respect now come from Torn's rankedwarreport member attacks and score fields.</li>
               <li><b>Hit categories:</b> results now separate war hits, assists, outside hits, and retaliation hits for every member.</li>
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, payable respect, and payout.</li>
-              <li><b>Improved hit rules:</b> War Hits take priority over retals, assists stay separate, failed attacks are skipped, and retals only count when Torn gives explicit retaliation evidence.</li>
+              <li><b>Improved hit rules:</b> Ranked war report mode uses Torn's report as the source of truth, so it avoids overcounting mixed attack logs.</li>
             </ul>
           </div>
 
