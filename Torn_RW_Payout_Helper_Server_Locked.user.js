@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.185
+// @version      1.1.187
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1250,7 +1250,7 @@
     const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
     const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
     const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
-    const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - 40));
+    const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - height - 8));
 
     panel.style.setProperty("position", "fixed", "important");
     panel.style.setProperty("left", `${left}px`, "important");
@@ -2715,7 +2715,16 @@
           padding: 9px;
         }
         #rw-payout-helper .rw-pay-all-row {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr) max-content max-content !important;
+          grid-auto-flow: column !important;
+          align-items: center !important;
+        }
+        #rw-payout-helper .rw-pay-all-copy {
+          display: inline-flex !important;
+          width: auto !important;
+          max-width: none !important;
+          flex: 0 0 auto !important;
+          white-space: nowrap !important;
         }
       }
       #rw-payout-helper a { color: #7dd3fc !important; }
@@ -2942,12 +2951,20 @@
           linear-gradient(180deg, rgba(2,6,23,.98), rgba(15,23,42,.96)) !important;
       }
       #rw-payout-helper .rw-pay-all-row {
-        grid-template-columns: 1fr !important;
-        gap: 7px !important;
+        grid-template-columns: minmax(0, 1fr) max-content max-content !important;
+        grid-auto-flow: column !important;
+        gap: 5px !important;
+        align-items:center !important;
         border-radius: 16px !important;
       }
       #rw-payout-helper .rw-pay-all-copy {
-        width: 100% !important;
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        width: auto !important;
+        max-width:none !important;
+        flex:0 0 auto !important;
+        white-space:nowrap !important;
       }
       @media (max-width: 760px), (pointer: coarse) {
         #rw-payout-helper {
@@ -3614,19 +3631,7 @@
         border-top:0 !important;
         border-radius:0 0 0 8px !important;
       }
-      #rw-payout-helper .rw-resize-handle-ne,
-      #rw-pay-all-panel .rw-resize-handle-ne,
-      #rwph-xanax-send-status .rw-resize-handle-ne,
-      #rw-wrong-payment-panel .rw-resize-handle-ne {
-        right:5px !important;
-        top:5px !important;
-        cursor:nesw-resize !important;
-        border-right:2px solid rgba(56,189,248,.88) !important;
-        border-top:2px solid rgba(56,189,248,.88) !important;
-        border-left:0 !important;
-        border-bottom:0 !important;
-        border-radius:0 8px 0 0 !important;
-      }
+
       #rw-payout-helper .rw-resize-handle-nw,
       #rw-pay-all-panel .rw-resize-handle-nw,
       #rwph-xanax-send-status .rw-resize-handle-nw,
@@ -3646,6 +3651,50 @@
       #rw-wrong-payment-panel .rw-resize-handle:hover {
         opacity:1 !important;
         filter:drop-shadow(0 0 6px rgba(56,189,248,.65)) !important;
+      }
+
+      /* v1.1.187 PDA/phone move + resize polish: larger touch targets and no top-right handle */
+      #rw-payout-helper .rw-resize-handle-ne,
+      #rw-pay-all-panel .rw-resize-handle-ne,
+      #rwph-xanax-send-status .rw-resize-handle-ne,
+      #rw-wrong-payment-panel .rw-resize-handle-ne,
+      #rw-pay-all-panel .resize-handle-ne { display:none !important; pointer-events:none !important; }
+      @media (max-width: 760px), (pointer: coarse) {
+        #rw-payout-helper .rw-head,
+        #rw-pay-all-panel .rw-pay-all-head,
+        #rwph-xanax-send-status .rwph-xanax-head,
+        #rw-wrong-payment-panel .rwph-floating-panel-head {
+          min-height:42px !important;
+          padding-top:8px !important;
+          padding-bottom:8px !important;
+          touch-action:none !important;
+          cursor:grab !important;
+        }
+        #rw-payout-helper .rw-resize-handle,
+        #rw-pay-all-panel .rw-resize-handle,
+        #rwph-xanax-send-status .rw-resize-handle,
+        #rw-wrong-payment-panel .rw-resize-handle,
+        #rw-pay-all-panel .resize-handle {
+          width:30px !important;
+          height:30px !important;
+          z-index:60 !important;
+          background:rgba(2,6,23,.28) !important;
+        }
+        #rw-payout-helper .rw-resize-handle-se,
+        #rw-pay-all-panel .rw-resize-handle-se,
+        #rwph-xanax-send-status .rw-resize-handle-se,
+        #rw-wrong-payment-panel .rw-resize-handle-se,
+        #rw-pay-all-panel .resize-handle-se { right:3px !important; bottom:3px !important; border-width:3px !important; }
+        #rw-payout-helper .rw-resize-handle-sw,
+        #rw-pay-all-panel .rw-resize-handle-sw,
+        #rwph-xanax-send-status .rw-resize-handle-sw,
+        #rw-wrong-payment-panel .rw-resize-handle-sw,
+        #rw-pay-all-panel .resize-handle-sw { left:3px !important; bottom:3px !important; border-width:3px !important; }
+        #rw-payout-helper .rw-resize-handle-nw,
+        #rw-pay-all-panel .rw-resize-handle-nw,
+        #rwph-xanax-send-status .rw-resize-handle-nw,
+        #rw-wrong-payment-panel .rw-resize-handle-nw,
+        #rw-pay-all-panel .resize-handle-nw { left:3px !important; top:3px !important; border-width:3px !important; }
       }
 
 
@@ -4468,7 +4517,6 @@
     .resize-handle { position:absolute; width:20px; height:20px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
     .resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 8px 0; }
     .resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 0 8px; }
-    .resize-handle-ne { right:7px; top:7px; cursor:nesw-resize; border-right:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:0 8px 0 0; }
     .resize-handle-nw { left:7px; top:7px; cursor:nwse-resize; border-left:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:8px 0 0 0; }
     .pay-all-note { margin:0 26px 10px; color:#c7d2fe; font-size:12px; line-height:1.45; }
     .pay-all-info { margin:0 18px 12px; padding:10px 12px; border-radius:14px; border:1px solid rgba(125,211,252,.18); background:rgba(15,23,42,.66); color:#dbeafe; font-size:11px; line-height:1.45; text-align:left; }
@@ -4503,6 +4551,14 @@
     .pay-all-payout { display:block; margin-top:2px; color:#86efac; font-weight:950; }
     .copy-small { padding:7px 8px; font-size:11px; border-radius:10px; }
     .grid { justify-items:stretch; }
+    .resize-handle-ne { display:none!important; pointer-events:none!important; }
+    @media (max-width: 760px), (pointer: coarse) {
+      .pay-all-head { min-height:42px!important; padding-top:8px!important; padding-bottom:8px!important; touch-action:none!important; cursor:grab!important; }
+      .resize-handle { width:30px!important; height:30px!important; z-index:60!important; background:rgba(2,6,23,.28)!important; }
+      .resize-handle-se { right:3px!important; bottom:3px!important; border-width:3px!important; }
+      .resize-handle-sw { left:3px!important; bottom:3px!important; border-width:3px!important; }
+      .resize-handle-nw { left:3px!important; top:3px!important; border-width:3px!important; }
+    }
 
     /* v1.1.97 fullscreen results layout refresh */
     .app {
@@ -4694,7 +4750,6 @@
     <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Undo Last Disappear</button>
     <div class="pay-all-list" id="payAllList"></div>
     <div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>
-    <div class="resize-handle resize-handle-ne" data-resize-dir="ne" title="Resize from top-right"></div>
     <div class="resize-handle resize-handle-sw" data-resize-dir="sw" title="Resize from bottom-left"></div>
     <div class="resize-handle resize-handle-se" data-resize-dir="se" title="Resize from bottom-right"></div>
   </aside>
@@ -4857,7 +4912,9 @@
     const payAllUndoStack = [];
 
     function setupMoveResize(panel, handleSelector) {
-      if (!panel || panel.dataset.moveResizeReady === "1") return;
+      if (!panel) return;
+      panel.querySelectorAll?.(":scope > .resize-handle-ne, :scope > .rw-resize-handle-ne").forEach(function(h) { h.remove(); });
+      if (panel.dataset.moveResizeReady === "1") return;
       panel.dataset.moveResizeReady = "1";
       const layoutKey = "rwph_fullscreen_pay_all_layout";
       const handle = panel.querySelector(handleSelector);
@@ -4871,12 +4928,14 @@
       let startWidth = 0;
       let startHeight = 0;
 
-      ["nw", "ne", "sw", "se"].forEach(function(dir) {
+      // Top-right resize is removed on every panel so it cannot clash with close buttons.
+      panel.querySelectorAll(":scope > .resize-handle-ne").forEach(function(h) { h.remove(); });
+      ["nw", "sw", "se"].forEach(function(dir) {
         if (!panel.querySelector(".resize-handle-" + dir)) {
           const h = document.createElement("div");
           h.className = "resize-handle resize-handle-" + dir;
           h.dataset.resizeDir = dir;
-          h.title = dir === "nw" ? "Resize from top-left" : dir === "ne" ? "Resize from top-right" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
+          h.title = dir === "nw" ? "Resize from top-left" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
           panel.appendChild(h);
         }
       });
@@ -4917,6 +4976,7 @@
         startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top;
         panel.style.setProperty("left", rect.left + "px", "important"); panel.style.setProperty("top", rect.top + "px", "important"); panel.style.setProperty("right", "auto", "important"); panel.style.setProperty("bottom", "auto", "important"); panel.style.setProperty("inset", "auto auto auto auto", "important");
         e.preventDefault();
+        e.stopPropagation?.();
       }
       function beginResize(e) {
         const resizeHandle = e.target.closest(".resize-handle");
@@ -4924,10 +4984,11 @@
         const p = point(e);
         const rect = panel.getBoundingClientRect();
         resizing = true;
-        activeDir = resizeHandle.dataset.resizeDir || (resizeHandle.className.match(/resize-handle-(nw|ne|sw|se)/) || [])[1] || "se";
+        activeDir = resizeHandle.dataset.resizeDir || (resizeHandle.className.match(/resize-handle-(nw|sw|se)/) || [])[1] || "se";
         startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top; startWidth = rect.width; startHeight = rect.height;
         panel.style.setProperty("left", rect.left + "px", "important"); panel.style.setProperty("top", rect.top + "px", "important"); panel.style.setProperty("right", "auto", "important"); panel.style.setProperty("bottom", "auto", "important"); panel.style.setProperty("inset", "auto auto auto auto", "important"); panel.style.setProperty("max-height", "none", "important"); panel.style.setProperty("overflow", "hidden", "important");
         e.preventDefault();
+        e.stopPropagation?.();
       }
       function move(e) {
         const p = point(e);
@@ -5004,6 +5065,16 @@
       return false;
     }
 
+    function dismissPayAllCopyPopupsSilently() {
+      ["rwphFullPopupPanelLive", "rwph-info-popup-panel-live"].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.remove();
+      });
+      document.querySelectorAll && document.querySelectorAll(".rwph-info-popup-panel").forEach(function(el) {
+        try { el.remove(); } catch (e) {}
+      });
+    }
+
     function renderPayAllPanel() {
       const list = document.getElementById("payAllList");
       if (!list) return;
@@ -5032,18 +5103,20 @@
       const nameBtn = e.target.closest("[data-copy-name]");
       const amountBtn = e.target.closest("[data-copy-amount]");
       if (nameBtn) {
+        dismissPayAllCopyPopupsSilently();
         const r = rows[Number(nameBtn.dataset.copyName)] || {};
         const name = r.name || ("Unknown " + (r.id || "unknown"));
         var value = name + " [" + (r.id || "unknown") + "]";
         await copyText(value);
-        showToast("Name + ID copied: " + value, "info");
+        // Copy buttons on the Payments Copy Panel are intentionally silent.
         hidePayAllButton(nameBtn, "Name + ID");
       }
       if (amountBtn) {
+        dismissPayAllCopyPopupsSilently();
         const r = rows[Number(amountBtn.dataset.copyAmount)] || {};
         var amountValue = String(Math.round(Number(r.payout || 0)));
         await copyText(amountValue);
-        showToast("Amount copied: " + amountValue, "info");
+        // Copy buttons on the Payments Copy Panel are intentionally silent.
         hidePayAllButton(amountBtn, "Amount");
       }
     });
@@ -5456,17 +5529,39 @@
       .rw-pay-all-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; align-items:center; padding:7px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.72); }
       .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:900; color:#f8fafc; }
       .rw-pay-all-payout { display:block; margin-top:1px; color:#86efac; font-size:10px; font-weight:950; }
-      .rw-pay-all-copy { padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; }
+      .rw-pay-all-copy { display:inline-flex !important; align-items:center; justify-content:center; width:auto !important; max-width:none !important; padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; white-space:nowrap; }
       .rw-resize-handle { position:absolute; width:18px; height:18px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
       .rw-resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 8px 0; }
       .rw-resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 0 8px; }
-      .rw-resize-handle-ne { right:7px; top:7px; cursor:nesw-resize; border-right:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:0 8px 0 0; }
       .rw-resize-handle-nw { left:7px; top:7px; cursor:nwse-resize; border-left:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:8px 0 0 0; }
       @media (max-width: 760px), (pointer: coarse) {
-        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(340px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
-        .rw-pay-all-row { grid-template-columns: minmax(0, 1fr) auto auto !important; gap:4px !important; padding:6px !important; }
+        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(360px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
+        .rw-pay-all-row {
+          grid-template-columns: minmax(0, 1fr) max-content max-content !important;
+          grid-auto-flow: column !important;
+          gap:4px !important;
+          padding:6px !important;
+          align-items:center !important;
+        }
         .rw-pay-all-member { min-width:0 !important; overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important; }
-        .rw-pay-all-copy { padding:4px 5px !important; min-height:24px !important; min-width:50px !important; font-size:9px !important; white-space:nowrap !important; }
+        .rw-pay-all-copy {
+          display:inline-flex !important;
+          align-items:center !important;
+          justify-content:center !important;
+          width:auto !important;
+          max-width:none !important;
+          padding:4px 5px !important;
+          min-height:24px !important;
+          min-width:46px !important;
+          font-size:9px !important;
+          white-space:nowrap !important;
+          flex:0 0 auto !important;
+        }
+        .rw-pay-all-head { min-height:42px !important; padding-top:8px !important; padding-bottom:8px !important; touch-action:none !important; cursor:grab !important; }
+        .rw-resize-handle { width:30px !important; height:30px !important; z-index:60 !important; background:rgba(2,6,23,.28) !important; }
+        .rw-resize-handle-se { right:3px !important; bottom:3px !important; border-width:3px !important; }
+        .rw-resize-handle-sw { left:3px !important; bottom:3px !important; border-width:3px !important; }
+        .rw-resize-handle-nw { left:3px !important; top:3px !important; border-width:3px !important; }
       }
     `;
     document.head.appendChild(style);
@@ -5649,6 +5744,18 @@
     return { filled, value };
   }
 
+  function rwphDismissPayAllCopyPopupsSilently() {
+    try {
+      ["rwph-info-popup-panel-live", "rwphFullPopupPanelLive"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      });
+      document.querySelectorAll?.(".rwph-info-popup-panel").forEach((el) => {
+        try { el.remove(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   function rwphHidePayAllActionButton(btn, label, stack) {
     if (!btn) return;
     btn.dataset.rwphOriginalText = label || btn.textContent || "Button";
@@ -5700,18 +5807,20 @@
 
       const nameBtn = e.target.closest?.("[data-pay-copy-name]");
       if (nameBtn) {
+        rwphDismissPayAllCopyPopupsSilently();
         const row = safeRows[Number(nameBtn.dataset.payCopyName)] || {};
         const res = await rwphPrefillPayAllMember(row);
-        rwphShowToast(res.filled ? `Name copied and prefilled: ${res.value}` : `Name copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
+        // Copy buttons on the Payments Copy Panel are intentionally silent.
         rwphHidePayAllActionButton(nameBtn, "Name + ID", payAllUndoStack);
         return;
       }
 
       const amountBtn = e.target.closest?.("[data-pay-copy-amount]");
       if (amountBtn) {
+        rwphDismissPayAllCopyPopupsSilently();
         const row = safeRows[Number(amountBtn.dataset.payCopyAmount)] || {};
         const res = await rwphPrefillPayAllAmount(row);
-        rwphShowToast(res.filled ? `Amount copied and prefilled: ${res.value}` : `Amount copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
+        // Copy buttons on the Payments Copy Panel are intentionally silent.
         rwphHidePayAllActionButton(amountBtn, "Amount", payAllUndoStack);
       }
     });
@@ -6915,7 +7024,7 @@
       const dx = point.x - startX;
       const dy = point.y - startY;
       const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-      const maxTop = Math.max(8, window.innerHeight - 40);
+      const maxTop = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
       rwphSetPanelStyle(panel, "left", `${Math.min(Math.max(8, startLeft + dx), maxLeft)}px`);
       rwphSetPanelStyle(panel, "top", `${Math.min(Math.max(8, startTop + dy), maxTop)}px`);
       e.preventDefault?.();
@@ -6943,12 +7052,14 @@
     if (!panel.style.position) rwphSetPanelStyle(panel, "position", "fixed");
     rwphSetPanelStyle(panel, "overflow", "hidden");
 
+    // Top-right resize is intentionally removed so it does not clash with panel close buttons.
     const handleDefs = [
       { dir: "nw", title: "Resize from top-left" },
-      { dir: "ne", title: "Resize from top-right" },
       { dir: "sw", title: "Resize from bottom-left" },
       { dir: "se", title: "Resize from bottom-right" },
     ];
+
+    panel.querySelectorAll(":scope > .rw-resize-handle-ne, :scope > .resize-handle-ne").forEach((handle) => handle.remove());
 
     handleDefs.forEach(({ dir, title }) => {
       let handle = panel.querySelector(`:scope > .rw-resize-handle-${dir}`);
@@ -6962,8 +7073,12 @@
       rwphBlockTouchDefaults(handle);
     });
 
-    // Remove the legacy single corner resize handles if an older saved/rendered panel left one behind.
+    // Remove top-right handles and normalize legacy single-corner handles if an older panel left one behind.
     Array.from(panel.children || []).forEach((child) => {
+      if (child.classList?.contains("rw-resize-handle-ne") || child.dataset?.rwphResizeDir === "ne") {
+        child.remove();
+        return;
+      }
       if (child.classList?.contains("rw-resize-handle") && !child.dataset.rwphResizeDir) {
         child.dataset.rwphResizeDir = "se";
         child.classList.add("rw-resize-handle-se");
@@ -7001,7 +7116,7 @@
       const point = rwphGetPoint(e);
       const rect = panel.getBoundingClientRect();
       resizing = true;
-      activeDir = resizeHandle.dataset.rwphResizeDir || (resizeHandle.className.match(/rw-resize-handle-(nw|ne|sw|se)/)?.[1]) || "se";
+      activeDir = resizeHandle.dataset.rwphResizeDir || (resizeHandle.className.match(/rw-resize-handle-(nw|sw|se)/)?.[1]) || "se";
       startX = point.x;
       startY = point.y;
       startLeft = rect.left;
@@ -7075,6 +7190,7 @@
 
   function rwphEnablePanelMoveResize(panel, handleSelector = ".rw-head") {
     if (!panel) return;
+    panel.querySelectorAll?.(":scope > .rw-resize-handle-ne, :scope > .resize-handle-ne").forEach((handle) => handle.remove());
     makeDraggable(panel, handleSelector);
     makeResizable(panel);
     rwphApplyPanelLayout(panel);
@@ -7291,7 +7407,7 @@
             <div class="rw-how-title">Moving, Resizing, and Scrolling Panels</div>
             <ul class="rw-how-list">
               <li><b>Move panels:</b> drag the panel header/title area.</li>
-              <li><b>Resize panels:</b> drag any corner resize handle.</li>
+              <li><b>Resize panels:</b> drag the top-left, bottom-left, or bottom-right resize handle. The top-right resize handle is removed so it does not clash with close buttons.</li>
               <li><b>Saved layout:</b> supported panels remember their size and position after refresh.</li>
               <li><b>One scroll area:</b> panels use a single internal blue scrollbar where possible, with the header pinned at the top.</li>
               <li><b>Page changes:</b> panels close when you navigate to a different Torn page. Switching browser tabs keeps the panel open on its own tab, and refreshing the same page keeps the panel open.</li>
@@ -7907,7 +8023,7 @@
             <div class="rw-how-title">Moving, Resizing, and Scrolling Panels</div>
             <ul class="rw-how-list">
               <li><b>Move panels:</b> drag the panel header/title area.</li>
-              <li><b>Resize panels:</b> drag any corner resize handle.</li>
+              <li><b>Resize panels:</b> drag the top-left, bottom-left, or bottom-right resize handle. The top-right resize handle is removed so it does not clash with close buttons.</li>
               <li><b>Saved layout:</b> supported panels remember their size and position after refresh.</li>
               <li><b>One scroll area:</b> panels use a single internal blue scrollbar where possible, with the header pinned at the top.</li>
               <li><b>Page changes:</b> panels close when you navigate to a different Torn page. Switching browser tabs keeps the panel open on its own tab, and refreshing the same page keeps the panel open.</li>
@@ -8131,18 +8247,20 @@
 
       const payNameBtn = e.target.closest("[data-pay-copy-name]");
       if (payNameBtn) {
+        rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
         const res = await rwphPrefillPayAllMember(row);
-        rwphShowToast(res.filled ? `Name copied and prefilled: ${res.value}` : `Name copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
+        // Copy buttons on the Payments Copy Panel are intentionally silent.
         rwphHidePayAllActionButton(payNameBtn, "Name + ID", rwphPayAllInlineUndoStack);
         return;
       }
 
       const payAmountBtn = e.target.closest("[data-pay-copy-amount]");
       if (payAmountBtn) {
+        rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
         const res = await rwphPrefillPayAllAmount(row);
-        rwphShowToast(res.filled ? `Amount copied and prefilled: ${res.value}` : `Amount copied: ${res.value}`, res.filled ? "info" : "warn", 10000, "RWPH Payments");
+        // Copy buttons on the Payments Copy Panel are intentionally silent.
         rwphHidePayAllActionButton(payAmountBtn, "Amount", rwphPayAllInlineUndoStack);
         return;
       }
