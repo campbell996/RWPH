@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.187
+// @version      1.1.188
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -319,18 +319,21 @@
       close.setAttribute("aria-label", "Close RWPH info popup");
       close.textContent = "×";
       close.style.setProperty("position", "absolute", "important");
-      close.style.setProperty("top", "7px", "important");
-      close.style.setProperty("right", "7px", "important");
-      close.style.setProperty("width", "24px", "important");
-      close.style.setProperty("height", "24px", "important");
+      close.style.setProperty("top", "10px", "important");
+      close.style.setProperty("right", "12px", "important");
+      close.style.setProperty("width", "36px", "important");
+      close.style.setProperty("height", "36px", "important");
+      close.style.setProperty("min-width", "36px", "important");
+      close.style.setProperty("min-height", "36px", "important");
       close.style.setProperty("display", "grid", "important");
       close.style.setProperty("place-items", "center", "important");
-      close.style.setProperty("border", "1px solid rgba(148,163,184,.42)", "important");
-      close.style.setProperty("border-radius", "999px", "important");
-      close.style.setProperty("background", "rgba(15,23,42,.92)", "important");
+      close.style.setProperty("border", "1px solid rgba(125,211,252,.24)", "important");
+      close.style.setProperty("border-left", "4px solid rgba(56,189,248,.66)", "important");
+      close.style.setProperty("border-radius", "14px", "important");
+      close.style.setProperty("background", "linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88))", "important");
       close.style.setProperty("color", "#e0f7ff", "important");
       close.style.setProperty("cursor", "pointer", "important");
-      close.style.setProperty("font", "950 15px/1 Arial,Helvetica,sans-serif", "important");
+      close.style.setProperty("font", "950 20px/1 Arial,Helvetica,sans-serif", "important");
       close.style.setProperty("z-index", "2", "important");
 
       const titleEl = document.createElement("div");
@@ -867,6 +870,7 @@
       transform: translate(-50%, -50%);
       width: min(420px, calc(100vw - 24px));
       padding: 18px;
+      padding-top: 56px;
       border-radius: 22px;
       border: 1px solid rgba(96,165,250,.35);
       background: radial-gradient(circle at top, rgba(37,99,235,.28), transparent 42%), linear-gradient(145deg, rgba(15,23,42,.98), rgba(30,41,59,.98));
@@ -883,7 +887,7 @@
       <div class="rwph-floating-panel-body" style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;overflow-y:auto;overflow-x:hidden;min-height:0;">
         ${esc(message || `You sent the payment wrong. Licence days are only automatically added when ${PAYMENT_ITEM_NAME} is sent with the exact payment code in the item message. Your licence will be manually added ASAP.`)}
       </div>
-      <button id="rw-wrong-payment-close" type="button" style="width:100%;padding:10px 12px;border-radius:14px;border:1px solid rgba(125,211,252,.45);background:linear-gradient(135deg,rgba(37,99,235,.95),rgba(79,70,229,.95));color:#fff;font-weight:950;cursor:pointer;">Close</button>
+      <button id="rw-wrong-payment-close" type="button" title="Close" aria-label="Close">×</button>
     `;
     document.body.appendChild(panel);
     panel.querySelector("#rw-wrong-payment-close")?.addEventListener("click", closeWrongPaymentPanel);
@@ -3806,6 +3810,57 @@
         border-color: rgba(125,211,252,.42) !important;
       }
 
+
+      /* v1.1.188: make every RWPH panel close button match the main panel close button */
+      #rw-payout-helper #rw-close,
+      #rw-payout-helper #rw-results-close,
+      #rw-payout-helper .rw-pay-all-close,
+      #rw-payout-helper [data-pay-all-close],
+      #rwph-xanax-send-status #rwph-close-helper,
+      #rw-wrong-payment-panel #rw-wrong-payment-close,
+      .rwph-info-popup-panel .rwph-info-popup-close {
+        position: absolute !important;
+        right: 12px !important;
+        top: 10px !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        max-width: 36px !important;
+        max-height: 36px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: grid !important;
+        place-items: center !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(125,211,252,.24) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        background: linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.75) !important;
+        font: 950 20px/1 Arial, Helvetica, sans-serif !important;
+        cursor: pointer !important;
+        z-index: 120 !important;
+        text-align: center !important;
+      }
+      #rw-payout-helper #rw-close:hover,
+      #rw-payout-helper #rw-results-close:hover,
+      #rw-payout-helper .rw-pay-all-close:hover,
+      #rw-payout-helper [data-pay-all-close]:hover,
+      #rwph-xanax-send-status #rwph-close-helper:hover,
+      #rw-wrong-payment-panel #rw-wrong-payment-close:hover,
+      .rwph-info-popup-panel .rwph-info-popup-close:hover {
+        filter: brightness(1.08) !important;
+        border-color: rgba(125,211,252,.42) !important;
+      }
+      #rw-wrong-payment-panel,
+      .rwph-info-popup-panel,
+      #rwph-xanax-send-status,
+      #rw-payout-helper .rw-pay-all-panel {
+        position: fixed !important;
+      }
+
       /* v1.1.179: API ToS / Usage rows use the exact same Help card shell */
       #rw-payout-helper .rw-help-api-grid {
         display: grid !important;
@@ -4523,7 +4578,7 @@
     .pay-all-info b { color:#e0f2fe; }
     .pay-all-info ul { margin:6px 0 0 16px; padding:0; }
     .pay-all-info li { margin:3px 0; }
-    .pay-all-close { position:absolute; top:10px; right:10px; padding:6px 9px; }
+    .pay-all-close { position:absolute!important; top:10px!important; right:12px!important; width:36px!important; height:36px!important; min-width:36px!important; min-height:36px!important; padding:0!important; display:grid!important; place-items:center!important; border-radius:14px!important; border:1px solid rgba(125,211,252,.24)!important; border-left:4px solid rgba(56,189,248,.66)!important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88))!important; color:#eaf6ff!important; font:950 20px/1 Arial,Helvetica,sans-serif!important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important; text-shadow:0 1px 0 rgba(0,0,0,.75)!important; cursor:pointer!important; z-index:120!important; }
     .pay-all-undo { margin:0 0 10px; padding:7px 10px; font-size:11px; border-radius:10px; }
     .pay-all-list { display:grid; gap:8px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36); }
     .pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
@@ -4852,7 +4907,7 @@
       close.type = "button";
       close.setAttribute("aria-label", "Close RWPH info popup");
       close.textContent = "×";
-      close.style.cssText = "position:absolute;top:7px;right:7px;width:24px;height:24px;display:grid;place-items:center;border:1px solid rgba(148,163,184,.38);border-radius:999px;background:rgba(15,23,42,.9);color:#e0f7ff;cursor:pointer;font:950 15px/1 Arial,Helvetica,sans-serif;z-index:2";
+      close.style.cssText = "position:absolute;top:10px;right:12px;width:36px;height:36px;min-width:36px;min-height:36px;display:grid;place-items:center;border:1px solid rgba(125,211,252,.24);border-left:4px solid rgba(56,189,248,.66);border-radius:14px;background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88));color:#eaf6ff;cursor:pointer;font:950 20px/1 Arial,Helvetica,sans-serif;z-index:120;box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26);text-shadow:0 1px 0 rgba(0,0,0,.75)";
       var title = document.createElement("div");
       title.textContent = safeMode === "warn" ? "RWPH Warning" : safeMode === "error" ? "RWPH Error" : "RWPH Info";
       title.style.cssText = "margin:0 0 6px;color:#fff;font:950 12px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.45px;text-transform:uppercase";
@@ -5520,7 +5575,7 @@
       .rw-pay-all-info b { color:#e0f2fe; }
       .rw-pay-all-info ul { margin:5px 0 0 13px; padding:0; }
       .rw-pay-all-info li { margin:2px 0; }
-      .rw-pay-all-close { position:absolute; top:8px; right:8px; min-width:30px; min-height:28px; border-radius:10px; border:1px solid rgba(248,113,113,.35); background:rgba(127,29,29,.88); color:#fff; font-weight:950; cursor:pointer; }
+      .rw-pay-all-close { position:absolute !important; top:10px !important; right:12px !important; width:36px !important; height:36px !important; min-width:36px !important; min-height:36px !important; padding:0 !important; display:grid !important; place-items:center !important; border-radius:14px !important; border:1px solid rgba(125,211,252,.24) !important; border-left:4px solid rgba(56,189,248,.66) !important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important; color:#eaf6ff !important; font:950 20px/1 Arial,Helvetica,sans-serif !important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26) !important; text-shadow:0 1px 0 rgba(0,0,0,.75) !important; cursor:pointer !important; z-index:120 !important; }
       .rw-pay-all-undo { margin:0 0 8px; padding:6px 8px; min-height:26px; border-radius:10px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; }
       .rw-pay-all-list { display:grid; gap:6px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36); }
       .rw-pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
