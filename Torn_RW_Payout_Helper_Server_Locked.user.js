@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.123
+// @version      1.1.129
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -31,7 +31,9 @@
   const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
+  const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
+  const LAST_RESULTS_TTL_MS = 10 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
     const PAYMENT_ITEM_ID = "206";
   const PAYMENT_ITEM_NAME = "Xanax";
@@ -43,6 +45,7 @@
   let lastRows = [];
   let rwphPayAllInlineUndoStack = [];
   let lastSummary = {};
+  let rwphLastResultsButtonTimer = null;
 
   function money(n) {
     return "$" + Math.round(Number(n || 0)).toLocaleString();
@@ -1145,6 +1148,8 @@
       #rw-payout-helper button.secondary { background: linear-gradient(180deg, rgba(70,57,45,.95), rgba(50,42,36,.95) 18%, rgba(36,31,28,.95) 100%) !important; box-shadow: 0 -3px 0 rgba(36,27,24,.45) inset; }
       #rw-payout-helper button.danger { background: linear-gradient(180deg, rgba(126,28,24,.98), rgba(164,40,30,.96) 18%, rgba(95,21,20,.98) 100%) !important; box-shadow: 0 -3px 0 rgba(65,15,14,.45) inset; }
       #rw-payout-helper .rw-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      #rw-payout-helper .rw-newsletter-actions { margin-top: 12px; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 1px solid rgba(184,136,89,.18); }
+      #rw-payout-helper .rw-newsletter-actions button { width: 100%; }
       #rw-payout-helper .rw-muted { color: #d4c1b4 !important; margin-top: 10px; line-height: 1.45; }
       #rw-payout-helper .rw-small { font-size: 11px; color: #cfaa8e !important; line-height: 1.45; }
       #rw-payout-helper .rw-summary {
@@ -2303,10 +2308,18 @@
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
     const newsletterHtml = buildWarPayoutNewsletterHtml(rows || [], summary || {});
+    const cyberNewsletterHtml = buildWarPayoutNewsletterCyberHtml(rows || [], summary || {});
+    const ledgerNewsletterHtml = buildWarPayoutNewsletterLedgerHtml(rows || [], summary || {});
+    const crimsonNewsletterHtml = buildWarPayoutNewsletterCrimsonHtml(rows || [], summary || {});
+    const goldNewsletterHtml = buildWarPayoutNewsletterVictoryGoldHtml(rows || [], summary || {});
     const newsletterJson = JSON.stringify(newsletterHtml).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list);
     const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvText)}`;
     const newsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(newsletterHtml)}`;
+    const cyberNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(cyberNewsletterHtml)}`;
+    const ledgerNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(ledgerNewsletterHtml)}`;
+    const crimsonNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(crimsonNewsletterHtml)}`;
+    const goldNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(goldNewsletterHtml)}`;
     const payAllHref = rwphFactionControlsPayAllUrl();
 
     const cards = list.map((r) => `
@@ -2495,8 +2508,12 @@
     }
     .title { flex-direction: column; text-align:center; }
     .title img { width:64px; height:64px; }
+    .newsletter-zone { display:grid; gap:8px; margin:6px 0 18px; padding-bottom:14px; border-bottom:1px solid rgba(125,211,252,.18); }
     .newsletter-top-btn { margin-top:0; max-width:none; align-self:stretch; }
-    .toolbar { display:grid; grid-template-columns:1fr; width:100%; }
+    .newsletter-choice-note { margin:0 0 2px; color:#d7d7d7; font-size:11px; font-weight:800; line-height:1.35; }
+    .newsletter-use-note { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(184,136,89,.22); background:rgba(34,24,18,.64); color:#ead7bd; font-size:11px; font-weight:800; line-height:1.38; text-align:center; }
+    .close-hint { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.58); color:#cbd5e1; font-size:11px; font-weight:800; line-height:1.35; text-align:center; }
+    .toolbar { display:grid; grid-template-columns:1fr; width:100%; margin-top:auto; }
     .btn { width:100%; text-align:center; }
     .summary { grid-area: summary; grid-template-columns: repeat(4, minmax(0,1fr)); }
     .grid { grid-area: results; grid-template-columns: repeat(auto-fill, minmax(245px,1fr)); }
@@ -2536,6 +2553,10 @@
     .bar.payout{background:linear-gradient(90deg,#138a55,#24d18a,#b7f7d6)!important;box-shadow:0 0 16px rgba(36,209,138,.28)!important;}
     .bar.weight{background:linear-gradient(90deg,#2563eb,#38bdf8,#bae6fd)!important;box-shadow:0 0 14px rgba(56,189,248,.32)!important;}
 
+    /* v1.1.129 extra newsletter theme buttons */
+    #newsletterCyberBtn{background:linear-gradient(180deg,#00d5ff,#5533ff)!important;border-color:#10d9ff!important;box-shadow:0 0 18px rgba(0,213,255,.25),inset 0 1px 0 rgba(255,255,255,.22)!important;}
+    #newsletterLedgerBtn{background:linear-gradient(180deg,#d4a24f,#704214)!important;border-color:#d4a24f!important;box-shadow:0 0 14px rgba(212,162,79,.20),inset 0 1px 0 rgba(255,255,255,.18)!important;}
+
   </style>
 </head>
 <body>
@@ -2545,12 +2566,19 @@
         <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
         <h1>Fetch + Calculate Results</h1>
       </div>
+      <div class="newsletter-zone">
+        <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create Torn Newsletter</a>
+        <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(cyberNewsletterHref)}" download="rwph-war-payout-newsletter-cyber-neon.html" target="_blank" rel="noopener">Create Cyber Neon Newsletter</a>
+        <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(ledgerNewsletterHref)}" download="rwph-war-payout-newsletter-war-ledger.html" target="_blank" rel="noopener">Create War Ledger Newsletter</a>
+        <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(crimsonNewsletterHref)}" download="rwph-war-payout-newsletter-crimson-raid.html" target="_blank" rel="noopener">Create Crimson Raid Newsletter</a>
+        <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(goldNewsletterHref)}" download="rwph-war-payout-newsletter-victory-gold.html" target="_blank" rel="noopener">Create Victory Gold Newsletter</a>
+        <p class="newsletter-choice-note">Each newsletter button creates the same payout data with a different report style/theme.</p>
+        <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
+        <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Fetch + Calculate, the main RWPH panel shows <b>Reopen Results</b> for 10 minutes so you can bring this page back if needed.</p>
+      </div>
       <div class="toolbar">
-        <a class="btn primary" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create HTML Newsletter</a>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Pay All</a>
-        <button class="btn secondary" id="closeTabBtn" type="button">Close Tab</button>
-        <span id="closeStatus" class="muted" style="display:block;font-size:11px;font-weight:800;text-align:center;line-height:1.35;"></span>
       </div>
     </section>
 
@@ -2700,21 +2728,6 @@
       document.getElementById("payAllPanel").hidden = false;
     }
 
-    function rwphCloseResultsTab() {
-      const status = document.getElementById("closeStatus");
-      if (status) status.textContent = "Closing web tab...";
-
-      // Only request the actual browser/webview tab to close.
-      // No fallback page replacement, no redirect, no screen rewrite.
-      try { window.close(); } catch (_) {}
-      try { window.open("", "_self"); window.close(); } catch (_) {}
-      try { top.close(); } catch (_) {}
-
-      setTimeout(() => {
-        if (status && !window.closed) status.textContent = "Close requested. If your browser blocks this, close the tab manually.";
-      }, 350);
-    }
-
     document.getElementById("payAllPanel").addEventListener("click", async function(e) {
       const nameBtn = e.target.closest("[data-copy-name]");
       const amountBtn = e.target.closest("[data-copy-amount]");
@@ -2735,8 +2748,6 @@
     if (payAllClose) payAllClose.addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
     const payAllUndo = document.getElementById("payAllUndo");
     if (payAllUndo) payAllUndo.addEventListener("click", function() { undoLastPayAllDisappear(); });
-    const closeTabBtn = document.getElementById("closeTabBtn");
-    if (closeTabBtn) closeTabBtn.addEventListener("click", rwphCloseResultsTab);
   </script>
 </body>
 </html>`;
@@ -2855,6 +2866,95 @@
     }
   }
 
+  function rwphClearLastResults() {
+    GM_setValue(LAST_RESULTS_STORAGE_KEY, "");
+  }
+
+  function rwphGetStoredLastResults() {
+    let payload = null;
+    try {
+      payload = JSON.parse(GM_getValue(LAST_RESULTS_STORAGE_KEY, "") || "null");
+    } catch (_) {
+      payload = null;
+    }
+
+    if (!payload || !Array.isArray(payload.rows) || !payload.createdAt) {
+      return null;
+    }
+
+    if (Date.now() - Number(payload.createdAt || 0) > LAST_RESULTS_TTL_MS) {
+      rwphClearLastResults();
+      return null;
+    }
+
+    return payload;
+  }
+
+  function rwphUpdateLastResultsButton() {
+    const actions = document.getElementById("rw-last-results-actions");
+    const btn = document.getElementById("rw-reopen-last-results");
+    if (rwphLastResultsButtonTimer) {
+      clearTimeout(rwphLastResultsButtonTimer);
+      rwphLastResultsButtonTimer = null;
+    }
+
+    const payload = rwphGetStoredLastResults();
+    if (!actions || !btn || !payload) {
+      if (actions) actions.hidden = true;
+      return;
+    }
+
+    const expiresAt = Number(payload.createdAt || 0) + LAST_RESULTS_TTL_MS;
+    const msLeft = Math.max(0, expiresAt - Date.now());
+    const minutesLeft = Math.max(1, Math.ceil(msLeft / 60000));
+    actions.hidden = false;
+    btn.textContent = `Reopen Results (${minutesLeft} min)`;
+    rwphLastResultsButtonTimer = setTimeout(rwphUpdateLastResultsButton, Math.min(msLeft + 250, 60000));
+  }
+
+  function rwphSaveLastResults(rows, summary) {
+    const payload = {
+      createdAt: Date.now(),
+      rows: Array.isArray(rows) ? rows : [],
+      summary: summary || {},
+    };
+    GM_setValue(LAST_RESULTS_STORAGE_KEY, JSON.stringify(payload));
+    rwphUpdateLastResultsButton();
+  }
+
+  function rwphReopenLastResultsTab() {
+    const status = document.getElementById("rw-status");
+    const results = document.getElementById("rw-results");
+    const payload = rwphGetStoredLastResults();
+    rwphUpdateLastResultsButton();
+
+    if (!payload) {
+      if (status) status.textContent = "Last results expired. Run Fetch + Calculate again.";
+      alert("Last results expired. Run Fetch + Calculate again.");
+      return;
+    }
+
+    lastRows = payload.rows || [];
+    lastSummary = payload.summary || {};
+    const opened = openFullscreenResultsTab(lastRows, lastSummary);
+    if (opened) {
+      if (status) status.textContent = "Last Fetch + Calculate results reopened in a fullscreen tab.";
+      return;
+    }
+
+    if (results) results.innerHTML = renderRows(lastRows, lastSummary);
+    const resultsPanel = document.getElementById("rw-results-panel");
+    if (resultsPanel) {
+      resultsPanel.hidden = false;
+      resultsPanel.removeAttribute("hidden");
+      resultsPanel.style.display = "block";
+      resultsPanel.style.visibility = "visible";
+      resultsPanel.style.opacity = "1";
+      resultsPanel.scrollTop = 0;
+    }
+    if (status) status.textContent = "Popup blocked. Last results reopened in the panel instead.";
+  }
+
   function rwphWarSourceLabel(value) {
     if (value === "current-ranked-war-report") return "Current RW Report";
     if (value === "last-ranked-war-report") return "Last RW Report";
@@ -2884,10 +2984,12 @@
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
         <b>Skipped failed:</b> ${Number(summary?.calcMeta?.skippedFailed || 0)}<br>
         ${(summary?.warnings || []).length ? `<div class="rw-code">${(summary.warnings || []).map(esc).join("<br>")}</div>` : ""}
+        <div class="rw-actions rw-newsletter-actions">
+          <button class="secondary" data-create-newsletter="1">Create Torn Newsletter</button>
+        </div>
         <div class="rw-actions">
           <button class="secondary" data-export-csv="1">Export CSV</button>
           <button class="secondary" data-pay-all="1">Pay All</button>
-          <button class="secondary" data-create-newsletter="1">Create HTML Newsletter</button>
         </div>
       </div>
       <div class="rw-card-list">
@@ -3679,6 +3781,174 @@
 </html>`;
   }
 
+  function buildWarPayoutNewsletterVariantHtml(rows, summary, themeKey) {
+    const list = (rows || []).map((r, index) => ({
+      rank: index + 1,
+      id: String(r.id || "unknown"),
+      name: r.name || `Unknown ${r.id || "unknown"}`,
+      warHits: safeNumber(r.warHits ?? r.attacks),
+      assists: safeNumber(r.assists),
+      outsideHits: safeNumber(r.outsideHits),
+      retaliationHits: safeNumber(r.retaliationHits),
+      totalTrackedHits: safeNumber(r.totalTrackedHits),
+      payableEvents: safeNumber(r.payableEvents),
+      respect: safeNumber(r.respect),
+      totalRespect: safeNumber(r.totalRespect ?? r.respect),
+      weight: safeNumber(r.weight),
+      payout: safeNumber(r.payout),
+    }));
+
+    const totalPayout = safeNumber(summary?.totalPayout) || list.reduce((sum, r) => sum + r.payout, 0);
+    const totalHits = safeNumber(summary?.totalWarHits ?? summary?.totalHits) || list.reduce((sum, r) => sum + r.warHits, 0);
+    const totalAssists = safeNumber(summary?.totalAssists) || list.reduce((sum, r) => sum + r.assists, 0);
+    const totalOutsideHits = safeNumber(summary?.totalOutsideHits) || list.reduce((sum, r) => sum + r.outsideHits, 0);
+    const totalRetaliationHits = safeNumber(summary?.totalRetaliationHits) || list.reduce((sum, r) => sum + r.retaliationHits, 0);
+    const totalTrackedHits = safeNumber(summary?.totalTrackedHits) || list.reduce((sum, r) => sum + r.totalTrackedHits, 0);
+    const totalPayableEvents = safeNumber(summary?.calcMeta?.payableEvents) || list.reduce((sum, r) => sum + r.payableEvents, 0);
+    const totalWeight = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
+    const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
+    const generatedAt = new Date().toLocaleString();
+    const topRows = [...list].sort((a, b) => b.payout - a.payout).slice(0, 8);
+    const maxPayout = Math.max(1, ...list.map((r) => r.payout));
+    const isCyber = themeKey === "cyber";
+
+    const title = isCyber ? "Cyber Neon Payout Newsletter" : "War Ledger Payout Newsletter";
+    const subtitle = isCyber
+      ? "Neon command-board version for Discord posts, faction news, or a high-impact war recap."
+      : "Formal war-ledger version for clean records, faction archives, or officer reports.";
+    const themeLabel = isCyber ? "CYBER NEON THEME" : "WAR LEDGER THEME";
+
+    const statItems = [
+      ["Total Payout", money(totalPayout), list.length + " paid members"],
+      ["War Hits", String(totalHits), totalAssists + " assists"],
+      ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
+      ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
+      ["Total Weight", totalWeight.toFixed(2), "weighted contribution"],
+      ["Total Respect", totalRespect.toFixed(2), "ranked-war report"],
+    ];
+
+    const statsHtml = statItems.map(function(item) {
+      return '<div class="stat-card"><span>' + esc(item[0]) + '</span><b>' + esc(item[1]) + '</b><em>' + esc(item[2]) + '</em></div>';
+    }).join("");
+
+    const topHtml = topRows.map(function(r) {
+      const width = Math.max(4, Math.min(100, (r.payout / maxPayout) * 100));
+      return '<div class="top-row">'
+        + '<div class="top-rank">#' + esc(r.rank) + '</div>'
+        + '<div class="top-member"><b>' + esc(r.name) + '</b><span>' + esc(r.id) + ' · ' + esc(percent(r.payout, totalPayout)) + ' share</span></div>'
+        + '<div class="top-meter"><i style="width:' + width.toFixed(2) + '%"></i></div>'
+        + '<div class="top-pay">' + esc(money(r.payout)) + '</div>'
+        + '</div>';
+    }).join("") || '<div class="empty">No payout rows available.</div>';
+
+    const tableRows = list.map(function(r) {
+      return '<tr>'
+        + '<td>' + r.rank + '</td>'
+        + '<td class="member"><b>' + esc(r.name) + '</b><span>' + esc(r.id) + '</span></td>'
+        + '<td>' + r.warHits + '</td>'
+        + '<td>' + r.assists + '</td>'
+        + '<td>' + r.outsideHits + '</td>'
+        + '<td>' + r.retaliationHits + '</td>'
+        + '<td>' + r.totalTrackedHits + '</td>'
+        + '<td>' + r.payableEvents + '</td>'
+        + '<td>' + r.weight.toFixed(2) + '</td>'
+        + '<td class="pay">' + esc(money(r.payout)) + '</td>'
+        + '</tr>';
+    }).join("") || '<tr><td colspan="10">No payout rows available.</td></tr>';
+
+    const css = isCyber ? `
+      :root{--bg:#050514;--panel:rgba(10,14,35,.86);--line:rgba(0,245,255,.28);--text:#f7fbff;--muted:#b7c7ff;--hot:#ff39d4;--main:#00f5ff;--good:#45ff9f;}
+      *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 15% 12%,rgba(255,57,212,.24),transparent 28%),radial-gradient(circle at 85% 0%,rgba(0,245,255,.22),transparent 30%),linear-gradient(135deg,#050514,#0b1028 55%,#04040f);padding:22px;text-align:center;}
+      .shell{max-width:1280px;margin:0 auto;display:grid;gap:16px}.hero,.card,.table-card{border:1px solid var(--line);border-radius:26px;background:linear-gradient(180deg,rgba(10,14,35,.92),rgba(5,5,20,.82));box-shadow:0 0 42px rgba(0,245,255,.10),0 18px 60px rgba(0,0,0,.45);backdrop-filter:blur(12px)}
+      .hero{padding:24px;position:relative;overflow:hidden}.hero:before{content:"";position:absolute;inset:-1px;background:linear-gradient(90deg,transparent,rgba(0,245,255,.18),transparent);height:2px}.logo{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(0,245,255,.45))}.eyebrow{color:var(--main);font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;padding:7px 11px;border:1px solid rgba(255,57,212,.38);border-radius:999px;color:#ffd7f8;background:rgba(255,57,212,.10);font-size:11px;font-weight:950}h1{margin:10px 0 7px;font-size:34px;line-height:1.05;text-shadow:0 0 24px rgba(0,245,255,.28)}p{color:var(--muted);font-weight:800}.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.stat-card{padding:14px}.stat-card span,.member span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:20px;color:#fff}.stat-card em{display:block;margin-top:4px;color:#8fd8ff;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 14px;font-size:20px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;padding:10px;border:1px solid rgba(0,245,255,.16);border-radius:16px;background:rgba(255,255,255,.035);margin-bottom:9px}.top-rank{font-weight:950;color:var(--hot)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-size:11px;font-weight:800}.top-meter{height:13px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(0,245,255,.16)}.top-meter i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--hot),var(--main),var(--good));box-shadow:0 0 18px rgba(0,245,255,.35)}.top-pay{font-weight:950;color:var(--good);text-align:right}.table-wrap{overflow:auto;border-radius:18px;border:1px solid rgba(0,245,255,.15)}table{width:100%;border-collapse:collapse;min-width:840px;background:rgba(0,0,0,.22)}th,td{padding:10px 8px;border-bottom:1px solid rgba(0,245,255,.12);font-size:12px;text-align:center}th{color:#dffcff;background:rgba(0,245,255,.08);font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:var(--good);font-weight:950}.footer{color:var(--muted);font-size:11px;font-weight:800;padding:8px}@media(max-width:950px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
+    ` : `
+      :root{--bg:#17130e;--paper:#f3e3c3;--ink:#2b2115;--muted:#6f5a3f;--line:#9b7544;--accent:#7b1f1f;--gold:#c0934a;}
+      *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:radial-gradient(circle at 50% 0%,rgba(192,147,74,.26),transparent 28%),linear-gradient(180deg,#22170e,#110d09);padding:24px;text-align:center}.shell{max-width:1220px;margin:0 auto;background:linear-gradient(180deg,#f8edcf,#e8d1a3);border:3px solid var(--line);box-shadow:0 18px 80px rgba(0,0,0,.55),inset 0 0 0 7px rgba(123,31,31,.10);padding:18px;display:grid;gap:16px}.hero{border:2px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(192,147,74,.14));padding:22px}.logo{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}.eyebrow{color:var(--accent);font-family:Arial,sans-serif;font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;border:1px solid var(--line);padding:6px 11px;background:#efe0bd;color:var(--accent);font-family:Arial,sans-serif;font-size:11px;font-weight:950;letter-spacing:1px}h1{font-size:34px;margin:10px 0 8px;letter-spacing:.3px}p{margin:0;color:var(--muted);font-family:Arial,sans-serif;font-weight:800}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat-card,.card,.table-card{border:2px solid rgba(111,90,63,.45);background:rgba(255,248,225,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}.stat-card{padding:13px}.stat-card span,.member span{display:block;font-family:Arial,sans-serif;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:21px;color:var(--accent)}.stat-card em{display:block;margin-top:4px;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 12px;color:var(--accent);font-size:22px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;border-bottom:1px dashed rgba(111,90,63,.45);padding:10px 6px}.top-rank{font-weight:950;color:var(--accent)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800}.top-meter{height:12px;background:#dbc08d;border:1px solid rgba(111,90,63,.45);overflow:hidden}.top-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}.top-pay{font-weight:950;color:#315b2f;text-align:right}.table-wrap{overflow:auto;border:2px solid rgba(111,90,63,.45)}table{width:100%;border-collapse:collapse;min-width:840px;background:rgba(255,250,235,.55)}th,td{padding:10px 8px;border-bottom:1px solid rgba(111,90,63,.32);font-size:12px;text-align:center}th{background:rgba(123,31,31,.12);color:var(--accent);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:#315b2f;font-weight:950}.footer{color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800;padding:8px}@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.shell{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
+    `;
+
+    return '<!doctype html>'
+      + '<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+      + '<title>RWPH ' + esc(title) + '</title><style>' + css + '</style></head><body>'
+      + '<main class="shell">'
+      + '<header class="hero">'
+      + '<img class="logo" src="' + RWPH_LAUNCHER_LOGO_DATA_URI + '" alt="RWPH">'
+      + '<div class="eyebrow">Ranked War Payout Helper</div>'
+      + '<h1>' + esc(title) + '</h1>'
+      + '<p>' + esc(subtitle) + '</p>'
+      + '<div class="theme">' + esc(themeLabel) + ' · Generated ' + esc(generatedAt) + '</div>'
+      + '</header>'
+      + '<section class="stats">' + statsHtml + '</section>'
+      + '<section class="card"><h2>Top Payout Board</h2>' + topHtml + '</section>'
+      + '<section class="table-card"><h2>Full Payout Ledger</h2><div class="table-wrap"><table><thead><tr>'
+      + '<th>#</th><th>Member</th><th>War Hits</th><th>Assists</th><th>Outside</th><th>Retals</th><th>Tracked</th><th>Payable</th><th>Weight</th><th>Payout</th>'
+      + '</tr></thead><tbody>' + tableRows + '</tbody></table></div></section>'
+      + '<footer class="footer">Created with Ranked War Payout Helper. Review payouts before sending faction funds.</footer>'
+      + '</main></body></html>';
+  }
+
+  function buildWarPayoutNewsletterCyberHtml(rows, summary) {
+    return buildWarPayoutNewsletterVariantHtml(rows, summary || {}, "cyber");
+  }
+
+  function buildWarPayoutNewsletterLedgerHtml(rows, summary) {
+    return buildWarPayoutNewsletterVariantHtml(rows, summary || {}, "ledger");
+  }
+
+
+  function themedTornNewsletterHtml(rows, summary, options) {
+    const baseHtml = buildWarPayoutNewsletterHtml(rows || [], summary || {});
+    const title = options?.title || "Ranked War Payout Newsletter";
+    const subtitle = options?.subtitle || "A styled ranked-war payout report.";
+    const css = options?.css || "";
+    return baseHtml
+      .replace(/<title>RWPH Ranked War Payout Newsletter<\/title>/, "<title>RWPH " + esc(title) + "</title>")
+      .replace(/<h1>Ranked War Payout Newsletter<\/h1>/, "<h1>" + esc(title) + "</h1>")
+      .replace(/<div class="subtitle">Generated ([^<]+)<\/div>/, "<div class=\"subtitle\">" + esc(subtitle) + " · Generated $1</div>")
+      .replace("</style>", "\n" + css + "\n</style>");
+  }
+
+  function buildWarPayoutNewsletterCrimsonHtml(rows, summary) {
+    return themedTornNewsletterHtml(rows, summary || {}, {
+      title: "Crimson Raid Payout Newsletter",
+      subtitle: "Aggressive red raid-board version for high-impact faction war recaps",
+      css: `
+    /* v1.1.129 Crimson Raid newsletter theme */
+    :root{--bg:#120708!important;--panel:#211010!important;--panel2:#170909!important;--line:rgba(248,113,113,.34)!important;--text:#fff7ed!important;--muted:#fecaca!important;--blue:#f97316!important;--indigo:#991b1b!important;--green:#fbbf24!important;--danger:#fecaca!important;}
+    body{background:radial-gradient(circle at 15% 0%,rgba(239,68,68,.30),transparent 28%),radial-gradient(circle at 90% 10%,rgba(251,191,36,.16),transparent 26%),linear-gradient(180deg,#120708,#260d0d 48%,#080303)!important;color:#fff7ed!important;}
+    .hero,.stat-card,.section{background:linear-gradient(180deg,rgba(47,14,14,.96),rgba(12,5,5,.90))!important;border-color:rgba(248,113,113,.40)!important;box-shadow:0 18px 46px rgba(0,0,0,.55),0 0 24px rgba(239,68,68,.13)!important;}
+    .hero{border-bottom:4px solid #991b1b!important;}
+    h1,h2,.stat-value,td strong{color:#fff7ed!important;text-shadow:0 1px 0 #000!important;}
+    .eyebrow,.stat-label,.stat-sub,.muted,.chart-name span,.footer{color:#fecaca!important;}
+    .strong,.payout,.stat-value{color:#fbbf24!important;}
+    th{background:linear-gradient(180deg,#3b1111,#220909)!important;color:#fee2e2!important;border-color:rgba(248,113,113,.22)!important;}
+    tr:nth-child(even) td{background:rgba(248,113,113,.035)!important;}
+    .bar.payout{background:linear-gradient(90deg,#7f1d1d,#ef4444,#fbbf24)!important;box-shadow:0 0 18px rgba(239,68,68,.32)!important;}
+    .bar.weight{background:linear-gradient(90deg,#451a03,#f97316,#fed7aa)!important;box-shadow:0 0 16px rgba(249,115,22,.26)!important;}
+    .key-dot.payout{background:#fbbf24!important}.key-dot.weight{background:#f97316!important}`
+    });
+  }
+
+  function buildWarPayoutNewsletterVictoryGoldHtml(rows, summary) {
+    return themedTornNewsletterHtml(rows, summary || {}, {
+      title: "Victory Gold Payout Newsletter",
+      subtitle: "Premium gold trophy version for faction announcements and end-of-war highlights",
+      css: `
+    /* v1.1.129 Victory Gold newsletter theme */
+    :root{--bg:#0d0a04!important;--panel:#211806!important;--panel2:#140f05!important;--line:rgba(250,204,21,.34)!important;--text:#fffbea!important;--muted:#fef3c7!important;--blue:#f59e0b!important;--indigo:#92400e!important;--green:#bbf7d0!important;--danger:#fde68a!important;}
+    body{background:radial-gradient(circle at 50% 0%,rgba(250,204,21,.26),transparent 30%),radial-gradient(circle at 10% 20%,rgba(34,197,94,.13),transparent 24%),linear-gradient(180deg,#0d0a04,#2b1e08 46%,#080602)!important;color:#fffbea!important;}
+    .hero,.stat-card,.section{background:linear-gradient(180deg,rgba(43,30,8,.96),rgba(13,10,4,.90))!important;border-color:rgba(250,204,21,.44)!important;box-shadow:0 18px 48px rgba(0,0,0,.58),0 0 26px rgba(250,204,21,.13)!important;}
+    .hero{border-bottom:4px solid #d97706!important;}
+    h1,h2,.stat-value,td strong{color:#fff7cc!important;text-shadow:0 1px 0 #000!important;}
+    .eyebrow,.stat-label,.stat-sub,.muted,.chart-name span,.footer{color:#fde68a!important;}
+    .strong,.payout{color:#bbf7d0!important;}
+    th{background:linear-gradient(180deg,#3a2807,#211806)!important;color:#fff7cc!important;border-color:rgba(250,204,21,.24)!important;}
+    tr:nth-child(even) td{background:rgba(250,204,21,.04)!important;}
+    .bar.payout{background:linear-gradient(90deg,#166534,#22c55e,#fef08a)!important;box-shadow:0 0 18px rgba(34,197,94,.26)!important;}
+    .bar.weight{background:linear-gradient(90deg,#92400e,#f59e0b,#fef3c7)!important;box-shadow:0 0 16px rgba(245,158,11,.28)!important;}
+    .key-dot.payout{background:#22c55e!important}.key-dot.weight{background:#f59e0b!important}`
+    });
+  }
+
   function createHtmlNewsletter(rows, summary) {
     const html = buildWarPayoutNewsletterHtml(rows, summary || {});
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
@@ -4031,22 +4301,36 @@
     const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
     return `
       <button id="rwph-close-helper" type="button" title="Close" style="position:absolute;top:7px;right:8px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(125,211,252,.36);background:rgba(15,23,42,.75);color:#e0f7ff;font-weight:900;line-height:18px;cursor:pointer;padding:0;">×</button>
-      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 0 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Xanax Payment Helper</div>
-      <div style="font-size:10.5px;color:#93c5fd;margin:2px 0 7px;line-height:1.25;">Prefill helper • User opens form manually • No auto-send</div>
-      <div style="margin-bottom:7px;line-height:1.35;${isError ? 'color:#fca5a5;' : 'color:#dbeafe;'}">${message}</div>
-      <div style="padding:9px;border-radius:11px;background:linear-gradient(180deg,rgba(15,23,42,.88),rgba(2,6,23,.72));border:1px solid rgba(125,211,252,.22);margin:7px 0;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;">
-        <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.5px;font-weight:900;margin-bottom:5px;">Send exactly this</div>
-        <div><b>Item:</b> ${esc(PAYMENT_ITEM_NAME)} <span style="color:#93c5fd;font-size:10px;">only</span></div>
-        <div><b>Receiver:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
-        <div><b>Message:</b> <span style="font-weight:950;color:#bae6fd;word-break:break-word;">${esc(code)}</span></div>
-        <div style="font-size:11px;color:#93c5fd;margin-top:5px;">Code expires in about ${left} minute(s). RWPH checks automatically.</div>
+      <div id="rwph-payment-helper-title" style="font-weight:900;font-size:13px;margin:0 28px 0 0;color:#e0f7ff;cursor:move;text-shadow:0 0 12px rgba(56,189,248,.22);touch-action:none;-webkit-user-select:none;user-select:none;">RWPH Payment Helper</div>
+      <div style="font-size:10.5px;color:#93c5fd;margin:2px 0 8px;line-height:1.25;">Xanax licence payment • Prefill/copy only • You confirm manually</div>
+      <div style="margin-bottom:8px;line-height:1.35;${isError ? 'color:#fca5a5;' : 'color:#dbeafe;'}">${message}</div>
+
+      <div style="padding:9px;border-radius:11px;background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(2,6,23,.76));border:1px solid rgba(125,211,252,.22);margin:7px 0;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;">
+        <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.5px;font-weight:900;margin-bottom:6px;">Required payment details</div>
+        <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span style="color:#93c5fd;font-size:10px;">only</span></div>
+        <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
+        <div><b>Message code:</b> <span style="font-weight:950;color:#bae6fd;word-break:break-word;">${esc(code)}</span></div>
+        <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
+        <div style="font-size:11px;color:#93c5fd;margin-top:6px;">Code expires in about ${left} minute(s). RWPH checks automatically after you send.</div>
       </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
         <button id="rwph-copy-receiver" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Receiver</button>
         <button id="rwph-copy-code" type="button" style="padding:7px;border-radius:8px;border:1px solid rgba(125,211,252,.34);background:linear-gradient(135deg,rgba(14,165,233,.95),rgba(79,70,229,.88));color:#f8fdff;font-weight:800;cursor:pointer;">Copy Code</button>
       </div>
-      <div style="font-size:11px;color:#e8d39a;margin-top:8px;line-height:1.42;">
-        Manually open <b>Xanax</b>, click <b>Send this item</b>, then click <b>Add Message</b>. After the fields are visible, use <b>Copy Receiver</b> and <b>Copy Code</b> to prefill/copy the receiver and payment code. Choose the amount yourself and manually press Send/Confirm. Wrong items or missing/incorrect codes need manual review.
+
+      <div style="font-size:11px;color:#e8d39a;margin-top:9px;line-height:1.45;">
+        <b>How to use:</b><br>
+        1. Open your <b>Xanax</b> item.<br>
+        2. Click <b>Send this item</b> yourself.<br>
+        3. Click <b>Add Message</b> yourself.<br>
+        4. Press <b>Copy Receiver</b> to copy/prefill the receiver field.<br>
+        5. Press <b>Copy Code</b> to copy/prefill the message field.<br>
+        6. Choose the Xanax amount, review everything, then manually Send/Confirm.
+      </div>
+
+      <div style="font-size:10.5px;color:#fca5a5;margin-top:8px;line-height:1.35;border-top:1px solid rgba(248,113,113,.22);padding-top:7px;">
+        RWPH never clicks Send, never clicks Confirm, and never sends items for you. Only Xanax with the exact payment code can auto-add licence time. Wrong items or missing/incorrect codes need manual review.
       </div>
     `;
   }
@@ -4139,7 +4423,7 @@
     await copyText(code).catch(() => false);
     rwphRenderPaymentHelperPanel(
       code,
-      `Payment helper loaded. This helper is copy-only and never sends items. Send <b>${esc(PAYMENT_ITEM_NAME)}</b> only to <b>${esc(PAYMENT_RECEIVER_TEXT)}</b> with the exact payment code as the message. Use the buttons below, then manually paste and confirm in Torn.`
+      `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the receiver and code.`
     );
   }
 
@@ -4414,7 +4698,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">What RWPH Is</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, export CSV records, create HTML payout reports, and export payout records and create reports.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, reopen recent results, export CSV records, create HTML payout reports, and prepare manual payout helpers.
             </p>
             <p class="rw-how-intro">
               The Tampermonkey or Torn PDA script is the front-end panel. The backend server handles licence checks, trial claims, payment codes, payment detection, licence extensions, expiration checks, and protected payout calculations.
@@ -4561,12 +4845,17 @@
             <div class="rw-how-title">Results And Reports</div>
             <ul class="rw-how-list">
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a Torn-style full-screen results page in a new tab where supported.</li>
+              <li><b>Close results page:</b> the results page no longer has its own Close Tab button. Close it with the normal browser or Torn PDA web tab close button.</li>
+              <li><b>Reopen Results:</b> after a successful Fetch + Calculate, the main panel shows a Reopen Results button for 10 minutes. It opens the same last results again if you closed the tab too early.</li>
+              <li><b>Auto-expiring reopen:</b> the reopen button removes itself automatically after 10 minutes so old payout results do not hang around on the main panel.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
-              <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same Torn-style dark/red theme as the results tab.</li>
+              <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
+              <li><b>Cyber Neon Newsletter</b>, <b>War Ledger Newsletter</b>, <b>Crimson Raid Newsletter</b>, and <b>Victory Gold Newsletter</b> are extra results-page newsletter buttons. They use the same payout data, but each creates a different themed HTML report.</li>
+              <li><b>Using newsletters in Torn faction newsletters:</b> choose a newsletter style, open the downloaded HTML report, copy the finished content or HTML source your faction newsletter editor accepts, paste it into Torn faction newsletters, preview it, then send only after reviewing.</li>
             </ul>
           </div>
 
@@ -4574,7 +4863,7 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
+              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / the higher <b>Create Torn Newsletter</b> button for records and reports.</li>
               <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
               <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
               <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
@@ -4591,7 +4880,7 @@
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
-              <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely.</li>
+              <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely. After a successful calculation, use Reopen Results within 10 minutes to try opening the last results again.</li>
               <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
@@ -4929,6 +5218,9 @@
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
             <button id="rw-lock" class="secondary">Lock</button>
           </div>
+          <div class="rw-actions" id="rw-last-results-actions" hidden>
+            <button id="rw-reopen-last-results" class="secondary" type="button">Reopen Results</button>
+          </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
           <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after Fetch + Calculate.</div>
@@ -4979,7 +5271,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">What RWPH Is</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, export CSV records, create HTML payout reports, and export payout records and create reports.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps faction payout managers unlock access, calculate ranked war payouts, review member results, reopen recent results, export CSV records, create HTML payout reports, and prepare manual payout helpers.
             </p>
             <p class="rw-how-intro">
               The Tampermonkey or Torn PDA script is the front-end panel. The backend server handles licence checks, trial claims, payment codes, payment detection, licence extensions, expiration checks, and protected payout calculations.
@@ -5125,12 +5417,17 @@
             <div class="rw-how-title">Results And Reports</div>
             <ul class="rw-how-list">
               <li><b>Fullscreen results tab:</b> Fetch + Calculate opens a Torn-style full-screen results page in a new tab where supported.</li>
+              <li><b>Close results page:</b> the results page no longer has its own Close Tab button. Close it with the normal browser or Torn PDA web tab close button.</li>
+              <li><b>Reopen Results:</b> after a successful Fetch + Calculate, the main panel shows a Reopen Results button for 10 minutes. It opens the same last results again if you closed the tab too early.</li>
+              <li><b>Auto-expiring reopen:</b> the reopen button removes itself automatically after 10 minutes so old payout results do not hang around on the main panel.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
-              <li><b>Create HTML Newsletter:</b> creates a styled payout report using the same Torn-style dark/red theme as the results tab.</li>
+              <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
+              <li><b>Cyber Neon Newsletter</b>, <b>War Ledger Newsletter</b>, <b>Crimson Raid Newsletter</b>, and <b>Victory Gold Newsletter</b> are extra results-page newsletter buttons. They use the same payout data, but each creates a different themed HTML report.</li>
+              <li><b>Using newsletters in Torn faction newsletters:</b> choose a newsletter style, open the downloaded HTML report, copy the finished content or HTML source your faction newsletter editor accepts, paste it into Torn faction newsletters, preview it, then send only after reviewing.</li>
             </ul>
           </div>
 
@@ -5138,7 +5435,7 @@
             <div class="rw-how-title">How To Pay Members</div>
             <ul class="rw-how-list">
               <li>Run <b>Fetch + Calculate</b> and review the results first.</li>
-              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / <b>Create HTML Newsletter</b> for records and reports.</li>
+              <li>Use <b>Pay All</b> to open Torn faction controls with a member payout helper panel, or use <b>Export CSV</b> / the higher <b>Create Torn Newsletter</b> button for records and reports.</li>
               <li>RWPH no longer includes Add Balance or Add Balance (All). Pay All can prefill visible member/amount fields, but you still manually review and pay inside Torn.</li>
               <li>Any faction payments must be handled manually inside Torn by the payout manager.</li>
               <li>RWPH does not automatically send faction money, open payout tabs, or prefill faction banking pages.</li>
@@ -5155,7 +5452,7 @@
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
-              <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely.</li>
+              <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely. After a successful calculation, use Reopen Results within 10 minutes to try opening the last results again.</li>
               <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
@@ -5218,6 +5515,10 @@
       GM_setValue(STORAGE_KEY, key);
       document.getElementById("rw-status").textContent = "API key saved locally.";
     });
+
+    const reopenLastResultsBtn = document.getElementById("rw-reopen-last-results");
+    if (reopenLastResultsBtn) reopenLastResultsBtn.addEventListener("click", rwphReopenLastResultsTab);
+    rwphUpdateLastResultsButton();
 
     const legacyCsvBtn = document.getElementById("rw-csv");
     if (legacyCsvBtn) legacyCsvBtn.addEventListener("click", () => downloadCSV(lastRows));
@@ -5400,6 +5701,7 @@
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
         rwphStorePayAllRows(lastRows);
+        rwphSaveLastResults(lastRows, lastSummary);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
         const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
