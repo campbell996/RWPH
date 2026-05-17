@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.143
+// @version      1.1.147
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -964,7 +964,10 @@
   // v1.1.138: moving/resizing is enabled for all RWPH floating panels, including Pay All/manual-review helpers.
   // v1.1.137: removed the Add Balance removal sentence from Help panel wording.
   // v1.1.136: clearer payment expiry timers, auto-close on licence payment flow, and tighter panel fit.
-  // v1.1.143: main panel licence controls rearranged so Your Expiration sits under Extend Licence and Lock sits under Save Key.
+  // v1.1.144: main panel licence controls rearranged so Your Expiration sits under Extend Licence and Lock sits under Save Key.
+  // v1.1.145: swapped the main panel positions so Reopen Results appears above Fetch + Calculate after results are available.
+  // v1.1.146: restored the Xanax Payment Helper action buttons by moving them high in the helper body and forcing them visible inside the panel.
+  // v1.1.147: Xanax Payment Helper now reuses the main Payment Code Ready expiry timer and gives it a stronger highlighted style.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Pay All controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -2977,6 +2980,113 @@
       #rw-payout-helper .rw-pay-all-list,
       #rw-pay-all-panel .rw-pay-all-list {
         padding-right:3px !important;
+      }
+
+      /* v1.1.146: keep the Xanax Payment Helper copy buttons visible and high in the panel */
+      #rwph-xanax-send-status .rwph-xanax-scroll {
+        display:grid !important;
+        gap:7px !important;
+        align-content:start !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions {
+        display:grid !important;
+        grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+        gap:7px !important;
+        margin:2px 0 4px !important;
+        padding:0 !important;
+        position:relative !important;
+        z-index:25 !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        min-height:36px !important;
+        overflow:visible !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions button {
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        width:100% !important;
+        min-width:0 !important;
+        min-height:36px !important;
+        padding:8px 6px !important;
+        font-size:11px !important;
+        line-height:1.15 !important;
+        white-space:normal !important;
+        cursor:pointer !important;
+      }
+
+      /* v1.1.147: make the Xanax helper expiry timer match and stand out like the main payment card timer */
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero {
+        display:grid !important;
+        grid-template-columns:1fr !important;
+        gap:2px !important;
+        margin:9px 0 2px !important;
+        padding:10px 12px !important;
+        border-radius:14px !important;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(125,211,252,.22), transparent 58%),
+          linear-gradient(180deg, rgba(14,165,233,.18), rgba(2,6,23,.90)) !important;
+        border:1px solid rgba(125,211,252,.62) !important;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,.05) inset,
+          0 0 22px rgba(56,189,248,.18),
+          0 10px 22px rgba(0,0,0,.28) !important;
+        color:#e0f2fe !important;
+        text-align:center !important;
+        font-size:12px !important;
+        font-weight:950 !important;
+        letter-spacing:.2px !important;
+        line-height:1.22 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero b {
+        display:block !important;
+        margin-bottom:2px !important;
+        color:#f8fafc !important;
+        font-size:10px !important;
+        text-transform:uppercase !important;
+        letter-spacing:.75px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero [data-rwph-expire-count] {
+        display:inline-block !important;
+        min-width:54px !important;
+        padding:2px 8px !important;
+        border-radius:999px !important;
+        background:rgba(186,230,253,.15) !important;
+        border:1px solid rgba(186,230,253,.32) !important;
+        color:#ffffff !important;
+        font-size:18px !important;
+        font-weight:1000 !important;
+        line-height:1.05 !important;
+        text-shadow:0 0 10px rgba(125,211,252,.42) !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero .rwph-expire-clock {
+        display:block !important;
+        margin:5px 0 0 !important;
+        color:#bae6fd !important;
+        font-size:10px !important;
+        font-weight:900 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero.rwph-expired {
+        background:
+          radial-gradient(circle at 50% 0%, rgba(248,113,113,.24), transparent 58%),
+          linear-gradient(180deg, rgba(127,29,29,.38), rgba(2,6,23,.92)) !important;
+        border-color:rgba(248,113,113,.70) !important;
+        box-shadow:0 0 22px rgba(248,113,113,.18), 0 10px 22px rgba(0,0,0,.28) !important;
+        color:#fecaca !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-note {
+        margin:5px 0 0 !important;
+        color:#bfdbfe !important;
+        font-size:10px !important;
+        font-weight:800 !important;
+        line-height:1.25 !important;
+        text-align:center !important;
+      }
+      @media (max-width:420px), (pointer:coarse) {
+        #rwph-xanax-send-status .rwph-xanax-actions {
+          grid-template-columns:1fr !important;
+          min-height:76px !important;
+        }
       }
 
 
@@ -5291,19 +5401,20 @@
         <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
         <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
 
-        <div class="rwph-xanax-detail-card">
-        <div class="rwph-xanax-detail-title">Required payment details</div>
-        <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
-        <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
-        <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
-        <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
-        <div class="rwph-xanax-expiry" data-rwph-expire-at="${expiresAtMs}"><b>Expires in:</b> <span data-rwph-expire-count>${esc(rwphFormatCountdownMs(expiresAtMs - Date.now()))}</span> <span class="rwph-expire-clock" data-rwph-expire-clock>at ${esc(rwphFormatExpiryClock(expiresAtMs))}</span>. RWPH checks automatically after you send.</div>
-      </div>
+        <div class="rwph-xanax-actions" aria-label="Xanax payment helper actions">
+          <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
+          <button id="rwph-copy-code" type="button">Copy Code</button>
+        </div>
 
-      <div class="rwph-xanax-actions">
-        <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
-        <button id="rwph-copy-code" type="button">Copy Code</button>
-      </div>
+        <div class="rwph-xanax-detail-card">
+          <div class="rwph-xanax-detail-title">Required payment details</div>
+          <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
+          <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
+          <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
+          <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
+          ${rwphPaymentExpiryHtml(expiresAtMs, "rw-payment-expiry rwph-xanax-expiry rwph-xanax-expiry-hero")}
+          <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send while this timer is active.</div>
+        </div>
 
       <div class="rwph-xanax-steps">
         <b>How to use:</b><br>
@@ -5823,7 +5934,7 @@
               <li><b>7 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
               <li><b>Your Expiration:</b> shows the licensed Torn ID, remaining licence time, and expiry date/time.</li>
               <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
-              <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
+              <li><b>Lock Panel button:</b> locks the panel without deleting or resetting the saved licence token.</li>
               <li><b>Page-change behaviour:</b> RWPH panels stay open on the browser tab they belong to and reopen if you refresh that same Torn page. If you move to a different Torn page/search URL, RWPH closes the open panels automatically so they do not follow you around Torn.</li>
             </ul>
           </div>
@@ -6233,7 +6344,7 @@
             <button id="rw-extend-licence" class="secondary">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
             <button id="rw-license-days" class="secondary">Your Expiration</button>
-            <button id="rw-lock" class="secondary">Lock</button>
+            <button id="rw-lock" class="secondary">Lock Panel</button>
           </div>
           <div class="rw-row">
             <label>War start date/time
@@ -6265,12 +6376,12 @@
               <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
             </label>
           </div>
+          <div class="rw-actions" id="rw-last-results-actions" hidden>
+            <button id="rw-reopen-last-results" class="secondary" type="button">Reopen Results</button>
+          </div>
           <div class="rw-actions">
             <button id="rw-run">Fetch + Calculate</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
-          </div>
-          <div class="rw-actions" id="rw-last-results-actions" hidden>
-            <button id="rw-reopen-last-results" class="secondary" type="button">Reopen Results</button>
           </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
@@ -6400,7 +6511,7 @@
               <li><b>7 Day Free Trial:</b> each Torn account can claim one server-side free trial.</li>
               <li><b>Your Expiration:</b> shows the licensed Torn ID, remaining licence time, and expiry date/time.</li>
               <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
-              <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
+              <li><b>Lock Panel button:</b> locks the panel without deleting or resetting the saved licence token.</li>
               <li><b>Page-change behaviour:</b> RWPH panels stay open on the browser tab they belong to and reopen if you refresh that same Torn page. If you move to a different Torn page/search URL, RWPH closes the open panels automatically so they do not follow you around Torn.</li>
             </ul>
           </div>
