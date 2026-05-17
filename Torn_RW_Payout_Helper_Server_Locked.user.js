@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.164
+// @version      1.1.165
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -63,7 +63,11 @@
 
 
   function rwphPopupClamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
+    const safeMin = Number.isFinite(Number(min)) ? Number(min) : 0;
+    const safeMax = Number.isFinite(Number(max)) ? Number(max) : safeMin;
+    if (safeMax < safeMin) return safeMin;
+    const safeValue = Number.isFinite(Number(value)) ? Number(value) : safeMin;
+    return Math.min(Math.max(safeValue, safeMin), safeMax);
   }
 
   function rwphFindCurrentPopupAnchor(anchorEl) {
@@ -264,173 +268,175 @@
   }
 
   function rwphShowToast(message, mode = "info", ttlMs = 30000, title = "RWPH Info", anchorEl = null) {
-    rwphEnsureInfoPopupStyle();
-
-    const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
-    const ttl = Math.max(30000, Number(ttlMs) || 30000);
-    const panel = rwphFindCurrentPopupAnchor(anchorEl);
-    const popupId = "rwph-info-popup-panel-live";
-    const oldPopup = document.getElementById(popupId);
-    if (oldPopup) oldPopup.remove();
-
-    const popup = document.createElement("div");
-    popup.id = popupId;
-    popup.className = `rwph-info-popup-panel rwph-info-popup-${safeMode}`;
-    popup.style.cssText = [
-      "position:fixed",
-      "z-index:2147483647",
-      "pointer-events:auto",
-      "overflow:hidden",
-      "box-sizing:border-box",
-      "border-radius:16px",
-      "padding:12px 38px 14px 16px",
-      "background:linear-gradient(135deg, rgba(3,7,18,.99), rgba(15,23,42,.98), rgba(8,47,73,.95))",
-      `border:1px solid ${safeMode === "error" ? "rgba(248,113,113,.62)" : safeMode === "warn" ? "rgba(250,204,21,.62)" : "rgba(56,189,248,.58)"}`,
-      "box-shadow:0 18px 55px rgba(0,0,0,.58), 0 0 30px rgba(56,189,248,.22)",
-      "color:#e0f7ff",
-      "font-family:Inter,Arial,sans-serif",
-      "opacity:0",
-      "transform:translateY(-6px) scale(.985)",
-      "transition:opacity .18s ease, transform .18s ease"
-    ].join(";");
-
-    const accent = safeMode === "error" ? "#fb7185" : safeMode === "warn" ? "#facc15" : "#38bdf8";
-    const close = document.createElement("button");
-    close.type = "button";
-    close.setAttribute("aria-label", "Close RWPH info popup");
-    close.textContent = "×";
-    close.style.cssText = [
-      "position:absolute",
-      "top:7px",
-      "right:7px",
-      "width:24px",
-      "height:24px",
-      "display:grid",
-      "place-items:center",
-      "border:1px solid rgba(148,163,184,.38)",
-      "border-radius:999px",
-      "background:rgba(15,23,42,.9)",
-      "color:#e0f7ff",
-      "cursor:pointer",
-      "font:950 15px/1 Arial,Helvetica,sans-serif",
-      "z-index:2"
-    ].join(";");
-
-    const titleEl = document.createElement("div");
-    titleEl.textContent = title;
-    titleEl.style.cssText = [
-      "margin:0 0 6px 0",
-      "color:#fff",
-      "font-size:12px",
-      "line-height:1.15",
-      "font-weight:950",
-      "letter-spacing:.45px",
-      "text-transform:uppercase"
-    ].join(";");
-
-    const msgEl = document.createElement("div");
-    msgEl.textContent = String(message || "Done.");
-    msgEl.style.cssText = [
-      "margin:0",
-      "color:#bdefff",
-      "font-size:12px",
-      "line-height:1.38",
-      "font-weight:800",
-      "overflow-wrap:anywhere",
-      "white-space:pre-wrap",
-      "max-height:min(26vh,180px)",
-      "overflow:auto",
-      "padding-right:2px"
-    ].join(";");
-
-    const leftBar = document.createElement("div");
-    leftBar.style.cssText = [
-      "position:absolute",
-      "inset:0 auto 0 0",
-      "width:4px",
-      `background:linear-gradient(180deg, ${accent}, #22c55e)`,
-      `box-shadow:0 0 14px ${accent}66`
-    ].join(";");
-
-    const timerBar = document.createElement("div");
-    timerBar.style.cssText = [
-      "position:absolute",
-      "left:0",
-      "right:0",
-      "bottom:0",
-      "height:3px",
-      `background:${accent}`,
-      "transform-origin:left center",
-      `animation:rwph-info-popup-timer ${ttl}ms linear forwards`
-    ].join(";");
-
-    popup.appendChild(leftBar);
-    popup.appendChild(close);
-    popup.appendChild(titleEl);
-    popup.appendChild(msgEl);
-    popup.appendChild(timerBar);
-    document.body.appendChild(popup);
-
-    let removeTimer = null;
-    const positionPopup = () => {
-      if (!popup.isConnected) return;
-      const margin = 10;
-      const livePanel = panel && document.body.contains(panel) ? panel : rwphFindCurrentPopupAnchor(anchorEl);
-      const rect = livePanel && livePanel.getBoundingClientRect ? livePanel.getBoundingClientRect() : null;
-      const viewportW = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-      const viewportH = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const popupHeight = Math.max(80, popup.offsetHeight || 110);
-
-      let width = Math.min(430, viewportW - (margin * 2));
-      let left = viewportW - width - 18;
-      let top = viewportH - popupHeight - 18;
-
-      if (rect && rect.width > 20 && rect.height > 20) {
-        width = Math.min(Math.max(280, Math.min(rect.width, 430)), viewportW - (margin * 2));
-        left = rwphPopupClamp(rect.left, margin, Math.max(margin, viewportW - width - margin));
-        top = rect.bottom + margin;
-
-        if (top + popupHeight + margin > viewportH) {
-          // Prefer "below the panel", but keep it visible if the panel is already near the bottom.
-          top = rwphPopupClamp(rect.top + margin, margin, Math.max(margin, viewportH - popupHeight - margin));
+    try {
+      rwphEnsureInfoPopupStyle();
+      const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
+      const ttl = Math.max(30000, Number(ttlMs) || 30000);
+      const accent = safeMode === "error" ? "#fb7185" : safeMode === "warn" ? "#facc15" : "#38bdf8";
+      const popupId = "rwph-info-popup-panel-live";
+      const oldPopup = document.getElementById(popupId);
+      if (oldPopup) {
+        if (oldPopup.__rwphRemoveTimer) clearTimeout(oldPopup.__rwphRemoveTimer);
+        if (oldPopup.__rwphPositionPopup) {
+          window.removeEventListener("resize", oldPopup.__rwphPositionPopup);
+          window.removeEventListener("scroll", oldPopup.__rwphPositionPopup, true);
         }
+        oldPopup.remove();
       }
 
-      popup.style.width = `${Math.round(width)}px`;
-      popup.style.left = `${Math.round(left)}px`;
-      popup.style.top = `${Math.round(top)}px`;
-      popup.style.right = "auto";
-      popup.style.bottom = "auto";
-    };
+      const popup = document.createElement("div");
+      popup.id = popupId;
+      popup.className = `rwph-info-popup-panel rwph-info-popup-${safeMode}`;
+      popup.setAttribute("role", "status");
+      popup.setAttribute("aria-live", safeMode === "error" ? "assertive" : "polite");
+      popup.style.setProperty("position", "fixed", "important");
+      popup.style.setProperty("z-index", "2147483647", "important");
+      popup.style.setProperty("box-sizing", "border-box", "important");
+      popup.style.setProperty("pointer-events", "auto", "important");
+      popup.style.setProperty("display", "block", "important");
+      popup.style.setProperty("visibility", "hidden", "important");
+      popup.style.setProperty("opacity", "1", "important");
+      popup.style.setProperty("transform", "none", "important");
+      popup.style.setProperty("overflow", "hidden", "important");
+      popup.style.setProperty("border-radius", "16px", "important");
+      popup.style.setProperty("padding", "12px 38px 15px 16px", "important");
+      popup.style.setProperty("background", "linear-gradient(135deg, rgba(3,7,18,.99), rgba(15,23,42,.98), rgba(8,47,73,.96))", "important");
+      popup.style.setProperty("border", `1px solid ${safeMode === "error" ? "rgba(248,113,113,.68)" : safeMode === "warn" ? "rgba(250,204,21,.68)" : "rgba(56,189,248,.64)"}`, "important");
+      popup.style.setProperty("box-shadow", "0 18px 55px rgba(0,0,0,.62), 0 0 30px rgba(56,189,248,.24)", "important");
+      popup.style.setProperty("color", "#e0f7ff", "important");
+      popup.style.setProperty("font-family", "Inter, Arial, sans-serif", "important");
 
-    const removePopup = () => {
-      if (!popup.isConnected) return;
-      window.removeEventListener("resize", positionPopup);
-      window.removeEventListener("scroll", positionPopup, true);
-      if (removeTimer) clearTimeout(removeTimer);
-      popup.style.opacity = "0";
-      popup.style.transform = "translateY(-6px) scale(.985)";
-      setTimeout(() => popup.remove(), 220);
-    };
+      const leftBar = document.createElement("div");
+      leftBar.style.setProperty("position", "absolute", "important");
+      leftBar.style.setProperty("inset", "0 auto 0 0", "important");
+      leftBar.style.setProperty("width", "4px", "important");
+      leftBar.style.setProperty("background", `linear-gradient(180deg, ${accent}, #22c55e)`, "important");
+      leftBar.style.setProperty("box-shadow", `0 0 14px ${accent}66`, "important");
 
-    close.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      removePopup();
-    }, { once: true });
+      const close = document.createElement("button");
+      close.type = "button";
+      close.setAttribute("aria-label", "Close RWPH info popup");
+      close.textContent = "×";
+      close.style.setProperty("position", "absolute", "important");
+      close.style.setProperty("top", "7px", "important");
+      close.style.setProperty("right", "7px", "important");
+      close.style.setProperty("width", "24px", "important");
+      close.style.setProperty("height", "24px", "important");
+      close.style.setProperty("display", "grid", "important");
+      close.style.setProperty("place-items", "center", "important");
+      close.style.setProperty("border", "1px solid rgba(148,163,184,.42)", "important");
+      close.style.setProperty("border-radius", "999px", "important");
+      close.style.setProperty("background", "rgba(15,23,42,.92)", "important");
+      close.style.setProperty("color", "#e0f7ff", "important");
+      close.style.setProperty("cursor", "pointer", "important");
+      close.style.setProperty("font", "950 15px/1 Arial,Helvetica,sans-serif", "important");
+      close.style.setProperty("z-index", "2", "important");
 
-    window.addEventListener("resize", positionPopup, { passive: true });
-    window.addEventListener("scroll", positionPopup, { passive: true, capture: true });
-    positionPopup();
-    requestAnimationFrame(() => {
+      const titleEl = document.createElement("div");
+      titleEl.textContent = String(title || "RWPH Info");
+      titleEl.style.setProperty("margin", "0 0 6px 0", "important");
+      titleEl.style.setProperty("color", "#fff", "important");
+      titleEl.style.setProperty("font-size", "12px", "important");
+      titleEl.style.setProperty("line-height", "1.15", "important");
+      titleEl.style.setProperty("font-weight", "950", "important");
+      titleEl.style.setProperty("letter-spacing", ".45px", "important");
+      titleEl.style.setProperty("text-transform", "uppercase", "important");
+
+      const msgEl = document.createElement("div");
+      msgEl.textContent = String(message || "Done.");
+      msgEl.style.setProperty("margin", "0", "important");
+      msgEl.style.setProperty("color", "#bdefff", "important");
+      msgEl.style.setProperty("font-size", "12px", "important");
+      msgEl.style.setProperty("line-height", "1.38", "important");
+      msgEl.style.setProperty("font-weight", "800", "important");
+      msgEl.style.setProperty("overflow-wrap", "anywhere", "important");
+      msgEl.style.setProperty("white-space", "pre-wrap", "important");
+      msgEl.style.setProperty("max-height", "min(26vh, 180px)", "important");
+      msgEl.style.setProperty("overflow", "auto", "important");
+      msgEl.style.setProperty("padding-right", "2px", "important");
+
+      const timerBar = document.createElement("div");
+      timerBar.style.setProperty("position", "absolute", "important");
+      timerBar.style.setProperty("left", "0", "important");
+      timerBar.style.setProperty("right", "0", "important");
+      timerBar.style.setProperty("bottom", "0", "important");
+      timerBar.style.setProperty("height", "3px", "important");
+      timerBar.style.setProperty("background", accent, "important");
+      timerBar.style.setProperty("transform-origin", "left center", "important");
+      timerBar.style.setProperty("animation", `rwph-info-popup-timer ${ttl}ms linear forwards`, "important");
+
+      popup.appendChild(leftBar);
+      popup.appendChild(close);
+      popup.appendChild(titleEl);
+      popup.appendChild(msgEl);
+      popup.appendChild(timerBar);
+      (document.body || document.documentElement).appendChild(popup);
+
+      const removePopup = () => {
+        if (!popup.isConnected) return;
+        window.removeEventListener("resize", positionPopup);
+        window.removeEventListener("scroll", positionPopup, true);
+        if (popup.__rwphRemoveTimer) clearTimeout(popup.__rwphRemoveTimer);
+        popup.remove();
+      };
+
+      const positionPopup = () => {
+        if (!popup.isConnected) return;
+        const margin = 10;
+        const livePanel = rwphFindCurrentPopupAnchor(anchorEl);
+        const rect = livePanel && livePanel.getBoundingClientRect ? livePanel.getBoundingClientRect() : null;
+        const viewportW = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0, 320);
+        const viewportH = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0, 240);
+        let width = Math.min(430, viewportW - margin * 2);
+        if (rect && rect.width > 20 && rect.height > 20) {
+          width = Math.min(Math.max(280, Math.min(rect.width, 430)), viewportW - margin * 2);
+        }
+        popup.style.setProperty("width", `${Math.round(width)}px`, "important");
+        const popupHeight = Math.max(86, popup.offsetHeight || 110);
+
+        let left = viewportW - width - 18;
+        let top = viewportH - popupHeight - 18;
+        if (rect && rect.width > 20 && rect.height > 20) {
+          left = rwphPopupClamp(rect.left, margin, viewportW - width - margin);
+          top = rect.bottom + margin;
+          if (top + popupHeight + margin > viewportH) {
+            top = rwphPopupClamp(viewportH - popupHeight - margin, margin, viewportH - popupHeight - margin);
+          }
+        }
+
+        popup.style.setProperty("left", `${Math.round(left)}px`, "important");
+        popup.style.setProperty("top", `${Math.round(top)}px`, "important");
+        popup.style.setProperty("right", "auto", "important");
+        popup.style.setProperty("bottom", "auto", "important");
+        popup.style.setProperty("visibility", "visible", "important");
+      };
+
+      popup.__rwphPositionPopup = positionPopup;
+      close.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        removePopup();
+      }, { once: true });
+      window.addEventListener("resize", positionPopup, { passive: true });
+      window.addEventListener("scroll", positionPopup, { passive: true, capture: true });
       positionPopup();
-      popup.style.opacity = "1";
-      popup.style.transform = "translateY(0) scale(1)";
-    });
-    removeTimer = setTimeout(removePopup, ttl);
-    return popup;
+      setTimeout(positionPopup, 60);
+      popup.__rwphRemoveTimer = setTimeout(removePopup, ttl);
+      return popup;
+    } catch (err) {
+      console.warn("RWPH popup panel failed:", err);
+      try {
+        const fallback = document.createElement("div");
+        fallback.textContent = `${title || "RWPH"}: ${message || "Done."}`;
+        fallback.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:2147483647;max-width:min(420px,calc(100vw - 28px));padding:12px 16px;border-radius:14px;background:#020617;color:#e0f7ff;border:1px solid #38bdf8;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 18px 55px rgba(0,0,0,.6);white-space:pre-wrap;overflow-wrap:anywhere;";
+        (document.body || document.documentElement).appendChild(fallback);
+        setTimeout(() => fallback.remove(), 30000);
+        return fallback;
+      } catch (_) {
+        return null;
+      }
+    }
   }
-
 
   function rwphToastPanelInfo(statusEl, message, mode = "info", title = "RWPH Info", readyText = "Ready.") {
     rwphShowToast(message, mode, 30000, title, statusEl);
@@ -6684,12 +6690,11 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Quick Start</div>
             <ul class="rw-how-list">
-              <li><b>1. Start the backend:</b> run the server locally or through your hosted/ngrok URL, then make sure PAYWALL_API_BASE in the userscript points to that server.</li>
-              <li><b>2. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
-              <li><b>3. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a small popup panel under RWPH.</li>
-              <li><b>4. Unlock or buy/extend:</b> Unlock checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
-              <li><b>5. Set the war times:</b> use Auto-fill War Times where possible, or set start/end manually.</li>
-              <li><b>6. Fetch + Calculate:</b> opens a loading/results tab and calculates payouts using the backend.</li>
+              <li><b>1. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
+              <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
+              <li><b>3. Unlock or buy/extend:</b> Unlock checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
+              <li><b>4. Set the war times:</b> use Auto-fill War Times where possible, or set start/end manually.</li>
+              <li><b>5. Fetch + Calculate:</b> opens a loading/results tab and calculates payouts using the backend.</li>
             </ul>
           </div>
 
@@ -6794,7 +6799,7 @@
             <div class="rw-how-title">Popup Panels</div>
             <ul class="rw-how-list">
               <li><b>Feedback style:</b> Save Key, Your Expiration, Auto-fill War Times, admin actions, results actions, newsletter actions, copy actions, and payment helper actions use popup panels.</li>
-              <li><b>Location:</b> popup panels appear below the current/active RWPH panel when possible.</li>
+              <li><b>Location:</b> popup panels appear below the current/active RWPH panel where possible, and fall back to a visible screen-safe position if there is not enough space.</li>
               <li><b>Close button:</b> click the × on the popup panel to dismiss it early.</li>
               <li><b>Auto close:</b> popup panels disappear after 30 seconds.</li>
               <li><b>Fallback:</b> if there is not enough room under the panel, RWPH keeps the popup visible inside the screen.</li>
@@ -7225,12 +7230,11 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Quick Start</div>
             <ul class="rw-how-list">
-              <li><b>1. Start the backend:</b> run the server locally or through your hosted/ngrok URL, then make sure PAYWALL_API_BASE in the userscript points to that server.</li>
-              <li><b>2. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
-              <li><b>3. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a small popup panel under RWPH.</li>
-              <li><b>4. Unlock or buy/extend:</b> Unlock checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
-              <li><b>5. Set the war times:</b> use Auto-fill War Times where possible, or set start/end manually.</li>
-              <li><b>6. Fetch + Calculate:</b> opens a loading/results tab and calculates payouts using the backend.</li>
+              <li><b>1. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
+              <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
+              <li><b>3. Unlock or buy/extend:</b> Unlock checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
+              <li><b>4. Set the war times:</b> use Auto-fill War Times where possible, or set start/end manually.</li>
+              <li><b>5. Fetch + Calculate:</b> opens a loading/results tab and calculates payouts using the backend.</li>
             </ul>
           </div>
 
@@ -7335,7 +7339,7 @@
             <div class="rw-how-title">Popup Panels</div>
             <ul class="rw-how-list">
               <li><b>Feedback style:</b> Save Key, Your Expiration, Auto-fill War Times, admin actions, results actions, newsletter actions, copy actions, and payment helper actions use popup panels.</li>
-              <li><b>Location:</b> popup panels appear below the current/active RWPH panel when possible.</li>
+              <li><b>Location:</b> popup panels appear below the current/active RWPH panel where possible, and fall back to a visible screen-safe position if there is not enough space.</li>
               <li><b>Close button:</b> click the × on the popup panel to dismiss it early.</li>
               <li><b>Auto close:</b> popup panels disappear after 30 seconds.</li>
               <li><b>Fallback:</b> if there is not enough room under the panel, RWPH keeps the popup visible inside the screen.</li>
