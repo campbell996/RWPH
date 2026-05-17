@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.137
+// @version      1.1.140
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -403,9 +403,9 @@
       font-family: Inter, Segoe UI, Arial, sans-serif;
     `;
     panel.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-weight:950;font-size:16px;color:#fff;">
-        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(59,130,246,.55));" />
-        Payment Needs Manual Review
+      <div class="rwph-floating-panel-head" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-weight:950;font-size:16px;color:#fff;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">
+        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(59,130,246,.55));pointer-events:none;" />
+        <span>Payment Needs Manual Review</span>
       </div>
       <div style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;">
         ${esc(message || `You sent the payment wrong. Licence days are only automatically added when ${PAYMENT_ITEM_NAME} is sent with the exact payment code in the item message. Your licence will be manually added ASAP.`)}
@@ -414,6 +414,7 @@
     `;
     document.body.appendChild(panel);
     panel.querySelector("#rw-wrong-payment-close")?.addEventListener("click", closeWrongPaymentPanel);
+    rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head");
   }
 
   async function autoCheckPaymentOnce(userKey, mode = "unlock") {
@@ -642,12 +643,99 @@
     }
   }
 
+  function rwphCurrentPageKey() {
+    // Track the real Torn page, not hash-only UI sections. This keeps RWPH open on refresh
+    // for the same page, but lets it auto-close when Torn moves to a different page/search URL.
+    return `${location.origin}${location.pathname}${location.search}`;
+  }
+
+  function rwphSessionJsonGet(key, fallback = {}) {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function rwphSessionJsonSet(key, value) {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value || {}));
+    } catch (e) {
+      console.warn("RWPH could not save tab/page state:", e);
+    }
+  }
+
+  function rwphSetPanelOpenStateForPage(pageKey, isOpen) {
+    const state = rwphSessionJsonGet(PANEL_OPEN_STORAGE_KEY, {});
+    if (isOpen) state[pageKey || rwphCurrentPageKey()] = "1";
+    else delete state[pageKey || rwphCurrentPageKey()];
+    rwphSessionJsonSet(PANEL_OPEN_STORAGE_KEY, state);
+
+    // Clear the old global GM flag so opening RWPH in one browser tab no longer forces it
+    // to auto-open in every other Torn tab.
+    try { GM_setValue(PANEL_OPEN_STORAGE_KEY, "0"); } catch (_) {}
+  }
+
   function rwphSetPanelOpenState(isOpen) {
-    GM_setValue(PANEL_OPEN_STORAGE_KEY, isOpen ? "1" : "0");
+    rwphSetPanelOpenStateForPage(rwphCurrentPageKey(), isOpen);
   }
 
   function rwphGetPanelOpenState() {
-    return GM_getValue(PANEL_OPEN_STORAGE_KEY, "0") === "1";
+    const state = rwphSessionJsonGet(PANEL_OPEN_STORAGE_KEY, {});
+    return state[rwphCurrentPageKey()] === "1";
+  }
+
+  function rwphCloseAllPanelsForPageChange(previousPageKey, nextPageKey) {
+    const selectors = [
+      "#rw-payout-helper",
+      "#rw-pay-all-panel",
+      "#rwph-xanax-send-status",
+      "#rw-wrong-payment-panel",
+    ];
+
+    for (const selector of selectors) {
+      for (const panel of Array.from(document.querySelectorAll(selector))) {
+        try { rwphSavePanelLayout(panel); } catch (_) {}
+        try { panel.remove(); } catch (_) {}
+      }
+    }
+
+    if (previousPageKey) rwphSetPanelOpenStateForPage(previousPageKey, false);
+    if (nextPageKey) rwphSetPanelOpenStateForPage(nextPageKey, false);
+    sessionStorage.setItem("rwph_xanax_helper_closed", "1");
+    setLauncherOpenState(false);
+  }
+
+  function rwphInstallPageNavigationAutoClose() {
+    if (window.__rwphPageNavigationAutoCloseInstalled) return;
+    window.__rwphPageNavigationAutoCloseInstalled = true;
+
+    let lastPageKey = rwphCurrentPageKey();
+    const checkPageChange = () => {
+      const currentPageKey = rwphCurrentPageKey();
+      if (currentPageKey === lastPageKey) return;
+      const previousPageKey = lastPageKey;
+      lastPageKey = currentPageKey;
+      rwphCloseAllPanelsForPageChange(previousPageKey, currentPageKey);
+    };
+
+    const wrapHistoryMethod = (methodName) => {
+      const original = history[methodName];
+      if (typeof original !== "function") return;
+      history[methodName] = function (...args) {
+        const result = original.apply(this, args);
+        setTimeout(checkPageChange, 50);
+        return result;
+      };
+    };
+
+    wrapHistoryMethod("pushState");
+    wrapHistoryMethod("replaceState");
+    window.addEventListener("popstate", () => setTimeout(checkPageChange, 50));
+    window.addEventListener("hashchange", () => setTimeout(checkPageChange, 50));
+    setInterval(checkPageChange, 1000);
   }
 
   function rwphSavePanelLayout(panel) {
@@ -684,6 +772,7 @@
     panel.style.setProperty("width", `${width}px`, "important");
     panel.style.setProperty("height", `${height}px`, "important");
     panel.style.setProperty("max-height", "none", "important");
+    panel.style.setProperty("transform", "none", "important");
   }
 
   function rwphSaveActiveTab(area, tabName) {
@@ -869,6 +958,9 @@
   }
 
   // v1.1.133: admin licence cards show time left and the Fill button copies both Torn ID and name.
+  // v1.1.140: panel open state is now tab/page scoped; RWPH panels auto-close on Torn page changes, stay open when switching browser tabs, and reopen after refresh on the same page.
+  // v1.1.139: hidden white outer panel scrollbars while keeping blue internal RWPH scrollbars.
+  // v1.1.138: moving/resizing is enabled for all RWPH floating panels, including Pay All/manual-review helpers.
   // v1.1.137: removed the Add Balance removal sentence from Help panel wording.
   // v1.1.136: clearer payment expiry timers, auto-close on licence payment flow, and tighter panel fit.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
@@ -2547,6 +2639,92 @@
         }
       }
 
+      /* v1.1.139 scrollbar polish: hide outer white panel bars, keep RWPH inner scrollbars blue */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-results-panel,
+      #rw-payout-helper .rw-pay-all-panel,
+      #rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      #rw-wrong-payment-panel {
+        scrollbar-width:none !important;
+        -ms-overflow-style:none !important;
+      }
+      #rw-payout-helper::-webkit-scrollbar,
+      #rw-payout-helper .rw-results-panel::-webkit-scrollbar,
+      #rw-payout-helper .rw-pay-all-panel::-webkit-scrollbar,
+      #rw-pay-all-panel::-webkit-scrollbar,
+      #rwph-xanax-send-status::-webkit-scrollbar,
+      #rw-wrong-payment-panel::-webkit-scrollbar {
+        width:0 !important;
+        height:0 !important;
+        background:transparent !important;
+      }
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-results-panel .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-card-list,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-payment-card,
+      #rw-payout-helper .rw-pay-all-list,
+      #rw-pay-all-panel .pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-list {
+        scrollbar-width:thin !important;
+        scrollbar-color:rgba(56,189,248,.78) rgba(15,23,42,.34) !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar,
+      #rw-payout-helper .rw-tab-section::-webkit-scrollbar,
+      #rw-payout-helper .rw-card-list::-webkit-scrollbar,
+      #rw-payout-helper .rw-how-box::-webkit-scrollbar,
+      #rw-payout-helper .rw-admin-box::-webkit-scrollbar,
+      #rw-payout-helper .rw-payment-card::-webkit-scrollbar,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar,
+      #rw-pay-all-panel .pay-all-list::-webkit-scrollbar,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar {
+        width:8px !important;
+        height:8px !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-tab-section::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-card-list::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-how-box::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-admin-box::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-payment-card::-webkit-scrollbar-track,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar-track,
+      #rw-pay-all-panel .pay-all-list::-webkit-scrollbar-track,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar-track {
+        background:rgba(15,23,42,.34) !important;
+        border-radius:999px !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-tab-section::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-card-list::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-how-box::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-admin-box::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-payment-card::-webkit-scrollbar-thumb,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar-thumb,
+      #rw-pay-all-panel .pay-all-list::-webkit-scrollbar-thumb,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar-thumb {
+        background:linear-gradient(180deg, rgba(56,189,248,.92), rgba(59,130,246,.82)) !important;
+        border:2px solid rgba(15,23,42,.50) !important;
+        border-radius:999px !important;
+      }
+      #rw-payout-helper > .rw-body::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-results-panel .rw-body::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-tab-section::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-card-list::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-how-box::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-admin-box::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-payment-card::-webkit-scrollbar-thumb:hover,
+      #rw-payout-helper .rw-pay-all-list::-webkit-scrollbar-thumb:hover,
+      #rw-pay-all-panel .pay-all-list::-webkit-scrollbar-thumb:hover,
+      #rw-pay-all-panel .rw-pay-all-list::-webkit-scrollbar-thumb:hover {
+        background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.92)) !important;
+      }
+
     `;
   }
 
@@ -2789,6 +2967,8 @@
     }
     .pay-all-panel[hidden] { display:none !important; }
     .pay-all-panel h2 { margin:0 0 6px; font-size:18px; color:#e0f2fe; }
+    .pay-all-head { cursor:move; touch-action:none; -webkit-user-select:none; user-select:none; padding:2px 34px 6px; }
+    .resize-handle { position:absolute; right:7px; bottom:7px; width:20px; height:20px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.70); border-bottom:2px solid rgba(125,211,252,.70); border-radius:0 0 8px 0; touch-action:none; }
     .pay-all-note { margin:0 26px 10px; color:#c7d2fe; font-size:12px; line-height:1.45; }
     .pay-all-info { margin:0 18px 12px; padding:10px 12px; border-radius:14px; border:1px solid rgba(125,211,252,.18); background:rgba(15,23,42,.66); color:#dbeafe; font-size:11px; line-height:1.45; text-align:left; }
     .pay-all-info b { color:#e0f2fe; }
@@ -2994,7 +3174,7 @@
 
   <aside class="pay-all-panel" id="payAllPanel" hidden>
     <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
-    <h2>Pay All Copy Panel</h2>
+    <h2 class="pay-all-head">Pay All Copy Panel</h2>
     <p class="pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</p>
     <div class="pay-all-info">
       <b>How to use Pay All:</b>
@@ -3009,6 +3189,7 @@
     </div>
     <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Undo Last Disappear</button>
     <div class="pay-all-list" id="payAllList"></div>
+    <div class="resize-handle" title="Drag to resize"></div>
   </aside>
 
   <script>
@@ -3077,6 +3258,98 @@
 
     const payAllUndoStack = [];
 
+    function setupMoveResize(panel, handleSelector) {
+      if (!panel || panel.dataset.moveResizeReady === "1") return;
+      panel.dataset.moveResizeReady = "1";
+      const layoutKey = "rwph_fullscreen_pay_all_layout";
+      const handle = panel.querySelector(handleSelector);
+      const resizeHandle = panel.querySelector(".resize-handle");
+      let dragging = false;
+      let resizing = false;
+      let startX = 0;
+      let startY = 0;
+      let startLeft = 0;
+      let startTop = 0;
+      let startWidth = 0;
+      let startHeight = 0;
+
+      function point(e) {
+        const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+        return { x: Number((t && t.clientX) || e.clientX || 0), y: Number((t && t.clientY) || e.clientY || 0) };
+      }
+      function save() {
+        const rect = panel.getBoundingClientRect();
+        try { localStorage.setItem(layoutKey, JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) })); } catch (_) {}
+      }
+      function apply() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(layoutKey) || "null");
+          if (!saved) return;
+          const minWidth = 250, minHeight = 180;
+          const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
+          const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
+          const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
+          const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - 40));
+          panel.style.left = left + "px";
+          panel.style.top = top + "px";
+          panel.style.right = "auto";
+          panel.style.bottom = "auto";
+          panel.style.inset = "auto auto auto auto";
+          panel.style.width = width + "px";
+          panel.style.height = height + "px";
+          panel.style.maxHeight = "none";
+        } catch (_) {}
+      }
+      function beginDrag(e) {
+        if (!handle || !e.target.closest(handleSelector) || e.target.closest("button,a,input,textarea,select,.resize-handle")) return;
+        const p = point(e);
+        const rect = panel.getBoundingClientRect();
+        dragging = true;
+        startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top;
+        panel.style.left = rect.left + "px"; panel.style.top = rect.top + "px"; panel.style.right = "auto"; panel.style.bottom = "auto"; panel.style.inset = "auto auto auto auto";
+        e.preventDefault();
+      }
+      function beginResize(e) {
+        if (!resizeHandle || !e.target.closest(".resize-handle")) return;
+        const p = point(e);
+        const rect = panel.getBoundingClientRect();
+        resizing = true;
+        startX = p.x; startY = p.y; startWidth = rect.width; startHeight = rect.height;
+        panel.style.left = rect.left + "px"; panel.style.top = rect.top + "px"; panel.style.right = "auto"; panel.style.bottom = "auto"; panel.style.inset = "auto auto auto auto"; panel.style.maxHeight = "none";
+        e.preventDefault();
+      }
+      function move(e) {
+        const p = point(e);
+        if (dragging) {
+          const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+          const maxTop = Math.max(8, window.innerHeight - 40);
+          panel.style.left = Math.min(Math.max(8, startLeft + p.x - startX), maxLeft) + "px";
+          panel.style.top = Math.min(Math.max(8, startTop + p.y - startY), maxTop) + "px";
+          e.preventDefault();
+        }
+        if (resizing) {
+          const minWidth = 250, minHeight = 180;
+          panel.style.width = Math.min(Math.max(minWidth, startWidth + p.x - startX), Math.max(minWidth, window.innerWidth - 16)) + "px";
+          panel.style.height = Math.min(Math.max(minHeight, startHeight + p.y - startY), Math.max(minHeight, window.innerHeight - 16)) + "px";
+          panel.style.overflow = "auto";
+          e.preventDefault();
+        }
+      }
+      function end() {
+        if (dragging || resizing) save();
+        dragging = false;
+        resizing = false;
+      }
+      apply();
+      if (handle) { handle.addEventListener("mousedown", beginDrag); handle.addEventListener("touchstart", beginDrag, { passive:false }); }
+      if (resizeHandle) { resizeHandle.addEventListener("mousedown", beginResize); resizeHandle.addEventListener("touchstart", beginResize, { passive:false }); }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("touchmove", move, { passive:false });
+      document.addEventListener("mouseup", end);
+      document.addEventListener("touchend", end);
+      document.addEventListener("touchcancel", end);
+    }
+
     function hidePayAllButton(btn, label) {
       if (!btn) return;
       btn.dataset.originalLabel = label || btn.textContent || "Button";
@@ -3118,7 +3391,9 @@
 
     function openPayAllPanel() {
       renderPayAllPanel();
-      document.getElementById("payAllPanel").hidden = false;
+      const panel = document.getElementById("payAllPanel");
+      setupMoveResize(panel, ".pay-all-head");
+      panel.hidden = false;
     }
 
     document.getElementById("payAllPanel").addEventListener("click", async function(e) {
@@ -3141,6 +3416,7 @@
     if (payAllClose) payAllClose.addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
     const payAllUndo = document.getElementById("payAllUndo");
     if (payAllUndo) payAllUndo.addEventListener("click", function() { undoLastPayAllDisappear(); });
+    setupMoveResize(document.getElementById("payAllPanel"), ".pay-all-head");
   </script>
 </body>
 </html>`;
@@ -3683,8 +3959,7 @@
     const panel = wrap.firstElementChild;
     document.body.appendChild(panel);
     panel.hidden = false;
-    makeDraggable(panel, ".rw-pay-all-head");
-    makeResizable(panel);
+    rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
     const payAllUndoStack = [];
 
     panel.addEventListener("click", async (e) => {
@@ -4461,9 +4736,7 @@
 
     box.style.borderColor = isError ? "rgba(251,113,133,.70)" : "rgba(125,211,252,.35)";
     box.innerHTML = message;
-    makeDraggable(box, "#rwph-payment-helper-title");
-    makeResizable(box);
-    rwphApplyPanelLayout(box);
+    rwphEnablePanelMoveResize(box, "#rwph-payment-helper-title");
   }
 
   function rwphNodeMeta(el) {
@@ -4888,7 +5161,9 @@
       panel.style.right = "auto";
       panel.style.bottom = "auto";
       panel.style.position = "fixed";
+      panel.style.transform = "none";
       panel.style.maxWidth = "calc(100vw - 16px)";
+      panel.style.maxHeight = "calc(100vh - 16px)";
 
       rwphBlockTouchDefaults(handle);
       e.preventDefault?.();
@@ -4973,6 +5248,7 @@
       panel.style.right = "auto";
       panel.style.bottom = "auto";
       panel.style.position = "fixed";
+      panel.style.transform = "none";
       panel.style.maxWidth = "none";
       panel.style.maxHeight = "none";
       e.preventDefault?.();
@@ -5011,6 +5287,13 @@
     document.addEventListener("mouseup", endResize);
     document.addEventListener("touchend", endResize);
     document.addEventListener("touchcancel", endResize);
+  }
+
+  function rwphEnablePanelMoveResize(panel, handleSelector = ".rw-head") {
+    if (!panel) return;
+    makeDraggable(panel, handleSelector);
+    makeResizable(panel);
+    rwphApplyPanelLayout(panel);
   }
 
 
@@ -5181,6 +5464,7 @@
               <li><b>Your Expiration:</b> shows the licensed Torn ID, remaining licence time, and expiry date/time.</li>
               <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
               <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
+              <li><b>Page-change behaviour:</b> RWPH panels stay open on the browser tab they belong to and reopen if you refresh that same Torn page. If you move to a different Torn page/search URL, RWPH closes the open panels automatically so they do not follow you around Torn.</li>
             </ul>
           </div>
 
@@ -5218,8 +5502,8 @@
               <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
-              <li><b>Draggable panels:</b> the main panel, fallback results panel, and payment helper can be moved around.</li>
-              <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
+              <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Pay All helper, and manual-review popup.</li>
+              <li><b>Resizable panels:</b> all RWPH floating panels have a bottom-right resize handle and save their size/position after refresh.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -5302,13 +5586,9 @@
         </div>
       </div>`;
 
-    makeDraggable(panel);
-    makeResizable(panel);
-    rwphApplyPanelLayout(panel);
+    rwphEnablePanelMoveResize(panel);
     const lockedResultsPanel = document.getElementById("rw-results-panel");
-    makeDraggable(lockedResultsPanel);
-    makeResizable(lockedResultsPanel);
-    rwphApplyPanelLayout(lockedResultsPanel);
+    rwphEnablePanelMoveResize(lockedResultsPanel);
     attachMoveLauncherButton();
     document.getElementById("rw-move-launcher-admin").addEventListener("click", cycleLauncherCorner);
     document.getElementById("rw-close").addEventListener("click", closePanel);
@@ -5762,6 +6042,7 @@
               <li><b>Your Expiration:</b> shows the licensed Torn ID, remaining licence time, and expiry date/time.</li>
               <li><b>Save Key:</b> saves the Torn API key locally in Tampermonkey or Torn PDA storage.</li>
               <li><b>Lock button:</b> locks the panel without deleting or resetting the saved licence token.</li>
+              <li><b>Page-change behaviour:</b> RWPH panels stay open on the browser tab they belong to and reopen if you refresh that same Torn page. If you move to a different Torn page/search URL, RWPH closes the open panels automatically so they do not follow you around Torn.</li>
             </ul>
           </div>
 
@@ -5799,8 +6080,8 @@
               <li><b>Move Button Corner:</b> moves the launcher between screen corners and saves the choice.</li>
               <li><b>Torn-style theme:</b> panels use a Torn-style visual style.</li>
               <li><b>Centered panels:</b> panel content, buttons, labels, result cards, stats, and summaries are centered.</li>
-              <li><b>Draggable panels:</b> the main panel, fallback results panel, and payment helper can be moved around.</li>
-              <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
+              <li><b>Draggable panels:</b> all RWPH floating panels can be moved by dragging their title/header area, including the main panel, fallback results, payment helper, Pay All helper, and manual-review popup.</li>
+              <li><b>Resizable panels:</b> all RWPH floating panels have a bottom-right resize handle and save their size/position after refresh.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
               <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
@@ -5882,13 +6163,9 @@
         </div>
       </div>`;
 
-    makeDraggable(panel);
-    makeResizable(panel);
-    rwphApplyPanelLayout(panel);
+    rwphEnablePanelMoveResize(panel);
     const mainResultsPanel = document.getElementById("rw-results-panel");
-    makeDraggable(mainResultsPanel);
-    makeResizable(mainResultsPanel);
-    rwphApplyPanelLayout(mainResultsPanel);
+    rwphEnablePanelMoveResize(mainResultsPanel);
     attachMoveLauncherButton();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
@@ -6303,6 +6580,7 @@
     showMainScreen(panel);
   }
 
+  rwphInstallPageNavigationAutoClose();
   setupXanaxPaymentButtonHandler();
   createLauncherButton();
   runXanaxPaymentAutofillFromUrl();
