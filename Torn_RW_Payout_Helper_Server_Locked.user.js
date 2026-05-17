@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.165
+// @version      1.1.167
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -932,7 +932,7 @@
 
   function updateLauncherCornerButtonLabels() {
     const label = launcherCornerLabel(getLauncherCorner());
-    const displayLabel = `Button movement (${label.toLowerCase()})`;
+    const displayLabel = "Button Movements";
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
@@ -1408,6 +1408,7 @@
   // v1.1.147: Xanax Payment Helper now reuses the main Payment Code Ready expiry timer and gives it a stronger highlighted style.
   // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
+  // v1.1.167: added Help panel TOS / Responsible Use and API Usage sections.
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
   // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
@@ -6630,7 +6631,7 @@
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
-            <button id="rw-move-launcher" class="secondary">${launcherCornerLabel(getLauncherCorner())}</button>
+            <button id="rw-move-launcher" class="secondary">Button Movements</button>
           </div>
           <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock if you already have a licence, or Buy Licence to start a new payment.</div>
           <div id="rw-paywall-code"></div>
@@ -6649,7 +6650,7 @@
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
-              <button id="rw-move-launcher-admin" class="secondary">${launcherCornerLabel(getLauncherCorner())}</button>
+              <button id="rw-move-launcher-admin" class="secondary">Button Movements</button>
             </div>
 
             <label>Player Torn ID
@@ -6722,7 +6723,7 @@
               <li><b>Weights:</b> War Hit, Outside Hit, Retaliation Hit, and Assist weight control how much each contribution type counts.</li>
               <li><b>Fetch + Calculate:</b> sends the calculation request to the backend and opens the results loading tab.</li>
               <li><b>Reopen Results:</b> appears only after a successful calculation. It reopens the last results tab for 10 minutes, then removes itself.</li>
-              <li><b>Button movement (corner):</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
+              <li><b>Button Movements:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
 
@@ -6803,6 +6804,31 @@
               <li><b>Close button:</b> click the × on the popup panel to dismiss it early.</li>
               <li><b>Auto close:</b> popup panels disappear after 30 seconds.</li>
               <li><b>Fallback:</b> if there is not enough room under the panel, RWPH keeps the popup visible inside the screen.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">TOS / Responsible Use</div>
+            <ul class="rw-how-list">
+              <li><b>Use at your own risk:</b> RWPH is a helper tool for organising ranked war payouts. Always review the results before sending Torn money or items.</li>
+              <li><b>No automatic Torn payments:</b> RWPH prepares payout information and copy/prefill helpers. You are still responsible for checking and sending payments manually in Torn.</li>
+              <li><b>Follow Torn rules:</b> use RWPH only in ways allowed by Torn, your faction rules, and your own server/licence setup.</li>
+              <li><b>Keep secrets private:</b> do not share your Torn API key, ADMIN_KEY, PAYWALL_SECRET, or private server URL with people you do not trust.</li>
+              <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and revoking licences correctly.</li>
+              <li><b>No guarantee:</b> Torn API limits, browser/Torn PDA behaviour, server downtime, or changed Torn pages can affect results. Recheck important payouts before publishing or paying.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">API Usage</div>
+            <ul class="rw-how-list">
+              <li><b>Why RWPH needs your Torn API key:</b> the key lets RWPH verify your Torn ID/faction access and fetch the ranked war/attack data needed to calculate payouts.</li>
+              <li><b>What RWPH reads:</b> faction/member details needed for names and IDs, ranked war timing where available, and attack records inside the selected war time window.</li>
+              <li><b>What the backend does:</b> the userscript sends the saved API key and payout settings to your RWPH backend. The backend calls Torn, applies rate-limit retries, sorts war/outside/retal/assist hits, and returns the finished payout results.</li>
+              <li><b>Where the key is saved:</b> when you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage so you do not need to paste it every time.</li>
+              <li><b>Licence/payment checks:</b> the backend uses your Torn ID, payment code, and configured receiver to check whether a licence is active or should be extended.</li>
+              <li><b>Rate limits:</b> Torn can return Too many requests. RWPH now queues and retries API calls, but very large wars or repeated Fetch + Calculate clicks can still take longer.</li>
+              <li><b>What RWPH does not do:</b> it does not need your Torn password, does not log into your Torn account, and does not send money automatically.</li>
             </ul>
           </div>
 
@@ -7170,7 +7196,7 @@
           </div>
           <div class="rw-actions" id="rw-last-results-actions">
             <button id="rw-reopen-last-results" class="secondary" type="button" hidden>Reopen Results</button>
-            <button id="rw-move-launcher" class="secondary">${launcherCornerLabel(getLauncherCorner())}</button>
+            <button id="rw-move-launcher" class="secondary">Button Movements</button>
           </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
@@ -7262,7 +7288,7 @@
               <li><b>Weights:</b> War Hit, Outside Hit, Retaliation Hit, and Assist weight control how much each contribution type counts.</li>
               <li><b>Fetch + Calculate:</b> sends the calculation request to the backend and opens the results loading tab.</li>
               <li><b>Reopen Results:</b> appears only after a successful calculation. It reopens the last results tab for 10 minutes, then removes itself.</li>
-              <li><b>Button movement (corner):</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
+              <li><b>Button Movements:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
 
@@ -7343,6 +7369,31 @@
               <li><b>Close button:</b> click the × on the popup panel to dismiss it early.</li>
               <li><b>Auto close:</b> popup panels disappear after 30 seconds.</li>
               <li><b>Fallback:</b> if there is not enough room under the panel, RWPH keeps the popup visible inside the screen.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">TOS / Responsible Use</div>
+            <ul class="rw-how-list">
+              <li><b>Use at your own risk:</b> RWPH is a helper tool for organising ranked war payouts. Always review the results before sending Torn money or items.</li>
+              <li><b>No automatic Torn payments:</b> RWPH prepares payout information and copy/prefill helpers. You are still responsible for checking and sending payments manually in Torn.</li>
+              <li><b>Follow Torn rules:</b> use RWPH only in ways allowed by Torn, your faction rules, and your own server/licence setup.</li>
+              <li><b>Keep secrets private:</b> do not share your Torn API key, ADMIN_KEY, PAYWALL_SECRET, or private server URL with people you do not trust.</li>
+              <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and revoking licences correctly.</li>
+              <li><b>No guarantee:</b> Torn API limits, browser/Torn PDA behaviour, server downtime, or changed Torn pages can affect results. Recheck important payouts before publishing or paying.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box">
+            <div class="rw-how-title">API Usage</div>
+            <ul class="rw-how-list">
+              <li><b>Why RWPH needs your Torn API key:</b> the key lets RWPH verify your Torn ID/faction access and fetch the ranked war/attack data needed to calculate payouts.</li>
+              <li><b>What RWPH reads:</b> faction/member details needed for names and IDs, ranked war timing where available, and attack records inside the selected war time window.</li>
+              <li><b>What the backend does:</b> the userscript sends the saved API key and payout settings to your RWPH backend. The backend calls Torn, applies rate-limit retries, sorts war/outside/retal/assist hits, and returns the finished payout results.</li>
+              <li><b>Where the key is saved:</b> when you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage so you do not need to paste it every time.</li>
+              <li><b>Licence/payment checks:</b> the backend uses your Torn ID, payment code, and configured receiver to check whether a licence is active or should be extended.</li>
+              <li><b>Rate limits:</b> Torn can return Too many requests. RWPH now queues and retries API calls, but very large wars or repeated Fetch + Calculate clicks can still take longer.</li>
+              <li><b>What RWPH does not do:</b> it does not need your Torn password, does not log into your Torn account, and does not send money automatically.</li>
             </ul>
           </div>
 
