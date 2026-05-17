@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.109
+// @version      1.1.111
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -617,7 +617,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -642,7 +642,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-only", "rw-chain"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -2528,6 +2528,156 @@
     <section class="grid">${cards || `<div class="result-card">No payable or tracked attacks found.</div>`}</section>
   </main>
 
+  <aside class="pay-all-panel" id="payAllPanel" hidden>
+    <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
+    <h2>Pay All Copy Panel</h2>
+    <p class="pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</p>
+    <div class="pay-all-info">
+      <b>How to use Pay All:</b>
+      <ul>
+        <li><b>Name + ID</b> copies the member name and Torn ID, and tries to prefill the visible member field.</li>
+        <li><b>Amount</b> copies that member's payout amount, and tries to prefill the visible money field.</li>
+        <li>After a Name + ID or Amount button is pressed once, that button disappears so you can track what has already been used.</li>
+        <li>Use <b>Undo Last Disappear</b> to bring back the most recently hidden button.</li>
+        <li>If a field is not visible, open the correct faction banking/add money area first, then use Undo and press the button again.</li>
+        <li>You still manually review the member, amount, and final Torn confirmation. RWPH never clicks Add Money, Send, or Confirm.</li>
+      </ul>
+    </div>
+    <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Undo Last Disappear</button>
+    <div class="pay-all-list" id="payAllList"></div>
+  </aside>
+
+  <script>
+    const rows = ${rowsJson};
+    const summary = ${summaryJson};
+    const newsletterHtml = ${newsletterJson};
+
+    function money(n) {
+      return "$" + Math.round(Number(n || 0)).toLocaleString();
+    }
+
+    function downloadText(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportCsv() {
+      const header = ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Payable Respect", "Payout"];
+      const lines = [header].concat(rows.map((r) => [
+        r.id, r.name, r.warHits ?? r.attacks ?? 0, r.assists, r.outsideHits || 0, r.retaliationHits || 0,
+        r.totalTrackedHits || 0,
+        r.payableEvents || 0,
+        Number(r.weight || 0).toFixed(2),
+        Number(r.respect || 0).toFixed(2),
+        Math.round(Number(r.payout || 0)),
+      ]));
+      const csv = lines.map((line) => line.map((v) => '"' + String(v).replaceAll('"', '""') + '"').join(",")).join("\\n");
+      downloadText("torn-rw-payouts.csv", csv, "text/csv");
+    }
+
+    function openNewsletter() {
+      const blob = new Blob([newsletterHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) {
+        return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[ch] || ch;
+      });
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(String(text || ""));
+        return true;
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = String(text || "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        return ok;
+      }
+    }
+
+    const payAllUndoStack = [];
+
+    function hidePayAllButton(btn, label) {
+      if (!btn) return;
+      btn.dataset.originalLabel = label || btn.textContent || "Button";
+      btn.textContent = btn.dataset.originalLabel;
+      btn.hidden = true;
+      btn.style.display = "none";
+      payAllUndoStack.push(btn);
+    }
+
+    function undoLastPayAllDisappear() {
+      while (payAllUndoStack.length) {
+        const btn = payAllUndoStack.pop();
+        if (btn && btn.isConnected) {
+          btn.hidden = false;
+          btn.style.display = "";
+          btn.textContent = btn.dataset.originalLabel || btn.textContent || "Button";
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function renderPayAllPanel() {
+      const list = document.getElementById("payAllList");
+      if (!list) return;
+      list.innerHTML = rows.map(function(r, index) {
+        const name = r.name || ("Unknown " + (r.id || "unknown"));
+        const id = String(r.id || "unknown");
+        const payoutRaw = String(Math.round(Number(r.payout || 0)));
+        const display = money(r.payout || 0);
+        return '<div class="pay-all-row">'
+          + '<div class="pay-all-member">' + (index + 1) + '. ' + escapeHtml(name) + ' [' + escapeHtml(id) + ']'
+          + '<span class="pay-all-payout">' + escapeHtml(display) + '</span></div>'
+          + '<button class="btn secondary copy-small" data-copy-name="' + index + '">Name + ID</button>'
+          + '<button class="btn secondary copy-small" data-copy-amount="' + index + '">Amount</button>'
+          + '</div>';
+      }).join("") || '<div class="pay-all-row"><div class="pay-all-member">No payable members found.</div></div>';
+    }
+
+    function openPayAllPanel() {
+      renderPayAllPanel();
+      document.getElementById("payAllPanel").hidden = false;
+    }
+
+    document.getElementById("payAllPanel").addEventListener("click", async function(e) {
+      const nameBtn = e.target.closest("[data-copy-name]");
+      const amountBtn = e.target.closest("[data-copy-amount]");
+      if (nameBtn) {
+        const r = rows[Number(nameBtn.dataset.copyName)] || {};
+        const name = r.name || ("Unknown " + (r.id || "unknown"));
+        await copyText(name + " [" + (r.id || "unknown") + "]");
+        hidePayAllButton(nameBtn, "Name + ID");
+      }
+      if (amountBtn) {
+        const r = rows[Number(amountBtn.dataset.copyAmount)] || {};
+        await copyText(String(Math.round(Number(r.payout || 0))));
+        hidePayAllButton(amountBtn, "Amount");
+      }
+    });
+
+    const payAllClose = document.getElementById("payAllClose");
+    if (payAllClose) payAllClose.addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
+    const payAllUndo = document.getElementById("payAllUndo");
+    if (payAllUndo) payAllUndo.addEventListener("click", function() { undoLastPayAllDisappear(); });
+  </script>
 </body>
 </html>`;
   }
@@ -3014,6 +3164,16 @@
     return true;
   }
 
+  function buildPayoutText(rows) {
+    return (rows || [])
+      .map((r, index) => {
+        const payout = Math.round(Number(r.payout || 0));
+        const id = String(r.id || "unknown");
+        const name = r.name || `Unknown ${id}`;
+        return `${index + 1}. ${name} [${id}] — ${money(payout)} — RW payout`;
+      })
+      .join("\n");
+  }
 
   function safeNumber(value) {
     const n = Number(value || 0);
@@ -3560,8 +3720,137 @@
     rwphApplyPanelLayout(box);
   }
 
+  function rwphNodeMeta(el) {
+    if (!el) return "";
+    const attrs = ["id", "class", "name", "placeholder", "aria-label", "title", "data-item", "data-itemid", "data-id", "href", "src", "alt", "value"];
+    return attrs.map((a) => String(el.getAttribute?.(a) || "")).join(" ").toLowerCase();
+  }
 
+  function rwphLooksLikeXanax(el) {
+    if (!el) return false;
+    const txt = rwphSendHelperText(el);
+    const meta = rwphNodeMeta(el);
+    return txt.includes("xanax") || meta.includes("xanax") || meta.includes(`item${PAYMENT_ITEM_ID}`) || meta.includes(`item_id=${PAYMENT_ITEM_ID}`) || meta.includes(`itemid=${PAYMENT_ITEM_ID}`) || meta.includes(`item=${PAYMENT_ITEM_ID}`) || meta.includes(`id=${PAYMENT_ITEM_ID}`);
+  }
 
+  function rwphBestContainer(el) {
+    if (!el) return null;
+    return el.closest?.("li, tr, [class*='item'], [class*='row'], [class*='wrap'], [class*='cont'], [class*='drug'], [class*='inventory'], [data-item], [data-itemid]") || el;
+  }
+
+  function rwphAllClickable(scope = document) {
+    return Array.from(scope.querySelectorAll("button, a, input[type='button'], input[type='submit'], [role='button'], [onclick], [class*='button'], [class*='btn']"))
+      .filter(rwphSendHelperVisible);
+  }
+
+  function rwphFindLikelySendPanel() {
+    const selectors = [
+      "form",
+      "[class*='send']",
+      "[class*='Send']",
+      "[class*='modal']",
+      "[class*='Modal']",
+      "[class*='dialog']",
+      "[class*='Dialog']",
+      "[class*='panel']",
+      "[class*='Panel']",
+      "[class*='popup']",
+      "[class*='Popup']",
+      "[class*='drawer']",
+      "[class*='Drawer']"
+    ].join(",");
+
+    const candidates = Array.from(document.querySelectorAll(selectors)).filter(rwphSendHelperVisible);
+
+    const scored = candidates.map((panel) => {
+      const inputs = Array.from(panel.querySelectorAll("input, textarea, [contenteditable='true']")).filter(rwphSendHelperVisible);
+      const txt = rwphSendHelperText(panel);
+      let score = 0;
+      if (inputs.length) score += 2;
+      if (txt.includes("send")) score += 3;
+      if (txt.includes("xanax")) score += 3;
+      if (txt.includes("recipient") || txt.includes("player") || txt.includes("user")) score += 2;
+      if (txt.includes("message")) score += 1;
+      return { panel, score };
+    }).filter((x) => x.score >= 3);
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0]?.panel || null;
+  }
+
+  function rwphFindXanaxContainer() {
+    const exactNodes = Array.from(document.querySelectorAll("*"))
+      .filter(rwphSendHelperVisible)
+      .filter(rwphLooksLikeXanax);
+
+    const containers = [];
+    for (const node of exactNodes) {
+      const c = rwphBestContainer(node);
+      if (c && !containers.includes(c)) containers.push(c);
+    }
+
+    containers.sort((a, b) => {
+      const at = rwphSendHelperText(a).length;
+      const bt = rwphSendHelperText(b).length;
+      return at - bt;
+    });
+
+    return containers[0] || exactNodes[0] || null;
+  }
+
+  function rwphFindXanaxSendOpenControl() {
+    // Manual-only safety mode: do not search for or auto-open Torn's "Send this item" controls.
+    return null;
+  }
+
+  function rwphFindXanaxClickable() {
+    // Manual-only safety mode: users must click their Xanax item themselves.
+    return null;
+  }
+
+  function rwphFindItemSearchField() {
+    const fields = Array.from(document.querySelectorAll("input[type='text'], input[type='search'], input:not([type])"))
+      .filter(rwphSendHelperVisible)
+      .filter((el) => {
+        const meta = `${el.placeholder || ""} ${el.name || ""} ${el.id || ""} ${el.className || ""} ${el.getAttribute("aria-label") || ""}`.toLowerCase();
+        return meta.includes("search") || meta.includes("filter") || meta.includes("item");
+      });
+    return fields[0] || null;
+  }
+
+  function rwphPressEnter(el) {
+    if (!el) return;
+    ["keydown", "keypress", "keyup"].forEach((type) => {
+      el.dispatchEvent(new KeyboardEvent(type, { bubbles: true, cancelable: true, key: "Enter", code: "Enter", which: 13, keyCode: 13 }));
+    });
+  }
+
+  async function rwphSearchForXanaxIfPossible() {
+    // Manual-only safety mode: do not search/filter/click Torn inventory automatically.
+    return false;
+  }
+
+  function rwphFindUserField(panel) {
+    const scope = panel || document;
+    const inputs = Array.from(scope.querySelectorAll("input[type='text'], input:not([type]), input[type='search'], input[type='number']"))
+      .filter(rwphSendHelperVisible)
+      .filter((el) => {
+        const meta = `${el.placeholder || ""} ${el.name || ""} ${el.id || ""} ${el.className || ""} ${el.getAttribute("aria-label") || ""}`.toLowerCase();
+        const wrap = rwphSendHelperText(el.closest?.("label, div, li") || el.parentElement);
+        if (meta.includes("amount") || meta.includes("qty") || meta.includes("quantity") || meta.includes("money") || meta.includes("message")) return false;
+        return meta.includes("user") || meta.includes("player") || meta.includes("recipient") || meta.includes("name") || meta.includes("id") || wrap.includes("user") || wrap.includes("player") || wrap.includes("recipient") || wrap.includes("send to") || wrap.includes("to:");
+      });
+
+    if (inputs.length) return inputs[0];
+
+    const all = Array.from(scope.querySelectorAll("input[type='text'], input:not([type]), input[type='search']"))
+      .filter(rwphSendHelperVisible)
+      .filter((el) => {
+        const meta = `${el.placeholder || ""} ${el.name || ""} ${el.id || ""} ${el.className || ""} ${el.getAttribute("aria-label") || ""}`.toLowerCase();
+        return !meta.includes("amount") && !meta.includes("qty") && !meta.includes("quantity") && !meta.includes("money") && !meta.includes("message") && !meta.includes("search") && !meta.includes("filter");
+      });
+    return all[0] || null;
+  }
 
   function rwphFindRecipientOption() {
     return Array.from(document.querySelectorAll("li, div, a, span, button, [role='option']"))
@@ -3595,8 +3884,31 @@
     return true;
   }
 
+  async function rwphOpenMessageBox(panel) {
+    // Manual-only safety mode: users must click "Add Message" themselves.
+    return !!rwphFindMessageField(panel || document);
+  }
+
+  async function rwphClickOpenXanaxSendPanel() {
+    // Manual-only safety mode: do not auto-click Xanax or "Send this item".
+    return rwphFindLikelySendPanel();
+  }
+
+  async function rwphFillXanaxSendForm(paymentCode) {
+    // Manual-only safety mode: never auto-open the send form. Prefill only happens after the user clicks helper buttons.
+    await copyText(paymentCode).catch(() => false);
+    return {
+      ok: false,
+      error: "Manual prefill mode is enabled. Manually open Xanax > Send this item > Add Message, then use Copy Receiver and Copy Code."
+    };
+  }
 
 
+  async function rwphFillVisiblePaymentFields(paymentCode) {
+    // Manual-only safety mode: do not bulk-fill fields.
+    await copyText(paymentCode).catch(() => false);
+    return { ok: false, filledUser: false, filledMessage: false };
+  }
 
   async function rwphPasteReceiverIntoOpenForm() {
     const panel = rwphFindLikelySendPanel() || document;
@@ -4159,8 +4471,8 @@
               <li><b>Outside Hit Weight:</b> controls how much outside hits count when ranked-war only is off. Default is 1.</li>
               <li><b>Retaliation Hit Weight:</b> controls how much retaliation hits count when ranked-war only is off. Default is 1.</li>
               <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
+              <li><b>Automatic hit detection:</b> RWPH now automatically uses the selected ranked-war opponent and war window. The old ranked-war-only and chain-fallback checkboxes have been removed.</li>
               <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
-              <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
               <li><b>Hit categories:</b> results now separate war hits, assists, outside hits, and retaliation hits for every member.</li>
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, payable respect, and payout.</li>
               <li><b>Improved hit rules:</b> War Hits take priority over retals, assists stay separate, failed attacks are skipped, and retals only count when Torn gives explicit retaliation evidence.</li>
@@ -4507,8 +4819,6 @@
               <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
             </label>
           </div>
-          <label><input id="rw-only" type="checkbox" checked> Use ranked-war hits for payout only</label>
-          <label><input id="rw-chain" type="checkbox" checked> Include chain hits if ranked-war flag is missing</label>
           <div class="rw-actions">
             <button id="rw-run">Fetch + Calculate</button>
             <button id="rw-license-days" class="secondary">Your Expiration</button>
@@ -4700,7 +5010,6 @@
               <li><b>Retaliation Hit Weight:</b> controls how much retaliation hits count when ranked-war only is off. Default is 1.</li>
               <li><b>Assist weight:</b> controls how much assists count. Default is 0.</li>
               <li><b>Ranked-war filtering:</b> payout can count only attacks flagged as ranked-war attacks, while still reporting outside hits separately.</li>
-              <li><b>Chain-hit fallback:</b> option to include chain hits if the ranked-war flag is missing.</li>
               <li><b>Hit categories:</b> results now separate war hits, assists, outside hits, and retaliation hits for every member.</li>
               <li><b>Fetch + Calculate:</b> verifies the licence, fetches Torn attack data, classifies each attack server-side, and returns a cleaner breakdown of War Hits, Assists, Outside Hits, Retaliation Hits, tracked hits, payable events, weight, payable respect, and payout.</li>
               <li><b>Improved hit rules:</b> War Hits take priority over retals, assists stay separate, failed attacks are skipped, and retals only count when Torn gives explicit retaliation evidence.</li>
@@ -4955,9 +5264,6 @@
       const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight").value);
       const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight").value);
       const assistWeight = Number(document.getElementById("rw-assist-weight").value);
-      const rwOnly = document.getElementById("rw-only").checked;
-      const includeChainHits = document.getElementById("rw-chain").checked;
-
       if (!userKey) return alert("Enter your Torn API key.");
       if (!from || !to || to <= from) return alert("Enter a valid start/end date and time.");
       if (totalPayout <= 0) return alert("Enter a payout pool greater than 0.");
@@ -4981,8 +5287,6 @@
           outsideHitWeight,
           retaliationHitWeight,
           assistWeight,
-          rwOnly,
-          includeChainHits,
         });
 
         lastRows = result.rows || [];
