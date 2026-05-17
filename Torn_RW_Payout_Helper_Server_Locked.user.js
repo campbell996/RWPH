@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.195
+// @version      1.1.196
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1020,24 +1020,26 @@
     const base = {
       position: "fixed",
       zIndex: "999998",
-      width: "52px",
-      height: "52px",
-      padding: "3px",
-      borderRadius: "16px",
-      border: "1px solid rgba(96, 165, 250, .75)",
-      background: "radial-gradient(circle at 50% 40%, rgba(37,99,235,.35), rgba(15,23,42,.96) 56%, rgba(2,6,23,.98))",
+      width: "54px",
+      height: "54px",
+      padding: "0",
+      borderRadius: "0",
+      border: "0",
+      background: "transparent",
       color: "#e0f7ff",
-      boxShadow: "0 0 0 1px rgba(255,255,255,.09) inset, 0 0 18px rgba(59,130,246,.34), 0 18px 34px rgba(0,0,0,.58)",
-      font: "950 22px Inter, Segoe UI, Arial, sans-serif",
+      boxShadow: "none",
+      font: "950 28px Inter, Segoe UI, Arial, sans-serif",
       letterSpacing: ".3px",
-      textShadow: "0 1px 0 rgba(0,0,0,.55), 0 0 10px rgba(56,189,248,.40)",
+      textShadow: "0 2px 8px rgba(0,0,0,.8), 0 0 12px rgba(56,189,248,.42)",
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       textAlign: "center",
-      backdropFilter: "blur(12px)",
-      overflow: "hidden",
+      backdropFilter: "none",
+      overflow: "visible",
+      appearance: "none",
+      WebkitAppearance: "none",
     };
 
     if (corner.includes("bottom")) {
@@ -3300,9 +3302,23 @@
         border:1px solid rgba(175,58,52,.42) !important;
       }
       #rw-payout-launcher {
-        background:linear-gradient(180deg,#303030,#151515) !important;
-        border:1px solid #545454 !important;
-        box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 14px rgba(150,35,32,.35),0 12px 26px rgba(0,0,0,.65) !important;
+        background:transparent !important;
+        border:0 !important;
+        box-shadow:none !important;
+        outline:none !important;
+        appearance:none !important;
+        -webkit-appearance:none !important;
+      }
+      #rw-payout-launcher:hover,
+      #rw-payout-launcher:focus,
+      #rw-payout-launcher:active {
+        background:transparent !important;
+        border:0 !important;
+        box-shadow:none !important;
+        outline:none !important;
+      }
+      #rw-payout-launcher img {
+        filter:drop-shadow(0 3px 8px rgba(0,0,0,.72)) drop-shadow(0 0 10px rgba(59,130,246,.65)) !important;
       }
       #rw-payout-helper .rw-head span::before,
       #rwph-payment-helper-title::before { filter:drop-shadow(0 0 6px rgba(170,50,45,.45)) grayscale(.2) saturate(.85) !important; }
