@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.184
+// @version      1.1.185
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5463,8 +5463,10 @@
       .rw-resize-handle-ne { right:7px; top:7px; cursor:nesw-resize; border-right:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:0 8px 0 0; }
       .rw-resize-handle-nw { left:7px; top:7px; cursor:nwse-resize; border-left:2px solid rgba(125,211,252,.80); border-top:2px solid rgba(125,211,252,.80); border-radius:8px 0 0 0; }
       @media (max-width: 760px), (pointer: coarse) {
-        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(300px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
-        .rw-pay-all-row { grid-template-columns: 1fr; }
+        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(340px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
+        .rw-pay-all-row { grid-template-columns: minmax(0, 1fr) auto auto !important; gap:4px !important; padding:6px !important; }
+        .rw-pay-all-member { min-width:0 !important; overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important; }
+        .rw-pay-all-copy { padding:4px 5px !important; min-height:24px !important; min-width:50px !important; font-size:9px !important; white-space:nowrap !important; }
       }
     `;
     document.head.appendChild(style);
