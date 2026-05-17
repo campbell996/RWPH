@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.175
+// @version      1.1.176
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -3618,6 +3618,35 @@
         color: #cbd5e1 !important;
       }
       #rw-payout-helper .rw-help-api-text b {
+        color: #f8fbff !important;
+      }
+
+
+      /* v1.1.176: make every Help section match the midnight-blue API ToS section theme */
+      #rw-payout-helper .rw-how-box {
+        background: linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38)) !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+      }
+      #rw-payout-helper .rw-how-box *,
+      #rw-payout-helper .rw-how-title,
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list,
+      #rw-payout-helper .rw-how-list li,
+      #rw-payout-helper .rw-how-list li b {
+        color: #eaf6ff !important;
+      }
+      #rw-payout-helper .rw-how-title {
+        color: #f8fbff !important;
+        text-shadow: 0 0 10px rgba(56,189,248,.16) !important;
+      }
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list li {
+        color: #cbd5e1 !important;
+      }
+      #rw-payout-helper .rw-how-list li b {
         color: #f8fbff !important;
       }
 
