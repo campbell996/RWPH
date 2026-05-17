@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.183
+// @version      1.1.184
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1511,6 +1511,7 @@
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   // v1.1.183: Admin Remove replaces Revoke and subtracts licence days from the selected licence expiry. The old /api/admin/revoke alias has been removed.
+  // v1.1.184: main panel opening always verifies an active server-side licence; missing/expired server licence locks the panel.
   function renderAdminLicenses(licenses) {
     if (!licenses || !licenses.length) {
       return `<div class="rw-muted">No active licenses found.</div>`;
@@ -1683,9 +1684,14 @@
 
     if (!info.valid) {
       GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+      const lowerError = String(info.error || "").toLowerCase();
       const message = info.revoked
         ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again."
-        : (info.error || "No active licence found. Buy Licence, Extend Licence, or use Unlock Panel after your licence is active.");
+        : lowerError.includes("expired")
+          ? "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again."
+          : lowerError.includes("server licence") || lowerError.includes("server license") || lowerError.includes("no active")
+            ? "No active server licence was found. Buy Licence, Extend Licence, or ask an admin to grant licence days."
+            : (info.error || "No active licence found. Buy Licence, Extend Licence, or use Unlock Panel after your licence is active.");
       return { valid: false, info, message };
     }
 
@@ -7177,7 +7183,7 @@
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
-              When the RWPH panel first opens, it immediately checks the saved licence with the server before showing the unlocked payout tools.
+              Every time the RWPH panel opens, it checks the saved licence with the server before showing the unlocked payout tools. If no active server licence is found, or the licence is expired, the panel stays locked.
             </p>
           </div>
 
@@ -7793,7 +7799,7 @@
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
-              When the RWPH panel first opens, it immediately checks the saved licence with the server before showing the unlocked payout tools.
+              Every time the RWPH panel opens, it checks the saved licence with the server before showing the unlocked payout tools. If no active server licence is found, or the licence is expired, the panel stays locked.
             </p>
           </div>
 
@@ -8434,7 +8440,7 @@
     rwphApplyPanelLayout(panel);
 
     panel.innerHTML = `<style>${panelBaseCss()}
-  </style><div class="rw-body"><div class="rw-muted">Checking license...</div></div>`;
+  </style><div class="rw-body"><div class="rw-muted">Checking licence with server...</div></div>`;
 
     const licenseState = await rwphCheckLicenseOnPanelOpen();
     if (!document.body.contains(panel)) return;
