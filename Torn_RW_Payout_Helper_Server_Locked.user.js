@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.114
+// @version      1.1.123
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -201,11 +201,42 @@
     return `https://www.torn.com/item.php?${params.toString()}#inventory`;
   }
 
-  function openXanaxPaymentPage(code) {
+  function preOpenXanaxPaymentTab() {
+    try {
+      const tab = window.open("about:blank", "_blank");
+      if (!tab) return null;
+      try {
+        tab.document.open();
+        tab.document.write(`<!doctype html><html><head><title>RWPH Payment Helper</title><style>body{margin:0;background:#111;color:#ddd;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center}div{padding:22px;border:1px solid #444;border-radius:12px;background:#1b1b1b;box-shadow:0 12px 35px rgba(0,0,0,.45)}b{color:#fff}</style></head><body><div><b>RWPH</b><br>Creating payment code...</div></body></html>`);
+        tab.document.close();
+      } catch (_) {}
+      return tab;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function closePreOpenedPaymentTab(tab) {
+    try {
+      if (tab && !tab.closed) tab.close();
+    } catch (_) {}
+  }
+
+  function openXanaxPaymentPage(code, preOpenedTab = null) {
     sessionStorage.removeItem("rwph_xanax_helper_closed");
     saveXanaxPaymentHelper(code);
     copyText(`Send ${PAYMENT_ITEM_NAME} to ${PAYMENT_RECEIVER_TEXT} with message: ${code}`).catch(() => false);
     const url = buildXanaxPaymentUrl(code);
+
+    if (preOpenedTab && !preOpenedTab.closed) {
+      try {
+        preOpenedTab.location.href = url;
+        try { preOpenedTab.focus(); } catch (_) {}
+        return true;
+      } catch (e) {
+        console.warn("Could not redirect pre-opened payment helper tab:", e);
+      }
+    }
 
     try {
       if (typeof GM_openInTab === "function") {
@@ -2464,6 +2495,7 @@
     }
     .title { flex-direction: column; text-align:center; }
     .title img { width:64px; height:64px; }
+    .newsletter-top-btn { margin-top:0; max-width:none; align-self:stretch; }
     .toolbar { display:grid; grid-template-columns:1fr; width:100%; }
     .btn { width:100%; text-align:center; }
     .summary { grid-area: summary; grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -2498,6 +2530,12 @@
     .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,#3b3b3b,#252525)!important;color:#e7e7e7!important;border-color:#555!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
+    /* v1.1.119 newsletter payout chart color match */
+    .key-dot.payout{background:#24d18a!important;box-shadow:0 0 12px rgba(36,209,138,.45)!important;}
+    .key-dot.weight{background:#7dd3fc!important;box-shadow:0 0 12px rgba(125,211,252,.45)!important;}
+    .bar.payout{background:linear-gradient(90deg,#138a55,#24d18a,#b7f7d6)!important;box-shadow:0 0 16px rgba(36,209,138,.28)!important;}
+    .bar.weight{background:linear-gradient(90deg,#2563eb,#38bdf8,#bae6fd)!important;box-shadow:0 0 14px rgba(56,189,248,.32)!important;}
+
   </style>
 </head>
 <body>
@@ -2508,10 +2546,11 @@
         <h1>Fetch + Calculate Results</h1>
       </div>
       <div class="toolbar">
+        <a class="btn primary" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create HTML Newsletter</a>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Pay All</a>
-        <a class="btn secondary" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create HTML Newsletter</a>
-        <button class="btn secondary" onclick="window.close()">Close Tab</button>
+        <button class="btn secondary" id="closeTabBtn" type="button">Close Tab</button>
+        <span id="closeStatus" class="muted" style="display:block;font-size:11px;font-weight:800;text-align:center;line-height:1.35;"></span>
       </div>
     </section>
 
@@ -2661,6 +2700,21 @@
       document.getElementById("payAllPanel").hidden = false;
     }
 
+    function rwphCloseResultsTab() {
+      const status = document.getElementById("closeStatus");
+      if (status) status.textContent = "Closing web tab...";
+
+      // Only request the actual browser/webview tab to close.
+      // No fallback page replacement, no redirect, no screen rewrite.
+      try { window.close(); } catch (_) {}
+      try { window.open("", "_self"); window.close(); } catch (_) {}
+      try { top.close(); } catch (_) {}
+
+      setTimeout(() => {
+        if (status && !window.closed) status.textContent = "Close requested. If your browser blocks this, close the tab manually.";
+      }, 350);
+    }
+
     document.getElementById("payAllPanel").addEventListener("click", async function(e) {
       const nameBtn = e.target.closest("[data-copy-name]");
       const amountBtn = e.target.closest("[data-copy-amount]");
@@ -2681,6 +2735,8 @@
     if (payAllClose) payAllClose.addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
     const payAllUndo = document.getElementById("payAllUndo");
     if (payAllUndo) payAllUndo.addEventListener("click", function() { undoLastPayAllDisappear(); });
+    const closeTabBtn = document.getElementById("closeTabBtn");
+    if (closeTabBtn) closeTabBtn.addEventListener("click", rwphCloseResultsTab);
   </script>
 </body>
 </html>`;
@@ -3272,7 +3328,6 @@
         <td class="num">${r.retaliationHits}</td>
         <td class="num">${r.totalTrackedHits}</td>
         <td class="num">${r.payableEvents}</td>
-        <td class="num">${r.totalRespect.toFixed(2)}</td>
         <td class="num">${r.respect.toFixed(2)}</td>
         <td class="num">${r.weight.toFixed(2)}</td>
         <td class="num strong">${esc(money(r.payout))}</td>
@@ -3577,7 +3632,7 @@
         ${statCard("War Hits", String(totalHits), `${totalAssists} assists`)}
         ${statCard("Outside Hits", String(totalOutsideHits), `${totalRetaliationHits} retals`)}
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
-        ${statCard("Total Weight", totalWeight.toFixed(2), `${totalPayRespect.toFixed(2)} respect`)}
+        ${statCard("Total Weight", totalWeight.toFixed(2))}
         ${statCard("Total Respect", totalRespect.toFixed(2), "from ranked war report")}
         ${statCard("Fetched Attacks", String(safeNumber(summary?.attacksFetched)), "from server calculation")}
         ${statCard("Names Loaded", String(safeNumber(summary?.nameCount)), "member name matches")}
@@ -3607,7 +3662,6 @@
                 <th class="num">Retals</th>
                 <th class="num">Tracked</th>
                 <th class="num">Payable</th>
-                <th class="num">Total Respect</th>
                 <th class="num">Respect</th>
                 <th class="num">Weight</th>
                 <th class="num">Payout</th>
@@ -4303,13 +4357,14 @@
           </label>
           <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
           <div class="rw-actions">
-            <button id="rw-start-payment">Buy Licence</button>
+            <button id="rw-unlock-existing">Unlock</button>
+            <button id="rw-start-payment" class="secondary">Buy Licence</button>
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
           </div>
-          <div id="rw-paywall-status" class="rw-muted">Enter your key and click Buy Licence.</div>
+          <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock if you already have a licence, or Buy Licence to start a new payment.</div>
           <div id="rw-paywall-code"></div>
         </div>
 
@@ -4426,8 +4481,9 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Licence And Access Features</div>
             <ul class="rw-how-list">
-              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase.</li>
-              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel so users can add more time to their existing licence.</li>
+              <li><b>Unlock:</b> checks your saved/API-key licence and only opens RWPH if the backend confirms your licence is valid.</li>
+              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase and automatically opens the Xanax send page.</li>
+              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel and automatically opens the Xanax send page.</li>
               <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds while the payment code is active.</li>
               <li><b>Xanax only:</b> automatic licence time is only added when Xanax is sent to Evil_Panda_420 [3236276] with the exact payment code in the item message. Other items do not count.</li>
               <li><b>Missing or wrong code:</b> if Xanax is sent without the exact payment code, RWPH shows a manual-review message and the licence will need to be added manually ASAP.</li>
@@ -4447,7 +4503,7 @@
               <li>Open Torn and click the <b>RWPH</b> launcher logo.</li>
               <li>Paste your Torn API key into <b>Your Torn API Key -Limited Access-</b>.</li>
               <li>Click <b>Save Key</b> if you want the key saved locally.</li>
-              <li>Click <b>Buy Licence</b> for a new licence, or <b>Extend Licence</b> if you already have access.</li>
+              <li>Click <b>Unlock</b> if you already have a valid licence saved. Click <b>Buy Licence</b> for a new licence, or <b>Extend Licence</b> if you already have access.</li>
               <li>RWPH creates a unique 5-minute payment code.</li>
               <li>Send 1x or more Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the message.</li>
               <li>RWPH checks automatically every 15 seconds until the payment is found or the code expires.</li>
@@ -4458,7 +4514,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Xanax Payment Helper</div>
             <ul class="rw-how-list">
-              <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax send flow.</li>
+              <li><b>Auto-open Xanax Send Page:</b> Buy Licence and Extend Licence automatically open the Torn items page for the manual Xanax send flow.</li>
               <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
               <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and tries to prefill the visible Torn User ID/receiver field after the user manually opens the send form.</li>
               <li><b>Copy Code:</b> copies the current payment code and tries to prefill the visible Add Message field after the user manually opens the message box.</li>
@@ -4536,7 +4592,7 @@
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely.</li>
-              <li><b>Xanax helper is copy-only:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
+              <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
@@ -4600,19 +4656,43 @@
       });
     }
 
+    const lockedUnlockBtn = document.getElementById("rw-unlock-existing");
+    if (lockedUnlockBtn) {
+      lockedUnlockBtn.addEventListener("click", async () => {
+        const status = document.getElementById("rw-paywall-status");
+        const key = document.getElementById("rw-paywall-key")?.value.trim() || "";
+        if (key) GM_setValue(STORAGE_KEY, key);
+
+        status.textContent = "Checking licence...";
+        const info = await getSavedLicenseInfo();
+        if (!info.valid) {
+          status.textContent = "Unlock failed: " + (info.error || (info.revoked ? "Licence revoked." : "No active licence found."));
+          return;
+        }
+
+        if (info.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, info.token);
+        status.textContent = "Licence active. Unlocking RWPH...";
+        clearPendingPayment();
+        closePanel();
+        createPanel();
+      });
+    }
+
     document.getElementById("rw-start-payment").addEventListener("click", async () => {
       const status = document.getElementById("rw-paywall-status");
       const codeBox = document.getElementById("rw-paywall-code");
       const userKey = document.getElementById("rw-paywall-key").value.trim();
       if (!userKey) return alert("Enter your Torn API key first.");
+      const paymentTab = preOpenXanaxPaymentTab();
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
-        status.textContent = "Creating payment code...";
+        status.textContent = "Creating payment code and opening Xanax send page...";
         codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey });
         if (result.alreadyPaid && result.token) {
+          closePreOpenedPaymentTab(paymentTab);
           clearPendingPayment();
           GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
           status.textContent = "Existing license found. Loading tool...";
@@ -4622,11 +4702,13 @@
         }
 
         savePendingPayment(result);
-        status.textContent = result.instructions || "Payment code created. RWPH will check automatically after you send the Xanax.";
-        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running.");
+        status.textContent = result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
+        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.");
+        openXanaxPaymentPage(result.code, paymentTab);
         updatePendingPaymentUi();
         startAutoPaymentCheck(userKey, "unlock");
       } catch (e) {
+        closePreOpenedPaymentTab(paymentTab);
         status.textContent = "Payment start error: " + e.message;
       }
     });
@@ -4964,8 +5046,9 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Licence And Access Features</div>
             <ul class="rw-how-list">
-              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase.</li>
-              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel so users can add more time to their existing licence.</li>
+              <li><b>Unlock:</b> checks your saved/API-key licence and only opens RWPH if the backend confirms your licence is valid.</li>
+              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase and automatically opens the Xanax send page.</li>
+              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel and automatically opens the Xanax send page.</li>
               <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds while the payment code is active.</li>
               <li><b>Xanax only:</b> automatic licence time is only added when Xanax is sent to Evil_Panda_420 [3236276] with the exact payment code in the item message. Other items do not count.</li>
               <li><b>Missing or wrong code:</b> if Xanax is sent without the exact payment code, RWPH shows a manual-review message and the licence will need to be added manually ASAP.</li>
@@ -4985,7 +5068,7 @@
               <li>Open Torn and click the <b>RWPH</b> launcher logo.</li>
               <li>Paste your Torn API key into <b>Your Torn API Key -Limited Access-</b>.</li>
               <li>Click <b>Save Key</b> if you want the key saved locally.</li>
-              <li>Click <b>Buy Licence</b> for a new licence, or <b>Extend Licence</b> if you already have access.</li>
+              <li>Click <b>Unlock</b> if you already have a valid licence saved. Click <b>Buy Licence</b> for a new licence, or <b>Extend Licence</b> if you already have access.</li>
               <li>RWPH creates a unique 5-minute payment code.</li>
               <li>Send 1x or more Xanax to <b>Evil_Panda_420 [3236276]</b> with the exact payment code as the message.</li>
               <li>RWPH checks automatically every 15 seconds until the payment is found or the code expires.</li>
@@ -4996,7 +5079,7 @@
           <div class="rw-how-box">
             <div class="rw-how-title">Xanax Payment Helper</div>
             <ul class="rw-how-list">
-              <li><b>Open Xanax Send Page:</b> opens the Torn items page for the manual Xanax send flow.</li>
+              <li><b>Auto-open Xanax Send Page:</b> Buy Licence and Extend Licence automatically open the Torn items page for the manual Xanax send flow.</li>
               <li><b>Manual-safe mode:</b> RWPH does not auto-open Send this item, does not auto-click Add Message, and does not auto-send items.</li>
               <li><b>Copy Receiver:</b> copies Evil_Panda_420 [3236276] and tries to prefill the visible Torn User ID/receiver field after the user manually opens the send form.</li>
               <li><b>Copy Code:</b> copies the current payment code and tries to prefill the visible Add Message field after the user manually opens the message box.</li>
@@ -5073,7 +5156,7 @@
               <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely.</li>
-              <li><b>Xanax helper is copy-only:</b> manually paste the copied receiver and payment code after opening Send this item and Add Message.</li>
+              <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
               <li><b>Torn PDA drag/resize issues:</b> use the panel header to drag and the bottom-right handle to resize.</li>
               <li><b>Server test:</b> open your backend URL plus /health. If /health fails, RWPH cannot work online.</li>
             </ul>
@@ -5226,19 +5309,22 @@
       const codeBox = document.getElementById("rw-main-payment-code");
       const userKey = document.getElementById("rw-key").value.trim();
       if (!userKey) return alert("Enter your Torn API key first.");
+      const paymentTab = preOpenXanaxPaymentTab();
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
-        status.textContent = "Creating extension payment code...";
+        status.textContent = "Creating extension payment code and opening Xanax send page...";
         if (codeBox) codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });
         savePendingPayment(result);
-        status.textContent = result.instructions || "Extension payment code created. RWPH will check automatically after you send the Xanax.";
-        if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running.");
+        status.textContent = result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
+        if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.");
+        openXanaxPaymentPage(result.code, paymentTab);
         updatePendingPaymentUi();
         startAutoPaymentCheck(userKey, "extend");
       } catch (e) {
+        closePreOpenedPaymentTab(paymentTab);
         status.textContent = "Extend licence error: " + e.message;
       }
     });
