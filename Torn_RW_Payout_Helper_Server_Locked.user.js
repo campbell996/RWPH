@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.153
+// @version      1.1.154
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -201,17 +201,44 @@
     return `<div class="${className}" data-rwph-expire-at="${exp}"><b>Expires in:</b> <span data-rwph-expire-count>${esc(left)}</span> <span class="rwph-expire-clock" data-rwph-expire-clock>at ${esc(clock)}</span></div>`;
   }
 
+  function rwphPaymentExpiryForCode(code) {
+    const normalizedCode = String(code || "");
+    const pending = getPendingPayment();
+    if (pending?.code && String(pending.code) === normalizedCode && Number(pending.expiresAtMs || 0) > Date.now()) {
+      return Number(pending.expiresAtMs);
+    }
+
+    try {
+      const raw = GM_getValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
+      const existing = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
+      if (existing?.code && String(existing.code) === normalizedCode && Number(existing.expiresAtMs || 0)) {
+        return Number(existing.expiresAtMs);
+      }
+    } catch (_) {}
+
+    return Date.now() + PENDING_PAYMENT_TTL_MS;
+  }
+
   function saveXanaxPaymentHelper(code) {
     if (!code) return;
+    const normalizedCode = String(code);
+    const pending = getPendingPayment();
+    const expiryFromMainPaymentCard = pending?.code && String(pending.code) === normalizedCode
+      ? Number(pending.expiresAtMs || 0)
+      : 0;
+    const expiresAtMs = expiryFromMainPaymentCard > Date.now()
+      ? expiryFromMainPaymentCard
+      : rwphPaymentExpiryForCode(normalizedCode);
+
     const payload = {
-      code: String(code),
+      code: normalizedCode,
       receiverId: PAYMENT_RECEIVER_ID,
       receiverName: PAYMENT_RECEIVER_NAME,
       receiverText: PAYMENT_RECEIVER_TEXT,
       itemId: PAYMENT_ITEM_ID,
       itemName: PAYMENT_ITEM_NAME,
       createdAtMs: Date.now(),
-      expiresAtMs: Date.now() + PENDING_PAYMENT_TTL_MS,
+      expiresAtMs,
     };
     GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, JSON.stringify(payload));
   }
@@ -975,6 +1002,7 @@
   // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
+  // v1.1.154: compacted the Xanax Payment Helper and made its timer reuse the main saved Payment Code Ready expiry so refreshes do not restart it.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -3170,6 +3198,104 @@
           min-height:min(330px, calc(100vh - 12px)) !important;
           max-width:calc(100vw - 12px) !important;
           max-height:calc(100vh - 12px) !important;
+        }
+      }
+
+      /* v1.1.154: compact Xanax helper content and keep the timer tied to the main saved Payment Code Ready expiry */
+      #rwph-xanax-send-status {
+        width:min(400px, calc(100vw - 20px)) !important;
+        min-height:min(310px, calc(100vh - 20px)) !important;
+        padding:9px !important;
+      }
+      #rwph-xanax-send-status #rwph-payment-helper-title {
+        margin:0 30px 4px 0 !important;
+        padding:6px 8px !important;
+        font-size:12px !important;
+        line-height:1.1 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-scroll {
+        gap:5px !important;
+        padding:0 3px 5px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-helper-subtitle {
+        margin:0 0 3px !important;
+        font-size:9.8px !important;
+        line-height:1.15 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-helper-message {
+        margin:0 0 4px !important;
+        font-size:10.6px !important;
+        line-height:1.22 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-detail-card {
+        margin:4px 0 !important;
+        padding:7px !important;
+        border-radius:10px !important;
+        font-size:10.6px !important;
+        line-height:1.22 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-detail-title {
+        margin-bottom:4px !important;
+        font-size:9.3px !important;
+        letter-spacing:.45px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero {
+        margin:5px 0 1px !important;
+        padding:7px 8px !important;
+        border-radius:12px !important;
+        gap:1px !important;
+        line-height:1.08 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero b {
+        margin-bottom:1px !important;
+        font-size:8.8px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero [data-rwph-expire-count] {
+        min-width:48px !important;
+        padding:1px 7px !important;
+        font-size:16px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero .rwph-expire-clock {
+        margin:3px 0 0 !important;
+        font-size:9.2px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-note {
+        margin:3px 0 0 !important;
+        font-size:9.2px !important;
+        line-height:1.12 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions {
+        gap:5px !important;
+        margin:4px 0 3px !important;
+        min-height:30px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions button {
+        min-height:30px !important;
+        padding:6px 5px !important;
+        font-size:10.2px !important;
+        line-height:1.05 !important;
+        border-radius:10px !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-steps {
+        margin-top:5px !important;
+        font-size:9.8px !important;
+        line-height:1.22 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-safety-note {
+        margin-top:5px !important;
+        padding-top:5px !important;
+        padding-right:18px !important;
+        font-size:9.5px !important;
+        line-height:1.18 !important;
+      }
+      @media (max-width:420px), (pointer:coarse) {
+        #rwph-xanax-send-status {
+          min-height:min(300px, calc(100vh - 12px)) !important;
+          padding:7px !important;
+        }
+        #rwph-xanax-send-status .rwph-xanax-actions {
+          grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+          min-height:30px !important;
         }
       }
 
@@ -5533,8 +5659,7 @@
   }
 
   function rwphPaymentHelperHtml(code, message, isError = false) {
-    const helperPayload = getXanaxPaymentHelper();
-    const expiresAtMs = Number(helperPayload?.expiresAtMs || (Date.now() + PENDING_PAYMENT_TTL_MS));
+    const expiresAtMs = Number(rwphPaymentExpiryForCode(code));
     setTimeout(rwphStartExpiryTimer, 0);
     return `
       <button id="rwph-close-helper" type="button" title="Close">×</button>
