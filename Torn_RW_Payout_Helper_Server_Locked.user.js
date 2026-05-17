@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.155
+// @version      1.1.156
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1003,6 +1003,7 @@
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
+  // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -3447,7 +3448,6 @@
           <div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
           <div><span>Payable</span><b>${r.payableEvents}</b></div>
           <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
-          <div><span>Total Respect</span><b>${r.totalRespect.toFixed(2)}</b></div>
           <div><span>Respect</span><b>${r.respect.toFixed(2)}</b></div>
         </div>
       </article>`).join("");
@@ -4128,7 +4128,7 @@
     <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
     <h1>RWPH Results Loading</h1>
     <p>Fetch + Calculate is running. This tab will fill with your payout results when the server finishes.</p>
-    <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0s</b></span></div>
+    <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0 sec</b></span></div>
     <p class="loading-note">RWPH is working through the war data now. Please leave this tab open until the results replace this screen.</p>
     <ul class="loading-list" aria-label="What RWPH is loading">
       <li>Verifying your licence with the server.</li>
@@ -4143,29 +4143,71 @@
     (function(){
       var started = Date.now();
       var el = document.getElementById("rwph-load-seconds");
+      function formatElapsed(total){
+        var mins = Math.floor(total / 60);
+        var secs = total % 60;
+        if (mins) return mins + " min " + String(secs).padStart(2, "0") + " sec";
+        return secs + " " + (secs === 1 ? "sec" : "secs");
+      }
       function tick(){
         if (!el) return;
         var total = Math.max(0, Math.floor((Date.now() - started) / 1000));
-        var mins = Math.floor(total / 60);
-        var secs = total % 60;
-        el.textContent = mins ? (mins + "m " + String(secs).padStart(2, "0") + "s") : (secs + "s");
+        el.textContent = formatElapsed(total);
       }
       tick();
-      setInterval(tick, 1000);
+      window.rwphLoadingTimer = setInterval(tick, 1000);
     })();
   </script>
 </body>
 </html>`;
   }
 
+  function rwphFormatResultsLoadingElapsed(startedAt) {
+    const total = Math.max(0, Math.floor((Date.now() - Number(startedAt || Date.now())) / 1000));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    if (mins) return `${mins} min ${String(secs).padStart(2, "0")} sec`;
+    return `${secs} ${secs === 1 ? "sec" : "secs"}`;
+  }
+
+  function rwphStartResultsLoadingCounter(tab, startedAt) {
+    const started = Number(startedAt || Date.now());
+    let missingTicks = 0;
+    let timer = null;
+    const tick = () => {
+      try {
+        if (!tab || tab.closed) {
+          if (timer) clearInterval(timer);
+          return;
+        }
+        const doc = tab.document;
+        const el = doc && doc.getElementById && doc.getElementById("rwph-load-seconds");
+        if (!el) {
+          missingTicks += 1;
+          if (missingTicks > 4 && timer) clearInterval(timer);
+          return;
+        }
+        missingTicks = 0;
+        el.textContent = rwphFormatResultsLoadingElapsed(started);
+      } catch (_) {
+        if (timer) clearInterval(timer);
+      }
+    };
+    timer = setInterval(tick, 1000);
+    setTimeout(tick, 120);
+    setTimeout(tick, 1100);
+  }
+
   function openBlankResultsTab() {
     try {
       const tab = window.open("about:blank", "_blank");
       if (!tab || tab.closed) return null;
+      const rwphLoadingStartedAt = Date.now();
       try {
         tab.document.open();
         tab.document.write(buildResultsLoadingHtml());
         tab.document.close();
+        rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt);
       } catch (writeError) {
         console.warn("Could not write loading page to results tab:", writeError);
       }
@@ -4369,7 +4411,6 @@
                 <div class="rw-stat-box"><div class="rw-stat-label">Tracked</div><div class="rw-stat-value">${Number(r.totalTrackedHits || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Payable</div><div class="rw-stat-value">${Number(r.payableEvents || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Weight</div><div class="rw-stat-value">${weight.toFixed(2)}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Total Respect</div><div class="rw-stat-value">${totalRespect.toFixed(2)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Respect</div><div class="rw-stat-value">${respect.toFixed(2)}</div></div>
               </div>
             </div>`;
@@ -6278,7 +6319,7 @@
               <li><b>Reopen Results:</b> after a successful Fetch + Calculate, the main panel shows a Reopen Results button for 10 minutes. It opens the same last results again if you closed the tab too early.</li>
               <li><b>Auto-expiring reopen:</b> the reopen button removes itself automatically after 10 minutes so old payout results do not hang around on the main panel.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
-              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
+              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> on the fullscreen results page, Payments now sits inside the left results panel under the newsletter section, beside Export CSV. It opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
@@ -6854,7 +6895,7 @@
               <li><b>Reopen Results:</b> after a successful Fetch + Calculate, the main panel shows a Reopen Results button for 10 minutes. It opens the same last results again if you closed the tab too early.</li>
               <li><b>Auto-expiring reopen:</b> the reopen button removes itself automatically after 10 minutes so old payout results do not hang around on the main panel.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
-              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
+              <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Respect, and weighted score.</li>
               <li><b>No final payment automation:</b> RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
