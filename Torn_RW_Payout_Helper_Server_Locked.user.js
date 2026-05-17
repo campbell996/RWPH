@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.147
+// @version      1.1.149
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -757,8 +757,10 @@
     const saved = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {})[panel.id];
     if (!saved) return;
 
-    const minWidth = panel.id === "rw-results-panel" ? 160 : 150;
-    const minHeight = 110;
+    const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
+    const isXanaxHelper = panel.id === "rwph-xanax-send-status";
+    const minWidth = panel.id === "rw-results-panel" ? 160 : (isXanaxHelper ? (mobilePanel ? 270 : 320) : 150);
+    const minHeight = isXanaxHelper ? (mobilePanel ? 300 : 340) : 110;
     const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
     const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
     const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
@@ -968,6 +970,8 @@
   // v1.1.145: swapped the main panel positions so Reopen Results appears above Fetch + Calculate after results are available.
   // v1.1.146: restored the Xanax Payment Helper action buttons by moving them high in the helper body and forcing them visible inside the panel.
   // v1.1.147: Xanax Payment Helper now reuses the main Payment Code Ready expiry timer and gives it a stronger highlighted style.
+  // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
+  // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Pay All controls fit neatly.
   function renderAdminLicenses(licenses) {
@@ -3089,9 +3093,100 @@
         }
       }
 
+      /* v1.1.149: keep the Xanax Payment Helper usable even after the main panel auto-closes */
+      #rwph-xanax-send-status {
+        position:fixed !important;
+        display:flex !important;
+        flex-direction:column !important;
+        width:min(430px, calc(100vw - 20px)) !important;
+        min-width:min(300px, calc(100vw - 20px)) !important;
+        min-height:min(360px, calc(100vh - 20px)) !important;
+        max-width:calc(100vw - 16px) !important;
+        max-height:calc(100vh - 16px) !important;
+        overflow:hidden !important;
+      }
+      #rwph-xanax-send-status #rwph-payment-helper-title {
+        flex:0 0 auto !important;
+        cursor:move !important;
+        touch-action:none !important;
+        position:sticky !important;
+        top:0 !important;
+        z-index:45 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-scroll {
+        flex:1 1 auto !important;
+        min-height:0 !important;
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+        padding:0 4px 8px !important;
+        display:grid !important;
+        gap:7px !important;
+        align-content:start !important;
+        scrollbar-width:thin !important;
+        scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36) !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions,
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero {
+        flex:0 0 auto !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        display:grid !important;
+        position:relative !important;
+        z-index:35 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions button {
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        pointer-events:auto !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero {
+        order:3 !important;
+      }
+      #rwph-xanax-send-status .rwph-xanax-actions {
+        order:5 !important;
+      }
+      #rwph-xanax-send-status .rw-resize-handle {
+        display:block !important;
+        pointer-events:auto !important;
+        visibility:visible !important;
+        opacity:.98 !important;
+        z-index:60 !important;
+      }
+      @media (max-width:420px), (pointer:coarse) {
+        #rwph-xanax-send-status {
+          right:6px !important;
+          bottom:6px !important;
+          width:calc(100vw - 12px) !important;
+          min-width:0 !important;
+          min-height:min(330px, calc(100vh - 12px)) !important;
+          max-width:calc(100vw - 12px) !important;
+          max-height:calc(100vh - 12px) !important;
+        }
+      }
+
 
     `;
   }
+
+
+
+  function rwphEnsureFloatingPanelCss() {
+    try {
+      const cssId = "rwph-floating-panel-global-style";
+      const cssText = panelBaseCss();
+      let style = document.getElementById(cssId);
+      if (!style) {
+        style = document.createElement("style");
+        style.id = cssId;
+        (document.head || document.documentElement || document.body).appendChild(style);
+      }
+      if (style.textContent !== cssText) style.textContent = cssText;
+    } catch (e) {
+      console.warn("Could not inject RWPH floating panel styles:", e);
+    }
+  }
+
 
 
 
@@ -3982,15 +4077,17 @@
     }
 
     const payload = rwphGetStoredLastResults();
-    if (!actions || !btn || !payload) {
-      if (actions) actions.hidden = true;
+    if (!btn || !payload) {
+      if (btn) btn.hidden = true;
+      if (actions) actions.hidden = false;
       return;
     }
 
     const expiresAt = Number(payload.createdAt || 0) + LAST_RESULTS_TTL_MS;
     const msLeft = Math.max(0, expiresAt - Date.now());
     const minutesLeft = Math.max(1, Math.ceil(msLeft / 60000));
-    actions.hidden = false;
+    if (actions) actions.hidden = false;
+    btn.hidden = false;
     btn.textContent = `Reopen Results (${minutesLeft} min)`;
     rwphLastResultsButtonTimer = setTimeout(rwphUpdateLastResultsButton, Math.min(msLeft + 250, 60000));
   }
@@ -5123,6 +5220,7 @@
   }
 
   function rwphSendHelperPanelStatus(message, isError = false) {
+    rwphEnsureFloatingPanelCss();
     if (sessionStorage.getItem("rwph_xanax_helper_closed") === "1") return;
     let box = document.getElementById("rwph-xanax-send-status");
     if (!box) {
@@ -5155,6 +5253,9 @@
     }
 
     box.style.borderColor = isError ? "rgba(251,113,133,.70)" : "rgba(125,211,252,.35)";
+    box.style.setProperty("display", "flex", "important");
+    box.style.setProperty("flex-direction", "column", "important");
+    box.style.setProperty("overflow", "hidden", "important");
     box.innerHTML = message;
     rwphEnablePanelMoveResize(box, "#rwph-payment-helper-title");
   }
@@ -5401,6 +5502,9 @@
         <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill/copy only • You confirm manually</div>
         <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
 
+        ${rwphPaymentExpiryHtml(expiresAtMs, "rw-payment-expiry rwph-xanax-expiry rwph-xanax-expiry-hero")}
+        <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send while this timer is active.</div>
+
         <div class="rwph-xanax-actions" aria-label="Xanax payment helper actions">
           <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
           <button id="rwph-copy-code" type="button">Copy Code</button>
@@ -5412,8 +5516,6 @@
           <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
           <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
           <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
-          ${rwphPaymentExpiryHtml(expiresAtMs, "rw-payment-expiry rwph-xanax-expiry rwph-xanax-expiry-hero")}
-          <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send while this timer is active.</div>
         </div>
 
       <div class="rwph-xanax-steps">
@@ -6376,11 +6478,11 @@
               <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
             </label>
           </div>
-          <div class="rw-actions" id="rw-last-results-actions" hidden>
-            <button id="rw-reopen-last-results" class="secondary" type="button">Reopen Results</button>
-          </div>
-          <div class="rw-actions">
+          <div class="rw-actions rw-primary-calc-actions">
             <button id="rw-run">Fetch + Calculate</button>
+          </div>
+          <div class="rw-actions" id="rw-last-results-actions">
+            <button id="rw-reopen-last-results" class="secondary" type="button" hidden>Reopen Results</button>
             <button id="rw-move-launcher" class="secondary">Move Button Corner</button>
           </div>
           <div id="rw-main-payment-code"></div>
