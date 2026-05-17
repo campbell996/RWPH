@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.188
+// @version      1.1.190
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5751,13 +5751,53 @@
   }
 
 
+  function rwphIsTouchPhoneOrPda() {
+    try {
+      return !!(window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches || /Android|iPhone|iPad|iPod|Mobile|TornPDA|Torn PDA/i.test(navigator.userAgent || ""));
+    } catch (_) {
+      return false;
+    }
+  }
+
   function rwphSetPayAllFieldValue(el, value) {
     if (!el) return false;
-    if (el.getAttribute?.("contenteditable") === "true" || el.getAttribute?.("role") === "textbox") return rwphSetContentEditable(el, value);
 
     const text = String(value ?? "");
-    el.focus?.();
-    el.click?.();
+    const touchMode = rwphIsTouchPhoneOrPda();
+
+    // On Torn PDA/phones, focusing Torn's payment fields opens the software keypad.
+    // For the Payments Copy Panel we set values silently and blur afterwards, so copy/prefill buttons stay fast.
+    if (el.getAttribute?.("contenteditable") === "true" || el.getAttribute?.("role") === "textbox") {
+      if (!touchMode) return rwphSetContentEditable(el, text);
+      try {
+        el.textContent = text;
+        el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, data: text, inputType: "insertText" }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        el.dispatchEvent(new Event("blur", { bubbles: true }));
+        el.blur?.();
+        document.activeElement?.blur?.();
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    let oldReadOnly;
+    let hadReadOnly = false;
+    let oldInputMode;
+    if (touchMode) {
+      try {
+        oldReadOnly = el.readOnly;
+        hadReadOnly = el.hasAttribute?.("readonly") || false;
+        oldInputMode = el.getAttribute?.("inputmode");
+        el.setAttribute?.("inputmode", "none");
+        // Keep the field from summoning the keypad if the browser focuses it because of Torn handlers.
+        try { el.readOnly = true; } catch (_) {}
+      } catch (_) {}
+    } else {
+      el.focus?.({ preventScroll: true });
+      el.click?.();
+    }
 
     try {
       const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -5766,6 +5806,15 @@
       else el.value = text;
     } catch {
       try { el.value = text; } catch { return false; }
+    } finally {
+      if (touchMode) {
+        try {
+          if (oldInputMode === null || oldInputMode === undefined) el.removeAttribute?.("inputmode");
+          else el.setAttribute?.("inputmode", oldInputMode);
+          try { el.readOnly = oldReadOnly; } catch (_) {}
+          if (!hadReadOnly) el.removeAttribute?.("readonly");
+        } catch (_) {}
+      }
     }
 
     try { el.setAttribute?.("value", text); } catch {}
@@ -5776,6 +5825,11 @@
       new KeyboardEvent("keyup", { bubbles: true, key: "0", code: "Digit0" }),
       new Event("blur", { bubbles: true }),
     ].forEach((evt) => { try { el.dispatchEvent(evt); } catch {} });
+
+    if (touchMode) {
+      try { el.blur?.(); } catch (_) {}
+      try { document.activeElement?.blur?.(); } catch (_) {}
+    }
 
     return true;
   }
@@ -6569,21 +6623,70 @@
 
   function rwphSendHelperSetValue(el, value) {
     if (!el) return false;
-    el.focus?.();
-    el.click?.();
+    const textValue = String(value ?? "");
+    const touchMode = rwphIsTouchPhoneOrPda();
+
+    // On Torn PDA/phones, focusing the Xanax send fields can open the software keypad.
+    // Set the value silently and blur afterwards so Copy Receiver / Copy Code stay smooth.
+    if (el.getAttribute?.("contenteditable") === "true" || el.getAttribute?.("role") === "textbox") {
+      if (!touchMode) return rwphSetContentEditable(el, textValue);
+      try {
+        el.textContent = textValue;
+        el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, data: textValue, inputType: "insertText" }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        el.dispatchEvent(new Event("blur", { bubbles: true }));
+        el.blur?.();
+        document.activeElement?.blur?.();
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    let oldReadOnly;
+    let hadReadOnly = false;
+    let oldInputMode;
+
+    if (touchMode) {
+      try {
+        oldReadOnly = el.readOnly;
+        hadReadOnly = el.hasAttribute?.("readonly") || false;
+        oldInputMode = el.getAttribute?.("inputmode");
+        el.setAttribute?.("inputmode", "none");
+        try { el.readOnly = true; } catch (_) {}
+      } catch (_) {}
+    } else {
+      el.focus?.({ preventScroll: true });
+      el.click?.();
+    }
 
     try {
       const proto = Object.getPrototypeOf(el);
       const desc = Object.getOwnPropertyDescriptor(proto, "value");
-      if (desc?.set) desc.set.call(el, value);
-      else el.value = value;
+      if (desc?.set) desc.set.call(el, textValue);
+      else el.value = textValue;
     } catch {
-      el.value = value;
+      try { el.value = textValue; } catch { return false; }
+    } finally {
+      if (touchMode) {
+        try {
+          if (oldInputMode === null || oldInputMode === undefined) el.removeAttribute?.("inputmode");
+          else el.setAttribute?.("inputmode", oldInputMode);
+          try { el.readOnly = oldReadOnly; } catch (_) {}
+          if (!hadReadOnly) el.removeAttribute?.("readonly");
+        } catch (_) {}
+      }
     }
 
-    el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, data: value, inputType: "insertText" }));
+    try { el.setAttribute?.("value", textValue); } catch {}
+    el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, data: textValue, inputType: "insertText" }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
     el.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "a" }));
+    if (touchMode) {
+      try { el.dispatchEvent(new Event("blur", { bubbles: true })); } catch (_) {}
+      try { el.blur?.(); } catch (_) {}
+      try { document.activeElement?.blur?.(); } catch (_) {}
+    }
     return true;
   }
 
@@ -6788,11 +6891,18 @@
 
   function rwphSetContentEditable(el, value) {
     if (!el) return false;
-    el.focus?.();
-    el.click?.();
+    const touchMode = rwphIsTouchPhoneOrPda();
+    if (!touchMode) {
+      el.focus?.({ preventScroll: true });
+      el.click?.();
+    }
     el.textContent = String(value ?? "");
     el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, data: value, inputType: "insertText" }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
+    if (touchMode) {
+      try { el.blur?.(); } catch (_) {}
+      try { document.activeElement?.blur?.(); } catch (_) {}
+    }
     return true;
   }
 
@@ -7439,6 +7549,7 @@
             <ul class="rw-how-list">
               <li><b>Payments button:</b> opens the payout helper from the results tab.</li>
               <li><b>Manual safety:</b> RWPH helps you copy/prefill payment details, but every Torn money payment must be reviewed and confirmed by you before sending.</li>
+              <li><b>PDA/phone keypad:</b> Payments Copy Panel buttons now try to prefill without focusing Torn fields, so your phone keypad should stay closed while copying rows.</li>
               <li><b>Copy/prefill feedback:</b> copy actions and helper messages now appear in popup panels instead of being written at the bottom of the panel.</li>
               <li><b>Panel controls:</b> the payment helper can be moved and resized like the other panels.</li>
             </ul>
@@ -8055,6 +8166,7 @@
             <ul class="rw-how-list">
               <li><b>Payments button:</b> opens the payout helper from the results tab.</li>
               <li><b>Manual safety:</b> RWPH helps you copy/prefill payment details, but every Torn money payment must be reviewed and confirmed by you before sending.</li>
+              <li><b>PDA/phone keypad:</b> Payments Copy Panel buttons now try to prefill without focusing Torn fields, so your phone keypad should stay closed while copying rows.</li>
               <li><b>Copy/prefill feedback:</b> copy actions and helper messages now appear in popup panels instead of being written at the bottom of the panel.</li>
               <li><b>Panel controls:</b> the payment helper can be moved and resized like the other panels.</li>
             </ul>
