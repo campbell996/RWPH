@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.169
+// @version      1.1.170
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1409,7 +1409,7 @@
   // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
   // v1.1.167: added Help panel TOS / Responsible Use and API Usage sections.
-  // v1.1.169: added API ToS table/notice and stronger manual payment confirmation wording.
+  // v1.1.170: API notice is now a themed dropdown; API ToS table matches Help panel styling.
   // v1.1.168: added TOS uptime and update commitment wording.
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
@@ -1971,51 +1971,88 @@
         margin: 8px 0 10px;
         padding: 9px;
         border-radius: 12px;
-        border: 1px solid rgba(104,184,255,.26);
-        background: linear-gradient(180deg, rgba(10,24,45,.84), rgba(17,21,34,.90));
-        color: #edf7ff !important;
+        border: 1px solid rgba(184,136,89,.22);
+        background: linear-gradient(180deg, rgba(58,26,21,.76), rgba(31,27,24,.86));
+        color: #f8efe7 !important;
         box-sizing: border-box;
+      }
+      #rw-payout-helper details.rw-api-tos-card {
+        padding: 0;
+        overflow: hidden;
       }
       #rw-payout-helper .rw-api-tos-title {
         font-weight: 900;
-        color: #bfe5ff !important;
+        color: #fff2dd !important;
         margin: 0 0 6px;
-        font-size: 11px;
+        font-size: 12px;
         letter-spacing: .2px;
+      }
+      #rw-payout-helper summary.rw-api-tos-title {
+        margin: 0;
+        padding: 9px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+        border-radius: 12px;
+        background: linear-gradient(90deg, rgba(122,43,28,.72), rgba(67,35,26,.52));
+        border-bottom: 1px solid transparent;
+      }
+      #rw-payout-helper summary.rw-api-tos-title::-webkit-details-marker {
+        display: none;
+      }
+      #rw-payout-helper summary.rw-api-tos-title::after {
+        content: "▾";
+        color: #ffd9b7 !important;
+        font-size: 12px;
+        flex: 0 0 auto;
+      }
+      #rw-payout-helper details.rw-api-tos-card[open] summary.rw-api-tos-title {
+        border-radius: 12px 12px 0 0;
+        border-bottom-color: rgba(184,136,89,.22);
+      }
+      #rw-payout-helper details.rw-api-tos-card[open] summary.rw-api-tos-title::after {
+        content: "▴";
+      }
+      #rw-payout-helper .rw-api-tos-content {
+        padding: 9px;
       }
       #rw-payout-helper .rw-api-tos-table-wrap {
         width: 100%;
         overflow-x: auto;
         overflow-y: hidden;
         border-radius: 10px;
-        border: 1px solid rgba(104,184,255,.16);
+        border: 1px solid rgba(184,136,89,.22);
+        background: rgba(22,18,17,.34);
       }
       #rw-payout-helper table.rw-api-tos-table {
         width: 100%;
         min-width: 0;
         border-collapse: collapse;
         table-layout: fixed;
-        color: #edf7ff !important;
+        color: #f8efe7 !important;
         font-size: 10px;
         line-height: 1.35;
       }
       #rw-payout-helper .rw-api-tos-table th,
       #rw-payout-helper .rw-api-tos-table td {
-        border-bottom: 1px solid rgba(104,184,255,.14);
+        border-bottom: 1px solid rgba(184,136,89,.18);
         padding: 6px 7px;
         vertical-align: top;
         overflow-wrap: anywhere;
         word-break: break-word;
       }
       #rw-payout-helper .rw-api-tos-table th {
-        color: #ffffff !important;
-        background: rgba(104,184,255,.15);
+        color: #fff2dd !important;
+        background: linear-gradient(90deg, rgba(122,43,28,.52), rgba(67,35,26,.38));
         font-weight: 900;
         text-align: left;
       }
       #rw-payout-helper .rw-api-tos-table td:first-child {
         width: 34%;
-        color: #cbeaff !important;
+        color: #fff2dd !important;
         font-weight: 900;
       }
       #rw-payout-helper .rw-api-tos-table tr:last-child td {
@@ -6691,21 +6728,23 @@
           <label>Your Torn API Key -Limited Access-
             <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
           </label>
-          <div class="rw-api-tos-card">
-            <div class="rw-api-tos-title">API ToS / Key Usage Notice</div>
-            <div class="rw-api-tos-table-wrap">
-              <table class="rw-api-tos-table">
-                <tbody>
-                  <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
-                  <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
-                  <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
-                  <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
-                  <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
-                </tbody>
-              </table>
+          <details class="rw-api-tos-card rw-api-tos-dropdown">
+            <summary class="rw-api-tos-title">API ToS / Key Usage Notice</summary>
+            <div class="rw-api-tos-content">
+              <div class="rw-api-tos-table-wrap">
+                <table class="rw-api-tos-table">
+                  <tbody>
+                    <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
+                    <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
+                    <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
+                    <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
+                    <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
             </div>
-            <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
-          </div>
+          </details>
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock</button>
             <button id="rw-start-payment">Buy Licence</button>
@@ -7249,21 +7288,23 @@
           <label>API Key
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
-          <div class="rw-api-tos-card">
-            <div class="rw-api-tos-title">API ToS / Key Usage Notice</div>
-            <div class="rw-api-tos-table-wrap">
-              <table class="rw-api-tos-table">
-                <tbody>
-                  <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
-                  <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
-                  <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
-                  <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
-                  <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
-                </tbody>
-              </table>
+          <details class="rw-api-tos-card rw-api-tos-dropdown">
+            <summary class="rw-api-tos-title">API ToS / Key Usage Notice</summary>
+            <div class="rw-api-tos-content">
+              <div class="rw-api-tos-table-wrap">
+                <table class="rw-api-tos-table">
+                  <tbody>
+                    <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
+                    <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
+                    <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
+                    <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
+                    <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
             </div>
-            <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
-          </div>
+          </details>
           <div class="rw-actions rw-licence-control-grid">
             <button id="rw-extend-licence">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
