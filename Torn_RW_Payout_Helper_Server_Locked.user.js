@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.179
+// @version      1.1.180
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -7070,14 +7070,14 @@
             </div>
           </details>
           <div class="rw-actions">
-            <button id="rw-unlock-existing">Unlock</button>
+            <button id="rw-unlock-existing">Unlock Panel</button>
             <button id="rw-start-payment">Buy Licence</button>
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
             <button id="rw-move-launcher" class="secondary">Button Movements</button>
           </div>
-          <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock if you already have a licence, or Buy Licence to start a new payment.</div>
+          <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock Panel if you already have a licence, or Buy Licence to start a new payment.</div>
           <div id="rw-paywall-code"></div>
         </div>
 
@@ -7137,7 +7137,7 @@
             <ul class="rw-how-list">
               <li><b>1. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
               <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
-              <li><b>3. Unlock or buy/extend:</b> Unlock checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
+              <li><b>3. Unlock or buy/extend:</b> Unlock Panel checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
               <li><b>4. Set the war times:</b> use Auto-fill War Times where possible, or set start/end manually.</li>
               <li><b>5. Fetch + Calculate:</b> opens a loading/results tab and calculates payouts using the backend.</li>
             </ul>
@@ -7764,7 +7764,7 @@
             <ul class="rw-how-list">
               <li><b>1. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
               <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
-              <li><b>3. Unlock or buy/extend:</b> Unlock checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
+              <li><b>3. Unlock or buy/extend:</b> Unlock Panel checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
               <li><b>4. Set the war times:</b> use Auto-fill War Times where possible, or set start/end manually.</li>
               <li><b>5. Fetch + Calculate:</b> opens a loading/results tab and calculates payouts using the backend.</li>
             </ul>
