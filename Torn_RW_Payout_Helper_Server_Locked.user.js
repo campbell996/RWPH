@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.176
+// @version      1.1.178
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -3650,6 +3650,79 @@
         color: #f8fbff !important;
       }
 
+
+      /* v1.1.178: licence/control buttons use the midnight-blue Help-panel style */
+      #rw-payout-helper #rw-unlock-existing,
+      #rw-payout-helper #rw-start-payment,
+      #rw-payout-helper #rw-extend-licence,
+      #rw-payout-helper #rw-lock {
+        background: linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important;
+        border: 1px solid rgba(125,211,252,.24) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.75) !important;
+      }
+      #rw-payout-helper #rw-unlock-existing:hover,
+      #rw-payout-helper #rw-start-payment:hover,
+      #rw-payout-helper #rw-extend-licence:hover,
+      #rw-payout-helper #rw-lock:hover {
+        filter: brightness(1.08) !important;
+        border-color: rgba(125,211,252,.42) !important;
+      }
+
+
+
+      /* v1.1.177: every Help card now uses the exact same card shell as API ToS / Usage Table cards */
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-help-section-card {
+        display: block !important;
+        margin-top: 8px !important;
+        padding: 8px 9px !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        background: linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38)) !important;
+        color: #eaf6ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26) !important;
+        box-sizing: border-box !important;
+      }
+      #rw-payout-helper .rw-how-box *,
+      #rw-payout-helper .rw-help-section-card *,
+      #rw-payout-helper .rw-how-title,
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list,
+      #rw-payout-helper .rw-how-list li,
+      #rw-payout-helper .rw-how-list li b {
+        color: #eaf6ff !important;
+      }
+      #rw-payout-helper .rw-how-title {
+        margin: 0 0 5px !important;
+        color: #f8fbff !important;
+        font-size: 11px !important;
+        font-weight: 950 !important;
+        letter-spacing: .2px !important;
+        text-shadow: 0 0 10px rgba(56,189,248,.16) !important;
+      }
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list li {
+        color: #cbd5e1 !important;
+        font-size: 10px !important;
+        line-height: 1.42 !important;
+      }
+      #rw-payout-helper .rw-how-list {
+        margin: 4px 0 0 16px !important;
+        padding: 0 !important;
+      }
+      #rw-payout-helper .rw-how-list li {
+        margin: 4px 0 !important;
+      }
+      #rw-payout-helper .rw-how-list li b,
+      #rw-payout-helper .rw-how-intro b {
+        color: #f8fbff !important;
+        font-weight: 900 !important;
+      }
+
       /* v1.1.142 unified scroll polish: one scroll body per panel/tab, no nested admin/help/tool scroll panes */
       #rw-payout-helper > .rw-body,
       #rw-payout-helper .rw-results-panel > .rw-body {
@@ -6998,7 +7071,7 @@
 
                 <div id="rw-paywall-how-section" class="rw-tab-section" hidden>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">RWPH Help - Current Features</div>
             <p class="rw-how-intro">
               Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, reopen recent results, create payout newsletters, export records, and prepare manual payment helpers.
@@ -7008,7 +7081,7 @@
             </p>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Quick Start</div>
             <ul class="rw-how-list">
               <li><b>1. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
@@ -7019,7 +7092,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Licence, Payment Codes, and Timers</div>
             <ul class="rw-how-list">
               <li><b>Buy Licence:</b> creates a payment code and opens the Xanax Payment Helper.</li>
@@ -7034,7 +7107,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Main Payout Panel</div>
             <ul class="rw-how-list">
               <li><b>API Key:</b> required for Torn ID verification and ranked war data fetching. The key is saved locally only when you click Save Key.</li>
@@ -7048,7 +7121,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Results Loading Screen</div>
             <ul class="rw-how-list">
               <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
@@ -7059,7 +7132,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Results Tab</div>
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
@@ -7071,7 +7144,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using HTML Newsletters in Torn</div>
             <ul class="rw-how-list">
               <li><b>1. Generate a newsletter:</b> click one of the newsletter buttons in the results tab.</li>
@@ -7082,7 +7155,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Payments Helper</div>
             <ul class="rw-how-list">
               <li><b>Payments button:</b> opens the payout helper from the results tab.</li>
@@ -7092,7 +7165,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Admin Panel</div>
             <ul class="rw-how-list">
               <li><b>Admin Key:</b> paste the ADMIN_KEY from your server .env. Keep this private.</li>
@@ -7106,7 +7179,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Moving, Resizing, and Scrolling Panels</div>
             <ul class="rw-how-list">
               <li><b>Move panels:</b> drag the panel header/title area.</li>
@@ -7117,7 +7190,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Popup Panels</div>
             <ul class="rw-how-list">
               <li><b>Feedback style:</b> Save Key, Your Expiration, Auto-fill War Times, admin actions, results actions, newsletter actions, copy actions, and payment helper actions use popup panels.</li>
@@ -7128,7 +7201,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">TOS / Responsible Use</div>
             <ul class="rw-how-list">
               <li><b>Use at your own risk:</b> RWPH is a helper tool for organising ranked war payouts. Always review the results before sending Torn money or items.</li>
@@ -7143,7 +7216,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">API ToS / Usage Table</div>
             <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
             <div class="rw-help-api-grid" role="table" aria-label="API ToS / Usage Table">
@@ -7191,7 +7264,7 @@
             <div class="rw-manual-warning">Manual confirmation required: RWPH can calculate, copy, and prefill, but Torn money payments and Xanax sends must always be checked and confirmed by you inside Torn.</div>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Backend and Server Settings</div>
             <ul class="rw-how-list">
               <li><b>PAYWALL_API_BASE:</b> must point to your running backend server URL.</li>
@@ -7204,7 +7277,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Troubleshooting</div>
             <ul class="rw-how-list">
               <li><b>localhost refused to connect:</b> start the server, then check that PAYWALL_API_BASE matches the server URL and port.</li>
@@ -7625,7 +7698,7 @@
 
                 <div id="rw-how-tab-section" class="rw-tab-section" hidden>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">RWPH Help - Current Features</div>
             <p class="rw-how-intro">
               Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, reopen recent results, create payout newsletters, export records, and prepare manual payment helpers.
@@ -7635,7 +7708,7 @@
             </p>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Quick Start</div>
             <ul class="rw-how-list">
               <li><b>1. Paste your Torn API key:</b> use a Torn Limited Access API key with the faction access needed for ranked war data.</li>
@@ -7646,7 +7719,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Licence, Payment Codes, and Timers</div>
             <ul class="rw-how-list">
               <li><b>Buy Licence:</b> creates a payment code and opens the Xanax Payment Helper.</li>
@@ -7661,7 +7734,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Main Payout Panel</div>
             <ul class="rw-how-list">
               <li><b>API Key:</b> required for Torn ID verification and ranked war data fetching. The key is saved locally only when you click Save Key.</li>
@@ -7675,7 +7748,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Results Loading Screen</div>
             <ul class="rw-how-list">
               <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
@@ -7686,7 +7759,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Results Tab</div>
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
@@ -7698,7 +7771,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using HTML Newsletters in Torn</div>
             <ul class="rw-how-list">
               <li><b>1. Generate a newsletter:</b> click one of the newsletter buttons in the results tab.</li>
@@ -7709,7 +7782,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Payments Helper</div>
             <ul class="rw-how-list">
               <li><b>Payments button:</b> opens the payout helper from the results tab.</li>
@@ -7719,7 +7792,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Admin Panel</div>
             <ul class="rw-how-list">
               <li><b>Admin Key:</b> paste the ADMIN_KEY from your server .env. Keep this private.</li>
@@ -7733,7 +7806,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Moving, Resizing, and Scrolling Panels</div>
             <ul class="rw-how-list">
               <li><b>Move panels:</b> drag the panel header/title area.</li>
@@ -7744,7 +7817,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Popup Panels</div>
             <ul class="rw-how-list">
               <li><b>Feedback style:</b> Save Key, Your Expiration, Auto-fill War Times, admin actions, results actions, newsletter actions, copy actions, and payment helper actions use popup panels.</li>
@@ -7755,7 +7828,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">TOS / Responsible Use</div>
             <ul class="rw-how-list">
               <li><b>Use at your own risk:</b> RWPH is a helper tool for organising ranked war payouts. Always review the results before sending Torn money or items.</li>
@@ -7770,7 +7843,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">API ToS / Usage Table</div>
             <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
             <div class="rw-help-api-grid" role="table" aria-label="API ToS / Usage Table">
@@ -7818,7 +7891,7 @@
             <div class="rw-manual-warning">Manual confirmation required: RWPH can calculate, copy, and prefill, but Torn money payments and Xanax sends must always be checked and confirmed by you inside Torn.</div>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Backend and Server Settings</div>
             <ul class="rw-how-list">
               <li><b>PAYWALL_API_BASE:</b> must point to your running backend server URL.</li>
@@ -7831,7 +7904,7 @@
             </ul>
           </div>
 
-          <div class="rw-how-box">
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Troubleshooting</div>
             <ul class="rw-how-list">
               <li><b>localhost refused to connect:</b> start the server, then check that PAYWALL_API_BASE matches the server URL and port.</li>
