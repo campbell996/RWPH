@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.167
+// @version      1.1.169
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1409,6 +1409,8 @@
   // v1.1.148: swapped the main panel Fetch + Calculate and Reopen Results positions/sizes.
   // v1.1.149: fixed Xanax Payment Helper styling when the main panel auto-closes, restored visible timer/buttons, and hardened move/resize.
   // v1.1.167: added Help panel TOS / Responsible Use and API Usage sections.
+  // v1.1.169: added API ToS table/notice and stronger manual payment confirmation wording.
+  // v1.1.168: added TOS uptime and update commitment wording.
   // v1.1.150: moved the Xanax helper expiry timer and copy buttons into the Required payment details block for better visibility.
   // v1.1.155: added Torn API rate-limit retry messaging so error 5 does not immediately fail the results tab.
   // v1.1.156: fixed the results loading elapsed counter and removed per-member Total Respect from result cards.
@@ -1964,6 +1966,71 @@
         color: #cfaa8e !important;
         font-size: 10px;
         line-height: 1.45;
+      }
+      #rw-payout-helper .rw-api-tos-card {
+        margin: 8px 0 10px;
+        padding: 9px;
+        border-radius: 12px;
+        border: 1px solid rgba(104,184,255,.26);
+        background: linear-gradient(180deg, rgba(10,24,45,.84), rgba(17,21,34,.90));
+        color: #edf7ff !important;
+        box-sizing: border-box;
+      }
+      #rw-payout-helper .rw-api-tos-title {
+        font-weight: 900;
+        color: #bfe5ff !important;
+        margin: 0 0 6px;
+        font-size: 11px;
+        letter-spacing: .2px;
+      }
+      #rw-payout-helper .rw-api-tos-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-radius: 10px;
+        border: 1px solid rgba(104,184,255,.16);
+      }
+      #rw-payout-helper table.rw-api-tos-table {
+        width: 100%;
+        min-width: 0;
+        border-collapse: collapse;
+        table-layout: fixed;
+        color: #edf7ff !important;
+        font-size: 10px;
+        line-height: 1.35;
+      }
+      #rw-payout-helper .rw-api-tos-table th,
+      #rw-payout-helper .rw-api-tos-table td {
+        border-bottom: 1px solid rgba(104,184,255,.14);
+        padding: 6px 7px;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      #rw-payout-helper .rw-api-tos-table th {
+        color: #ffffff !important;
+        background: rgba(104,184,255,.15);
+        font-weight: 900;
+        text-align: left;
+      }
+      #rw-payout-helper .rw-api-tos-table td:first-child {
+        width: 34%;
+        color: #cbeaff !important;
+        font-weight: 900;
+      }
+      #rw-payout-helper .rw-api-tos-table tr:last-child td {
+        border-bottom: 0;
+      }
+      #rw-payout-helper .rw-manual-warning {
+        margin: 8px 0 0;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 214, 115, .36);
+        background: linear-gradient(180deg, rgba(88,57,12,.62), rgba(41,30,14,.72));
+        color: #fff1c4 !important;
+        font-size: 10px;
+        line-height: 1.42;
+        font-weight: 800;
       }
 
       /* v1.1.53 readability boost */
@@ -6624,7 +6691,21 @@
           <label>Your Torn API Key -Limited Access-
             <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
           </label>
-          <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
+          <div class="rw-api-tos-card">
+            <div class="rw-api-tos-title">API ToS / Key Usage Notice</div>
+            <div class="rw-api-tos-table-wrap">
+              <table class="rw-api-tos-table">
+                <tbody>
+                  <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
+                  <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
+                  <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
+                  <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
+                  <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
+          </div>
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock</button>
             <button id="rw-start-payment">Buy Licence</button>
@@ -6707,6 +6788,7 @@
               <li><b>Each Xanax:</b> extends the licence by the amount configured on the server.</li>
               <li><b>Payment Code Ready:</b> shows the receiver, payment code, and a live expiry timer.</li>
               <li><b>Xanax Payment Helper:</b> uses the same saved expiry timer as the main Payment Code Ready card, so refreshing the page does not restart the countdown.</li>
+              <li><b>Manual Xanax confirmation:</b> RWPH can show/copy/prefill the receiver and payment code, but you must personally review and confirm the Xanax send inside Torn.</li>
               <li><b>Copy buttons:</b> Copy Receiver and Copy Code are in the helper so you can paste the exact details into Torn.</li>
               <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel.</li>
               <li><b>Lock Panel:</b> clears/unlocks the current panel state and returns RWPH to the locked screen.</li>
@@ -6765,7 +6847,7 @@
             <div class="rw-how-title">Payments Helper</div>
             <ul class="rw-how-list">
               <li><b>Payments button:</b> opens the payout helper from the results tab.</li>
-              <li><b>Manual safety:</b> RWPH helps you copy payment details, but you should still review payments before sending money in Torn.</li>
+              <li><b>Manual safety:</b> RWPH helps you copy/prefill payment details, but every Torn money payment must be reviewed and confirmed by you before sending.</li>
               <li><b>Copy/prefill feedback:</b> copy actions and helper messages now appear in popup panels instead of being written at the bottom of the panel.</li>
               <li><b>Panel controls:</b> the payment helper can be moved and resized like the other panels.</li>
             </ul>
@@ -6812,24 +6894,37 @@
             <ul class="rw-how-list">
               <li><b>Use at your own risk:</b> RWPH is a helper tool for organising ranked war payouts. Always review the results before sending Torn money or items.</li>
               <li><b>No automatic Torn payments:</b> RWPH prepares payout information and copy/prefill helpers. You are still responsible for checking and sending payments manually in Torn.</li>
+              <li><b>Manual payment confirmation:</b> Torn money payments and Xanax licence payments must always be reviewed and confirmed by the user inside Torn. Do not send anything blindly from helper text.</li>
               <li><b>Follow Torn rules:</b> use RWPH only in ways allowed by Torn, your faction rules, and your own server/licence setup.</li>
               <li><b>Keep secrets private:</b> do not share your Torn API key, ADMIN_KEY, PAYWALL_SECRET, or private server URL with people you do not trust.</li>
               <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and revoking licences correctly.</li>
+              <li><b>Keeping RWPH working:</b> we will always do our best to keep the script working and up to date when Torn, browsers, or Torn PDA change.</li>
+              <li><b>Server uptime:</b> we aim to keep the RWPH server online 24/7. It may be temporarily unavailable during updates, maintenance, hosting problems, Torn/API issues, or other major problems.</li>
               <li><b>No guarantee:</b> Torn API limits, browser/Torn PDA behaviour, server downtime, or changed Torn pages can affect results. Recheck important payouts before publishing or paying.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">API Usage</div>
-            <ul class="rw-how-list">
-              <li><b>Why RWPH needs your Torn API key:</b> the key lets RWPH verify your Torn ID/faction access and fetch the ranked war/attack data needed to calculate payouts.</li>
-              <li><b>What RWPH reads:</b> faction/member details needed for names and IDs, ranked war timing where available, and attack records inside the selected war time window.</li>
-              <li><b>What the backend does:</b> the userscript sends the saved API key and payout settings to your RWPH backend. The backend calls Torn, applies rate-limit retries, sorts war/outside/retal/assist hits, and returns the finished payout results.</li>
-              <li><b>Where the key is saved:</b> when you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage so you do not need to paste it every time.</li>
-              <li><b>Licence/payment checks:</b> the backend uses your Torn ID, payment code, and configured receiver to check whether a licence is active or should be extended.</li>
-              <li><b>Rate limits:</b> Torn can return Too many requests. RWPH now queues and retries API calls, but very large wars or repeated Fetch + Calculate clicks can still take longer.</li>
-              <li><b>What RWPH does not do:</b> it does not need your Torn password, does not log into your Torn account, and does not send money automatically.</li>
-            </ul>
+            <div class="rw-how-title">API ToS / Usage Table</div>
+            <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
+            <div class="rw-api-tos-table-wrap">
+              <table class="rw-api-tos-table">
+                <thead>
+                  <tr><th>Area</th><th>What RWPH does</th><th>Responsible-use note</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>API key purpose</td><td>Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</td><td>Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</td></tr>
+                  <tr><td>Data read</td><td>Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</td><td>Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</td></tr>
+                  <tr><td>Backend use</td><td>The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</td><td>The backend should only be run/hosted by someone you trust and should keep server secrets private.</td></tr>
+                  <tr><td>Local storage</td><td>When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</td><td>Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</td></tr>
+                  <tr><td>Server storage</td><td>The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</td><td>Server owners should avoid logging API keys and should keep backups/private files secure.</td></tr>
+                  <tr><td>Licence checks</td><td>Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</td><td>Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</td></tr>
+                  <tr><td>Payments</td><td>RWPH can prepare payout rows, copy details, and help prefill payment information.</td><td>RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</td></tr>
+                  <tr><td>What RWPH does not do</td><td>Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</td><td>If a future change adds new API/data use, update this Help text before users rely on it.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="rw-manual-warning">Manual confirmation required: RWPH can calculate, copy, and prefill, but Torn money payments and Xanax sends must always be checked and confirmed by you inside Torn.</div>
           </div>
 
           <div class="rw-how-box">
@@ -7154,7 +7249,21 @@
           <label>API Key
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
-          <div class="rw-small"><b>API/key privacy:</b> your key is saved locally only when you click Save Key. RWPH sends it to the backend only to verify your Torn ID, check licence access, and fetch the Torn API data needed for calculations. The backend is not designed to save user API keys in paywall-db.json.</div>
+          <div class="rw-api-tos-card">
+            <div class="rw-api-tos-title">API ToS / Key Usage Notice</div>
+            <div class="rw-api-tos-table-wrap">
+              <table class="rw-api-tos-table">
+                <tbody>
+                  <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
+                  <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
+                  <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
+                  <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
+                  <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
+          </div>
           <div class="rw-actions rw-licence-control-grid">
             <button id="rw-extend-licence">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
@@ -7272,6 +7381,7 @@
               <li><b>Each Xanax:</b> extends the licence by the amount configured on the server.</li>
               <li><b>Payment Code Ready:</b> shows the receiver, payment code, and a live expiry timer.</li>
               <li><b>Xanax Payment Helper:</b> uses the same saved expiry timer as the main Payment Code Ready card, so refreshing the page does not restart the countdown.</li>
+              <li><b>Manual Xanax confirmation:</b> RWPH can show/copy/prefill the receiver and payment code, but you must personally review and confirm the Xanax send inside Torn.</li>
               <li><b>Copy buttons:</b> Copy Receiver and Copy Code are in the helper so you can paste the exact details into Torn.</li>
               <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel.</li>
               <li><b>Lock Panel:</b> clears/unlocks the current panel state and returns RWPH to the locked screen.</li>
@@ -7330,7 +7440,7 @@
             <div class="rw-how-title">Payments Helper</div>
             <ul class="rw-how-list">
               <li><b>Payments button:</b> opens the payout helper from the results tab.</li>
-              <li><b>Manual safety:</b> RWPH helps you copy payment details, but you should still review payments before sending money in Torn.</li>
+              <li><b>Manual safety:</b> RWPH helps you copy/prefill payment details, but every Torn money payment must be reviewed and confirmed by you before sending.</li>
               <li><b>Copy/prefill feedback:</b> copy actions and helper messages now appear in popup panels instead of being written at the bottom of the panel.</li>
               <li><b>Panel controls:</b> the payment helper can be moved and resized like the other panels.</li>
             </ul>
@@ -7377,24 +7487,37 @@
             <ul class="rw-how-list">
               <li><b>Use at your own risk:</b> RWPH is a helper tool for organising ranked war payouts. Always review the results before sending Torn money or items.</li>
               <li><b>No automatic Torn payments:</b> RWPH prepares payout information and copy/prefill helpers. You are still responsible for checking and sending payments manually in Torn.</li>
+              <li><b>Manual payment confirmation:</b> Torn money payments and Xanax licence payments must always be reviewed and confirmed by the user inside Torn. Do not send anything blindly from helper text.</li>
               <li><b>Follow Torn rules:</b> use RWPH only in ways allowed by Torn, your faction rules, and your own server/licence setup.</li>
               <li><b>Keep secrets private:</b> do not share your Torn API key, ADMIN_KEY, PAYWALL_SECRET, or private server URL with people you do not trust.</li>
               <li><b>Admin responsibility:</b> admins are responsible for granting, extending, and revoking licences correctly.</li>
+              <li><b>Keeping RWPH working:</b> we will always do our best to keep the script working and up to date when Torn, browsers, or Torn PDA change.</li>
+              <li><b>Server uptime:</b> we aim to keep the RWPH server online 24/7. It may be temporarily unavailable during updates, maintenance, hosting problems, Torn/API issues, or other major problems.</li>
               <li><b>No guarantee:</b> Torn API limits, browser/Torn PDA behaviour, server downtime, or changed Torn pages can affect results. Recheck important payouts before publishing or paying.</li>
             </ul>
           </div>
 
           <div class="rw-how-box">
-            <div class="rw-how-title">API Usage</div>
-            <ul class="rw-how-list">
-              <li><b>Why RWPH needs your Torn API key:</b> the key lets RWPH verify your Torn ID/faction access and fetch the ranked war/attack data needed to calculate payouts.</li>
-              <li><b>What RWPH reads:</b> faction/member details needed for names and IDs, ranked war timing where available, and attack records inside the selected war time window.</li>
-              <li><b>What the backend does:</b> the userscript sends the saved API key and payout settings to your RWPH backend. The backend calls Torn, applies rate-limit retries, sorts war/outside/retal/assist hits, and returns the finished payout results.</li>
-              <li><b>Where the key is saved:</b> when you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage so you do not need to paste it every time.</li>
-              <li><b>Licence/payment checks:</b> the backend uses your Torn ID, payment code, and configured receiver to check whether a licence is active or should be extended.</li>
-              <li><b>Rate limits:</b> Torn can return Too many requests. RWPH now queues and retries API calls, but very large wars or repeated Fetch + Calculate clicks can still take longer.</li>
-              <li><b>What RWPH does not do:</b> it does not need your Torn password, does not log into your Torn account, and does not send money automatically.</li>
-            </ul>
+            <div class="rw-how-title">API ToS / Usage Table</div>
+            <p class="rw-how-intro">This explains exactly what RWPH uses your Torn API key for and how it should be handled.</p>
+            <div class="rw-api-tos-table-wrap">
+              <table class="rw-api-tos-table">
+                <thead>
+                  <tr><th>Area</th><th>What RWPH does</th><th>Responsible-use note</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>API key purpose</td><td>Uses your Torn API key to verify your Torn ID/faction access and fetch ranked war data needed for payout calculations.</td><td>Use a Torn key with only the access RWPH needs. Do not share your key with people you do not trust.</td></tr>
+                  <tr><td>Data read</td><td>Reads faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.</td><td>Data is used to classify war hits, outside hits, retals, assists, and member payout totals.</td></tr>
+                  <tr><td>Backend use</td><td>The userscript sends the saved key and payout settings to your RWPH backend. The backend calls Torn, retries rate limits, calculates results, then returns the payout output.</td><td>The backend should only be run/hosted by someone you trust and should keep server secrets private.</td></tr>
+                  <tr><td>Local storage</td><td>When you click Save Key, the userscript stores the key locally in your browser/Torn PDA userscript storage.</td><td>Clear the saved key or uninstall the userscript if you no longer want the key stored on that device.</td></tr>
+                  <tr><td>Server storage</td><td>The backend is not designed to save user API keys in paywall-db.json. Licence records store licence/payment data, not user API keys.</td><td>Server owners should avoid logging API keys and should keep backups/private files secure.</td></tr>
+                  <tr><td>Licence checks</td><td>Uses your Torn ID, payment code, and configured receiver to check active licences and Xanax licence extensions.</td><td>Licence payments are helper-assisted only. Sending Xanax must be reviewed and confirmed manually in Torn.</td></tr>
+                  <tr><td>Payments</td><td>RWPH can prepare payout rows, copy details, and help prefill payment information.</td><td>RWPH must not be treated as automatic payment approval. Every money payment must be reviewed and confirmed manually by the user in Torn.</td></tr>
+                  <tr><td>What RWPH does not do</td><td>Does not need your Torn password, does not log into your Torn account, and does not automatically send money or Xanax.</td><td>If a future change adds new API/data use, update this Help text before users rely on it.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="rw-manual-warning">Manual confirmation required: RWPH can calculate, copy, and prefill, but Torn money payments and Xanax sends must always be checked and confirmed by you inside Torn.</div>
           </div>
 
           <div class="rw-how-box">
