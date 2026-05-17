@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.134
+// @version      1.1.137
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -158,6 +158,49 @@
     return Math.max(0, Math.ceil((Number(pending.expiresAtMs) - Date.now()) / 60000));
   }
 
+  function rwphFormatCountdownMs(msLeft) {
+    const totalSeconds = Math.max(0, Math.ceil(Number(msLeft || 0) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function rwphFormatExpiryClock(expiresAtMs) {
+    const exp = Number(expiresAtMs || 0);
+    if (!exp) return "unknown time";
+    try {
+      return new Date(exp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    } catch (_) {
+      return new Date(exp).toLocaleTimeString();
+    }
+  }
+
+  function rwphUpdateExpiryTimers() {
+    const nodes = Array.from(document.querySelectorAll("[data-rwph-expire-at]"));
+    for (const node of nodes) {
+      const expiresAtMs = Number(node.dataset.rwphExpireAt || 0);
+      const msLeft = expiresAtMs - Date.now();
+      const count = node.querySelector("[data-rwph-expire-count]");
+      const clock = node.querySelector("[data-rwph-expire-clock]");
+      if (count) count.textContent = msLeft <= 0 ? "expired" : rwphFormatCountdownMs(msLeft);
+      if (clock) clock.textContent = expiresAtMs ? `at ${rwphFormatExpiryClock(expiresAtMs)}` : "";
+      node.classList.toggle("rwph-expired", msLeft <= 0);
+    }
+  }
+
+  function rwphStartExpiryTimer() {
+    rwphUpdateExpiryTimers();
+    if (window.__rwphExpiryTimer) return;
+    window.__rwphExpiryTimer = setInterval(rwphUpdateExpiryTimers, 1000);
+  }
+
+  function rwphPaymentExpiryHtml(expiresAtMs, className = "rw-payment-expiry") {
+    const exp = Number(expiresAtMs || 0);
+    const left = rwphFormatCountdownMs(exp - Date.now());
+    const clock = rwphFormatExpiryClock(exp);
+    return `<div class="${className}" data-rwph-expire-at="${exp}"><b>Expires in:</b> <span data-rwph-expire-count>${esc(left)}</span> <span class="rwph-expire-clock" data-rwph-expire-clock>at ${esc(clock)}</span></div>`;
+  }
+
   function saveXanaxPaymentHelper(code) {
     if (!code) return;
     const payload = {
@@ -258,8 +301,10 @@
     return !!tab;
   }
 
-  function renderPaymentCodeCard(code, minutesLeftText = "Saved for 5 minutes.") {
+  function renderPaymentCodeCard(code, minutesLeftText = "Saved for 5 minutes.", expiresAtMs = 0) {
     const safeCode = esc(code || "");
+    const exp = Number(expiresAtMs || (Date.now() + PENDING_PAYMENT_TTL_MS));
+    setTimeout(rwphStartExpiryTimer, 0);
     return `
       <div class="rw-payment-card">
         <div class="rw-payment-title">Payment Code Ready</div>
@@ -267,6 +312,7 @@
         <div class="rw-payment-recipient">${esc(PAYMENT_RECEIVER_TEXT)}</div>
         <div class="rw-payment-instruction">Use this exact message:</div>
         <div class="rw-payment-code">${safeCode}</div>
+        ${rwphPaymentExpiryHtml(exp)}
         <div class="rw-payment-note">${esc(minutesLeftText)} RWPH only adds licence days when <b>${esc(PAYMENT_ITEM_NAME)}</b> is sent with the exact payment code as the message. Other items do not count. If you send ${esc(PAYMENT_ITEM_NAME)} without the code, it will need manual review. You still review and press Send yourself in Torn.</div>
         <button type="button" data-open-xanax-payment="${safeCode}">Open ${esc(PAYMENT_ITEM_NAME)} Send Page</button>
       </div>`;
@@ -283,7 +329,8 @@
       if (pending) {
         box.innerHTML = renderPaymentCodeCard(
           pending.code,
-          `Saved payment code. Expires in about ${pendingPaymentMinutesLeft(pending)} minute(s). Auto-check is running.`
+          `Saved payment code. Auto-check is running while this timer is active.`,
+          pending.expiresAtMs
         );
       } else if (box.dataset?.rwphAutoPaymentBox === "1") {
         box.innerHTML = "";
@@ -397,7 +444,7 @@
           return false;
         }
         const mins = pendingPaymentMinutesLeft(getPendingPayment());
-        setPaymentStatus(result.error || `Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in about ${mins} minute(s).`, mode);
+        setPaymentStatus(result.error || `Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in ${mins} minute(s).`, mode);
         updatePendingPaymentUi();
         return false;
       }
@@ -822,7 +869,10 @@
   }
 
   // v1.1.133: admin licence cards show time left and the Fill button copies both Torn ID and name.
+  // v1.1.137: removed the Add Balance removal sentence from Help panel wording.
+  // v1.1.136: clearer payment expiry timers, auto-close on licence payment flow, and tighter panel fit.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
+  // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Pay All controls fit neatly.
   function renderAdminLicenses(licenses) {
     if (!licenses || !licenses.length) {
       return `<div class="rw-muted">No active licenses found.</div>`;
@@ -2373,6 +2423,130 @@
       #rw-payout-helper .rw-head span::before,
       #rwph-payment-helper-title::before { filter:drop-shadow(0 0 6px rgba(170,50,45,.45)) grayscale(.2) saturate(.85) !important; }
 
+      /* v1.1.136 fit pass: keep every RWPH panel, form, button and helper inside its visible box */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-results-panel,
+      #rw-payout-helper .rw-pay-all-panel,
+      #rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      #rw-wrong-payment-panel {
+        box-sizing:border-box !important;
+        max-width:calc(100vw - 16px) !important;
+        max-height:calc(100vh - 16px) !important;
+        overflow:auto !important;
+        overflow-x:hidden !important;
+        overscroll-behavior:contain !important;
+        scrollbar-width:thin !important;
+      }
+      #rw-payout-helper {
+        width:min(300px, calc(100vw - 16px)) !important;
+        min-width:min(240px, calc(100vw - 16px)) !important;
+        max-height:calc(100vh - 16px) !important;
+      }
+      #rw-payout-helper *,
+      #rw-pay-all-panel *,
+      #rwph-xanax-send-status *,
+      #rw-wrong-payment-panel * {
+        box-sizing:border-box !important;
+        max-width:100% !important;
+        overflow-wrap:anywhere !important;
+      }
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-results-panel .rw-body,
+      #rw-payout-helper .rw-pay-all-body,
+      #rw-pay-all-panel .rw-pay-all-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-admin-box,
+      #rw-payout-helper .rw-how-box,
+      #rw-payout-helper .rw-payment-card {
+        min-width:0 !important;
+        overflow-x:hidden !important;
+      }
+      #rw-payout-helper .rw-body {
+        max-height:calc(100vh - 58px) !important;
+        padding:8px !important;
+      }
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-newsletter-actions,
+      #rw-payout-helper .rw-result-actions,
+      #rw-payout-helper .rw-pay-all-actions {
+        display:flex !important;
+        flex-wrap:wrap !important;
+        gap:5px !important;
+        align-items:stretch !important;
+      }
+      #rw-payout-helper .rw-actions button,
+      #rw-payout-helper .rw-tabs button,
+      #rw-payout-helper .rw-newsletter-actions button,
+      #rw-payout-helper .rw-result-actions button,
+      #rw-payout-helper .rw-pay-all-actions button {
+        flex:1 1 calc(50% - 5px) !important;
+        min-width:0 !important;
+        white-space:normal !important;
+        line-height:1.15 !important;
+      }
+      #rw-payout-helper .rw-newsletter-actions button {
+        flex-basis:100% !important;
+      }
+      #rw-payout-helper input,
+      #rw-payout-helper textarea,
+      #rw-payout-helper select {
+        min-width:0 !important;
+        width:100% !important;
+      }
+      #rw-payout-helper .rw-row {
+        grid-template-columns:repeat(auto-fit, minmax(72px, 1fr)) !important;
+        gap:5px !important;
+      }
+      #rw-payout-helper .rw-stat-grid {
+        grid-template-columns:repeat(auto-fit, minmax(70px, 1fr)) !important;
+      }
+      #rw-payout-helper .rw-result-top,
+      #rw-payout-helper .rw-pay-all-row {
+        min-width:0 !important;
+      }
+      #rw-payout-helper .rw-payment-expiry,
+      #rwph-xanax-send-status .rwph-xanax-expiry {
+        margin-top:6px !important;
+        padding:6px 7px !important;
+        border-radius:7px !important;
+        background:rgba(14,165,233,.10) !important;
+        border:1px solid rgba(125,211,252,.28) !important;
+        color:#bae6fd !important;
+        font-size:10px !important;
+        font-weight:800 !important;
+        line-height:1.25 !important;
+        text-align:center !important;
+      }
+      #rw-payout-helper .rw-payment-expiry.rwph-expired,
+      #rwph-xanax-send-status .rwph-xanax-expiry.rwph-expired {
+        background:rgba(239,68,68,.13) !important;
+        border-color:rgba(248,113,113,.40) !important;
+        color:#fecaca !important;
+      }
+      #rw-payout-helper .rwph-expire-clock,
+      #rwph-xanax-send-status .rwph-expire-clock {
+        display:inline-block !important;
+        margin-left:4px !important;
+        color:#dbeafe !important;
+        font-weight:700 !important;
+      }
+      @media (max-width:420px), (pointer:coarse) {
+        #rw-payout-helper {
+          right:6px !important;
+          top:60px !important;
+          width:calc(100vw - 12px) !important;
+          min-width:0 !important;
+        }
+        #rw-payout-helper .rw-actions button,
+        #rw-payout-helper .rw-tabs button,
+        #rw-payout-helper .rw-result-actions button,
+        #rw-payout-helper .rw-pay-all-actions button {
+          flex-basis:100% !important;
+        }
+      }
+
     `;
   }
 
@@ -2733,6 +2907,47 @@
       color:#e0f2fe!important;
     }
     .newsletter-zone .newsletter-top-btn:hover{filter:brightness(1.10)!important;}
+
+    /* v1.1.135: compact results toolbar/sidebar so every action fits cleanly */
+    .app{grid-template-columns:260px minmax(0,1fr)!important;gap:12px!important;}
+    .hero{padding:10px!important;gap:8px!important;min-height:calc(100vh - 36px)!important;max-height:calc(100vh - 36px)!important;}
+    .title{gap:6px!important;margin-bottom:4px!important;}
+    .title img{width:44px!important;height:44px!important;}
+    h1{font-size:17px!important;line-height:1.12!important;}
+    .newsletter-zone{gap:6px!important;margin:2px 0 0!important;padding-bottom:0!important;border-bottom:0!important;}
+    .newsletter-zone .newsletter-top-btn,
+    .results-action-zone .btn{padding:7px 8px!important;min-height:31px!important;font-size:11.5px!important;line-height:1.12!important;border-radius:8px!important;}
+    .newsletter-choice-note{font-size:10px!important;line-height:1.22!important;margin:0!important;}
+    .newsletter-use-note,
+    .close-hint{font-size:10px!important;line-height:1.24!important;padding:7px 8px!important;border-radius:9px!important;}
+    .results-action-zone{grid-template-columns:1fr 1fr!important;gap:6px!important;margin-top:0!important;padding-top:8px!important;}
+    .results-action-note{grid-column:1/-1!important;font-size:10px!important;line-height:1.22!important;margin:0!important;}
+    .results-action-zone .btn{margin:0!important;}
+    .summary{gap:8px!important;margin-bottom:10px!important;}
+    .summary-card{padding:9px!important;}
+    .summary-card b{font-size:15px!important;}
+    .grid{gap:10px!important;}
+    @media (max-width: 900px){
+      .app{display:block!important;}
+      .hero{min-height:0!important;max-height:none!important;}
+      .results-action-zone{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+    }
+
+    /* v1.1.136 fullscreen results fit pass */
+    *,*::before,*::after{box-sizing:border-box!important;}
+    body{overflow-x:hidden!important;}
+    .app,.hero,.summary,.grid,.result-card,.toolbar,.newsletter-zone,.results-action-zone,.pay-all-panel{max-width:100%!important;min-width:0!important;}
+    .hero{overflow-x:hidden!important;scrollbar-width:thin!important;}
+    .btn,button,a.btn{white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.15!important;}
+    .result-card,.summary-card,.newsletter-use-note,.close-hint,.results-action-note{overflow-wrap:anywhere!important;}
+    .result-top{min-width:0!important;}
+    .stats{grid-template-columns:repeat(auto-fit,minmax(72px,1fr))!important;}
+    @media (max-width: 520px){
+      body{padding:6px!important;}
+      .summary{grid-template-columns:1fr!important;}
+      .results-action-zone{grid-template-columns:1fr!important;}
+      .newsletter-zone .newsletter-top-btn,.results-action-zone .btn{min-height:30px!important;padding:6px 7px!important;font-size:10.5px!important;}
+    }
 
   </style>
 </head>
@@ -4483,7 +4698,9 @@
   }
 
   function rwphPaymentHelperHtml(code, message, isError = false) {
-    const left = Math.max(0, Math.ceil(((getXanaxPaymentHelper()?.expiresAtMs || Date.now()) - Date.now()) / 60000));
+    const helperPayload = getXanaxPaymentHelper();
+    const expiresAtMs = Number(helperPayload?.expiresAtMs || (Date.now() + PENDING_PAYMENT_TTL_MS));
+    setTimeout(rwphStartExpiryTimer, 0);
     return `
       <button id="rwph-close-helper" type="button" title="Close">×</button>
       <div id="rwph-payment-helper-title">RWPH Payment Helper</div>
@@ -4496,7 +4713,7 @@
         <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
         <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
         <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
-        <div class="rwph-xanax-expiry">Code expires in about ${left} minute(s). RWPH checks automatically after you send.</div>
+        <div class="rwph-xanax-expiry" data-rwph-expire-at="${expiresAtMs}"><b>Expires in:</b> <span data-rwph-expire-count>${esc(rwphFormatCountdownMs(expiresAtMs - Date.now()))}</span> <span class="rwph-expire-clock" data-rwph-expire-clock>at ${esc(rwphFormatExpiryClock(expiresAtMs))}</span>. RWPH checks automatically after you send.</div>
       </div>
 
       <div class="rwph-xanax-actions">
@@ -4951,9 +5168,10 @@
             <div class="rw-how-title">Licence And Access Features</div>
             <ul class="rw-how-list">
               <li><b>Unlock:</b> checks your saved/API-key licence and only opens RWPH if the backend confirms your licence is valid.</li>
-              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase and automatically opens the Xanax send page.</li>
-              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel and automatically opens the Xanax send page.</li>
+              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase, automatically opens the Xanax send page, then closes the main RWPH panel so the payment flow is clear.</li>
+              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel, automatically opens the Xanax send page, then closes the main RWPH panel so the payment flow is clear.</li>
               <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds while the payment code is active.</li>
+              <li><b>Clear expiry timer:</b> Payment Code Ready and the Xanax Payment Helper both show a live countdown plus the exact clock time the code expires.</li>
               <li><b>Xanax only:</b> automatic licence time is only added when Xanax is sent to Evil_Panda_420 [3236276] with the exact payment code in the item message. Other items do not count.</li>
               <li><b>Missing or wrong code:</b> if Xanax is sent without the exact payment code, RWPH shows a manual-review message and the licence will need to be added manually ASAP.</li>
               <li><b>No Check Payment buttons:</b> users do not manually press Check Payment. RWPH watches for the correct Xanax payment automatically.</li>
@@ -5004,6 +5222,7 @@
               <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
+              <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
               <li><b>Refresh persistence:</b> RWPH remembers the open state, active tab, form values, and panel positions/sizes after refresh.</li>
             </ul>
           </div>
@@ -5035,7 +5254,7 @@
               <li><b>Auto-expiring reopen:</b> the reopen button removes itself automatically after 10 minutes so old payout results do not hang around on the main panel.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
-              <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
+              <li><b>No final payment automation:</b> RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> on the fullscreen results page, Pay All now sits inside the left results panel under the newsletter section, beside Export CSV. It opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
               <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
@@ -5063,7 +5282,7 @@
               <li><b>Wrong item:</b> sending any item other than Xanax with the payment code will not automatically add licence time.</li>
               <li><b>No payment code:</b> sending Xanax without the exact payment code opens a manual-review message. Licence time will need to be added manually ASAP.</li>
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
-              <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
+              <li><b>Auto-check stopped:</b> make sure the 5-minute code is still valid. The main panel may auto-close after opening the Xanax helper; reopen RWPH if you want to watch the status.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely. After a successful calculation, use Reopen Results within 10 minutes to try opening the last results again.</li>
               <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
@@ -5177,10 +5396,11 @@
 
         savePendingPayment(result);
         status.textContent = result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
-        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.");
+        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
         openXanaxPaymentPage(result.code, paymentTab);
         updatePendingPaymentUi();
         startAutoPaymentCheck(userKey, "unlock");
+        setTimeout(closePanel, 150);
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
         status.textContent = "Payment start error: " + e.message;
@@ -5529,9 +5749,10 @@
             <div class="rw-how-title">Licence And Access Features</div>
             <ul class="rw-how-list">
               <li><b>Unlock:</b> checks your saved/API-key licence and only opens RWPH if the backend confirms your licence is valid.</li>
-              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase and automatically opens the Xanax send page.</li>
-              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel and automatically opens the Xanax send page.</li>
+              <li><b>Buy Licence:</b> creates a 5-minute payment code for a new licence purchase, automatically opens the Xanax send page, then closes the main RWPH panel so the payment flow is clear.</li>
+              <li><b>Extend Licence:</b> creates a 5-minute payment code from the unlocked panel, automatically opens the Xanax send page, then closes the main RWPH panel so the payment flow is clear.</li>
               <li><b>Automatic payment checking:</b> after Buy Licence or Extend Licence, RWPH checks the backend automatically every 15 seconds while the payment code is active.</li>
+              <li><b>Clear expiry timer:</b> Payment Code Ready and the Xanax Payment Helper both show a live countdown plus the exact clock time the code expires.</li>
               <li><b>Xanax only:</b> automatic licence time is only added when Xanax is sent to Evil_Panda_420 [3236276] with the exact payment code in the item message. Other items do not count.</li>
               <li><b>Missing or wrong code:</b> if Xanax is sent without the exact payment code, RWPH shows a manual-review message and the licence will need to be added manually ASAP.</li>
               <li><b>No Check Payment buttons:</b> users do not manually press Check Payment. RWPH watches for the correct Xanax payment automatically.</li>
@@ -5582,6 +5803,7 @@
               <li><b>Resizable panels:</b> panels have a bottom-right resize handle.</li>
               <li><b>Torn PDA touch support:</b> dragging and resizing work with touch controls.</li>
               <li><b>Phone/PDA compact default:</b> panels open smaller on Torn PDA and phones, while desktop keeps the normal size.</li>
+              <li><b>Fit-safe panels:</b> RWPH wraps long text, compacts buttons, and uses internal scrolling so controls stay inside their panels.</li>
               <li><b>Refresh persistence:</b> RWPH remembers the open state, active tab, form values, and panel positions/sizes after refresh.</li>
             </ul>
           </div>
@@ -5612,7 +5834,7 @@
               <li><b>Auto-expiring reopen:</b> the reopen button removes itself automatically after 10 minutes so old payout results do not hang around on the main panel.</li>
               <li><b>Fallback results panel:</b> if the browser or Torn PDA blocks the new tab, RWPH uses the in-panel fallback results view.</li>
               <li><b>Member result cards:</b> show name, Torn ID, payout amount, war hits, assists, outside hits, retaliation hits, Total Respect, Respect, and weighted score.</li>
-              <li><b>No final payment automation:</b> Add Balance and Add Balance (All) buttons have been removed. RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
+              <li><b>No final payment automation:</b> RWPH can prefill visible payout fields, but never clicks Add Money, Send, or Confirm.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Pay All:</b> opens Torn faction controls in a new tab and shows a small helper panel with instructions, each member, a Name + ID button, and an Amount button. The buttons copy and can prefill visible fields, but final payment is always manual.</li>
               <li><b>Create Torn Newsletter:</b> creates the original Torn-style dark/red payout report. In the fullscreen results page, this button sits higher in the side toolbar, away from Export CSV and Pay All.</li>
@@ -5640,7 +5862,7 @@
               <li><b>Wrong item:</b> sending any item other than Xanax with the payment code will not automatically add licence time.</li>
               <li><b>No payment code:</b> sending Xanax without the exact payment code opens a manual-review message. Licence time will need to be added manually ASAP.</li>
               <li><b>Code expired:</b> create a new Buy Licence or Extend Licence payment code before sending.</li>
-              <li><b>Auto-check stopped:</b> make sure the panel remains open and the 5-minute code is still valid.</li>
+              <li><b>Auto-check stopped:</b> make sure the 5-minute code is still valid. The main panel may auto-close after opening the Xanax helper; reopen RWPH if you want to watch the status.</li>
               <li><b>Cannot calculate:</b> check licence status, API key access, war times, and server health.</li>
               <li><b>Results tab blocked or buttons not working:</b> update to the latest version, allow popups/tabs, and RWPH will use the fallback results panel if the fullscreen tab cannot be written safely. After a successful calculation, use Reopen Results within 10 minutes to try opening the last results again.</li>
               <li><b>Xanax helper:</b> after the Xanax page opens, manually open Send this item and Add Message, then use Copy Receiver and Copy Code to prefill/copy the details.</li>
@@ -5810,10 +6032,11 @@
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });
         savePendingPayment(result);
         status.textContent = result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
-        if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.");
+        if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
         openXanaxPaymentPage(result.code, paymentTab);
         updatePendingPaymentUi();
         startAutoPaymentCheck(userKey, "extend");
+        setTimeout(closePanel, 150);
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
         status.textContent = "Extend licence error: " + e.message;
