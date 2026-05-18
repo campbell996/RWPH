@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.216**  
+Current package version: **1.1.218**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -299,7 +299,7 @@ Useful buttons:
 - **Lock Panel** returns to the locked panel.
 - **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
 - **Fetch + Calculate** runs the payout calculation on the backend for the last finished ranked war only.
-- **Reopen Results** reopens the most recent successful results for 10 minutes. While it is visible, RWPH blocks creating another report.
+- **Use Cached Report** opens a matching server cached report when one exists, with local last-results fallback if your browser still has it saved.
 - **Button Movements** moves the floating launcher.
 
 ### Auto-Fill War Times
@@ -584,7 +584,25 @@ When updating RWPH:
 
 ## Recent Changelog
 
+### v1.1.218
+
+- Removed the old Fetch + Calculate time lock.
+- Fetch + Calculate now shows a popup when a matching cached report already exists.
+- **Use Cached Report** opens the matching cached report.
+- Cached reports still auto-expire after 24 hours.
+- Licence verification/check rate limit changed to 2 checks per minute.
+
+### v1.1.217
+
+- Removed the separate **Check Cache** button.
+- Added automatic completed-war cache checking when the API key and payout settings are ready.
+- Removed the separate **Reopen Results** button.
+- Changed **Use Cached Report** so it opens the saved/cached results report.
+- Server cached reports now expire and are pruned automatically after 24 hours by default.
+- Kept the new cache controls in the same midnight-blue RWPH style/theme/layout.
+
 ### v1.1.216
+
 - Added completed-war report caching for same faction/war/settings reports.
 - Added Use Cached Report and Check Cache controls.
 - Added backend calculation queue, route rate limits, and per-user cooldown protection.
@@ -593,10 +611,9 @@ When updating RWPH:
 - Kept storage on the current JSON database for now, with MySQL-ready organisation for a later update.
 - Kept all new controls in the same midnight-blue RWPH theme/layout.
 
-
 ### v1.1.215
 
-- Added clearer completed-war-only and 10-minute report-lock wording to the Help panel.
+- Added clearer completed-war-only and report-lock wording to the Help panel.
 - Added the same notice to the locked panel, main payout panel, loading screen, and results page where users need to see it.
 - Clarified that Fetch + Calculate uses the latest finished ranked war, not an active/current war.
 
@@ -605,7 +622,7 @@ When updating RWPH:
 - Changed **Fetch + Calculate** to calculate the latest completed ranked war only.
 - Current/active ranked wars are no longer calculated. Users must wait until the war is finished.
 - **Auto-fill War Times** was renamed to **Auto-fill Last Finished War** in the panel.
-- Added a 10-minute report lock: while **Reopen Results** is visible, users cannot create another payout report.
+- Added a cached report prompt: while the saved-results reopen control is active, users cannot create another payout report.
 - Added server-side protection so edited userscripts cannot bypass the completed-war-only rule or recent-report lock.
 
 ### v1.1.213

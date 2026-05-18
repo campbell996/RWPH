@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.216**
+Version: **1.1.218**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -73,8 +73,9 @@ The backend database, normally `paywall-db.json` or the path set by `DB_FILE`, m
 - Bonus progress or milestone records.
 - Revoked users or removed licence records.
 - Admin-created licence grants/extensions/removals.
+- Completed-war report cache entries used to reopen/reuse matching payout reports.
 
-This data is used to operate RWPH's licence, payment, trial, and admin systems.
+Completed-war report cache entries are intended to expire and be pruned automatically after 24 hours by default. This data is used to operate RWPH's licence, payment, trial, cache, calculation, and admin systems.
 
 ---
 
@@ -137,3 +138,8 @@ RWPH is a community-made tool and is not an official Torn product. Use it only i
 RWPH may save completed-war report results in the backend JSON database so the same faction, finished war, payout pool, and weight settings can be reused without recalculating. This reduces Torn API pressure and server load. Cached reports contain calculated payout output and report metadata; they are not designed to store user Torn API keys. The backend also uses route rate limits, per-user cooldowns, a calculation queue, and short in-memory Torn API caching to keep public hosting stable.
 
 Storage remains JSON in this version. MySQL is not enabled yet.
+
+
+## v1.1.218 Cache and Licence Check Update
+
+RWPH no longer uses an old Fetch + Calculate time lock after successful reports. If a matching cached report exists, the panel tells the user in a popup and the user can open it with **Use Cached Report**. Cached reports are still automatically removed after 24 hours. Licence verification/check requests are limited to 2 checks per minute per identity to reduce abuse and protect the backend.
