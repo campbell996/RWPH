@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.223
+// @version      1.1.224
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -595,7 +595,7 @@
       const pending = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (!pending || !pending.code || !pending.expiresAtMs) return null;
 
-      // v1.1.223: old browser-only pending payment records are not accepted as truth.
+      // v1.1.224: old browser-only pending payment records are not accepted as truth.
       // A current payment code must have come from /api/paywall/start or /api/paywall/pending.
       if (!pending.databaseBacked && pending.source !== "database-pending-payment") {
         clearPendingPayment();
@@ -672,7 +672,7 @@
       return Number(pending.expiresAtMs);
     }
 
-    // v1.1.223: do not use browser-only helper storage as payment truth.
+    // v1.1.224: do not use browser-only helper storage as payment truth.
     return 0;
   }
 
@@ -749,7 +749,7 @@
       if (!tab) return null;
       try {
         tab.document.open();
-        tab.document.write(`<!doctype html><html><head><title>RWPH Payment Helper</title><style>body{margin:0;background:#111;color:#ddd;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center}div{padding:22px;border:1px solid #444;border-radius:12px;background:#1b1b1b;box-shadow:0 12px 35px rgba(0,0,0,.45)}b{color:#fff}</style></head><body><div><b>RWPH</b><br>Creating payment code...</div></body></html>`);
+        tab.document.write(`<!doctype html><html><head><title>RWPH Payment Helper</title><style>body{margin:0;background:#111;color:#ddd;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center}div{padding:22px;border:1px solid #444;border-radius:12px;background:#1b1b1b;box-shadow:0 12px 35px rgba(0,0,0,.45)}b{color:#fff}</style></head><body><div><b>RWPH</b><br>Checking payment code...</div></body></html>`);
         tab.document.close();
       } catch (_) {}
       return tab;
@@ -767,6 +767,7 @@
   function openXanaxPaymentPage(code, preOpenedTab = null) {
     sessionStorage.removeItem("rwph_xanax_helper_closed");
     saveXanaxPaymentHelper(code);
+    GM_setValue("rwph_xanax_helper_open_request", JSON.stringify({ code: String(code || ""), createdAtMs: Date.now(), source: "open-xanax-payment-page" }));
     copyText(`Send ${PAYMENT_ITEM_NAME} to ${PAYMENT_RECEIVER_TEXT} with message: ${code}`).catch(() => false);
     const url = buildXanaxPaymentUrl(code);
 
@@ -795,6 +796,42 @@
 
     const tab = window.open(url, "_blank", "noopener,noreferrer");
     return !!tab;
+  }
+
+  function rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, mode = "unlock") {
+    if (!result || !result.code) return false;
+
+    savePendingPayment(result);
+    saveXanaxPaymentHelper(result.code);
+
+    const pending = getPendingPayment();
+    const existingText = result.existingPending
+      ? "Existing pending payment code found. Reopening your Xanax Payment Helper instead of creating a new code."
+      : "Payment code ready. Xanax Payment Helper opened. RWPH will check automatically after you send the Xanax.";
+    const helperMessage = result.instructions || existingText;
+
+    rwphQueueCrossTabPopup("xanax-payment", helperMessage, "info", "RWPH Payment");
+    if (codeBox) {
+      codeBox.innerHTML = renderPaymentCodeCard(
+        result.code,
+        result.existingPending
+          ? "Existing database payment code restored. Auto-check is running."
+          : "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.",
+        pending?.expiresAtMs
+      );
+    }
+
+    const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
+    if (!openedPaymentHelper) {
+      rwphClearCrossTabPopup("xanax-payment");
+      rwphToastPanelInfo(status, "Payment code is ready, but the Xanax helper tab was blocked. Allow popups or click the helper button in the payment card.", "warn", "RWPH Payment");
+    } else if (status) {
+      status.textContent = result.existingPending ? "Existing Xanax Payment Helper opened in the new tab." : "Xanax Payment Helper opened in the new tab.";
+    }
+
+    updatePendingPaymentUi();
+    startAutoPaymentCheck(getPaymentUserKey(), mode);
+    return openedPaymentHelper;
   }
 
   function renderPaymentCodeCard(code, minutesLeftText = "Saved for 5 minutes.", expiresAtMs = 0) {
@@ -1596,7 +1633,7 @@
   // v1.1.219: licence verification rate limit is reduced to 2 checks per minute.
   // v1.1.220: moved cached report controls below Fetch + Calculate and renamed launcher movement controls.
   // v1.1.222: cached report status now shows exact saved and expiry timestamps instead of countdown text.
-  // v1.1.223: payment codes are restored from the backend/database only; Payments Copy Panel buttons disappear after use and can restore the last hidden button.
+  // v1.1.224: payment codes are restored from the backend/database only; Payments Copy Panel buttons disappear after use and can restore the last hidden button.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -7700,6 +7737,8 @@
 
   function rwphRenderPaymentHelperPanel(code, message, isError = false) {
     rwphSendHelperPanelStatus(rwphPaymentHelperHtml(code, message, isError), isError);
+    const box = document.getElementById("rwph-xanax-send-status");
+    if (box) box.dataset.rwphPaymentCode = String(code || "");
   }
 
   function rwphMaybeAutoClosePaymentHelper() {
@@ -7777,8 +7816,21 @@
     if (!shouldRunXanaxPaymentAutofill()) return;
 
     const params = new URLSearchParams(window.location.search || "");
+    const explicitRequest = params.get("rwphSendXanax") === "1" && !!params.get("rwphCode");
     const code = params.get("rwphCode") || getXanaxPaymentHelper()?.code || "";
     if (!code) return;
+
+    if (explicitRequest) {
+      // A fresh helper tab/open request should override an old close flag in this tab.
+      sessionStorage.removeItem("rwph_xanax_helper_closed");
+    }
+
+    if (sessionStorage.getItem("rwph_xanax_helper_closed") === "1" && !explicitRequest) return;
+
+    const existingPanel = document.getElementById("rwph-xanax-send-status");
+    if (existingPanel?.dataset?.rwphPaymentCode === String(code)) {
+      return;
+    }
 
     saveXanaxPaymentHelper(code);
     window.__rwphPaymentHelperButtonState = { receiverClicked: false, codeClicked: false };
@@ -7789,6 +7841,29 @@
       `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the receiver and code.`
     );
     rwphConsumeCrossTabPopup("xanax-payment", "#rwph-xanax-send-status", 650);
+  }
+
+  function rwphScheduleXanaxPaymentHelperOpen() {
+    const run = () => {
+      runXanaxPaymentAutofillFromUrl().catch((e) => console.warn("RWPH payment helper open retry failed:", e));
+    };
+
+    [0, 250, 750, 1500, 3000, 5500].forEach((delay) => setTimeout(run, delay));
+    window.addEventListener("focus", () => setTimeout(run, 150));
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) setTimeout(run, 150);
+    });
+
+    let lastHref = location.href;
+    if (!window.__rwphXanaxPaymentHelperUrlWatcher) {
+      window.__rwphXanaxPaymentHelperUrlWatcher = setInterval(() => {
+        if (location.href !== lastHref) {
+          lastHref = location.href;
+          setTimeout(run, 150);
+          setTimeout(run, 1000);
+        }
+      }, 1000);
+    }
   }
 
   function downloadCSV(rows) {
@@ -8519,19 +8594,7 @@
           return;
         }
 
-        savePendingPayment(result);
-        const helperMessage = result.instructions || "Payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
-        rwphQueueCrossTabPopup("xanax-payment", helperMessage, "info", "RWPH Payment");
-        codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
-        const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
-        if (!openedPaymentHelper) {
-          rwphClearCrossTabPopup("xanax-payment");
-          rwphToastPanelInfo(status, "Payment code created, but the Xanax helper tab was blocked. Allow popups or click the helper button in the payment card.", "warn", "RWPH Payment");
-        } else if (status) {
-          status.textContent = "Xanax Payment Helper opened in the new tab.";
-        }
-        updatePendingPaymentUi();
-        startAutoPaymentCheck(userKey, "unlock");
+        rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, "unlock");
         setTimeout(closePanel, 150);
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
@@ -9277,19 +9340,7 @@
         if (codeBox) codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });
-        savePendingPayment(result);
-        const helperMessage = result.instructions || "Extension payment code created. Xanax send page opened. RWPH will check automatically after you send the Xanax.";
-        rwphQueueCrossTabPopup("xanax-payment", helperMessage, "info", "RWPH Payment");
-        if (codeBox) codeBox.innerHTML = renderPaymentCodeCard(result.code, "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.", getPendingPayment()?.expiresAtMs);
-        const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
-        if (!openedPaymentHelper) {
-          rwphClearCrossTabPopup("xanax-payment");
-          rwphToastPanelInfo(status, "Extension code created, but the Xanax helper tab was blocked. Allow popups or click the helper button in the payment card.", "warn", "RWPH Payment");
-        } else if (status) {
-          status.textContent = "Xanax Payment Helper opened in the new tab.";
-        }
-        updatePendingPaymentUi();
-        startAutoPaymentCheck(userKey, "extend");
+        rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, "extend");
         setTimeout(closePanel, 150);
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
@@ -9641,7 +9692,7 @@
   rwphInstallPageNavigationAutoClose();
   setupXanaxPaymentButtonHandler();
   syncLauncherButtonVisibility();
-  runXanaxPaymentAutofillFromUrl();
+  rwphScheduleXanaxPaymentHelperOpen();
   rwphMaybeOpenPayAllFromFactionControlsUrl();
   if (rwphIsTornFactionPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);

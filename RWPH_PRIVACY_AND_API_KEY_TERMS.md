@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.223**
+Version: **1.1.224**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -155,7 +155,7 @@ RWPH no longer reopens old browser-saved payout reports as a cache fallback. **U
 The cached report controls are now positioned directly below **Fetch + Calculate** in the payout panel, and the launcher corner control is named **Launcher Movement**. This is a layout/name change only and does not change the backend/database-only cached report privacy behaviour.
 
 
-## v1.1.223 Cache Timestamp Display Update
+## v1.1.224 Cache Timestamp Display Update
 
 RWPH now shows cached report status using exact saved and expiry timestamps instead of a countdown-style expiry timer. Cached reports are still backend/database-only and still expire/delete after 24 hours.
 
@@ -163,7 +163,7 @@ RWPH now shows cached report status using exact saved and expiry timestamps inst
 
 The loading/results tab now uses the same midnight-blue RWPH card style as the public cache/admin controls. It explains completed-war-only calculation, database-only cached reports, 24-hour cache expiry, queueing, and API retry behaviour. Cached-report status text is also updated as soon as the backend/database confirms a matching report, so users are not told there is no report when one exists.
 
-## v1.1.223 Payment and Cached Report Handling
+## v1.1.224 Payment and Cached Report Handling
 
 - Payments Copy Panel may open from a backend/database cached payout report.
 - Xanax Payment Helper can restore the current pending payment code from the backend/database.
@@ -171,3 +171,8 @@ The loading/results tab now uses the same midnight-blue RWPH card style as the p
 - Browser-only cached licence or payment status is not accepted as final proof of payment or licence time.
 - Payment helper actions remain manual copy/prefill only. Users must still review and confirm all Torn actions themselves.
 
+
+
+## v1.1.224 Pending Payment Helper Update
+
+RWPH may restore an active pending Xanax payment code from the backend/database so users do not accidentally create multiple payment codes. The browser can display and reopen that pending helper, but it is not accepted as proof of payment. Payment/licence status is still verified live through the backend/Torn API before any licence time is added.
