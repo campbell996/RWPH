@@ -1,7 +1,8 @@
 // ==UserScript==
-// @name         Ranked War Payout Helper - Server Locked
-// @namespace    https://chatgpt.com/
-// @version      1.1.200
+// @name         Ranked War Payout Helper
+// @namespace    RankedWarPayoutHelper
+// @author       Evil_Panda_420
+// @version      1.1.203
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -4502,6 +4503,35 @@
         border-radius: 10px 10px 0 0 !important;
       }
 
+
+      /* v1.1.203: Help dropdown buttons use the same midnight-blue shell as the main panel */
+      #rw-payout-helper summary.rw-help-dropdown-summary,
+      #rw-payout-helper .rw-help-api-grid > details.rw-help-dropdown summary.rw-help-dropdown-summary {
+        background:
+          radial-gradient(circle at 16% 0%, rgba(56,189,248,.16), transparent 28%),
+          radial-gradient(circle at 88% 8%, rgba(129,140,248,.13), transparent 30%),
+          linear-gradient(180deg, rgba(8,13,25,.97), rgba(15,23,42,.96) 54%, rgba(10,15,28,.98)) !important;
+        border: 1px solid rgba(125,211,252,.28) !important;
+        border-left: 4px solid rgba(56,189,248,.66) !important;
+        color: #f8fdff !important;
+        box-shadow:
+          0 1px 0 rgba(255,255,255,.06) inset,
+          0 10px 22px rgba(2,8,23,.34),
+          0 0 18px rgba(56,189,248,.08) !important;
+        text-shadow: 0 0 12px rgba(56,189,248,.20) !important;
+      }
+      #rw-payout-helper details.rw-help-dropdown[open] > summary.rw-help-dropdown-summary,
+      #rw-payout-helper .rw-help-api-grid > details.rw-help-dropdown[open] summary.rw-help-dropdown-summary {
+        border-bottom-color: rgba(125,211,252,.24) !important;
+      }
+      #rw-payout-helper summary.rw-help-dropdown-summary::after,
+      #rw-payout-helper .rw-help-api-grid > details.rw-help-dropdown summary.rw-help-dropdown-summary::after {
+        color: #e0f2fe !important;
+        background: rgba(15,23,42,.72) !important;
+        border: 1px solid rgba(125,211,252,.30) !important;
+        box-shadow: 0 0 12px rgba(56,189,248,.12) !important;
+      }
+
       /* v1.1.200: clear active-tab highlight for main and locked panel navigation */
       #rw-payout-helper .rw-tabs .rw-tab-btn {
         position: relative !important;
@@ -7844,7 +7874,7 @@
       <style>${panelBaseCss()}
   </style>
       <div class="rw-head">
-        <span>Ranked War Payout Helper - Locked</span>
+        <span>Ranked War Payout Helper</span>
         <button id="rw-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
       </div>
       <div class="rw-body">
