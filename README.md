@@ -1,10 +1,10 @@
 # Ranked War Payout Helper
 
-**Download userscript:** [https://github.com/campbell996/RWPH/blob/main/Torn_RW_Payout_Helper_Server_Locked.user.js](https://github.com/campbell996/RWPH/blob/main/Torn_RW_Payout_Helper_Server_Locked.user.js)
+<a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js"><img src="https://img.shields.io/badge/Download%20Here-RWPH%20Userscript-0b1220?style=for-the-badge" alt="Download Here"></a>
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.205**  
+Current package version: **1.1.207**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -736,6 +736,18 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.207
+
+- Fixed `/api/paywall/trial` returning a generic 500 when Torn rejects a user API key or the server cannot save the trial database.
+- Trial activation now uses Torn API v2 `user/basic` first, with the old user/basic endpoint kept as a fallback.
+- Server errors now return clearer messages for bad keys, access-level issues, Torn rate limits, and `paywall-db.json` write problems.
+- Added optional `DB_FILE` `.env` setting so hosted servers can point the paywall database at a writable path.
+
+### v1.1.206
+
+- Changed the README download link to the raw GitHub userscript URL.
+- Replaced the visible download URL with a **Download Here** button badge.
 
 ### v1.1.205
 
