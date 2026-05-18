@@ -4,7 +4,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.211**  
+Current package version: **1.1.212**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -20,6 +20,86 @@ RWPH is a manual payout calculator and copy/prefill helper. It does not send ite
 Before sending Torn money or items, always review the results yourself inside Torn.
 
 This package is not an official Torn product. Use it only in ways that follow Torn rules, your faction rules, and your own server/licence setup.
+
+---
+
+## Requirements
+
+### Browser/User Environment
+
+- Torn in a browser or Torn PDA.
+- Tampermonkey, Violentmonkey, or userscript support.
+- A Torn API key with the access needed for faction/ranked-war data.
+- Access to the faction page where the launcher appears.
+
+### Server Environment
+
+- Node.js **18 or newer**.
+- A running backend reachable from the browser/Torn PDA.
+- A private `.env` file based on `.env.example`.
+- A server URL set in the userscript as `PAYWALL_API_BASE`.
+- The backend domain added to the userscript `@connect` metadata.
+
+---
+
+## How to Use the Script
+
+### Unlocking
+
+1. Open a Torn faction page.
+2. Click the floating RWPH launcher.
+3. Paste your Torn API key.
+4. Click **Save Key** if you want it stored locally.
+5. Click **Unlock Panel** if you already have a licence.
+6. Click **Buy Licence** if you need to pay for a licence.
+7. Or click **7 Day Free Trial** if you have not used the trial before.
+
+### Buying or Extending a Licence
+
+1. Click **Buy Licence** or **Extend Licence**.
+2. RWPH creates a payment code.
+3. Send the configured item to the configured receiver in Torn.
+4. Include the exact payment code.
+5. RWPH checks for the payment.
+6. When verified, your licence unlocks or extends.
+
+### Calculating Payouts
+
+1. Open the unlocked RWPH panel.
+2. Confirm your API key is saved or pasted.
+3. Use **Auto-fill War Times** or enter times manually.
+4. Enter the total payout pool.
+5. Set the weights you want.
+6. Click **Fetch + Calculate**.
+7. Wait for the loading dots/results page.
+8. Review all results before paying.
+
+### Exporting Results
+
+After a successful calculation, use:
+
+- **Export CSV** for spreadsheet records.
+- **Create Torn Newsletter** for a formatted Torn newsletter.
+- **Payments** to open the manual copy/prefill payment helper.
+
+---
+
+## Torn API Key Usage
+
+RWPH asks for a Torn API key because it needs to:
+
+- Verify the user's Torn ID.
+- Verify faction/ranked-war access.
+- Fetch faction/member names and IDs.
+- Fetch ranked-war timing where available.
+- Fetch attack records inside the selected war window.
+- Send required data to the backend for payout calculation.
+
+When you click **Save Key**, the key is stored locally in browser/Torn PDA userscript storage.
+
+The backend is not designed to save user API keys inside `paywall-db.json`. Server owners should still avoid logging API keys and should protect server logs, `.env`, and backups.
+
+RWPH does not need your Torn password.
 
 ---
 
@@ -359,86 +439,6 @@ Supported panels include:
 
 ---
 
-## Requirements
-
-### Browser/User Environment
-
-- Torn in a browser or Torn PDA.
-- Tampermonkey, Violentmonkey, or userscript support.
-- A Torn API key with the access needed for faction/ranked-war data.
-- Access to the faction page where the launcher appears.
-
-### Server Environment
-
-- Node.js **18 or newer**.
-- A running backend reachable from the browser/Torn PDA.
-- A private `.env` file based on `.env.example`.
-- A server URL set in the userscript as `PAYWALL_API_BASE`.
-- The backend domain added to the userscript `@connect` metadata.
-
----
-
-## How to Use the Script
-
-### Unlocking
-
-1. Open a Torn faction page.
-2. Click the floating RWPH launcher.
-3. Paste your Torn API key.
-4. Click **Save Key** if you want it stored locally.
-5. Click **Unlock Panel** if you already have a licence.
-6. Click **Buy Licence** if you need to pay for a licence.
-7. Or click **7 Day Free Trial** if you have not used the trial before.
-
-### Buying or Extending a Licence
-
-1. Click **Buy Licence** or **Extend Licence**.
-2. RWPH creates a payment code.
-3. Send the configured item to the configured receiver in Torn.
-4. Include the exact payment code.
-5. RWPH checks for the payment.
-6. When verified, your licence unlocks or extends.
-
-### Calculating Payouts
-
-1. Open the unlocked RWPH panel.
-2. Confirm your API key is saved or pasted.
-3. Use **Auto-fill War Times** or enter times manually.
-4. Enter the total payout pool.
-5. Set the weights you want.
-6. Click **Fetch + Calculate**.
-7. Wait for the loading dots/results page.
-8. Review all results before paying.
-
-### Exporting Results
-
-After a successful calculation, use:
-
-- **Export CSV** for spreadsheet records.
-- **Create Torn Newsletter** for a formatted Torn newsletter.
-- **Payments** to open the manual copy/prefill payment helper.
-
----
-
-## Torn API Key Usage
-
-RWPH asks for a Torn API key because it needs to:
-
-- Verify the user's Torn ID.
-- Verify faction/ranked-war access.
-- Fetch faction/member names and IDs.
-- Fetch ranked-war timing where available.
-- Fetch attack records inside the selected war window.
-- Send required data to the backend for payout calculation.
-
-When you click **Save Key**, the key is stored locally in browser/Torn PDA userscript storage.
-
-The backend is not designed to save user API keys inside `paywall-db.json`. Server owners should still avoid logging API keys and should protect server logs, `.env`, and backups.
-
-RWPH does not need your Torn password.
-
----
-
 ## Security Notes
 
 Keep these private:
@@ -573,6 +573,10 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.212
+
+- Moved the Requirements, How to Use the Script, and Torn API Key Usage sections directly under Important Notice.
 
 ### v1.1.211
 
