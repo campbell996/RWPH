@@ -1,193 +1,787 @@
-Ranked War Payout Helper
+# Ranked War Payout Helper
 
-Ranked War Payout Helper is a Torn userscript designed to help faction leaders,
-payout managers, and trusted admins calculate ranked war payouts quickly, safely, and consistently.
+**Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
+Current package version: **1.1.204**  
+Userscript name: **Ranked War Payout Helper**  
+Userscript namespace: **RankedWarPayoutHelper**  
+Author: **Evil_Panda_420**
 
-The script provides a compact in-game panel, server-side license protection, ranked war payout calculations,
-member result cards, CSV export, HTML payout newsletters, Add Balance helper links, and a Xanax-based license
-payment flow.
+---
 
+## Important Notice
 
-Torn Userscript
-Ranked War Payouts
-Server-Side Locked
-Xanax License System
-CSV Export
-HTML Newsletter
-What This Script Does
+RWPH is a helper tool. It can calculate payouts, prepare payment rows, copy payment details, prefill some Torn fields, and create newsletter/export files. It does **not** automatically approve payouts, automatically send Torn money, automatically send Xanax, or replace manual checking.
 
-Ranked War Payout Helper helps calculate how much each faction member should be paid after a ranked war.
-It can fetch war activity, apply payout weights, calculate each member’s share, and display the results in
-a clean payout panel.
+Before sending Torn money or items, always review the results yourself inside Torn.
 
+This package is not an official Torn product. Use it only in ways that follow Torn rules, your faction rules, and your own server/licence setup.
 
-The script is built for payout managers who want a faster way to review attacks, assists, respect, weighted
-scores, and final payout amounts without manually building everything from scratch.
+---
 
-Server-Side Protection
+## What Is Included
 
-This script is server-side locked. The Tampermonkey userscript is only the front-end panel.
-Unlock checks, free trials, payment checks, license expiration checks, admin actions, and payout calculations
-must go through the backend server.
+The zip package contains:
 
+| File | Purpose |
+| --- | --- |
+| `Torn_RW_Payout_Helper_Server_Locked.user.js` | The Tampermonkey/Torn PDA userscript. This is the panel users install. |
+| `server.js` | The Node.js backend server. It handles licences, admin tools, Torn API calls, and payout calculation. |
+| `package.json` | Node package metadata and dependencies. |
+| `.env.example` | Example server configuration. Copy this to `.env` and edit it. |
+| `RWPH_PRIVACY_AND_API_KEY_TERMS.md` | Extra privacy/API key terms. |
+| `rwph_launcher_logo_256.png` | Launcher logo image used by the panel/package. |
+| `start-server-windows.bat` | Windows helper file to start the backend. |
+| `start-server-mac-linux.sh` | Mac/Linux helper file to start the backend. |
+| `README.md` | This guide. |
 
-If the backend server is offline, the ngrok tunnel is closed, or the script is pointing to the wrong
-PAYWALL_API_BASE, users will not be able to unlock, check payments, check expiration,
-claim trials, or calculate payouts.
+---
 
+## Main Features
 
-Removing the visible paywall from the userscript does not unlock the protected calculation routes.
-The backend still rejects users without a valid license.
+### Floating Torn Launcher
 
-Main Features
-Launcher Button
-Small RWPH launcher button on Torn.
-Opens and closes the Ranked War Payout Helper panel.
-Can be moved between screen corners.
-Saves the chosen launcher position.
-Locked Access Screen
-Users must unlock the helper before using protected features.
-Supports paid licenses, admin-granted licenses, and a one-time free trial.
-Requires the user’s Torn API key.
-License status is checked through the backend server.
-2 Day Free Trial
-Each Torn account can claim one free 2 day trial.
-Trial use is saved server-side.
-Clearing Tampermonkey storage does not reset the trial.
-Trial licenses work like normal licenses during the trial period.
-Xanax Payment System
-Users can click Start Payment to generate a unique payment code.
-The payment code is saved locally for 10 minutes if unused.
-Each Xanax sent to Evil_Panda_420 [3236276] adds 15 days to the user’s licence.
-The exact payment code must be included as the message.
-Check Payment asks the backend to verify the item and matching message.
-If the payment is found, the backend grants or extends the license.
-RWPH Xanax Payment Helper
-Opens the Torn items page.
-Shows a floating payment helper box.
-Copies the payment code as a fallback.
-Includes buttons to paste the receiver and payment code into the open send form.
-Does not click final Send or Confirm.
-The user still chooses the quantity and manually confirms the item send.
-Your Expiration
-Shows who the license belongs to.
-Shows how much time is left.
-Shows the license expiry date and time.
-Works through the backend license database.
-Ranked War Payout Calculation
-Auto-fills current or recently finished war times where available.
-Allows manual start and finish time input.
-Lets payout managers enter the total payout pool.
-Supports normal hit weight.
-Supports assist weight, with default assist weight set to 0.
-Can filter ranked war attacks.
-Can include chain-hit fallback if ranked war flags are missing.
-Calculations are performed through the backend server.
-Fetch + Calculate Results
-Fetches war data and member activity.
-Checks the user’s license before calculating.
-Displays member payout result cards in a separate results panel.
-Shows member name, Torn ID, payout amount, attacks, assists, respect, and weighted score.
-Includes a close button for the results panel.
-Add Balance Buttons
-Each member result card includes an Add Balance button.
-The button opens Torn faction controls in a new tab.
-The member and payout amount are prefilled where supported.
-The user still manually reviews and confirms the payment in Torn.
-Add Balance (All)
-Opens every member’s Add Balance page one at a time.
-Runs from one button press.
-Designed to reduce popup blocking by opening tabs in sequence.
-Final faction money transfers are still manually confirmed by the user.
-Export CSV
-Exports payout results into a spreadsheet-friendly CSV file.
-Includes member IDs, names, stats, weights, and payout amounts.
-Export button appears in the results panel toolbar beside Add Balance options.
-Create HTML Newsletter
-Creates a styled HTML ranked war payout report.
-Includes payout summary totals.
-Includes average payout information.
-Includes chart-style payout sections.
-Includes a full member payout table.
-Useful for sharing war payout summaries with faction members.
-How Users Unlock Access
-Install Tampermonkey.
-Install the latest Ranked War Payout Helper userscript.
-Open Torn.
-Click the RWPH launcher button.
-Enter a Torn API key with limited access.
-Use the 2 day free trial, or generate a payment code with Start Payment.
-Send Xanax to Evil_Panda_420 [3236276] with the exact payment code as the message.
-Click Check Payment.
-If the backend finds the payment, the license unlocks.
-How To Calculate Payouts
-Unlock the helper first.
-Open the payout tab.
-Enter the user’s Torn API key.
-Click Auto-fill War Times or manually enter war start and finish times.
-Enter the total payout pool.
-Adjust hit weight and assist weight if needed.
-Choose ranked war filtering options.
-Click Fetch + Calculate.
-Review the result cards in the results panel.
-How To Pay Members
-Calculate results first.
-Use Add Balance on a member card to open that member’s prefilled faction controls page.
-Use Add Balance (All) to open all payout tabs one at a time.
-Review the member and amount in Torn.
-Manually confirm the payment inside Torn.
+RWPH adds a floating **RWPH** launcher logo in Torn. The launcher:
 
-The script does not automatically send faction money. It prepares payout pages only.
-The user remains responsible for reviewing and confirming every payment.
+- Only appears on Torn faction pages, such as `https://www.torn.com/factions.php`.
+- Opens the Ranked War Payout Helper panel.
+- Can be moved between corners with **Button Movements**.
+- Uses a clean floating-logo style without a heavy button background.
+- Saves launcher position locally in the userscript storage.
 
-Admin Tools
+### Locked and Unlocked Panels
 
-The script also includes admin tools for the owner or trusted admins. These tools require the private admin key
-and communicate with the backend server.
+RWPH has two main panel states:
 
-Save admin key locally in Tampermonkey storage.
-List current licenses.
-Grant a license by Torn ID.
-Extend an existing license.
-Revoke a license.
-Grant the configured owner a long owner license.
-Backend Requirements
+1. **Locked panel** for users without a verified licence.
+2. **Unlocked main panel** for users with an active licence.
 
-Normal users only need the Tampermonkey userscript. The owner must keep the backend server running.
-The backend handles trials, license checks, payment checks, admin routes, database records, and protected payout calculations.
+The panel checks the saved licence with the backend when it opens. If the licence is missing, expired, revoked, or cannot be verified, RWPH stays on the locked panel.
 
-The backend can run on localhost for private testing.
-The backend can run through ngrok for temporary online access.
-The backend can be hosted on a Node.js host for public use.
-The userscript must point to the backend URL with PAYWALL_API_BASE.
-For public users, PAYWALL_API_BASE must not be localhost.
-Private Owner Files And Secrets
-Do not share these with normal users:
+### Active Tab Highlighting
 
-.env
-OWNER_TORN_API_KEY
-ADMIN_KEY
-PAYWALL_SECRET
-paywall-db.json
-server.js backend files, unless intentionally hosting or developing privately
-Troubleshooting
-Failed to fetch: backend server is offline, ngrok is closed, or the API base URL is wrong.
-Cannot unlock: check the API key, payment code, receiver, item, and backend console.
-Cannot calculate: check license status, war times, API key access, and server health.
-Add Balance tabs blocked: allow popups/tabs for Torn or use individual Add Balance buttons.
-Xanax helper will not paste: manually paste the copied receiver and code into the open send form.
-Online test: open your backend URL followed by /health. If that fails, the userscript cannot work online.
-Summary
+The selected tab is highlighted in both panel states.
 
-Ranked War Payout Helper is a compact Torn payout tool built for ranked war payout management.
-It combines server-side licensing, free trials, Xanax-based payments, secure calculation routes,
-payout result cards, Add Balance helpers, CSV exports, and HTML payout newsletters.
+Locked panel tabs:
 
+- **Unlock**
+- **Admin**
+- **Help**
 
-The most important thing to remember is simple:
-the userscript needs the backend server to unlock and calculate.
+Unlocked panel tabs:
 
+- **Payout**
+- **Admin**
+- **Help**
 
-Ranked War Payout Helper is a third-party helper script for Torn payout management.
-Users should always review all calculated payouts and payment pages before sending money or items.
+### Dropdown Help Panel
+
+The Help panel is built from dropdown-style buttons. This keeps the panel short and easier to scan.
+
+Help sections explain:
+
+- Current features
+- Quick start
+- Licence and payment codes
+- Main payout panel
+- Results loading screen
+- Results tab
+- Newsletter tools
+- Payments helper
+- Admin tools
+- Popup panels
+- Responsible use
+- API key usage
+- Backend/server settings
+- Troubleshooting
+
+All Help dropdown buttons use the same midnight-blue main panel style.
+
+### Server-Side Licence System
+
+RWPH uses a backend-verified licence system. The userscript does not unlock itself by only changing front-end code. The backend verifies the user, creates signed licence tokens, and protects payout calculation routes.
+
+Licence features include:
+
+- Buy licence by sending the configured Torn item.
+- Extend licence with additional item payments.
+- One-time 7-day free trial per Torn account.
+- Existing licence check.
+- Licence expiry display with **Your Expiration**.
+- Admin grant, extend, remove, and list tools.
+- Server-side signed licence token verification.
+- Licence data stored in the backend database file.
+
+### Xanax Licence Payment Helper
+
+By default, the included `.env.example` is configured for Xanax payments:
+
+- Required item ID: `206`
+- Required item name: `Xanax`
+- Required quantity: `1`
+- Default licence days per Xanax: `20`
+
+The backend can be configured to use a different item, name, quantity, or licence duration.
+
+When the user clicks **Buy Licence** or **Extend Licence**, RWPH:
+
+1. Creates a unique payment code.
+2. Shows the receiver, item requirement, and code.
+3. Opens the Xanax Payment Helper page/tab where possible.
+4. Provides **Copy Receiver** and **Copy Code** helpers.
+5. Checks the backend for payment confirmation.
+6. Unlocks or extends the licence after a valid matching payment is detected.
+
+The payment code expires after a short time. Users must send the item manually inside Torn and include the exact code.
+
+### Bonus Licence Milestones
+
+The backend supports bonus licence days for item payments.
+
+Default cumulative per-user milestones:
+
+| Total Xanax paid by that Torn ID | Bonus days |
+| ---: | ---: |
+| 15 | +20 |
+| 30 | +50 |
+| 60 | +100 |
+| 100 | +250 |
+
+Default single-order bonuses:
+
+| Xanax sent in one order | Bonus days |
+| ---: | ---: |
+| 50 | +365 |
+| 100 | +730 |
+
+These values are controlled in `.env` with:
+
+```env
+BONUS_MILESTONES=15:20,30:50,60:100,100:250
+SINGLE_ORDER_BONUS_MILESTONES=50:365,100:730
+```
+
+Bonuses are calculated per Torn user. Another user's payments do not count toward someone else's cumulative milestone progress.
+
+### Admin Tools
+
+Admin tools are available from both the locked panel and the unlocked main panel.
+
+Admin features:
+
+- Save admin key locally.
+- List current licences.
+- Grant a licence to a Torn ID.
+- Extend an existing licence by adding days.
+- Remove licence days from a user.
+- Auto-grant the owner account a long licence when the admin key is saved.
+- Fill a selected licence into the admin form from the licence list.
+
+Admin routes are protected by `ADMIN_KEY`. Keep it private.
+
+### Payout Calculator
+
+The main payout panel calculates ranked-war member payouts.
+
+Inputs:
+
+- Torn API key
+- War start date/time
+- War end date/time
+- Total payout pool
+- War Hit Weight
+- Outside Hit Weight
+- Retaliation Hit Weight
+- Assist Weight
+
+Useful buttons:
+
+- **Save Key** saves the Torn API key locally.
+- **Your Expiration** checks remaining licence time.
+- **Lock Panel** returns to the locked panel.
+- **Auto-fill War Times** tries to detect the current or most recently finished ranked war.
+- **Fetch + Calculate** runs the payout calculation on the backend.
+- **Reopen Results** reopens the most recent successful results for a short time.
+- **Button Movements** moves the floating launcher.
+
+### Auto-Fill War Times
+
+The backend attempts to detect the current or most recently finished ranked war through Torn ranked-war data. When successful, RWPH fills the war start and finish fields automatically.
+
+If auto-fill cannot find a war, users can manually enter the start and finish times.
+
+### Hybrid Ranked-War Calculation Mode
+
+RWPH attempts to use Torn ranked-war report data when available.
+
+In hybrid mode:
+
+- War Hits come from Torn ranked-war report member attacks.
+- Respect and Total Respect come from Torn ranked-war report score/respect fields.
+- Assists, Outside Hits, and Retaliation Hits come from the attack-log classifier.
+- Attack-log War Hits are ignored in hybrid mode so war hits are not double counted.
+
+If ranked-war report mode fails, RWPH falls back to attack-log calculation and shows a warning.
+
+### Attack Classification
+
+The backend classifies attacks into contribution types:
+
+| Type | Meaning |
+| --- | --- |
+| War Hits | Ranked-war hits against the selected war opponent. |
+| Outside Hits | Hits outside the ranked-war opponent/category, tracked separately. |
+| Retaliation Hits | Hits with explicit retaliation evidence or a retaliation multiplier above normal. |
+| Assists | Attack results identified as assists. |
+
+Failed attacks such as losses, stalemates, timeouts, escapes, runaways, misses, or failed results do not count as successful hits, except assists are treated separately.
+
+### Weight-Based Payout Split
+
+RWPH uses weighted contribution points to split the total payout pool.
+
+Simplified formula:
+
+```text
+member weight =
+  (war hits × war hit weight)
++ (outside hits × outside hit weight)
++ (retaliation hits × retaliation hit weight)
++ (assists × assist weight)
+```
+
+Then:
+
+```text
+member payout = total payout pool × (member weight / total faction weight)
+```
+
+If every weight is zero, no meaningful payout split can be calculated.
+
+### Results Loading Screen
+
+When the user clicks **Fetch + Calculate**, RWPH opens a loading/results tab. The loading screen includes a timer and five progress steps.
+
+The dots turn green as the backend progresses through:
+
+1. Verifying the licence with the server.
+2. Fetching the attack log for the selected start and finish times.
+3. Sorting war hits, outside hits, retals, and assists.
+4. Applying weights and splitting the payout pool across members.
+5. Building the fullscreen results page, payment tools, CSV export, and newsletter buttons.
+
+The timer counts total seconds, including past 59 seconds.
+
+### Results Page
+
+After calculation, RWPH builds a fullscreen results page with:
+
+- Summary cards
+- Member payout cards
+- War hit counts
+- Assist counts
+- Outside hit counts
+- Retaliation hit counts
+- Total tracked hits
+- Weight values
+- Payout amount per member
+- Calculation warnings where needed
+- Export and helper buttons
+
+### CSV Export
+
+The results page can export a CSV file for spreadsheet use. The CSV includes payout information that can be opened in Excel, Google Sheets, or similar tools.
+
+### Torn Newsletter Generator
+
+RWPH can create a Torn newsletter HTML file from the results.
+
+General workflow:
+
+1. Calculate results.
+2. Click a newsletter button.
+3. Open the downloaded HTML file.
+4. Copy the formatted newsletter content.
+5. Paste it into Torn's faction newsletter editor.
+6. Preview and adjust if Torn strips any styling.
+
+Different newsletter themes/layouts may survive Torn formatting differently.
+
+### Payments Copy Panel
+
+The **Payments** button opens a manual payout helper.
+
+The helper provides payout rows with buttons to copy or prefill:
+
+- Member name + Torn ID
+- Payout amount
+
+On Torn PDA/phone, RWPH tries to prefill without focusing fields so the phone keypad does not keep opening.
+
+Payments are intentionally manual. RWPH helps prepare the details, but the user must review and confirm each Torn money payment.
+
+### Popup Feedback Panels
+
+Many actions use small feedback panels instead of browser alerts.
+
+Examples:
+
+- Save Key
+- Your Expiration
+- Auto-fill War Times
+- Admin actions
+- Results actions
+- Newsletter actions
+- Copy actions
+- Payment helper actions
+
+Popup panels are movable/clamped near the active RWPH panel and auto-close after a short time.
+
+### Movable and Resizable Panels
+
+RWPH floating panels support moving and resizing. Layout choices are saved locally so the panel can reopen where the user left it.
+
+Supported panels include:
+
+- Main RWPH panel
+- Results panel
+- Payments Copy Panel
+- Xanax Payment Helper
+- Manual review/info popup panels
+
+---
+
+## Requirements
+
+### Browser/User Environment
+
+- Torn in a browser or Torn PDA.
+- Tampermonkey, Violentmonkey, or userscript support.
+- A Torn API key with the access needed for faction/ranked-war data.
+- Access to the faction page where the launcher appears.
+
+### Server Environment
+
+- Node.js **18 or newer**.
+- A running backend reachable from the browser/Torn PDA.
+- A private `.env` file based on `.env.example`.
+- A server URL set in the userscript as `PAYWALL_API_BASE`.
+- The backend domain added to the userscript `@connect` metadata.
+
+---
+
+## Installation
+
+### 1. Extract the Zip
+
+Extract the package somewhere safe on your computer or server.
+
+### 2. Install Server Dependencies
+
+Open a terminal in the extracted folder and run:
+
+```bash
+npm install
+```
+
+### 3. Create the `.env` File
+
+Copy `.env.example` to `.env`.
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Mac/Linux:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your real values.
+
+### 4. Configure Required Server Secrets
+
+At minimum, set these values:
+
+```env
+OWNER_TORN_API_KEY=your_private_owner_torn_api_key
+OWNER_TORN_ID=your_owner_torn_id
+OWNER_TORN_NAME=your_owner_name
+PAYWALL_SECRET=a_long_random_private_secret
+ADMIN_KEY=a_long_random_admin_key
+```
+
+`PAYWALL_SECRET` and `ADMIN_KEY` should be long, random, and private.
+
+### 5. Start the Server
+
+Standard command:
+
+```bash
+npm start
+```
+
+Or use one of the helper files:
+
+- `start-server-windows.bat`
+- `start-server-mac-linux.sh`
+
+### 6. Test the Server
+
+Open:
+
+```text
+http://localhost:3000/health
+```
+
+You should see a JSON response with `ok: true`.
+
+If hosting online, test your public backend URL plus `/health`.
+
+### 7. Set `PAYWALL_API_BASE` in the Userscript
+
+Open `Torn_RW_Payout_Helper_Server_Locked.user.js` and find:
+
+```js
+const PAYWALL_API_BASE = "https://your-server-url-here";
+```
+
+Set it to your backend URL.
+
+Do not include a trailing slash.
+
+Correct:
+
+```js
+const PAYWALL_API_BASE = "https://example.ngrok-free.app";
+```
+
+Incorrect:
+
+```js
+const PAYWALL_API_BASE = "https://example.ngrok-free.app/";
+```
+
+### 8. Update `@connect`
+
+In the userscript header, make sure the backend domain is listed:
+
+```js
+// @connect      your-backend-domain.com
+```
+
+If you use ngrok, add the ngrok domain. If the domain changes, update both `PAYWALL_API_BASE` and `@connect`.
+
+### 9. Install the Userscript
+
+Install `Torn_RW_Payout_Helper_Server_Locked.user.js` into your userscript manager.
+
+Then open Torn and go to a faction page:
+
+```text
+https://www.torn.com/factions.php
+```
+
+The floating RWPH launcher should appear.
+
+---
+
+## `.env` Settings
+
+| Setting | Purpose |
+| --- | --- |
+| `PORT` | Backend server port. Default is `3000`. |
+| `HOST` | Backend bind host. Default is `0.0.0.0`. |
+| `OWNER_TORN_API_KEY` | Private Torn API key for the owner/receiver account. Used for item payment detection. |
+| `OWNER_TORN_ID` | Torn ID that receives licence item payments. |
+| `OWNER_TORN_NAME` | Name shown as the payment receiver. |
+| `REQUIRED_ITEM_ID` | Torn item ID required for licence payment. Default example is `206`. |
+| `REQUIRED_ITEM_NAME` | Item name shown to users. Default example is `Xanax`. |
+| `REQUIRED_ITEM_QTY` | Minimum quantity required per payment. |
+| `LICENSE_DAYS` | Licence days added per required item. |
+| `BONUS_MILESTONES` | Cumulative per-user bonus schedule. |
+| `SINGLE_ORDER_BONUS_MILESTONES` | Bonus schedule for large single orders. |
+| `PAYWALL_SECRET` | Private secret for signing/verifying licence tokens. |
+| `ADMIN_KEY` | Private key for admin panel and admin API routes. |
+| `ENABLE_ADMIN_ROUTES` | Set to `true` to enable admin tools/routes. |
+| `TORN_API_MIN_INTERVAL_MS` | Minimum spacing between Torn API requests. |
+| `TORN_API_MAX_RETRIES` | Maximum retries for Torn API failures/rate limits. |
+| `TORN_API_RETRY_BASE_MS` | Base delay for Torn API retry backoff. |
+| `TORN_API_RETRY_MAX_MS` | Maximum delay for Torn API retry backoff. |
+
+---
+
+## Backend API Routes
+
+These routes are used by the userscript.
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/` | GET | Plain text server status. |
+| `/health` | GET | JSON health check. |
+| `/api/paywall/start` | POST | Creates a payment code for buying/extending a licence. |
+| `/api/paywall/check` | POST | Checks whether a matching item payment was received. |
+| `/api/paywall/trial` | POST | Starts a one-time 7-day trial. |
+| `/api/paywall/verify-token` | POST | Verifies a saved licence token. |
+| `/api/calc/war-times` | POST | Attempts to auto-detect ranked-war start/end times. |
+| `/api/calc/progress` | POST | Returns calculation progress for the loading dots. |
+| `/api/calc/rw-payout` | POST | Runs the protected payout calculation. |
+| `/api/admin/licenses` | GET | Lists licences. Requires admin key. |
+| `/api/admin/grant` | POST | Grants a licence. Requires admin key. |
+| `/api/admin/grant-owner` | POST | Grants owner licence. Requires admin key. |
+| `/api/admin/extend` | POST | Adds days to a licence. Requires admin key. |
+| `/api/admin/remove` | POST | Removes days from a licence. Requires admin key. |
+
+Admin requests are protected with the configured `ADMIN_KEY`.
+
+---
+
+## How to Use the Script
+
+### Unlocking
+
+1. Open a Torn faction page.
+2. Click the floating RWPH launcher.
+3. Paste your Torn API key.
+4. Click **Save Key** if you want it stored locally.
+5. Click **Unlock Panel** if you already have a licence.
+6. Click **Buy Licence** if you need to pay for a licence.
+7. Or click **7 Day Free Trial** if you have not used the trial before.
+
+### Buying or Extending a Licence
+
+1. Click **Buy Licence** or **Extend Licence**.
+2. RWPH creates a payment code.
+3. Send the configured item to the configured receiver in Torn.
+4. Include the exact payment code.
+5. RWPH checks for the payment.
+6. When verified, your licence unlocks or extends.
+
+### Calculating Payouts
+
+1. Open the unlocked RWPH panel.
+2. Confirm your API key is saved or pasted.
+3. Use **Auto-fill War Times** or enter times manually.
+4. Enter the total payout pool.
+5. Set the weights you want.
+6. Click **Fetch + Calculate**.
+7. Wait for the loading dots/results page.
+8. Review all results before paying.
+
+### Exporting Results
+
+After a successful calculation, use:
+
+- **Export CSV** for spreadsheet records.
+- **Create Torn Newsletter** for a formatted Torn newsletter.
+- **Payments** to open the manual copy/prefill payment helper.
+
+---
+
+## Torn API Key Usage
+
+RWPH asks for a Torn API key because it needs to:
+
+- Verify the user's Torn ID.
+- Verify faction/ranked-war access.
+- Fetch faction/member names and IDs.
+- Fetch ranked-war timing where available.
+- Fetch attack records inside the selected war window.
+- Send required data to the backend for payout calculation.
+
+When you click **Save Key**, the key is stored locally in browser/Torn PDA userscript storage.
+
+The backend is not designed to save user API keys inside `paywall-db.json`. Server owners should still avoid logging API keys and should protect server logs, `.env`, and backups.
+
+RWPH does not need your Torn password.
+
+---
+
+## Security Notes
+
+Keep these private:
+
+- Torn API keys
+- `OWNER_TORN_API_KEY`
+- `PAYWALL_SECRET`
+- `ADMIN_KEY`
+- `.env`
+- Private server URLs if you do not want others using the backend
+- `paywall-db.json` if it contains licence/payment records
+
+Recommended practices:
+
+- Use long random values for `PAYWALL_SECRET` and `ADMIN_KEY`.
+- Do not paste secrets into public chats or faction newsletters.
+- Do not commit `.env` to GitHub.
+- Only run the backend somewhere you trust.
+- Rotate secrets if you accidentally share them.
+- Keep backups of your server database before making big admin changes.
+
+---
+
+## Troubleshooting
+
+### `localhost refused to connect`
+
+The backend is not running, the port is wrong, or the browser cannot reach the server.
+
+Fixes:
+
+- Run `npm start`.
+- Check `/health`.
+- Confirm `PAYWALL_API_BASE` matches the real server URL.
+- If using ngrok, confirm the ngrok tunnel is active.
+
+### `Payment start error: Failed to fetch`
+
+The userscript could not reach the backend.
+
+Fixes:
+
+- Check that the backend is online.
+- Check `PAYWALL_API_BASE`.
+- Check userscript `@connect`.
+- Check whether your ngrok/public URL changed.
+- Check browser/Torn PDA network permissions.
+
+### Payment Not Found Yet
+
+RWPH did not detect a valid matching payment.
+
+Check:
+
+- Correct receiver Torn ID.
+- Correct item.
+- Correct quantity.
+- Exact payment code.
+- Payment code has not expired.
+- Owner API key can read item events/payment data.
+
+### Wrong Payment Detected
+
+RWPH found a payment that did not match the expected item/code/quantity.
+
+The user may need manual admin review.
+
+### Too Many Requests / Torn Rate Limit
+
+Torn may be rate-limiting API calls.
+
+Fixes:
+
+- Wait before recalculating.
+- Do not spam **Fetch + Calculate**.
+- Increase rate-limit settings in `.env`.
+- Avoid running several calculations at once.
+
+### Results Loading Seems Stuck
+
+Large wars or Torn API delays can take longer.
+
+Check:
+
+- Loading timer.
+- Backend console.
+- Torn API errors.
+- Server `/health`.
+- Browser console if needed.
+
+### Launcher Does Not Show
+
+The launcher only appears on Torn faction pages.
+
+Go to:
+
+```text
+https://www.torn.com/factions.php
+```
+
+Also check:
+
+- Userscript is enabled.
+- You installed the newest version.
+- The page was refreshed after installation.
+- No duplicate old userscript is installed.
+
+### Duplicate Scripts in Tampermonkey
+
+If you changed `@name` or `@namespace`, Tampermonkey may treat the script as a different script.
+
+Fix:
+
+- Disable or remove old copies.
+- Keep only the latest **Ranked War Payout Helper** version.
+
+---
+
+## Updating
+
+When updating RWPH:
+
+1. Backup `.env`.
+2. Backup your licence database file if present.
+3. Replace the userscript with the newer `.user.js`.
+4. Replace backend files as needed.
+5. Re-run `npm install` if dependencies changed.
+6. Restart the backend.
+7. Test `/health`.
+8. Refresh Torn and open the faction page.
+
+---
+
+## Recent Changelog
+
+### v1.1.204
+
+- Replaced the old changelog-style README with a full feature and setup guide.
+- Updated package, userscript, and server version numbers.
+
+### v1.1.203
+
+- Added userscript author metadata: `Evil_Panda_420`.
+
+### v1.1.202
+
+- Changed the userscript name to `Ranked War Payout Helper`.
+- Changed the userscript namespace to `RankedWarPayoutHelper`.
+- Removed `- Locked` from the locked panel title.
+
+### v1.1.201
+
+- Help panel dropdown button backgrounds now use the same midnight-blue main panel style.
+- Applies to locked Help, unlocked Help, and nested API Usage dropdown rows.
+
+### v1.1.200
+
+- Main panel tabs now visibly highlight the selected Payout, Admin, or Help tab.
+- Locked panel tabs now visibly highlight the selected Unlock, Admin, or Help tab.
+- Strengthened active-tab styling so it is not overridden by unified button styling.
+
+### v1.1.199
+
+- Changed Help panel cards into dropdown-style buttons.
+- Help sections are collapsed by default.
+- Applies to both locked and unlocked Help tabs.
+- API usage rows inside Help are dropdown buttons.
+
+### v1.1.198
+
+- RWPH launcher button only appears on Torn faction pages.
+- The userscript still runs on other Torn pages so payment helper/autofill flows can keep working.
+
+### v1.1.197
+
+- Improved panel text contrast.
+- Changed launcher to a floating logo style.
+- Improved results loading timer and progress dots.
+- Added stronger desktop/PDA loading progress handling.
+
+---
+
+## Final Reminder
+
+RWPH is built to make ranked-war payout work faster and cleaner, but the faction/user remains responsible for checking calculations, confirming Torn payments, protecting keys, and following Torn rules.
