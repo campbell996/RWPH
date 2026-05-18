@@ -4,7 +4,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.210**  
+Current package version: **1.1.211**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -25,19 +25,23 @@ This package is not an official Torn product. Use it only in ways that follow To
 
 ## What Is Included
 
-The zip package contains:
+The zip package contains both the public userscript file and the owner/server-side files.
 
-| File | Purpose |
-| --- | --- |
-| `Torn_RW_Payout_Helper_Server_Locked.user.js` | The Tampermonkey/Torn PDA userscript. This is the panel users install. |
-| `server.js` | The Node.js backend server. It handles licences, admin tools, Torn API calls, and payout calculation. |
-| `package.json` | Node package metadata and dependencies. |
-| `.env.example` | Example server configuration. Copy this to `.env` and edit it. |
-| `RWPH_PRIVACY_AND_API_KEY_TERMS.md` | Extra privacy/API key terms. |
-| `rwph_launcher_logo_256.png` | Launcher logo image used by the panel/package. |
-| `start-server-windows.bat` | Windows helper file to start the backend. |
-| `start-server-mac-linux.sh` | Mac/Linux helper file to start the backend. |
-| `README.md` | This guide. |
+| File | Who it is for | Purpose |
+| --- | --- | --- |
+| `Torn_RW_Payout_Helper_Server_Locked.user.js` | **Users / members** | The Tampermonkey/Torn PDA userscript. This is the main file users install to open the RWPH panel on Torn faction pages. |
+| `README.md` | **Users and owner** | This guide. It explains what RWPH does, what is included, safe-use notes, and troubleshooting information. |
+| `RWPH_PRIVACY_AND_API_KEY_TERMS.md` | **Users and owner** | Extra privacy and API key terms that explain how API keys and data should be handled. |
+| `rwph_launcher_logo_256.png` | **Users and owner** | Launcher logo image used by the userscript/package. |
+| `server.js` | **Owner/server-side only** | The private Node.js backend. It handles licence checks, admin tools, Torn API requests, item-payment checks, and protected payout calculations. Do not give this file to normal users unless you want them to host their own backend. |
+| `package.json` | **Owner/server-side only** | Backend package metadata and dependency list used by the owner server. |
+| `.env.example` | **Owner/server-side only** | Example backend configuration file. The owner copies this to `.env` and fills in private server secrets/API settings. Never share your real `.env` file. |
+| `start-server-windows.bat` | **Owner/server-side only** | Windows helper file for starting the backend server. |
+| `start-server-mac-linux.sh` | **Owner/server-side only** | Mac/Linux helper file for starting the backend server. |
+
+Normal members usually only need the `.user.js` userscript. The owner/server-side files are for the person hosting and controlling the RWPH backend, licence system, admin tools, and payment checking.
+
+Important owner note: `paywall-db.json` is created by the backend when it runs. It stores licence/payment data and should be backed up and kept private. It is not meant to be shared with users.
 
 ---
 
@@ -569,6 +573,12 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.211
+
+- Updated the README **What Is Included** section to explain every file in the zip.
+- Clearly marked which files are public/userscript files and which files are owner/server-side only.
+- Added a private owner note for backend-created `paywall-db.json`.
 
 ### v1.1.210
 
