@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.220
+// @version      1.1.221
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1543,6 +1543,7 @@
   // v1.1.219: Use Cached Report opens matching cached reports, and server cache expires after 24 hours.
   // v1.1.219: licence verification rate limit is reduced to 2 checks per minute.
   // v1.1.220: moved cached report controls below Fetch + Calculate and renamed launcher movement controls.
+  // v1.1.221: loading results tab now matches the midnight-blue RWPH panel style and cache status updates immediately when a database cached report exists.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -5555,81 +5556,149 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RWPH Results Loading</title>
+  <title>RWPH Loading Results</title>
   <style>
     * { box-sizing:border-box; }
+    :root {
+      --bg:#020617;
+      --panel:#0f172a;
+      --panel2:#1e293b;
+      --line:rgba(125,211,252,.24);
+      --line2:rgba(125,211,252,.36);
+      --text:#eaf6ff;
+      --muted:#b9d7ee;
+      --soft:#7dd3fc;
+      --green:#22c55e;
+      --warn:#facc15;
+    }
     body {
       margin:0;
       min-height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-family: Inter, Segoe UI, Arial, sans-serif;
-      color:#f8fafc;
+      font-family:Arial, Helvetica, sans-serif;
+      color:var(--text);
       background:
-        radial-gradient(circle at 15% 0%, rgba(56,189,248,.22), transparent 28%),
-        radial-gradient(circle at 88% 0%, rgba(99,102,241,.22), transparent 28%),
-        linear-gradient(180deg, #020617, #0f172a 44%, #020617);
-      padding:20px;
-      text-align:center;
+        radial-gradient(circle at 14% 0%, rgba(56,189,248,.18), transparent 30%),
+        radial-gradient(circle at 88% 2%, rgba(99,102,241,.18), transparent 30%),
+        linear-gradient(180deg, #020617 0%, #0b1120 52%, #020617 100%);
+      padding:18px;
+      text-align:left;
     }
-    .box {
-      width:min(520px, 100%);
-      border:1px solid rgba(125,211,252,.28);
+    body::before {
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:repeating-linear-gradient(0deg, rgba(125,211,252,.035) 0 1px, transparent 1px 28px);
+      opacity:.55;
+    }
+    .rwph-loading-shell {
+      position:relative;
+      z-index:1;
+      width:min(680px, 100%);
+      overflow:hidden;
+      border:1px solid var(--line);
       border-radius:22px;
-      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.86));
-      box-shadow:0 20px 60px rgba(0,0,0,.48), 0 0 24px rgba(56,189,248,.10);
-      padding:22px;
+      background:radial-gradient(circle at 18% 0%, rgba(56,189,248,.14), transparent 34%), linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.94));
+      box-shadow:0 24px 70px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.06), 0 0 24px rgba(56,189,248,.09);
     }
-    img { width:48px; height:48px; object-fit:contain; filter:drop-shadow(0 0 12px rgba(56,189,248,.35)); }
-    h1 { margin:10px 0 6px; font-size:22px; }
-    p { margin:0; color:#a5b4fc; font-weight:800; line-height:1.45; }
-    .loading-note { margin-top:10px; color:#c8d3f7; font-weight:800; font-size:13px; }
-    .loading-time { margin:12px auto 0; display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border:1px solid rgba(56,189,248,.35); border-radius:999px; background:rgba(56,189,248,.09); color:#e0f2fe; font-weight:900; box-shadow:0 0 18px rgba(56,189,248,.08); }
-    .loading-dot { width:8px; height:8px; border-radius:999px; background:#38bdf8; box-shadow:0 0 12px rgba(56,189,248,.75); animation:rwphLoadPulse 1.2s ease-in-out infinite; }
-    .loading-list { margin:14px 0 0; padding:0; display:grid; gap:7px; text-align:left; list-style:none; }
-    .loading-list li { display:flex; gap:8px; align-items:flex-start; color:#d7d7d7; font-size:13px; font-weight:800; line-height:1.35; padding:8px 9px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.035); transition:border-color .2s ease, background .2s ease, color .2s ease; }
-    .loading-list li::before { content:""; flex:0 0 auto; width:7px; height:7px; margin-top:5px; border-radius:999px; background:#38bdf8; box-shadow:0 0 10px rgba(56,189,248,.35); transition:background .2s ease, box-shadow .2s ease, transform .2s ease; }
-    .loading-list li.rwph-load-step-active { border-color:rgba(56,189,248,.28); background:rgba(56,189,248,.07); color:#e0f2fe; }
-    .loading-list li.rwph-load-step-active::before { transform:scale(1.16); box-shadow:0 0 13px rgba(56,189,248,.70); }
-    .loading-list li.rwph-load-step-done { border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08); color:#dcfce7; }
-    .loading-list li.rwph-load-step-done::before { background:#22c55e; box-shadow:0 0 13px rgba(34,197,94,.75); transform:scale(1.05); }
-    .wait-note { margin-top:12px; padding:10px; border:1px solid rgba(250,204,21,.20); border-radius:8px; background:rgba(250,204,21,.07); color:#fef3c7; font-size:13px; font-weight:900; line-height:1.4; }
+    .rwph-loading-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
+      background:linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.88) 52%, rgba(49,46,129,.72));
+      border-bottom:1px solid var(--line);
+    }
+    .rwph-brand {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    img { width:42px; height:42px; object-fit:contain; filter:drop-shadow(0 0 14px rgba(125,211,252,.36)); }
+    h1 { margin:0; font-size:19px; line-height:1.1; color:#ffffff; text-shadow:0 1px 1px #000, 0 0 14px rgba(125,211,252,.22); }
+    .sub { margin-top:3px; color:var(--muted); font-size:12px; font-weight:800; line-height:1.35; }
+    .loading-time {
+      flex:0 0 auto;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 11px;
+      border:1px solid var(--line2);
+      border-left:4px solid rgba(56,189,248,.78);
+      border-radius:14px;
+      background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88));
+      color:#e0f2fe;
+      font-size:12px;
+      font-weight:950;
+      box-shadow:0 10px 24px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05);
+      white-space:nowrap;
+    }
+    .loading-dot { width:8px; height:8px; border-radius:999px; background:#38bdf8; box-shadow:0 0 12px rgba(56,189,248,.85); animation:rwphLoadPulse 1.2s ease-in-out infinite; }
+    .rwph-loading-body { padding:14px; display:grid; gap:12px; }
+    .rwph-info-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+    .rwph-info-card,
+    .wait-note,
+    .loading-list li {
+      border:1px solid rgba(125,211,252,.16);
+      border-radius:14px;
+      background:linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .rwph-info-card { padding:10px; min-height:78px; }
+    .rwph-info-title { color:#ffffff; font-weight:950; font-size:12px; margin-bottom:5px; text-shadow:0 1px 1px #000, 0 0 10px rgba(125,211,252,.18); }
+    .rwph-info-text { color:#cfe8ff; font-weight:800; font-size:11px; line-height:1.42; }
+    .loading-list { margin:0; padding:0; display:grid; gap:8px; list-style:none; }
+    .loading-list li { display:flex; gap:9px; align-items:flex-start; color:#dbeafe; font-size:12px; font-weight:850; line-height:1.36; padding:10px; transition:border-color .2s ease, background .2s ease, color .2s ease; }
+    .loading-list li::before { content:""; flex:0 0 auto; width:9px; height:9px; margin-top:3px; border-radius:999px; background:#38bdf8; box-shadow:0 0 10px rgba(56,189,248,.45); transition:background .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .loading-list li.rwph-load-step-active { border-color:rgba(56,189,248,.40); background:linear-gradient(180deg, rgba(14,165,233,.16), rgba(2,6,23,.48)); color:#f0f9ff; }
+    .loading-list li.rwph-load-step-active::before { transform:scale(1.18); box-shadow:0 0 14px rgba(56,189,248,.80); }
+    .loading-list li.rwph-load-step-done { border-color:rgba(34,197,94,.42); background:linear-gradient(180deg, rgba(34,197,94,.13), rgba(2,6,23,.48)); color:#dcfce7; }
+    .loading-list li.rwph-load-step-done::before { background:var(--green); box-shadow:0 0 14px rgba(34,197,94,.85); transform:scale(1.05); }
+    .wait-note { padding:11px 12px; border-color:rgba(250,204,21,.25); background:linear-gradient(180deg, rgba(113,63,18,.30), rgba(2,6,23,.52)); color:#fef3c7; font-size:12px; font-weight:850; line-height:1.45; }
+    .wait-note b { color:#fff7d6; }
     @keyframes rwphLoadPulse { 0%,100%{transform:scale(.85);opacity:.65;} 50%{transform:scale(1.18);opacity:1;} }
-  
-    /* v1.1.102 Torn-style dark/red theme */
-    body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
-    body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
-    .wrap,.newsletter,main,.panel,.card,.member-card,.summary-card,.stat-card,.chart-card,.table-card,.hero,.toolbar,.box{background:linear-gradient(180deg,#242424,#1a1a1a)!important;border:1px solid #3a3a3a!important;color:#d7d7d7!important;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04)!important;border-radius:8px!important;}
-    header,.hero,.titlebar{background:linear-gradient(180deg,#303030,#202020)!important;border-color:#454545!important;border-bottom:3px solid #7b1f1f!important;}
-    h1,h2,h3,.title,.member-name,.value,.payout,strong,b{color:#f2f2f2!important;text-shadow:0 1px 0 #000!important;}
-    p,.muted,.label,td,li,span{color:#c8c8c8!important;}
-    .btn,button,a.btn{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border:1px solid rgba(125,211,252,.24)!important;border-left:4px solid rgba(56,189,248,.66)!important;border-radius:7px!important;box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important;text-shadow:0 1px 0 rgba(0,0,0,.75)!important;}
-    .btn:hover,button:hover,a.btn:hover{filter:brightness(1.08)!important;}
-    .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
-    th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
-    /* v1.1.132 Torn newsletter chart bars match the legend dots: payout = green top bar, weighted contribution = blue bottom bar */
-    .bar.payout{background:linear-gradient(90deg,var(--green),#e0f2fe)!important;box-shadow:0 0 16px rgba(134,239,172,.22)!important;}
-    .bar.weight{background:linear-gradient(90deg,var(--blue),var(--indigo))!important;box-shadow:0 0 14px rgba(56,189,248,.22)!important;}
-
+    @media (max-width:680px){
+      body { padding:10px; align-items:flex-start; }
+      .rwph-loading-head { align-items:flex-start; flex-direction:column; }
+      .loading-time { width:100%; justify-content:center; }
+      .rwph-info-grid { grid-template-columns:1fr; }
+      h1 { font-size:17px; }
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
-    <h1>RWPH Results Loading</h1>
-    <p>Fetch + Calculate is running. This tab will fill with your payout results when the server finishes.</p>
-    <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0 sec</b></span></div>
-    <p class="loading-note">RWPH is working through the latest completed ranked-war data now. Please leave this tab open until the results replace this screen.</p>
-    <ul class="loading-list" aria-label="What RWPH is loading">
-      <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence with the server.</li>
-      <li data-rwph-load-step="1">Fetches the attack log for the last finished ranked-war start and finish times.</li>
-      <li data-rwph-load-step="2">Sorts war hits, outside hits, retals, and assists.</li>
-      <li data-rwph-load-step="3">Applies your weights and splits the payout pool across members.</li>
-      <li data-rwph-load-step="4">Builds the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
-    </ul>
-    <div class="wait-note">Completed-war mode is active. RWPH only calculates the latest finished ranked war. Estimated wait: small wars often load in 10-30 seconds. Bigger wars or slower Torn/API responses can take 1-3 minutes. If Torn rate-limits the API, RWPH will pause and retry automatically, so it may take a little longer instead of failing straight away.</div>
-  </div>
+  <main class="rwph-loading-shell">
+    <div class="rwph-loading-head">
+      <div class="rwph-brand">
+        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
+        <div>
+          <h1>Loading Results</h1>
+          <div class="sub">RWPH is building a completed-war payout report using the same backend/database rules as the main panel.</div>
+        </div>
+      </div>
+      <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0 sec</b></span></div>
+    </div>
+    <section class="rwph-loading-body">
+      <div class="rwph-info-grid" aria-label="RWPH loading rules">
+        <div class="rwph-info-card"><div class="rwph-info-title">Last finished war only</div><div class="rwph-info-text">Active/current wars are blocked until Torn marks the ranked war as finished.</div></div>
+        <div class="rwph-info-card"><div class="rwph-info-title">Database cache only</div><div class="rwph-info-text">Cached reports come from the backend/database, not old browser-saved results.</div></div>
+        <div class="rwph-info-card"><div class="rwph-info-title">24 hour cache</div><div class="rwph-info-text">Matching cached reports can be opened with Use Cached Report and are deleted after 24 hours.</div></div>
+      </div>
+      <ul class="loading-list" aria-label="What RWPH is loading">
+        <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence and confirms server access.</li>
+        <li data-rwph-load-step="1">Checks the backend/database report cache for this finished war and payout setup.</li>
+        <li data-rwph-load-step="2">Fetches and sorts war hits, outside hits, retals, and assists.</li>
+        <li data-rwph-load-step="3">Applies your weights and splits the payout pool across members.</li>
+        <li data-rwph-load-step="4">Builds the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
+      </ul>
+      <div class="wait-note"><b>Public performance mode:</b> RWPH queues heavy calculations, reuses matching completed-war database cache, and retries Torn API rate limits automatically. Small wars often load quickly; bigger wars or Torn/API delays can take longer.</div>
+    </section>
+  </main>
   <script>
     (function(){
       var started = Date.now();
@@ -5638,7 +5707,6 @@
       var rwphProgressId = ${JSON.stringify(String(progressId || ""))};
       var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
       var highestDoneStep = -1;
-      var stepDoneAtSeconds = [3, 12, 22, 35, 50];
       function formatElapsed(total){
         return total + " " + (total === 1 ? "sec" : "secs");
       }
@@ -5693,6 +5761,7 @@
 </body>
 </html>`;
   }
+
 
   function rwphFormatResultsLoadingElapsed(startedAt) {
     const total = Math.max(0, Math.floor((Date.now() - Number(startedAt || Date.now())) / 1000));
@@ -5952,6 +6021,11 @@
     const buttonAvailable = rwphCachedReportAvailable;
     const btn = document.getElementById("rw-use-cache");
     const cacheStatus = document.getElementById("rw-cache-status");
+    const factionName = info?.factionName || info?.summary?.factionName || info?.cache?.factionName || "";
+    const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
+    const cachedAtMs = Number(info?.cachedAtMs || info?.cache?.cachedAtMs || info?.summary?.cachedAtMs || 0);
+    const expiryText = expiresAtMs ? ` Expires in ${rwphFormatCountdownMs(expiresAtMs - Date.now())}.` : "";
+    const cachedText = cachedAtMs ? ` Saved ${new Date(cachedAtMs).toLocaleString()}.` : "";
 
     if (btn) {
       btn.hidden = false;
@@ -5959,9 +6033,9 @@
       btn.textContent = buttonAvailable ? "Use Cached Report" : "No Cached Report Yet";
       btn.title = buttonAvailable ? "Open the matching backend/database cached report for the latest finished ranked war." : "RWPH auto-checks the backend/database for a matching cached report when your key and payout settings are ready.";
     }
-    if (cacheStatus && !silent) {
+    if (cacheStatus && (rwphCachedReportAvailable || !silent)) {
       cacheStatus.textContent = rwphCachedReportAvailable
-        ? `Database cached report found${info?.factionName ? ` for ${info.factionName}` : ""}. Click Use Cached Report to open it.`
+        ? `Database cached report found${factionName ? ` for ${factionName}` : ""}. Click Use Cached Report to open it.${expiryText}${cachedText}`
         : "No matching database cached report found yet. Fetch + Calculate will create one.";
     }
   }
@@ -9279,7 +9353,7 @@
         lastSummary = result.summary || {};
         rwphStorePayAllRows(lastRows);
         rwphSaveLastResults(lastRows, lastSummary);
-        rwphSetCacheButtonState(true, { factionName: lastSummary?.factionName || "" }, true);
+        rwphSetCacheButtonState(true, { factionName: lastSummary?.factionName || result.factionName || "", cache: result.cache || null, expiresAtMs: result.cache?.expiresAtMs || 0, cachedAtMs: result.cache?.cachedAtMs || 0 }, false);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
         if (stopProgressPolling) {

@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.220**  
+Current package version: **1.1.221**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -583,6 +583,13 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.221
+
+- Updated the loading/results tab information to explain completed-war mode, database-only cached reports, 24-hour cache expiry, queueing, and Torn API retries.
+- Restyled the loading/results tab to match the midnight-blue RWPH panel/card theme.
+- Fixed cached-report status text so it updates immediately when a matching backend/database cached report exists.
+- Backend now returns saved cache expiry metadata after creating a new report.
 
 ### v1.1.220
 
