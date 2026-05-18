@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.221**
+Version: **1.1.222**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -154,6 +154,10 @@ RWPH no longer reopens old browser-saved payout reports as a cache fallback. **U
 
 The cached report controls are now positioned directly below **Fetch + Calculate** in the payout panel, and the launcher corner control is named **Launcher Movement**. This is a layout/name change only and does not change the backend/database-only cached report privacy behaviour.
 
+
+## v1.1.222 Cache Timestamp Display Update
+
+RWPH now shows cached report status using exact saved and expiry timestamps instead of a countdown-style expiry timer. Cached reports are still backend/database-only and still expire/delete after 24 hours.
 
 ## v1.1.221 Loading Results and Cache Status Update
 

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.221
+// @version      1.1.222
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1543,7 +1543,7 @@
   // v1.1.219: Use Cached Report opens matching cached reports, and server cache expires after 24 hours.
   // v1.1.219: licence verification rate limit is reduced to 2 checks per minute.
   // v1.1.220: moved cached report controls below Fetch + Calculate and renamed launcher movement controls.
-  // v1.1.221: loading results tab now matches the midnight-blue RWPH panel style and cache status updates immediately when a database cached report exists.
+  // v1.1.222: cached report status now shows exact saved and expiry timestamps instead of countdown text.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -6024,8 +6024,8 @@
     const factionName = info?.factionName || info?.summary?.factionName || info?.cache?.factionName || "";
     const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
     const cachedAtMs = Number(info?.cachedAtMs || info?.cache?.cachedAtMs || info?.summary?.cachedAtMs || 0);
-    const expiryText = expiresAtMs ? ` Expires in ${rwphFormatCountdownMs(expiresAtMs - Date.now())}.` : "";
     const cachedText = cachedAtMs ? ` Saved ${new Date(cachedAtMs).toLocaleString()}.` : "";
+    const expiryText = expiresAtMs ? ` Expires ${new Date(expiresAtMs).toLocaleString()}.` : "";
 
     if (btn) {
       btn.hidden = false;
@@ -6035,7 +6035,7 @@
     }
     if (cacheStatus && (rwphCachedReportAvailable || !silent)) {
       cacheStatus.textContent = rwphCachedReportAvailable
-        ? `Database cached report found${factionName ? ` for ${factionName}` : ""}. Click Use Cached Report to open it.${expiryText}${cachedText}`
+        ? `Database cached report found${factionName ? ` for ${factionName}` : ""}. Click Use Cached Report to open it.${cachedText}${expiryText}`
         : "No matching database cached report found yet. Fetch + Calculate will create one.";
     }
   }
