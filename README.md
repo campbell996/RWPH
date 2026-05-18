@@ -1,10 +1,16 @@
 # Ranked War Payout Helper
 
-<a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js"><img src="https://img.shields.io/badge/Download%20Here-RWPH%20Userscript-0b1220?style=for-the-badge" alt="Download Here"></a>
+<p align="center">
+  <a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js">
+    <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download Here">
+  </a>
+</p>
+
+<p align="center"><strong>Click Download Here to install or update the RWPH userscript.</strong></p>
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.212**  
+Current package version: **1.1.213**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -573,6 +579,11 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.213
+
+- Updated `RWPH_PRIVACY_AND_API_KEY_TERMS.md` with clearer API key, backend, licence data, manual-action, and owner responsibility terms.
+- Made the README **Download Here** button stand out more at the top of the page.
 
 ### v1.1.212
 

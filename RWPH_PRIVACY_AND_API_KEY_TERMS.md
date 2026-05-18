@@ -1,34 +1,132 @@
+# RWPH Privacy and API Key Terms
 
-## v1.1.212 API ToS / Usage Summary
+Version: **1.1.213**
 
-RWPH uses a saved Torn API key to verify the user's Torn ID/faction access and fetch the ranked war data needed for payout calculations. This may include faction/member names and IDs, ranked war timing where available, and attack records inside the selected war time window.
+These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
-The userscript stores the API key locally in browser/Torn PDA userscript storage when the user clicks **Save Key**. The key is sent to the configured RWPH backend only when checking licence/payment access or calculating payout results. The backend is not designed to save user API keys in `paywall-db.json`.
+---
 
-RWPH does not need the user's Torn password, does not log into the user's Torn account, and does not automatically send Torn money or Xanax. All Torn money payments and Xanax item sends must be reviewed and confirmed manually by the user inside Torn.
+## Important Manual-Use Notice
 
-# RWPH Privacy And API Key Terms
+RWPH does **not** send items, send cash, confirm payments, attack, buy, sell, travel, or perform Torn gameplay actions automatically. Users must manually review and confirm all Torn actions inside Torn.
 
-## Purpose of Use
-RWPH uses a user's Torn API key to identify the Torn account, verify licence ownership, fetch faction and ranked-war data, calculate payouts, check licence status, and check payment/licence extension status.
+RWPH can calculate payout results, prepare payment rows, copy payment details, prefill some Torn fields where available, and create exports/newsletter text. The user/faction remains responsible for checking results before making any Torn payments.
 
-## API Key Access Level
-Users should use a Torn Limited Access API key with only the access needed for faction API calls and ranked-war payout calculations. Users should not provide a full-access key.
+---
 
-## Local Key Storage
-When a user clicks Save Key, the userscript stores the key locally in that user's Tampermonkey or Torn PDA storage on that device.
+## Purpose of Torn API Key Use
 
-## Backend Key Handling
-The key is sent to the RWPH backend during unlock, licence, payment, war-time, and calculation requests so the backend can call the Torn API. The backend is not designed to save user API keys in paywall-db.json.
+RWPH asks for a Torn API key so it can perform the checks and calculations needed by the tool. Depending on the action being used, this may include:
+
+- Verifying the user's Torn ID and name.
+- Verifying faction/ranked-war access where required.
+- Fetching faction/member names and IDs.
+- Fetching ranked-war timing where available.
+- Fetching attack records inside the selected ranked-war time window.
+- Checking licence status, trial status, and payment/licence extension status.
+- Sending the required calculation data to the configured RWPH backend so payouts can be calculated server-side.
+
+RWPH does **not** need the user's Torn password. Users should never enter a Torn password into RWPH.
+
+---
+
+## Recommended API Key Access Level
+
+Users should use a Torn API key with only the access needed for faction and ranked-war payout calculations. A full-access key should not be provided unless the user fully understands and accepts the risk.
+
+If a key is no longer needed, or if the user no longer wants RWPH to use it, the user should revoke or rotate the key from Torn's API key settings.
+
+---
+
+## Local API Key Storage
+
+When a user clicks **Save Key**, the userscript stores the Torn API key locally in that user's browser/Tampermonkey/Torn PDA userscript storage on that device.
+
+Local storage means:
+
+- The saved key is intended to stay on the user's device.
+- Clearing userscript/browser storage may remove the saved key.
+- Anyone with access to the same browser profile/device may be able to use the saved RWPH session.
+
+Users who do not want the key saved locally can paste the key when needed instead of using **Save Key**.
+
+---
+
+## Backend API Key Handling
+
+The user's API key may be sent to the configured RWPH backend during unlock, trial, licence, payment, war-time, and payout calculation requests. This allows the backend to call Torn's API and run protected server-side logic.
+
+The backend is not designed to save user API keys inside `paywall-db.json`. Server owners should still avoid logging API keys and should protect server logs, hosting dashboards, backups, crash reports, and any request inspection tools that could expose sensitive data.
+
+---
 
 ## Backend Stored Data
-The backend database may store licence records, trial use, payment codes, used payment records, Xanax quantities, bonus progress, revoked users, payment fingerprints, Torn IDs, names, and expiry times.
+
+The backend database, normally `paywall-db.json` or the path set by `DB_FILE`, may store operational data needed for licences and payment verification. This can include:
+
+- Torn IDs and Torn names.
+- Licence expiry times.
+- Trial-use records.
+- Payment codes.
+- Used payment records or payment fingerprints.
+- Required item/payment quantities.
+- Bonus progress or milestone records.
+- Revoked users or removed licence records.
+- Admin-created licence grants/extensions/removals.
+
+This data is used to operate RWPH's licence, payment, trial, and admin systems.
+
+---
+
+## Data Not Intended To Be Stored
+
+RWPH is not designed to store:
+
+- Torn passwords.
+- User API keys inside `paywall-db.json`.
+- Automatic Torn cash/item send confirmations.
+- Hidden gameplay actions.
+
+Server owners should not modify RWPH to collect unnecessary private information.
+
+---
 
 ## Data Sharing
-RWPH data is for operating the tool only. User API keys and licence/payment records will not be sold, posted publicly, or shared with unrelated third parties.
+
+RWPH data should be used only to operate the tool, verify licences/payments, and calculate ranked-war payouts. User API keys, licence records, payment records, faction/member data, and payout results should not be sold, posted publicly, or shared with unrelated third parties.
+
+Faction officers or server owners may share payout exports/results within their faction where appropriate, but they should still avoid exposing unnecessary API key, server, or licence information.
+
+---
+
+## Owner / Server Host Responsibility
+
+The person hosting the RWPH backend is responsible for protecting server-side files and secrets, including:
+
+- `.env`
+- `OWNER_TORN_API_KEY`
+- `ADMIN_KEY`
+- `PAYWALL_SECRET`
+- `paywall-db.json` or the configured `DB_FILE` path
+- Server logs and backups
+- Hosting provider access
+
+The owner should use long random secrets, keep the server updated, restrict admin access, and avoid sharing owner/server-side files with normal users unless they are intended to host their own backend.
+
+---
 
 ## User Responsibility
-Users should revoke or rotate their Torn API key anytime they no longer want RWPH to use it.
 
-## Owner Responsibility
-The backend owner must keep .env, OWNER_TORN_API_KEY, ADMIN_KEY, PAYWALL_SECRET, and paywall-db.json private and secure.
+Users are responsible for:
+
+- Providing an appropriate Torn API key.
+- Reviewing payout results before paying.
+- Manually confirming any Torn cash/item actions.
+- Revoking or rotating their API key if they stop using RWPH.
+- Following Torn rules and their faction's rules.
+
+---
+
+## No Official Torn Affiliation
+
+RWPH is a community-made tool and is not an official Torn product. Use it only in ways that follow Torn rules, Torn API rules, your faction rules, and your own server/licence setup.
