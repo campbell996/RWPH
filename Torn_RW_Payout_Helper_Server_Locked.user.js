@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.222
+// @version      1.1.223
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -566,13 +566,18 @@
   function savePendingPayment(result) {
     if (!result || !result.code) return;
 
+    const createdAtMs = Number(result.createdAtMs || (Number(result.createdAt || 0) ? Number(result.createdAt) * 1000 : 0)) || Date.now();
+    const expiresAtMs = Number(result.expiresAtMs || (Number(result.expiresAt || 0) ? Number(result.expiresAt) * 1000 : 0)) || (Date.now() + PENDING_PAYMENT_TTL_MS);
+
     const pending = {
       code: String(result.code),
       instructions: String(result.instructions || ""),
       tornId: result.tornId ? String(result.tornId) : "",
       name: result.name ? String(result.name) : "",
-      createdAtMs: Date.now(),
-      expiresAtMs: Date.now() + PENDING_PAYMENT_TTL_MS,
+      createdAtMs,
+      expiresAtMs,
+      source: String(result.source || "database-pending-payment"),
+      databaseBacked: true,
     };
 
     GM_setValue(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(pending));
@@ -590,8 +595,17 @@
       const pending = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (!pending || !pending.code || !pending.expiresAtMs) return null;
 
+      // v1.1.223: old browser-only pending payment records are not accepted as truth.
+      // A current payment code must have come from /api/paywall/start or /api/paywall/pending.
+      if (!pending.databaseBacked && pending.source !== "database-pending-payment") {
+        clearPendingPayment();
+        GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
+        return null;
+      }
+
       if (Date.now() > Number(pending.expiresAtMs)) {
         clearPendingPayment();
+        GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
         return null;
       }
 
@@ -658,19 +672,12 @@
       return Number(pending.expiresAtMs);
     }
 
-    try {
-      const raw = GM_getValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
-      const existing = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
-      if (existing?.code && String(existing.code) === normalizedCode && Number(existing.expiresAtMs || 0)) {
-        return Number(existing.expiresAtMs);
-      }
-    } catch (_) {}
-
-    return Date.now() + PENDING_PAYMENT_TTL_MS;
+    // v1.1.223: do not use browser-only helper storage as payment truth.
+    return 0;
   }
 
   function saveXanaxPaymentHelper(code) {
-    if (!code) return;
+    if (!code) return false;
     const normalizedCode = String(code);
     const pending = getPendingPayment();
     const expiryFromMainPaymentCard = pending?.code && String(pending.code) === normalizedCode
@@ -680,6 +687,11 @@
       ? expiryFromMainPaymentCard
       : rwphPaymentExpiryForCode(normalizedCode);
 
+    if (!pending || String(pending.code) !== normalizedCode || !expiresAtMs) {
+      GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
+      return false;
+    }
+
     const payload = {
       code: normalizedCode,
       receiverId: PAYMENT_RECEIVER_ID,
@@ -687,10 +699,13 @@
       receiverText: PAYMENT_RECEIVER_TEXT,
       itemId: PAYMENT_ITEM_ID,
       itemName: PAYMENT_ITEM_NAME,
-      createdAtMs: Date.now(),
+      createdAtMs: pending.createdAtMs || Date.now(),
       expiresAtMs,
+      source: pending.source || "database-pending-payment",
+      databaseBacked: true,
     };
     GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, JSON.stringify(payload));
+    return true;
   }
 
   function getXanaxPaymentHelper() {
@@ -699,6 +714,10 @@
       if (!raw) return null;
       const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (!payload || !payload.code || !payload.expiresAtMs) return null;
+      if (!payload.databaseBacked && payload.source !== "database-pending-payment") {
+        GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
+        return null;
+      }
       if (Date.now() > Number(payload.expiresAtMs)) {
         GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
         return null;
@@ -854,6 +873,37 @@
     if (status) status.textContent = message;
   }
 
+  async function restorePendingPaymentFromDatabase(userKey, mode = "unlock") {
+    const key = userKey || getPaymentUserKey();
+    if (!key) {
+      clearPendingPayment();
+      updatePendingPaymentUi();
+      return null;
+    }
+
+    try {
+      const result = await apiPost("/api/paywall/pending", { userKey: key });
+      if (result && result.pending && result.code) {
+        savePendingPayment(result);
+        saveXanaxPaymentHelper(result.code);
+        updatePendingPaymentUi();
+        startAutoPaymentCheck(key, mode);
+        return result;
+      }
+
+      clearPendingPayment();
+      GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
+      updatePendingPaymentUi();
+      return null;
+    } catch (e) {
+      // Do not trust a browser-only payment cache when the database lookup fails.
+      clearPendingPayment();
+      updatePendingPaymentUi();
+      console.warn("Could not restore pending payment from backend/database:", e);
+      return null;
+    }
+  }
+
 
   function closeWrongPaymentPanel() {
     document.getElementById("rw-wrong-payment-panel")?.remove();
@@ -922,6 +972,8 @@
           showWrongPaymentPanel(msg);
           return false;
         }
+        if (result.pending && result.code) savePendingPayment(result);
+        else { clearPendingPayment(); GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, ""); }
         const mins = pendingPaymentMinutesLeft(getPendingPayment());
         setPaymentStatus(result.error || `Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in ${mins} minute(s).`, mode);
         updatePendingPaymentUi();
@@ -1544,6 +1596,7 @@
   // v1.1.219: licence verification rate limit is reduced to 2 checks per minute.
   // v1.1.220: moved cached report controls below Fetch + Calculate and renamed launcher movement controls.
   // v1.1.222: cached report status now shows exact saved and expiry timestamps instead of countdown text.
+  // v1.1.223: payment codes are restored from the backend/database only; Payments Copy Panel buttons disappear after use and can restore the last hidden button.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -5161,12 +5214,12 @@
         <li><b>Name + ID</b> copies the member name and Torn ID, and tries to prefill the visible member field.</li>
         <li><b>Amount</b> copies that member's payout amount, and tries to prefill the visible money field.</li>
         <li>After a Name + ID or Amount button is pressed once, that lock ends so you can track what has already been used.</li>
-        <li>Use <b>Undo Last Disappear</b> to bring back the most recently hidden button.</li>
+        <li>Use <b>Bring Back Disappeared Button</b> to bring back the most recently hidden button.</li>
         <li>If a field is not visible, open the correct faction banking/add money area first, then use Undo and press the button again.</li>
         <li>You still manually review the member, amount, and final Torn confirmation. RWPH never clicks Add Money, Send, or Confirm.</li>
       </ul>
     </div>
-    <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Undo Last Disappear</button>
+    <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Bring Back Disappeared Button</button>
     <div class="pay-all-list" id="payAllList"></div>
     <div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>
     <div class="resize-handle resize-handle-sw" data-resize-dir="sw" title="Resize from bottom-left"></div>
@@ -6265,12 +6318,12 @@
             <li><b>Name + ID</b> copies/prefills the member.</li>
             <li><b>Amount</b> copies/prefills the payout money.</li>
             <li>Buttons disappear after one click so you can track progress.</li>
-            <li>Use <b>Undo Last Disappear</b> to bring back the last hidden button.</li>
+            <li>Use <b>Bring Back Disappeared Button</b> to bring back only the most recently hidden button.</li>
             <li>Open the correct add money/banking fields first. If Torn hides the amount field until a member is selected, press Name + ID first, then press Amount.</li>
             <li>You manually review and confirm every payment in Torn.</li>
           </ul>
         </div>
-        <button type="button" class="secondary rw-pay-all-undo" data-pay-all-undo="1">Undo Last Disappear</button>
+        <button type="button" class="secondary rw-pay-all-undo" data-pay-all-undo="1">Bring Back Disappeared Button</button>
         <div class="rw-pay-all-list">
           ${safeRows.map((r, index) => {
             const name = r.name || `Unknown ${r.id || "unknown"}`;
@@ -8174,7 +8227,9 @@
               <li><b>Extend Licence:</b> creates an extension payment code and opens the same helper.</li>
               <li><b>Each Xanax:</b> extends the licence by the amount configured on the server.</li>
               <li><b>Payment Code Ready:</b> shows the receiver, payment code, and a live expiry timer.</li>
-              <li><b>Xanax Payment Helper:</b> uses the same saved expiry timer as the main Payment Code Ready card, so refreshing the page does not restart the countdown.</li>
+              <li><b>Xanax Payment Helper:</b> can restore the current pending payment code from the backend/database, so refreshing the page can recover an active code.</li>
+              <li><b>Live payment checks:</b> the Xanax helper always re-checks payment status live through the backend/Torn API before licence days are added.</li>
+              <li><b>No browser-only licence/payment truth:</b> browser-saved licence or payment status is not accepted as final. Current pending codes must exist in the backend/database.</li>
               <li><b>Manual Xanax confirmation:</b> RWPH can show/copy/prefill the receiver and payment code, but you must personally review and confirm the Xanax send inside Torn.</li>
               <li><b>Copy buttons:</b> Copy Receiver and Copy Code are in the helper so you can paste the exact details into Torn.</li>
               <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel.</li>
@@ -8512,7 +8567,7 @@
     });
 
     updatePendingPaymentUi();
-    startAutoPaymentCheck(document.getElementById("rw-paywall-key")?.value.trim(), "unlock");
+    restorePendingPaymentFromDatabase(document.getElementById("rw-paywall-key")?.value.trim(), "unlock");
     setInterval(updatePendingPaymentUi, 30000);
 
     document.getElementById("rw-check-license-days").addEventListener("click", async () => {
@@ -8858,7 +8913,9 @@
               <li><b>Extend Licence:</b> creates an extension payment code and opens the same helper.</li>
               <li><b>Each Xanax:</b> extends the licence by the amount configured on the server.</li>
               <li><b>Payment Code Ready:</b> shows the receiver, payment code, and a live expiry timer.</li>
-              <li><b>Xanax Payment Helper:</b> uses the same saved expiry timer as the main Payment Code Ready card, so refreshing the page does not restart the countdown.</li>
+              <li><b>Xanax Payment Helper:</b> can restore the current pending payment code from the backend/database, so refreshing the page can recover an active code.</li>
+              <li><b>Live payment checks:</b> the Xanax helper always re-checks payment status live through the backend/Torn API before licence days are added.</li>
+              <li><b>No browser-only licence/payment truth:</b> browser-saved licence or payment status is not accepted as final. Current pending codes must exist in the backend/database.</li>
               <li><b>Manual Xanax confirmation:</b> RWPH can show/copy/prefill the receiver and payment code, but you must personally review and confirm the Xanax send inside Torn.</li>
               <li><b>Copy buttons:</b> Copy Receiver and Copy Code are in the helper so you can paste the exact details into Torn.</li>
               <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel.</li>
@@ -9247,7 +9304,7 @@
 
     startLicenseExpiryMonitor();
     updatePendingPaymentUi();
-    startAutoPaymentCheck(document.getElementById("rw-key")?.value.trim(), "extend");
+    restorePendingPaymentFromDatabase(document.getElementById("rw-key")?.value.trim(), "extend");
 
     document.getElementById("rw-autofill").addEventListener("click", async () => {
       const status = document.getElementById("rw-status");
