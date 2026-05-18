@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.226
+// @version      1.1.227
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1637,6 +1637,7 @@
   // v1.1.224: payment codes are restored from the backend/database only; Payments Copy Panel buttons disappear after use and can restore the last hidden button.
   // v1.1.225: Your Expiration has a browser-side 2/minute click guard, and Payments Copy Panel hiding now uses forced !important hidden state.
   // v1.1.226: fullscreen Fetch + Calculate results panel now matches the RWPH midnight-blue main panel theme and layout.
+  // v1.1.227: fullscreen Fetch + Calculate results panel layout rebuilt with a report header, summary strip, action side panel, and main member results area.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -5434,34 +5435,270 @@
       .title{padding:10px 8px!important;}
     }
 
+    /* v1.1.227: results page layout refresh */
+    body{padding:16px!important;}
+    .app{
+      display:grid!important;
+      grid-template-columns:minmax(0, 1fr) 350px!important;
+      grid-template-areas:
+        "hero hero"
+        "summary actions"
+        "results actions"!important;
+      gap:14px!important;
+      max-width:1420px!important;
+      margin:0 auto!important;
+      align-items:start!important;
+    }
+    .hero{
+      grid-area:hero!important;
+      position:relative!important;
+      top:auto!important;
+      z-index:1!important;
+      min-height:0!important;
+      max-height:none!important;
+      margin:0!important;
+      overflow:visible!important;
+      padding:14px!important;
+    }
+    .results-hero-head{
+      display:grid!important;
+      grid-template-columns:auto minmax(0,1fr)!important;
+      gap:12px!important;
+      align-items:center!important;
+    }
+    .results-hero-logo{
+      width:56px!important;
+      height:56px!important;
+      object-fit:contain!important;
+      filter:drop-shadow(0 0 16px rgba(125,211,252,.42))!important;
+    }
+    .results-hero-copy{text-align:left!important;min-width:0!important;}
+    .results-hero-copy h1{
+      font-size:24px!important;
+      line-height:1.08!important;
+      margin:0 0 6px!important;
+      text-align:left!important;
+    }
+    .results-mode-note{
+      margin:0!important;
+      max-width:900px!important;
+      text-align:left!important;
+    }
+    .results-hero-meta{
+      display:grid!important;
+      grid-template-columns:repeat(4,minmax(0,1fr))!important;
+      gap:9px!important;
+      margin-top:12px!important;
+    }
+    .results-meta-card,
+    .results-section-head,
+    .results-side-panel{
+      border:1px solid rgba(125,211,252,.18)!important;
+      border-left:4px solid rgba(56,189,248,.58)!important;
+      border-radius:16px!important;
+      background:linear-gradient(180deg, rgba(30,41,59,.78), rgba(2,6,23,.58))!important;
+      box-shadow:0 12px 28px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.045)!important;
+    }
+    .results-meta-card{
+      padding:10px!important;
+      text-align:left!important;
+      overflow:hidden!important;
+    }
+    .results-meta-card span,
+    .results-section-head span{
+      display:block!important;
+      color:#bfdbfe!important;
+      font-size:10px!important;
+      letter-spacing:.52px!important;
+      text-transform:uppercase!important;
+      font-weight:950!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.70)!important;
+    }
+    .results-meta-card b{
+      display:block!important;
+      margin-top:4px!important;
+      color:#ffffff!important;
+      font-size:16px!important;
+      line-height:1.16!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.92),0 0 12px rgba(125,211,252,.18)!important;
+    }
+    .summary{
+      grid-area:summary!important;
+      display:grid!important;
+      grid-template-columns:repeat(4,minmax(0,1fr))!important;
+      gap:10px!important;
+      margin:0!important;
+      align-self:start!important;
+    }
+    .summary-card{text-align:left!important;padding:12px!important;}
+    .summary-card b{text-align:left!important;font-size:17px!important;}
+    .results-side-panel{
+      grid-area:actions!important;
+      position:sticky!important;
+      top:16px!important;
+      display:grid!important;
+      gap:9px!important;
+      padding:12px!important;
+      margin:0!important;
+      align-self:start!important;
+      max-height:calc(100vh - 32px)!important;
+      overflow:auto!important;
+      scrollbar-width:thin!important;
+      scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36)!important;
+    }
+    .results-side-title{
+      margin:0!important;
+      color:#ffffff!important;
+      font-size:15px!important;
+      font-weight:950!important;
+      letter-spacing:.24px!important;
+      text-align:left!important;
+    }
+    .newsletter-zone .newsletter-top-btn,
+    .results-action-zone .btn{
+      width:100%!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      min-height:36px!important;
+      padding:9px 10px!important;
+      text-align:center!important;
+    }
+    .newsletter-choice-note,
+    .newsletter-use-note,
+    .close-hint,
+    .results-action-note{
+      text-align:left!important;
+      font-size:10.5px!important;
+      line-height:1.34!important;
+    }
+    .results-action-zone{
+      display:grid!important;
+      grid-template-columns:1fr!important;
+      gap:8px!important;
+      margin:0!important;
+      padding:0!important;
+    }
+    .member-results-panel{
+      grid-area:results!important;
+      min-width:0!important;
+    }
+    .results-section-head{
+      display:flex!important;
+      justify-content:space-between!important;
+      align-items:center!important;
+      gap:10px!important;
+      margin:0 0 10px!important;
+      padding:12px 14px!important;
+      text-align:left!important;
+    }
+    .results-section-head h2{
+      margin:0!important;
+      color:#ffffff!important;
+      font-size:17px!important;
+      font-weight:950!important;
+      text-align:left!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.92),0 0 12px rgba(125,211,252,.18)!important;
+    }
+    .results-section-head p{
+      margin:4px 0 0!important;
+      color:#dbeafe!important;
+      font-size:11px!important;
+      line-height:1.35!important;
+      font-weight:800!important;
+      text-align:left!important;
+    }
+    .grid{
+      grid-area:auto!important;
+      display:grid!important;
+      grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;
+      gap:11px!important;
+      margin:0!important;
+    }
+    .result-card{text-align:left!important;}
+    .result-top{
+      justify-content:space-between!important;
+      align-items:flex-start!important;
+      flex-direction:row!important;
+      text-align:left!important;
+    }
+    .result-name,.result-id{text-align:left!important;}
+    .payout{text-align:right!important;}
+    .stats{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+    .stats div,.stats span,.stats b{text-align:left!important;}
+    @media (max-width:1100px){
+      body{padding:12px!important;}
+      .app{
+        grid-template-columns:1fr!important;
+        grid-template-areas:
+          "hero"
+          "actions"
+          "summary"
+          "results"!important;
+      }
+      .results-side-panel{position:relative!important;top:auto!important;max-height:none!important;}
+      .newsletter-zone{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+      .newsletter-choice-note,.newsletter-use-note,.close-hint,.results-action-zone{grid-column:1/-1!important;}
+      .results-action-zone{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+      .results-action-note{grid-column:1/-1!important;}
+      .summary{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+      .results-hero-meta{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+    }
+    @media (max-width:680px){
+      body{padding:8px!important;}
+      .results-hero-head{grid-template-columns:1fr!important;text-align:center!important;}
+      .results-hero-logo{margin:0 auto!important;}
+      .results-hero-copy,.results-hero-copy h1,.results-mode-note{text-align:center!important;}
+      .newsletter-zone,.results-action-zone,.summary,.results-hero-meta{grid-template-columns:1fr!important;}
+      .results-section-head{display:block!important;}
+      .grid{grid-template-columns:1fr!important;}
+      .result-top{flex-direction:column!important;align-items:flex-start!important;}
+      .payout{text-align:left!important;}
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+    }
+
   </style>
 </head>
 <body>
   <main class="app">
     <section class="hero">
-      <div class="title">
-        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
-        <h1>Fetch + Calculate Results</h1>
-        <p class="results-mode-note">Completed ranked-war payout report. Uses backend/database cache only, expires cached reports after 24 hours, and keeps payments manual-review only.</p>
-      </div>
-      <div class="newsletter-zone">
-        <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create Torn Newsletter</a>
-        <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(cyberNewsletterHref)}" download="rwph-war-payout-newsletter-cyber-neon.html" target="_blank" rel="noopener">Create Cyber Neon Newsletter</a>
-        <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(ledgerNewsletterHref)}" download="rwph-war-payout-newsletter-war-ledger.html" target="_blank" rel="noopener">Create War Ledger Newsletter</a>
-        <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(crimsonNewsletterHref)}" download="rwph-war-payout-newsletter-crimson-raid.html" target="_blank" rel="noopener">Create Crimson Raid Newsletter</a>
-        <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(goldNewsletterHref)}" download="rwph-war-payout-newsletter-victory-gold.html" target="_blank" rel="noopener">Create Victory Gold Newsletter</a>
-        <p class="newsletter-choice-note">Each newsletter button creates the same payout data with a different report style/theme.</p>
-        <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
-        <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Fetch + Calculate, the main RWPH panel shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
-        <div class="results-action-zone" aria-label="Results actions">
-          <p class="results-action-note"><b>Results actions:</b> Export CSV for records, or use Payments to open Torn faction controls with the payment helper.</p>
-          <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
-          <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
+      <div class="results-hero-head">
+        <img class="results-hero-logo" src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
+        <div class="results-hero-copy">
+          <h1>Fetch + Calculate Results</h1>
+          <p class="results-mode-note">Completed ranked-war payout report. Uses backend/database cache only, expires cached reports after 24 hours, and keeps payments manual-review only.</p>
         </div>
+      </div>
+      <div class="results-hero-meta" aria-label="Report details">
+        <div class="results-meta-card"><span>Faction</span><b>${esc(summary?.factionName || summary?.faction?.name || "Faction")}</b></div>
+        <div class="results-meta-card"><span>Report Type</span><b>Finished war</b></div>
+        <div class="results-meta-card"><span>Total Payout</span><b>${esc(money(totalPayout))}</b></div>
+        <div class="results-meta-card"><span>Members Paid</span><b>${list.length}</b></div>
       </div>
     </section>
 
-    <section class="summary">
+    <aside class="newsletter-zone results-side-panel" aria-label="Results actions and exports">
+      <h2 class="results-side-title">Report Actions</h2>
+      <div class="results-action-zone" aria-label="Results actions">
+        <p class="results-action-note"><b>Results actions:</b> Export CSV for records, or use Payments to open Torn faction controls with the payment helper.</p>
+        <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
+        <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
+      </div>
+      <h2 class="results-side-title">Newsletter Styles</h2>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create Torn Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(cyberNewsletterHref)}" download="rwph-war-payout-newsletter-cyber-neon.html" target="_blank" rel="noopener">Create Cyber Neon Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(ledgerNewsletterHref)}" download="rwph-war-payout-newsletter-war-ledger.html" target="_blank" rel="noopener">Create War Ledger Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(crimsonNewsletterHref)}" download="rwph-war-payout-newsletter-crimson-raid.html" target="_blank" rel="noopener">Create Crimson Raid Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(goldNewsletterHref)}" download="rwph-war-payout-newsletter-victory-gold.html" target="_blank" rel="noopener">Create Victory Gold Newsletter</a>
+      <p class="newsletter-choice-note">Each newsletter button creates the same payout data with a different report style/theme.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
+      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Fetch + Calculate, the main RWPH panel shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
+    </aside>
+
+    <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Total payout</span><b>${esc(money(totalPayout))}</b></div>
       <div class="summary-card"><span>War Source</span><b>${rwphWarSourceLabel(summary?.selectedWar?.timeSource)}</b></div>
       <div class="summary-card"><span>Total weight</span><b>${Number(summary?.totalWeight || 0).toFixed(2)}</b></div>
@@ -5475,7 +5712,17 @@
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
 
-    <section class="grid">${cards || `<div class="result-card">No payable or tracked attacks found.</div>`}</section>
+    <section class="member-results-panel" aria-label="Member payout results">
+      <div class="results-section-head">
+        <div>
+          <span>Member Results</span>
+          <h2>Payout rows</h2>
+          <p>Review each member payout before using the Payments helper. RWPH never sends money or confirms Torn actions automatically.</p>
+        </div>
+        <div class="results-meta-card"><span>Rows</span><b>${list.length}</b></div>
+      </div>
+      <section class="grid">${cards || `<div class="result-card">No payable or tracked attacks found.</div>`}</section>
+    </section>
   </main>
 
   <aside class="pay-all-panel" id="payAllPanel" hidden>
