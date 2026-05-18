@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.218**
+Version: **1.1.220**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -75,7 +75,7 @@ The backend database, normally `paywall-db.json` or the path set by `DB_FILE`, m
 - Admin-created licence grants/extensions/removals.
 - Completed-war report cache entries used to reopen/reuse matching payout reports.
 
-Completed-war report cache entries are intended to expire and be pruned automatically after 24 hours by default. This data is used to operate RWPH's licence, payment, trial, cache, calculation, and admin systems.
+Completed-war report cache entries are intended to expire and be deleted from the backend/database automatically after 24 hours by default. This data is used to operate RWPH's licence, payment, trial, cache, calculation, and admin systems.
 
 ---
 
@@ -140,6 +140,16 @@ RWPH may save completed-war report results in the backend JSON database so the s
 Storage remains JSON in this version. MySQL is not enabled yet.
 
 
-## v1.1.218 Cache and Licence Check Update
+## v1.1.219 Cache and Licence Check Update
 
-RWPH no longer uses an old Fetch + Calculate time lock after successful reports. If a matching cached report exists, the panel tells the user in a popup and the user can open it with **Use Cached Report**. Cached reports are still automatically removed after 24 hours. Licence verification/check requests are limited to 2 checks per minute per identity to reduce abuse and protect the backend.
+RWPH no longer uses an old Fetch + Calculate time lock after successful reports. If a matching cached report exists, the panel tells the user in a popup and the user can open it with **Use Cached Report**. Browser-saved report fallback is disabled: cached reports are only opened when the backend/database has a matching report. Cached reports are automatically deleted from the backend/database after 24 hours. Licence verification/check requests are limited to 2 checks per minute per identity to reduce abuse and protect the backend.
+
+
+## v1.1.219 Database-Only Cached Report Update
+
+RWPH no longer reopens old browser-saved payout reports as a cache fallback. **Use Cached Report** only works when the backend/database report cache returns a matching completed-war report. Old local last-results data is cleared by the userscript after updating. Cached reports are also pruned from the backend/database on startup and on a scheduled cleanup timer after the 24-hour expiry window.
+
+
+## v1.1.220 Panel Layout Update
+
+The cached report controls are now positioned directly below **Fetch + Calculate** in the payout panel, and the launcher corner control is named **Launcher Movement**. This is a layout/name change only and does not change the backend/database-only cached report privacy behaviour.

@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.218**  
+Current package version: **1.1.220**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -143,7 +143,7 @@ RWPH adds a floating **RWPH** launcher logo in Torn. The launcher:
 
 - Only appears on Torn faction pages, such as `https://www.torn.com/factions.php`.
 - Opens the Ranked War Payout Helper panel.
-- Can be moved between corners with **Button Movements**.
+- Can be moved between corners with **Launcher Movement**.
 - Uses a clean floating-logo style without a heavy button background.
 - Saves launcher position locally in the userscript storage.
 
@@ -299,8 +299,8 @@ Useful buttons:
 - **Lock Panel** returns to the locked panel.
 - **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
 - **Fetch + Calculate** runs the payout calculation on the backend for the last finished ranked war only.
-- **Use Cached Report** opens a matching server cached report when one exists, with local last-results fallback if your browser still has it saved.
-- **Button Movements** moves the floating launcher.
+- **Use Cached Report** opens a matching backend/database cached report when one exists. Browser-saved report fallback is disabled.
+- **Launcher Movement** moves the floating launcher.
 
 ### Auto-Fill War Times
 
@@ -584,12 +584,17 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.218
+### v1.1.220
+
+- Moved the cached report card/section under **Fetch + Calculate** and above **Launcher Movement**.
+- Renamed **Button Movements** to **Launcher Movement** across the panel and README.
+
+### v1.1.219
 
 - Removed the old Fetch + Calculate time lock.
 - Fetch + Calculate now shows a popup when a matching cached report already exists.
 - **Use Cached Report** opens the matching cached report.
-- Cached reports still auto-expire after 24 hours.
+- Cached reports auto-expire and are deleted from the backend/database after 24 hours.
 - Licence verification/check rate limit changed to 2 checks per minute.
 
 ### v1.1.217
@@ -598,7 +603,7 @@ When updating RWPH:
 - Added automatic completed-war cache checking when the API key and payout settings are ready.
 - Removed the separate **Reopen Results** button.
 - Changed **Use Cached Report** so it opens the saved/cached results report.
-- Server cached reports now expire and are pruned automatically after 24 hours by default.
+- Backend/database cached reports now expire and are pruned automatically after 24 hours by default.
 - Kept the new cache controls in the same midnight-blue RWPH style/theme/layout.
 
 ### v1.1.216
