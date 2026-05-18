@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ranked War Payout Helper - Server Locked
 // @namespace    https://chatgpt.com/
-// @version      1.1.197
+// @version      1.1.200
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -986,6 +986,28 @@
   }
 
 
+  function rwphIsTornFactionPage() {
+    try {
+      const path = String(window.location?.pathname || "").toLowerCase();
+      return path === "/factions.php" || path.endsWith("/factions.php");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function removeLauncherButton() {
+    const btn = document.getElementById("rw-payout-launcher");
+    if (btn) btn.remove();
+  }
+
+  function syncLauncherButtonVisibility() {
+    if (rwphIsTornFactionPage()) {
+      createLauncherButton();
+    } else {
+      removeLauncherButton();
+    }
+  }
+
   function launcherCornerLabel(corner) {
     return String(corner || "bottom-right")
       .split("-")
@@ -1094,6 +1116,7 @@
   }
 
   function createLauncherButton() {
+    if (!rwphIsTornFactionPage()) return;
     if (document.getElementById("rw-payout-launcher")) return;
 
     const btn = document.createElement("button");
@@ -1211,6 +1234,7 @@
       const previousPageKey = lastPageKey;
       lastPageKey = currentPageKey;
       rwphCloseAllPanelsForPageChange(previousPageKey, currentPageKey);
+      syncLauncherButtonVisibility();
     };
 
     const wrapHistoryMethod = (methodName) => {
@@ -1519,6 +1543,8 @@
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
   // v1.1.159: feedback now appears as closable popup panels below the active RWPH panel and auto-closes after 30 seconds.
   // v1.1.175: Xanax Payment Helper close button now matches the main panel close button style and stays visible in the pinned header area.
+  // v1.1.198: launcher button now only appears on Torn faction pages.
+  // v1.1.199: Help panel cards are now dropdown buttons to keep the Help tab compact.
   // v1.1.134: results-tab newsletter buttons use the same midnight-blue background as the results panel.
   // v1.1.135: compact fullscreen results toolbar so newsletter, export, and Payments controls fit neatly.
   // v1.1.183: Admin Remove replaces Revoke and subtracts licence days from the selected licence expiry. The old /api/admin/revoke alias has been removed.
@@ -4383,6 +4409,144 @@
       }
 
 
+      /* v1.1.199: Help tab cards are compact dropdown buttons */
+      #rw-payout-helper details.rw-help-dropdown {
+        display: block !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        max-height: none !important;
+      }
+      #rw-payout-helper summary.rw-help-dropdown-summary {
+        margin: 0 !important;
+        padding: 10px 11px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        width: 100% !important;
+        min-height: 38px !important;
+        border-radius: 12px !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        list-style: none !important;
+        color: #ffffff !important;
+        font-size: 11.5px !important;
+        font-weight: 1000 !important;
+        letter-spacing: .34px !important;
+        text-transform: none !important;
+        background:
+          radial-gradient(circle at 12% 0%, rgba(251,146,60,.18), transparent 34%),
+          linear-gradient(90deg, rgba(122,43,28,.86), rgba(67,35,26,.62)) !important;
+        border: 1px solid rgba(251,191,36,.26) !important;
+        box-shadow:
+          0 1px 0 rgba(255,255,255,.06) inset,
+          0 8px 18px rgba(0,0,0,.20) !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,.95), 0 0 10px rgba(255,172,85,.18) !important;
+      }
+      #rw-payout-helper summary.rw-help-dropdown-summary::-webkit-details-marker {
+        display: none !important;
+      }
+      #rw-payout-helper summary.rw-help-dropdown-summary::after {
+        content: "▾" !important;
+        flex: 0 0 auto !important;
+        width: 22px !important;
+        height: 22px !important;
+        display: inline-grid !important;
+        place-items: center !important;
+        border-radius: 999px !important;
+        color: #fff7ed !important;
+        background: rgba(15,23,42,.38) !important;
+        border: 1px solid rgba(251,191,36,.25) !important;
+        box-shadow: 0 0 12px rgba(251,146,60,.12) !important;
+        font-size: 12px !important;
+        line-height: 1 !important;
+      }
+      #rw-payout-helper details.rw-help-dropdown[open] > summary.rw-help-dropdown-summary {
+        border-radius: 12px 12px 0 0 !important;
+        border-bottom-color: rgba(251,191,36,.18) !important;
+      }
+      #rw-payout-helper details.rw-help-dropdown[open] > summary.rw-help-dropdown-summary::after {
+        content: "▴" !important;
+      }
+      #rw-payout-helper .rw-help-dropdown-content {
+        padding: 10px 11px 11px !important;
+        background: linear-gradient(180deg, rgba(15,23,42,.18), rgba(2,6,23,.12)) !important;
+        border-left: 1px solid rgba(184,136,89,.16) !important;
+        border-right: 1px solid rgba(184,136,89,.16) !important;
+        border-bottom: 1px solid rgba(184,136,89,.16) !important;
+        border-radius: 0 0 12px 12px !important;
+      }
+      #rw-payout-helper details.rw-help-dropdown:not([open]) > .rw-help-dropdown-content {
+        display: none !important;
+      }
+      #rw-payout-helper .rw-help-dropdown-content > :first-child {
+        margin-top: 0 !important;
+      }
+      #rw-payout-helper .rw-help-dropdown-content > :last-child {
+        margin-bottom: 0 !important;
+      }
+      #rw-payout-helper .rw-help-api-grid > details.rw-help-dropdown {
+        margin: 0 !important;
+      }
+      #rw-payout-helper .rw-help-api-grid > details.rw-help-dropdown summary.rw-help-dropdown-summary {
+        min-height: 34px !important;
+        padding: 8px 9px !important;
+        border-radius: 10px !important;
+        font-size: 10.5px !important;
+        background:
+          radial-gradient(circle at 12% 0%, rgba(125,211,252,.14), transparent 36%),
+          linear-gradient(90deg, rgba(15,23,42,.84), rgba(30,41,59,.74)) !important;
+        border-color: rgba(125,211,252,.24) !important;
+      }
+      #rw-payout-helper .rw-help-api-grid > details.rw-help-dropdown[open] summary.rw-help-dropdown-summary {
+        border-radius: 10px 10px 0 0 !important;
+      }
+
+      /* v1.1.200: clear active-tab highlight for main and locked panel navigation */
+      #rw-payout-helper .rw-tabs .rw-tab-btn {
+        position: relative !important;
+        isolation: isolate !important;
+      }
+      #rw-payout-helper .rw-tabs .rw-tab-btn:not(.active) {
+        opacity: .74 !important;
+        filter: saturate(.82) brightness(.88) !important;
+      }
+      #rw-payout-helper .rw-tabs .rw-tab-btn:not(.active):hover {
+        opacity: .96 !important;
+        filter: brightness(1.06) saturate(1.05) !important;
+      }
+      #rw-payout-helper .rw-tabs .rw-tab-btn.active,
+      #rw-payout-helper .rw-tabs .rw-tab-btn[aria-selected="true"] {
+        background:
+          radial-gradient(circle at 18% 0%, rgba(34,211,238,.40), transparent 38%),
+          linear-gradient(135deg, rgba(14,165,233,1), rgba(79,70,229,.96)) !important;
+        border: 1px solid rgba(165,243,252,.78) !important;
+        border-left: 4px solid rgba(34,211,238,1) !important;
+        color: #ffffff !important;
+        opacity: 1 !important;
+        filter: none !important;
+        transform: translateY(-1px) !important;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,.10) inset,
+          0 0 20px rgba(56,189,248,.42),
+          0 12px 28px rgba(14,165,233,.26) !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,1), 0 0 14px rgba(224,242,254,.46) !important;
+      }
+      #rw-payout-helper .rw-tabs .rw-tab-btn.active::after,
+      #rw-payout-helper .rw-tabs .rw-tab-btn[aria-selected="true"]::after {
+        content: "" !important;
+        position: absolute !important;
+        left: 12px !important;
+        right: 12px !important;
+        bottom: 4px !important;
+        height: 2px !important;
+        border-radius: 999px !important;
+        background: rgba(255,255,255,.92) !important;
+        box-shadow: 0 0 10px rgba(224,242,254,.65) !important;
+        pointer-events: none !important;
+      }
+
+
     `;
   }
 
@@ -4402,6 +4566,14 @@
     } catch (e) {
       console.warn("Could not inject RWPH floating panel styles:", e);
     }
+  }
+
+  function rwphSetTabButtonActive(button, isActive) {
+    if (!button) return;
+    button.classList.toggle("active", !!isActive);
+    button.classList.toggle("secondary", !isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
   }
 
 
@@ -7620,6 +7792,50 @@
   }
 
 
+
+  function rwphMakeHelpPanelCardsDropdowns(root = document) {
+    try {
+      const scope = root?.querySelectorAll ? root : document;
+      const makeDropdown = (card, titleSelector) => {
+        if (!card || card.dataset.rwphDropdown === "1" || String(card.tagName || "").toLowerCase() === "details") return;
+        const title = card.querySelector(`:scope > ${titleSelector}`);
+        if (!title) return;
+
+        const details = document.createElement("details");
+        Array.from(card.attributes || []).forEach((attr) => {
+          if (attr.name !== "class") details.setAttribute(attr.name, attr.value);
+        });
+        details.className = card.className;
+        details.classList.add("rw-help-dropdown");
+        details.dataset.rwphDropdown = "1";
+
+        const summary = document.createElement("summary");
+        summary.className = title.className;
+        summary.classList.add("rw-help-dropdown-summary");
+        summary.innerHTML = title.innerHTML;
+        summary.setAttribute("role", "button");
+
+        const content = document.createElement("div");
+        content.className = "rw-help-dropdown-content";
+        Array.from(card.childNodes || []).forEach((node) => {
+          if (node === title) return;
+          content.appendChild(node);
+        });
+
+        details.appendChild(summary);
+        details.appendChild(content);
+        card.replaceWith(details);
+      };
+
+      scope.querySelectorAll("#rw-paywall-how-section > .rw-help-section-card, #rw-how-tab-section > .rw-help-section-card")
+        .forEach((card) => makeDropdown(card, ".rw-how-title"));
+      scope.querySelectorAll("#rw-paywall-how-section .rw-help-api-grid > .rw-help-api-card.rw-help-section-card, #rw-how-tab-section .rw-help-api-grid > .rw-help-api-card.rw-help-section-card")
+        .forEach((card) => makeDropdown(card, ".rw-help-api-title"));
+    } catch (e) {
+      console.warn("Could not convert RWPH help cards to dropdowns:", e);
+    }
+  }
+
   function showPaywallScreen(panel) {
     const savedKey = GM_getValue(STORAGE_KEY, "");
     const savedAdminKey = GM_getValue(ADMIN_KEY_STORAGE_KEY, "");
@@ -7637,10 +7853,10 @@
           This version is server-locked. The backend verifies your license and performs the payout calculation server-side.
         </div>
 
-        <div class="rw-tabs">
-          <button id="rw-paywall-tab-pay" class="rw-tab-btn active">Unlock</button>
-          <button id="rw-paywall-tab-admin" class="rw-tab-btn secondary">Admin</button>
-          <button id="rw-paywall-tab-how" class="rw-tab-btn secondary">Help</button>
+        <div class="rw-tabs" role="tablist" aria-label="Locked panel tabs">
+          <button id="rw-paywall-tab-pay" class="rw-tab-btn active" role="tab" aria-selected="true" aria-pressed="true">Unlock</button>
+          <button id="rw-paywall-tab-admin" class="rw-tab-btn secondary" role="tab" aria-selected="false" aria-pressed="false">Admin</button>
+          <button id="rw-paywall-tab-how" class="rw-tab-btn secondary" role="tab" aria-selected="false" aria-pressed="false">Help</button>
         </div>
 
         <div id="rw-paywall-unlock-section" class="rw-tab-section">
@@ -7949,6 +8165,7 @@
         </div>
       </div>`;
 
+    rwphMakeHelpPanelCardsDropdowns(panel);
     rwphEnablePanelMoveResize(panel);
     const lockedResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(lockedResultsPanel);
@@ -7969,12 +8186,9 @@
       paySection.hidden = showAdmin || showHow;
       adminSection.hidden = !showAdmin;
       howSection.hidden = !showHow;
-      payTabBtn.classList.toggle("active", !showAdmin && !showHow);
-      payTabBtn.classList.toggle("secondary", showAdmin || showHow);
-      adminTabBtn.classList.toggle("active", showAdmin);
-      adminTabBtn.classList.toggle("secondary", !showAdmin);
-      howTabBtn.classList.toggle("active", showHow);
-      howTabBtn.classList.toggle("secondary", !showHow);
+      rwphSetTabButtonActive(payTabBtn, !showAdmin && !showHow);
+      rwphSetTabButtonActive(adminTabBtn, showAdmin);
+      rwphSetTabButtonActive(howTabBtn, showHow);
     }
 
     payTabBtn.addEventListener("click", () => switchLockedTab("unlock"));
@@ -8219,10 +8433,10 @@
           Server-side locked version. Your backend verifies the license and calculates payouts.
         </div>
 
-        <div class="rw-tabs">
-          <button id="rw-tab-payout" class="rw-tab-btn active">Payout</button>
-          <button id="rw-tab-admin" class="rw-tab-btn secondary">Admin</button>
-          <button id="rw-tab-how" class="rw-tab-btn secondary">Help</button>
+        <div class="rw-tabs" role="tablist" aria-label="Main panel tabs">
+          <button id="rw-tab-payout" class="rw-tab-btn active" role="tab" aria-selected="true" aria-pressed="true">Payout</button>
+          <button id="rw-tab-admin" class="rw-tab-btn secondary" role="tab" aria-selected="false" aria-pressed="false">Admin</button>
+          <button id="rw-tab-how" class="rw-tab-btn secondary" role="tab" aria-selected="false" aria-pressed="false">Help</button>
         </div>
 
         <div id="rw-payout-tab" class="rw-tab-section">
@@ -8566,6 +8780,7 @@
         </div>
       </div>`;
 
+    rwphMakeHelpPanelCardsDropdowns(panel);
     rwphEnablePanelMoveResize(panel);
     const mainResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(mainResultsPanel);
@@ -8585,12 +8800,9 @@
       payoutTab.hidden = showAdmin || showHow;
       adminTab.hidden = !showAdmin;
       howTab.hidden = !showHow;
-      payoutTabBtn.classList.toggle("active", !showAdmin && !showHow);
-      payoutTabBtn.classList.toggle("secondary", showAdmin || showHow);
-      adminTabBtn.classList.toggle("active", showAdmin);
-      adminTabBtn.classList.toggle("secondary", !showAdmin);
-      howTabBtn.classList.toggle("active", showHow);
-      howTabBtn.classList.toggle("secondary", !showHow);
+      rwphSetTabButtonActive(payoutTabBtn, !showAdmin && !showHow);
+      rwphSetTabButtonActive(adminTabBtn, showAdmin);
+      rwphSetTabButtonActive(howTabBtn, showHow);
     }
 
     payoutTabBtn.addEventListener("click", () => switchTab("payout"));
@@ -9017,10 +9229,10 @@
 
   rwphInstallPageNavigationAutoClose();
   setupXanaxPaymentButtonHandler();
-  createLauncherButton();
+  syncLauncherButtonVisibility();
   runXanaxPaymentAutofillFromUrl();
   rwphMaybeOpenPayAllFromFactionControlsUrl();
-  if (rwphGetPanelOpenState()) {
+  if (rwphIsTornFactionPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);
   }
 })();
