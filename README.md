@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.213**  
+Current package version: **1.1.216**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -22,6 +22,10 @@ Author: **Evil_Panda_420**
 RWPH is a helper tool. It can calculate payouts, prepare payment rows, copy payment details, prefill some Torn fields, and create newsletter/export files. It does **not** automatically approve payouts, automatically send Torn money, automatically send Xanax, or replace manual checking.
 
 RWPH is a manual payout calculator and copy/prefill helper. It does not send items, send cash, confirm payments, attack, buy, sell, travel, or perform Torn gameplay actions automatically. Users must manually review and confirm all Torn actions.
+
+### Public Performance Mode
+
+RWPH now protects public servers with completed-war report caching, a calculation queue, cooldowns, route rate limits, short Torn API memory caching, and admin-only force refresh. Users can open a matching cached report when the same finished war and payout settings were already calculated. Storage remains JSON for now; MySQL can be added later without changing the userscript flow.
 
 Before sending Torn money or items, always review the results yourself inside Torn.
 
@@ -73,7 +77,7 @@ This package is not an official Torn product. Use it only in ways that follow To
 
 1. Open the unlocked RWPH panel.
 2. Confirm your API key is saved or pasted.
-3. Use **Auto-fill War Times** or enter times manually.
+3. Use **Auto-fill Last Finished War** to load the latest completed war window.
 4. Enter the total payout pool.
 5. Set the weights you want.
 6. Click **Fetch + Calculate**.
@@ -293,16 +297,16 @@ Useful buttons:
 - **Save Key** saves the Torn API key locally.
 - **Your Expiration** checks remaining licence time.
 - **Lock Panel** returns to the locked panel.
-- **Auto-fill War Times** tries to detect the current or most recently finished ranked war.
-- **Fetch + Calculate** runs the payout calculation on the backend.
-- **Reopen Results** reopens the most recent successful results for a short time.
+- **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
+- **Fetch + Calculate** runs the payout calculation on the backend for the last finished ranked war only.
+- **Reopen Results** reopens the most recent successful results for 10 minutes. While it is visible, RWPH blocks creating another report.
 - **Button Movements** moves the floating launcher.
 
 ### Auto-Fill War Times
 
-The backend attempts to detect the current or most recently finished ranked war through Torn ranked-war data. When successful, RWPH fills the war start and finish fields automatically.
+The backend detects the latest completed ranked war through Torn ranked-war data. Current/active wars are not used for payout reports. When successful, RWPH fills the completed war start and finish fields automatically.
 
-If auto-fill cannot find a war, users can manually enter the start and finish times.
+If auto-fill cannot find a finished war, RWPH will not create a payout report until a completed ranked war is available.
 
 ### Hybrid Ranked-War Calculation Mode
 
@@ -422,7 +426,7 @@ Examples:
 
 - Save Key
 - Your Expiration
-- Auto-fill War Times
+- Auto-fill Last Finished War
 - Admin actions
 - Results actions
 - Newsletter actions
@@ -579,6 +583,30 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.216
+- Added completed-war report caching for same faction/war/settings reports.
+- Added Use Cached Report and Check Cache controls.
+- Added backend calculation queue, route rate limits, and per-user cooldown protection.
+- Added short Torn API memory caching for finished-war/faction data.
+- Added admin-only force refresh and server status tools.
+- Kept storage on the current JSON database for now, with MySQL-ready organisation for a later update.
+- Kept all new controls in the same midnight-blue RWPH theme/layout.
+
+
+### v1.1.215
+
+- Added clearer completed-war-only and 10-minute report-lock wording to the Help panel.
+- Added the same notice to the locked panel, main payout panel, loading screen, and results page where users need to see it.
+- Clarified that Fetch + Calculate uses the latest finished ranked war, not an active/current war.
+
+### v1.1.214
+
+- Changed **Fetch + Calculate** to calculate the latest completed ranked war only.
+- Current/active ranked wars are no longer calculated. Users must wait until the war is finished.
+- **Auto-fill War Times** was renamed to **Auto-fill Last Finished War** in the panel.
+- Added a 10-minute report lock: while **Reopen Results** is visible, users cannot create another payout report.
+- Added server-side protection so edited userscripts cannot bypass the completed-war-only rule or recent-report lock.
 
 ### v1.1.213
 

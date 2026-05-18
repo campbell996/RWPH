@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.213**
+Version: **1.1.216**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -130,3 +130,10 @@ Users are responsible for:
 ## No Official Torn Affiliation
 
 RWPH is a community-made tool and is not an official Torn product. Use it only in ways that follow Torn rules, Torn API rules, your faction rules, and your own server/licence setup.
+
+
+## Report Cache and Public Server Protection
+
+RWPH may save completed-war report results in the backend JSON database so the same faction, finished war, payout pool, and weight settings can be reused without recalculating. This reduces Torn API pressure and server load. Cached reports contain calculated payout output and report metadata; they are not designed to store user Torn API keys. The backend also uses route rate limits, per-user cooldowns, a calculation queue, and short in-memory Torn API caching to keep public hosting stable.
+
+Storage remains JSON in this version. MySQL is not enabled yet.
