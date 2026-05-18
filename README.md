@@ -4,7 +4,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.207**  
+Current package version: **1.1.210**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -14,6 +14,8 @@ Author: **Evil_Panda_420**
 ## Important Notice
 
 RWPH is a helper tool. It can calculate payouts, prepare payment rows, copy payment details, prefill some Torn fields, and create newsletter/export files. It does **not** automatically approve payouts, automatically send Torn money, automatically send Xanax, or replace manual checking.
+
+RWPH is a manual payout calculator and copy/prefill helper. It does not send items, send cash, confirm payments, attack, buy, sell, travel, or perform Torn gameplay actions automatically. Users must manually review and confirm all Torn actions.
 
 Before sending Torn money or items, always review the results yourself inside Torn.
 
@@ -372,175 +374,6 @@ Supported panels include:
 
 ---
 
-## Installation
-
-### 1. Extract the Zip
-
-Extract the package somewhere safe on your computer or server.
-
-### 2. Install Server Dependencies
-
-Open a terminal in the extracted folder and run:
-
-```bash
-npm install
-```
-
-### 3. Create the `.env` File
-
-Copy `.env.example` to `.env`.
-
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Mac/Linux:
-
-```bash
-cp .env.example .env
-```
-
-Then edit `.env` with your real values.
-
-### 4. Configure Required Server Secrets
-
-At minimum, set these values:
-
-```env
-OWNER_TORN_API_KEY=your_private_owner_torn_api_key
-OWNER_TORN_ID=your_owner_torn_id
-OWNER_TORN_NAME=your_owner_name
-PAYWALL_SECRET=a_long_random_private_secret
-ADMIN_KEY=a_long_random_admin_key
-```
-
-`PAYWALL_SECRET` and `ADMIN_KEY` should be long, random, and private.
-
-### 5. Start the Server
-
-Standard command:
-
-```bash
-npm start
-```
-
-Or use one of the helper files:
-
-- `start-server-windows.bat`
-- `start-server-mac-linux.sh`
-
-### 6. Test the Server
-
-Open:
-
-```text
-http://localhost:3000/health
-```
-
-You should see a JSON response with `ok: true`.
-
-If hosting online, test your public backend URL plus `/health`.
-
-### 7. Set `PAYWALL_API_BASE` in the Userscript
-
-Open `Torn_RW_Payout_Helper_Server_Locked.user.js` and find:
-
-```js
-const PAYWALL_API_BASE = "https://your-server-url-here";
-```
-
-Set it to your backend URL.
-
-Do not include a trailing slash.
-
-Correct:
-
-```js
-const PAYWALL_API_BASE = "https://example.ngrok-free.app";
-```
-
-Incorrect:
-
-```js
-const PAYWALL_API_BASE = "https://example.ngrok-free.app/";
-```
-
-### 8. Update `@connect`
-
-In the userscript header, make sure the backend domain is listed:
-
-```js
-// @connect      your-backend-domain.com
-```
-
-If you use ngrok, add the ngrok domain. If the domain changes, update both `PAYWALL_API_BASE` and `@connect`.
-
-### 9. Install the Userscript
-
-Install `Torn_RW_Payout_Helper_Server_Locked.user.js` into your userscript manager.
-
-Then open Torn and go to a faction page:
-
-```text
-https://www.torn.com/factions.php
-```
-
-The floating RWPH launcher should appear.
-
----
-
-## `.env` Settings
-
-| Setting | Purpose |
-| --- | --- |
-| `PORT` | Backend server port. Default is `3000`. |
-| `HOST` | Backend bind host. Default is `0.0.0.0`. |
-| `OWNER_TORN_API_KEY` | Private Torn API key for the owner/receiver account. Used for item payment detection. |
-| `OWNER_TORN_ID` | Torn ID that receives licence item payments. |
-| `OWNER_TORN_NAME` | Name shown as the payment receiver. |
-| `REQUIRED_ITEM_ID` | Torn item ID required for licence payment. Default example is `206`. |
-| `REQUIRED_ITEM_NAME` | Item name shown to users. Default example is `Xanax`. |
-| `REQUIRED_ITEM_QTY` | Minimum quantity required per payment. |
-| `LICENSE_DAYS` | Licence days added per required item. |
-| `BONUS_MILESTONES` | Cumulative per-user bonus schedule. |
-| `SINGLE_ORDER_BONUS_MILESTONES` | Bonus schedule for large single orders. |
-| `PAYWALL_SECRET` | Private secret for signing/verifying licence tokens. |
-| `ADMIN_KEY` | Private key for admin panel and admin API routes. |
-| `ENABLE_ADMIN_ROUTES` | Set to `true` to enable admin tools/routes. |
-| `TORN_API_MIN_INTERVAL_MS` | Minimum spacing between Torn API requests. |
-| `TORN_API_MAX_RETRIES` | Maximum retries for Torn API failures/rate limits. |
-| `TORN_API_RETRY_BASE_MS` | Base delay for Torn API retry backoff. |
-| `TORN_API_RETRY_MAX_MS` | Maximum delay for Torn API retry backoff. |
-
----
-
-## Backend API Routes
-
-These routes are used by the userscript.
-
-| Route | Method | Purpose |
-| --- | --- | --- |
-| `/` | GET | Plain text server status. |
-| `/health` | GET | JSON health check. |
-| `/api/paywall/start` | POST | Creates a payment code for buying/extending a licence. |
-| `/api/paywall/check` | POST | Checks whether a matching item payment was received. |
-| `/api/paywall/trial` | POST | Starts a one-time 7-day trial. |
-| `/api/paywall/verify-token` | POST | Verifies a saved licence token. |
-| `/api/calc/war-times` | POST | Attempts to auto-detect ranked-war start/end times. |
-| `/api/calc/progress` | POST | Returns calculation progress for the loading dots. |
-| `/api/calc/rw-payout` | POST | Runs the protected payout calculation. |
-| `/api/admin/licenses` | GET | Lists licences. Requires admin key. |
-| `/api/admin/grant` | POST | Grants a licence. Requires admin key. |
-| `/api/admin/grant-owner` | POST | Grants owner licence. Requires admin key. |
-| `/api/admin/extend` | POST | Adds days to a licence. Requires admin key. |
-| `/api/admin/remove` | POST | Removes days from a licence. Requires admin key. |
-
-Admin requests are protected with the configured `ADMIN_KEY`.
-
----
-
 ## How to Use the Script
 
 ### Unlocking
@@ -736,6 +569,14 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.210
+
+- Added a clearer manual-only Torn actions notice to the README Important Notice section.
+
+### v1.1.208
+
+- Removed the Installation, `.env Settings`, and Backend API Routes sections from the README.
 
 ### v1.1.207
 
