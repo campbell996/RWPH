@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.224
+// @version      1.1.226
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -33,6 +33,7 @@
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
+  const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAST_RESULTS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -1634,6 +1635,8 @@
   // v1.1.220: moved cached report controls below Fetch + Calculate and renamed launcher movement controls.
   // v1.1.222: cached report status now shows exact saved and expiry timestamps instead of countdown text.
   // v1.1.224: payment codes are restored from the backend/database only; Payments Copy Panel buttons disappear after use and can restore the last hidden button.
+  // v1.1.225: Your Expiration has a browser-side 2/minute click guard, and Payments Copy Panel hiding now uses forced !important hidden state.
+  // v1.1.226: fullscreen Fetch + Calculate results panel now matches the RWPH midnight-blue main panel theme and layout.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -1695,6 +1698,53 @@
     window.__rwphLicenseExpiryTimer = setTimeout(() => {
       returnToLockedPanel("Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
     }, Math.min(msUntilExpiry + 1000, 2147483647));
+  }
+
+
+  function rwphReadManualLicenseCheckTimes() {
+    try {
+      const raw = GM_getValue(LICENSE_CHECK_RATE_STORAGE_KEY, "[]");
+      const arr = Array.isArray(raw) ? raw : JSON.parse(String(raw || "[]"));
+      return arr.map((x) => Number(x || 0)).filter((x) => Number.isFinite(x) && x > 0);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function rwphWriteManualLicenseCheckTimes(times) {
+    try { GM_setValue(LICENSE_CHECK_RATE_STORAGE_KEY, JSON.stringify((times || []).slice(-5))); } catch (_) {}
+  }
+
+  function rwphTryUseManualLicenseCheck(statusEl, buttonEl) {
+    const nowMs = Date.now();
+    const windowMs = 60 * 1000;
+    const limit = 2;
+    const fresh = rwphReadManualLicenseCheckTimes().filter((ts) => nowMs - ts < windowMs);
+    if (fresh.length >= limit) {
+      const waitSeconds = Math.max(1, Math.ceil((windowMs - (nowMs - fresh[0])) / 1000));
+      const message = `Your Expiration can only be checked ${limit} times per minute. Try again in ${waitSeconds} second${waitSeconds === 1 ? "" : "s"}.`;
+      if (statusEl) statusEl.textContent = message;
+      rwphToastPanelError(statusEl, message, "RWPH Licence");
+      if (buttonEl) {
+        buttonEl.disabled = true;
+        const originalText = buttonEl.dataset.rwphOriginalText || buttonEl.textContent || "Your Expiration";
+        buttonEl.dataset.rwphOriginalText = originalText;
+        buttonEl.textContent = `Wait ${waitSeconds}s`;
+        setTimeout(() => {
+          if (!buttonEl.isConnected) return;
+          buttonEl.disabled = false;
+          buttonEl.textContent = buttonEl.dataset.rwphOriginalText || "Your Expiration";
+        }, Math.min(waitSeconds * 1000, 60000));
+      }
+      return false;
+    }
+    fresh.push(nowMs);
+    rwphWriteManualLicenseCheckTimes(fresh);
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      setTimeout(() => { if (buttonEl.isConnected) buttonEl.disabled = false; }, 1200);
+    }
+    return true;
   }
 
   async function getSavedLicenseInfo() {
@@ -1803,8 +1853,8 @@
       if (info.expiresAt) rwphScheduleLicenseLockback(info.expiresAt);
     };
 
-    checkLicenseNow();
-    window.__rwphLicenseMonitor = setInterval(checkLicenseNow, 10000);
+    // Licence is already verified when the panel opens. Keep the monitor slow so it does not consume the manual Your Expiration 2/minute allowance.
+    window.__rwphLicenseMonitor = setInterval(checkLicenseNow, 10 * 60 * 1000);
   }
 
   async function verifySavedLicense() {
@@ -5029,6 +5079,7 @@
     }
     .pay-all-payout { display:block; margin-top:2px; color:#86efac; font-weight:950; }
     .copy-small { padding:7px 8px; font-size:11px; border-radius:10px; }
+    .copy-small.rwph-pay-button-hidden { display:none !important; visibility:hidden !important; pointer-events:none !important; }
     .grid { justify-items:stretch; }
     .resize-handle-ne { display:none!important; pointer-events:none!important; }
     @media (max-width: 760px), (pointer: coarse) {
@@ -5198,6 +5249,191 @@
       .newsletter-zone .newsletter-top-btn,.results-action-zone .btn{min-height:30px!important;padding:6px 7px!important;font-size:10.5px!important;}
     }
 
+    /* v1.1.226: final results-panel theme pass to match the main RWPH panel */
+    :root{
+      --rwph-bg:#020617!important;
+      --rwph-panel:#0f172a!important;
+      --rwph-panel-deep:#020617!important;
+      --rwph-panel-soft:#1e293b!important;
+      --rwph-line:rgba(125,211,252,.24)!important;
+      --rwph-line-strong:rgba(125,211,252,.42)!important;
+      --rwph-text:#eaf6ff!important;
+      --rwph-muted:#b9d7ee!important;
+      --rwph-blue:#38bdf8!important;
+      --rwph-green:#86efac!important;
+    }
+    html,body{
+      color:var(--rwph-text)!important;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(56,189,248,.22), transparent 28%),
+        radial-gradient(circle at 90% 4%, rgba(99,102,241,.18), transparent 30%),
+        linear-gradient(180deg, #020617 0%, #0b1120 48%, #020617 100%)!important;
+      font-family:Arial, Helvetica, sans-serif!important;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:repeating-linear-gradient(0deg, rgba(125,211,252,.035) 0 1px, transparent 1px 28px)!important;
+      opacity:.55!important;
+      z-index:-1;
+    }
+    .app{
+      max-width:1380px!important;
+      margin:0 auto!important;
+      align-items:start!important;
+    }
+    .hero{
+      border:1px solid var(--rwph-line)!important;
+      border-radius:22px!important;
+      background:radial-gradient(circle at 50% 0%, rgba(56,189,248,.18), transparent 38%), linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.94))!important;
+      box-shadow:0 24px 70px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.06), 0 0 24px rgba(56,189,248,.09)!important;
+      backdrop-filter:blur(14px)!important;
+      scrollbar-width:thin!important;
+      scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36)!important;
+    }
+    .hero::-webkit-scrollbar{width:8px!important;height:8px!important;}
+    .hero::-webkit-scrollbar-track{background:rgba(15,23,42,.34)!important;border-radius:999px!important;}
+    .hero::-webkit-scrollbar-thumb{background:linear-gradient(180deg, rgba(125,211,252,.96), rgba(56,189,248,.88))!important;border:2px solid rgba(15,23,42,.50)!important;border-radius:999px!important;}
+    .title{
+      margin:0!important;
+      padding:12px 10px!important;
+      border:1px solid rgba(125,211,252,.18)!important;
+      border-left:4px solid rgba(56,189,248,.72)!important;
+      border-radius:16px!important;
+      background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.78))!important;
+      box-shadow:0 10px 24px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05)!important;
+    }
+    .title img{filter:drop-shadow(0 0 14px rgba(125,211,252,.42))!important;}
+    h1{
+      color:#ffffff!important;
+      font-weight:950!important;
+      letter-spacing:.28px!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.95), 0 0 14px rgba(125,211,252,.28)!important;
+    }
+    .results-mode-note{
+      margin:6px 0 0!important;
+      color:#dbeafe!important;
+      font-size:10.5px!important;
+      font-weight:850!important;
+      line-height:1.32!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.72)!important;
+    }
+    .newsletter-zone,
+    .results-action-zone{
+      display:grid!important;
+      gap:7px!important;
+      padding:0!important;
+      border:0!important;
+      background:transparent!important;
+    }
+    .newsletter-choice-note,
+    .newsletter-use-note,
+    .close-hint,
+    .results-action-note{
+      border:1px solid rgba(125,211,252,.16)!important;
+      border-left:4px solid rgba(56,189,248,.58)!important;
+      border-radius:14px!important;
+      background:linear-gradient(180deg, rgba(30,41,59,.66), rgba(2,6,23,.48))!important;
+      color:#dbeafe!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+      padding:8px 9px!important;
+      font-weight:800!important;
+    }
+    .btn,button,a.btn,
+    .newsletter-zone .newsletter-top-btn,
+    .results-action-zone .btn,
+    #csvBtn,#payAllBtn{
+      background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88))!important;
+      color:#eaf6ff!important;
+      border:1px solid rgba(125,211,252,.24)!important;
+      border-left:4px solid rgba(56,189,248,.66)!important;
+      border-radius:12px!important;
+      box-shadow:0 1px 0 rgba(255,255,255,.045) inset, 0 12px 26px rgba(0,0,0,.26)!important;
+      text-shadow:0 1px 0 rgba(0,0,0,.75)!important;
+      font-weight:950!important;
+      transition:transform .12s ease, filter .12s ease, border-color .12s ease!important;
+    }
+    .btn:hover,button:hover,a.btn:hover{
+      filter:brightness(1.10)!important;
+      transform:translateY(-1px)!important;
+      border-color:rgba(125,211,252,.44)!important;
+    }
+    .summary{
+      grid-area:summary!important;
+      align-self:start!important;
+    }
+    .summary-card,
+    .result-card,
+    .stats div{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.88))!important;
+      border:1px solid rgba(125,211,252,.22)!important;
+      border-left:4px solid rgba(56,189,248,.46)!important;
+      border-radius:16px!important;
+      box-shadow:0 14px 34px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.045)!important;
+    }
+    .summary-card span,
+    .result-id,
+    .stats span{
+      color:#bfdbfe!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.72)!important;
+    }
+    .summary-card b,
+    .stats b,
+    .result-name{
+      color:#ffffff!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.92), 0 0 12px rgba(125,211,252,.18)!important;
+    }
+    .result-card{
+      padding:12px!important;
+      position:relative!important;
+      overflow:hidden!important;
+    }
+    .result-card::before{
+      content:""!important;
+      position:absolute!important;
+      inset:0 0 auto 0!important;
+      height:3px!important;
+      background:linear-gradient(90deg, rgba(56,189,248,.25), rgba(125,211,252,.90), rgba(99,102,241,.35))!important;
+      opacity:.92!important;
+    }
+    .payout{
+      color:#bbf7d0!important;
+      background:rgba(22,101,52,.20)!important;
+      border:1px solid rgba(134,239,172,.28)!important;
+      border-radius:12px!important;
+      padding:6px 9px!important;
+      box-shadow:0 0 18px rgba(34,197,94,.12)!important;
+    }
+    .grid{
+      grid-area:results!important;
+    }
+    .pay-all-panel{
+      border:1px solid rgba(125,211,252,.28)!important;
+      border-left:4px solid rgba(56,189,248,.54)!important;
+      border-radius:20px!important;
+      background:radial-gradient(circle at 18% 0%, rgba(56,189,248,.20), transparent 34%), linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.96))!important;
+      box-shadow:0 20px 60px rgba(0,0,0,.58), 0 0 28px rgba(56,189,248,.12)!important;
+      color:#eaf6ff!important;
+    }
+    .pay-all-row,
+    .pay-all-info{
+      background:linear-gradient(180deg, rgba(15,23,42,.92), rgba(2,6,23,.72))!important;
+      border:1px solid rgba(125,211,252,.18)!important;
+      border-left:4px solid rgba(56,189,248,.44)!important;
+      border-radius:14px!important;
+    }
+    @media (max-width:900px){
+      .app{display:block!important;}
+      .hero{margin-bottom:12px!important;}
+      .summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+    }
+    @media (max-width:520px){
+      .summary{grid-template-columns:1fr!important;}
+      .title{padding:10px 8px!important;}
+    }
+
   </style>
 </head>
 <body>
@@ -5206,6 +5442,7 @@
       <div class="title">
         <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
         <h1>Fetch + Calculate Results</h1>
+        <p class="results-mode-note">Completed ranked-war payout report. Uses backend/database cache only, expires cached reports after 24 hours, and keeps payments manual-review only.</p>
       </div>
       <div class="newsletter-zone">
         <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create Torn Newsletter</a>
@@ -5556,8 +5793,13 @@
       if (!btn) return;
       btn.dataset.originalLabel = label || btn.textContent || "Button";
       btn.textContent = btn.dataset.originalLabel;
+      btn.classList.add("rwph-pay-button-hidden");
       btn.hidden = true;
-      btn.style.display = "none";
+      btn.disabled = true;
+      btn.setAttribute("aria-hidden", "true");
+      btn.style.setProperty("display", "none", "important");
+      btn.style.setProperty("visibility", "hidden", "important");
+      btn.style.setProperty("pointer-events", "none", "important");
       payAllUndoStack.push(btn);
     }
 
@@ -5565,8 +5807,13 @@
       while (payAllUndoStack.length) {
         const btn = payAllUndoStack.pop();
         if (btn && btn.isConnected) {
+          btn.classList.remove("rwph-pay-button-hidden");
           btn.hidden = false;
-          btn.style.display = "";
+          btn.disabled = false;
+          btn.removeAttribute("aria-hidden");
+          btn.style.removeProperty("display");
+          btn.style.removeProperty("visibility");
+          btn.style.removeProperty("pointer-events");
           btn.textContent = btn.dataset.originalLabel || btn.textContent || "Button";
           return true;
         }
@@ -6303,6 +6550,7 @@
       .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:900; color:#f8fafc; }
       .rw-pay-all-payout { display:block; margin-top:1px; color:#86efac; font-size:10px; font-weight:950; }
       .rw-pay-all-copy { display:inline-flex !important; align-items:center; justify-content:center; width:auto !important; max-width:none !important; padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(125,211,252,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#f8fdff; font-size:10px; font-weight:950; cursor:pointer; white-space:nowrap; }
+      .rw-pay-all-copy.rwph-pay-button-hidden { display:none !important; visibility:hidden !important; pointer-events:none !important; }
       .rw-resize-handle { position:absolute; width:18px; height:18px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
       .rw-resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 8px 0; }
       .rw-resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(125,211,252,.80); border-bottom:2px solid rgba(125,211,252,.80); border-radius:0 0 0 8px; }
@@ -6587,8 +6835,15 @@
     if (!btn) return;
     btn.dataset.rwphOriginalText = label || btn.textContent || "Button";
     btn.textContent = btn.dataset.rwphOriginalText;
+    btn.classList.add("rwph-pay-button-hidden");
     btn.hidden = true;
-    btn.style.display = "none";
+    btn.disabled = true;
+    btn.setAttribute("aria-hidden", "true");
+    try {
+      btn.style.setProperty("display", "none", "important");
+      btn.style.setProperty("visibility", "hidden", "important");
+      btn.style.setProperty("pointer-events", "none", "important");
+    } catch (_) {}
     if (stack) stack.push(btn);
   }
 
@@ -6597,8 +6852,15 @@
     while (stack.length) {
       const btn = stack.pop();
       if (btn && btn.isConnected) {
+        btn.classList.remove("rwph-pay-button-hidden");
         btn.hidden = false;
-        btn.style.display = "";
+        btn.disabled = false;
+        btn.removeAttribute("aria-hidden");
+        try {
+          btn.style.removeProperty("display");
+          btn.style.removeProperty("visibility");
+          btn.style.removeProperty("pointer-events");
+        } catch (_) {}
         btn.textContent = btn.dataset.rwphOriginalText || btn.textContent || "Button";
         return true;
       }
@@ -8633,10 +8895,13 @@
     restorePendingPaymentFromDatabase(document.getElementById("rw-paywall-key")?.value.trim(), "unlock");
     setInterval(updatePendingPaymentUi, 30000);
 
-    document.getElementById("rw-check-license-days").addEventListener("click", async () => {
+    document.getElementById("rw-check-license-days").addEventListener("click", async (event) => {
       const status = document.getElementById("rw-paywall-status");
+      const button = event.currentTarget;
+      if (!rwphTryUseManualLicenseCheck(status, button)) return;
       if (status) status.textContent = "Checking saved license...";
       await showLicenseDays(status, { toast: true });
+      if (button?.isConnected) button.disabled = false;
     });
 
     function getAdminKeyFromInput() {
@@ -9321,10 +9586,13 @@
       }
     });
 
-    document.getElementById("rw-license-days").addEventListener("click", async () => {
+    document.getElementById("rw-license-days").addEventListener("click", async (event) => {
       const status = document.getElementById("rw-status");
+      const button = event.currentTarget;
+      if (!rwphTryUseManualLicenseCheck(status, button)) return;
       if (status) status.textContent = "Checking saved license...";
       await showLicenseDays(status, { toast: true });
+      if (button?.isConnected) button.disabled = false;
     });
 
     document.getElementById("rw-extend-licence").addEventListener("click", async () => {

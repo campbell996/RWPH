@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.224**
+Version: **1.1.226**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -176,3 +176,17 @@ The loading/results tab now uses the same midnight-blue RWPH card style as the p
 ## v1.1.224 Pending Payment Helper Update
 
 RWPH may restore an active pending Xanax payment code from the backend/database so users do not accidentally create multiple payment codes. The browser can display and reopen that pending helper, but it is not accepted as proof of payment. Payment/licence status is still verified live through the backend/Torn API before any licence time is added.
+
+
+## v1.1.225 Licence Check and Payments Copy Panel Update
+
+The **Your Expiration** button is limited in the browser to two manual checks per minute and the backend also rate-limits licence verification. This reduces repeated licence-check traffic and helps protect the RWPH server.
+
+Payments Copy Panel buttons are hidden after use with a forced hidden state so users can more reliably track which payout copy actions have already been used. The restore button only brings back the most recently hidden payment-copy button.
+
+
+## v1.1.226 Results Panel Theme Update
+
+- The fullscreen Fetch + Calculate results panel was restyled to match the main RWPH midnight-blue panel theme.
+- This is a visual/layout update only. It does not change what data is collected, saved, verified, or cached.
+- Payments remain manual-only and cached reports still come only from the backend/database.
