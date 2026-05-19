@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.251
+// @version      1.1.253
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1648,18 +1648,19 @@
   // v1.1.227: fullscreen Fetch + Calculate results panel layout rebuilt with a report header, summary strip, action side panel, and main member results area.
   // v1.1.235: Per Hit and Points System reports now have separate database cache buttons and both cached report types preserve Payments Copy Panel handoff.
   // v1.1.236: moved each cache/open/delete control inside its matching Per Hit or Points settings dropdown and shortened cached button labels.
-  // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
+  // v1.1.233: Basic Calculations now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
-  // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
+    // v1.1.253: Basic/Advanced calculations keep assists, retals, and outside hits separate from War Hits to prevent double counting.
+// v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
   // v1.1.243: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, Per Hit weights are fixed 1-per-hit toggles, and loading/results queue text was removed.
   // v1.1.240: Per Hit results/newsletters show Per Hit Amount, and dropdown cache status is mode-specific.
   // v1.1.241: Use Cached Report now checks each mode independently so Per Hit and Points System buttons do not depend on the other dropdown being valid.
   // v1.1.239: Member Payout split field plus Total Payout display field added to both modes, results tabs, and newsletters.
-  // v1.1.238: moved public performance/cache status text into both Per Hit Settings and Points System Settings dropdowns.
-  // v1.1.237: moved Member Payout into both Per Hit Settings and Points System Settings so each calculation section is self-contained.
+  // v1.1.238: moved public performance/cache status text into both Basic Calculations and Advanced Calculations dropdowns.
+  // v1.1.237: moved Member Payout into both Basic Calculations and Advanced Calculations so each calculation section is self-contained.
   // v1.1.232: Points System hospital bonus now only applies to verified own-faction hospitalizations.
   // v1.1.232: added Points System Results mode with attack contribution scoring, own-faction hospital bonuses, and fair-fight modifiers.
   // v1.1.228: added Delete Cached Report beside Use Cached Report with a 10-minute successful-delete cooldown.
@@ -7015,7 +7016,7 @@
     }
     if (parts.length) return `Database cached ${mode ? rwphModeLabel(mode) + " " : ""}report${parts.length === 1 ? "" : "s"} found: ${parts.join(" | ")}. Open it from the matching settings dropdown.`;
     if (mode) return `No matching ${rwphModeLabel(mode)} database cached report found yet. Calculate in ${rwphModeLabel(mode)} Settings will create one.`;
-    return "No matching database cached reports found yet. Calculate in Per Hit Settings or Points System Settings will create one.";
+    return "No matching database cached reports found yet. Calculate in Basic Calculations or Advanced Calculations will create one.";
   }
 
   function rwphCacheStatusElements(calculationMode = null) {
@@ -9476,8 +9477,8 @@
               <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
               <li><b>3. Unlock or buy/extend:</b> Unlock Panel checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
               <li><b>4. Set the war times:</b> use Auto-fill Last Finished War to load the completed war window.</li>
-              <li><b>5. Per Hit Settings Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
-              <li><b>Points System Settings Calculate:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
+              <li><b>5. Basic Calculations Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
+              <li><b>Advanced Calculations Calculate:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
             </ul>
           </div>
 
@@ -9521,12 +9522,12 @@
               <li><b>Member Payout:</b> the money split across eligible members.</li>
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
-              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
-              <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
-              <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
-              <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
-              <li><b>Delete Cache:</b> inside Per Hit Settings or Points System Settings deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
+              <li><b>Basic Calculations:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
+              <li><b>Advanced Calculations:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
+              <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
+              <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
+              <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
+              <li><b>Delete Cache:</b> inside Basic Calculations or Advanced Calculations deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
@@ -10027,7 +10028,7 @@
           Server-side locked version. Your backend verifies the license and calculates payouts.
         </div>
         <div class="rw-small">
-          Completed-war mode: Per Hit Settings and Points System Settings only report the latest finished ranked war. If a matching cached report exists, RWPH shows a popup and asks you to open the matching cached report instead of creating a duplicate report.
+          Completed-war mode: Basic Calculations and Advanced Calculations only report the latest finished ranked war. If a matching cached report exists, RWPH shows a popup and asks you to open the matching cached report instead of creating a duplicate report.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Main panel tabs">
@@ -10076,7 +10077,7 @@
           </div>
           <div class="rw-small">RWPH only creates payout reports for the latest completed ranked war. Active/current wars cannot be calculated until they finish. If a matching backend/database cached report exists, RWPH shows a popup and the matching cached-report button opens the backend/database cached result.</div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
-            <summary class="rw-api-tos-title">Per Hit Settings</summary>
+            <summary class="rw-api-tos-title">Basic Calculations</summary>
             <div class="rw-api-tos-content">
               <div class="rw-per-hit-note">These settings control the normal per-hit report. Member Payout is the amount split across members. Total Payout is shown on the results/newsletters for your full payout record. Click Calculate here to run the per-hit report.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
@@ -10116,7 +10117,7 @@
             </div>
           </details>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
-            <summary class="rw-api-tos-title">Points System Settings</summary>
+            <summary class="rw-api-tos-title">Advanced Calculations</summary>
             <div class="rw-api-tos-content">
               <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and the Avg FF per-payable-hit bonus. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
@@ -10181,7 +10182,7 @@
           </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
-          <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after you click Calculate in Per Hit Settings or Points System Settings.</div>
+          <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after you click Calculate in Basic Calculations or Advanced Calculations.</div>
         </div>
 
         <div id="rw-admin-tab-section" class="rw-tab-section rw-unified-tab-panel" hidden>
@@ -10250,8 +10251,8 @@
               <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
               <li><b>3. Unlock or buy/extend:</b> Unlock Panel checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
               <li><b>4. Set the war times:</b> use Auto-fill Last Finished War to load the completed war window.</li>
-              <li><b>5. Per Hit Settings Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
-              <li><b>Points System Settings Calculate:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
+              <li><b>5. Basic Calculations Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
+              <li><b>Advanced Calculations Calculate:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
             </ul>
           </div>
 
@@ -10295,12 +10296,12 @@
               <li><b>Member Payout:</b> the money split across eligible members.</li>
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
-              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
-              <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
-              <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
-              <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
-              <li><b>Delete Cache:</b> inside Per Hit Settings or Points System Settings deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
+              <li><b>Basic Calculations:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
+              <li><b>Advanced Calculations:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
+              <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
+              <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
+              <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
+              <li><b>Delete Cache:</b> inside Basic Calculations or Advanced Calculations deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>

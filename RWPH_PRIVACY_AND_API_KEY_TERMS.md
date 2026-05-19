@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.251**
+Version: **1.1.253**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -187,14 +187,14 @@ Payments Copy Panel buttons are hidden after use with a forced hidden state so u
 
 
 ## v1.1.239 Member/Total Payout Update
-- The old Total payout pool control is now named **Member Payout** in both Per Hit Settings and Points System Settings.
+- The old Total payout pool control is now named **Member Payout** in both Basic Calculations and Advanced Calculations.
 - Each mode now also has a **Total Payout** field for showing the full payout record amount in result tabs and newsletters.
 - Member Payout remains the amount used to calculate member rows and payment-copy amounts.
 - Backend/database cached report signatures include Total Payout so different payout records do not reopen the wrong cached result.
 
 ## v1.1.237 Dropdown Cache Button Layout Update
-- Per Hit cache controls now live inside the Per Hit Settings dropdown.
-- Points System cache controls now live inside the Points System Settings dropdown.
+- Per Hit cache controls now live inside the Basic Calculations dropdown.
+- Points System cache controls now live inside the Advanced Calculations dropdown.
 - Both cache-open buttons are named Use Cached Report.
 - Both cache-delete buttons are named Delete Cache.
 
@@ -205,14 +205,14 @@ Payments Copy Panel buttons are hidden after use with a forced hidden state so u
 - The one-successful-delete-per-10-minutes cache-delete limit still applies.
 
 ## v1.1.234 Calculate Button + Hybrid Points Update
-- The normal per-hit calculation button now sits inside **Per Hit Settings** and is named **Calculate**.
-- The Points System calculation button now sits inside **Points System Settings** and is named **Calculate**.
+- The normal per-hit calculation button now sits inside **Basic Calculations** and is named **Calculate**.
+- The Points System calculation button now sits inside **Advanced Calculations** and is named **Calculate**.
 - Points System results now use the same hybrid source as the normal result when Torn exposes a ranked-war report: rankedwarreport for war hits/score/total respect, plus attack logs for assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifier details.
 - If rankedwarreport is unavailable, Points System mode falls back to attack-log-only point scoring.
 
-## v1.1.233 Per Hit Settings Dropdown Update
-- The normal per-hit weight controls now sit inside a **Per Hit Settings** dropdown.
-- The dropdown styling now matches the main panel theme and the Points System Settings styling.
+## v1.1.233 Basic Calculations Dropdown Update
+- The normal per-hit weight controls now sit inside a **Basic Calculations** dropdown.
+- The dropdown styling now matches the main panel theme and the Advanced Calculations styling.
 - This is a UI/layout update only and does not change what data is read or sent.
 
 ## v1.1.232 Points System Hospital Bonus Update
@@ -266,7 +266,7 @@ The public performance/cache status message now appears inside both calculation 
 
 ## v1.1.240 Results/cache-status update
 
-Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Points System Settings dropdown only reports matching Points System cached reports and the Per Hit Settings dropdown only reports matching Per Hit cached reports.
+Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Advanced Calculations dropdown only reports matching Points System cached reports and the Basic Calculations dropdown only reports matching Per Hit cached reports.
 
 
 ## v1.1.251 Results/export/newsletter layout and stat alignment
@@ -310,3 +310,12 @@ RWPH no longer puts result-tab calculations into a report queue. The loading/res
 - Fullscreen result tabs no longer show Member Payout, Total Payout, or Members Paid in the top hero metadata area.
 - Points System result summaries and newsletters can display Per Point Amount wording.
 - Newsletter CSS was tightened to improve screen fit without changing newsletter themes or calculation behavior.
+
+## v1.1.252 Calculation section rename
+
+The normal per-hit calculation section is now named **Basic Calculations**. The points-based calculation section is now named **Advanced Calculations**. This is a label/help-text update only and does not change payout calculations, cache handling, exports, payments, or API-key storage.
+
+## v1.1.253 Single-bucket calculation update
+
+Basic Calculations and Advanced Calculations now keep assists, retaliation hits, and outside hits separate from War Hits. If a paid assist/retal/extra attack-log event overlaps with a rankedwarreport War Hit for the same member, RWPH removes one report War Hit from that member's calculated result so the same contribution is not counted twice.
+

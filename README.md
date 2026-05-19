@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.251**  
+Current package version: **1.1.253**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -26,7 +26,7 @@ RWPH is a manual payout calculator and copy/prefill helper. It does not send ite
 
 ### Points System Results
 
-RWPH now includes a **Points System Settings** dropdown with its own **Calculate** button. This opens a new results tab and splits the Member Payout by final contribution score instead of flat per-hit pay. The default score values are:
+RWPH now includes an **Advanced Calculations** dropdown with its own **Calculate** button. This opens a new results tab and splits the Member Payout by final contribution score instead of flat per-hit pay. The default score values are:
 
 - War hit on the ranked-war opponent: **10 points**
 - Retaliation hit: **4 points**
@@ -36,7 +36,7 @@ RWPH now includes a **Points System Settings** dropdown with its own **Calculate
 - Enemy war faction hospitalizing target bonus: **-1 point** by default. This can be changed and can be positive or negative.
 - Avg FF bonus: when the fair-fight checkbox is enabled, Avg FF 1.00 gives no bonus; every configured Avg FF step over 1.00 adds the configured point bonus per payable hit. Defaults are +0.02 Avg FF required and +0.01 point per payable hit. Avg FF is capped at 3.00. If the checkbox is off, no fair-fight bonus is added.
 
-The normal per-hit **Calculate** button now lives inside **Per Hit Settings** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
+The normal per-hit **Calculate** button now lives inside **Basic Calculations** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
 
 ### Public Performance Mode
 
@@ -314,10 +314,10 @@ Useful buttons:
 - **Your Expiration** checks remaining licence time.
 - **Lock Panel** returns to the locked panel.
 - **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
-- **Calculate** inside Per Hit Settings runs the normal backend payout calculation for the last finished ranked war only.
-- **Calculate** inside Points System Settings runs the points-based backend payout calculation for the last finished ranked war only.
-- **Use Cached Report** inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when it exists.
-- **Delete Cache** inside Per Hit Settings or Points System Settings removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
+- **Calculate** inside Basic Calculations runs the normal backend payout calculation for the last finished ranked war only.
+- **Calculate** inside Advanced Calculations runs the points-based backend payout calculation for the last finished ranked war only.
+- **Use Cached Report** inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when it exists.
+- **Delete Cache** inside Basic Calculations or Advanced Calculations removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
 - Browser-saved report fallback is disabled.
 - **Launcher Movement** moves the floating launcher.
 
@@ -603,6 +603,19 @@ When updating RWPH:
 
 ## Recent Changelog
 
+### v1.1.253
+
+- Updated Basic Calculations and Advanced Calculations so assists, retaliation hits, and outside hits stay in their own bucket instead of also being paid as War Hits.
+- Retaliation hits now take priority over War Hits when the attack has retaliation evidence, even if the target is the ranked-war opponent.
+- Hybrid rankedwarreport + attack-log calculations now subtract overlapping paid assist/retal/extra events from the member's report War Hit count to avoid double counting.
+- Added cache-key protection for the single-bucket calculation mode so older cached reports do not mix with the new scoring rules.
+
+### v1.1.252
+
+- Renamed **Per Hit Settings** to **Basic Calculations**.
+- Renamed **Points System Settings** to **Advanced Calculations**.
+- Updated main panel labels, help text, cache messages, README notes, and terms wording to use the new calculation section names.
+
 ### v1.1.251
 
 - Removed **Member Payout**, **Total Payout**, and **Members Paid** from the top hero section of both fullscreen result tabs.
@@ -637,7 +650,7 @@ When updating RWPH:
 
 - Added Points System enemy war faction hospital hits and enemy faction hospital bonus points. Enemy war faction hospital bonus can be set to a negative value to subtract points.
 - Points results, CSV export, and newsletter reports now show enemy war faction hospital hit/bonus stats.
-- Per Hit Settings now use fixed 1-per-hit tick boxes instead of editable weight numbers.
+- Basic Calculations now use fixed 1-per-hit tick boxes instead of editable weight numbers.
 
 
 - **Use Cached Report** now works independently inside each system. Per Hit only checks/opens Per Hit cached reports, and Points System only checks/opens Points System cached reports.
@@ -647,10 +660,10 @@ When updating RWPH:
 ### v1.1.240
 
 - Per Hit results and all newsletter themes now include **Per Hit Amount**.
-- Points System Settings now only shows Points cached-report status.
-- Per Hit Settings now only shows Per Hit cached-report status.
+- Advanced Calculations now only shows Points cached-report status.
+- Basic Calculations now only shows Per Hit cached-report status.
 
-- Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Per Hit Settings** and **Points System Settings**.
+- Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Basic Calculations** and **Advanced Calculations**.
 - Added a new **Total Payout** field to both calculation dropdowns. Member Payout is still the amount split across members; Total Payout is saved/displayed as the full payout record amount.
 - Results tabs now show both **Member Payout** and **Total Payout**.
 - All newsletter themes now show both **Member Payout** and **Total Payout** in their summary cards.
@@ -665,14 +678,14 @@ When updating RWPH:
 - Ensured cached Per Hit and cached Points results both keep the Payments handoff so the Payments Copy Panel can open from either cached report type.
 
 ### v1.1.234
-- Moved the normal per-hit report button inside **Per Hit Settings** and renamed it **Calculate**.
-- Moved the Points System report button inside **Points System Settings** and renamed it **Calculate**.
+- Moved the normal per-hit report button inside **Basic Calculations** and renamed it **Calculate**.
+- Moved the Points System report button inside **Advanced Calculations** and renamed it **Calculate**.
 - Changed Points System mode to use the same hybrid source as the normal report when possible: rankedwarreport for war hits/score/total respect plus attack logs for assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers.
 - Kept attack-log-only Points System fallback for wars where Torn does not return a usable rankedwarreport.
 
 ### v1.1.233
-- Changed the normal hit weight controls into a collapsed **Per Hit Settings** dropdown.
-- Matched the Per Hit Settings and Points System Settings dropdown cards to the main panel blue/modern theme.
+- Changed the normal hit weight controls into a collapsed **Basic Calculations** dropdown.
+- Matched the Basic Calculations and Advanced Calculations dropdown cards to the main panel blue/modern theme.
 - Previously kept the existing per-hit and Points System calculations unchanged.
 
 ### v1.1.232
