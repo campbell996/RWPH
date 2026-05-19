@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.229**  
+Current package version: **1.1.231**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -22,6 +22,20 @@ Author: **Evil_Panda_420**
 RWPH is a helper tool. It can calculate payouts, prepare payment rows, copy payment details, prefill some Torn fields, and create newsletter/export files. It does **not** automatically approve payouts, automatically send Torn money, automatically send Xanax, or replace manual checking.
 
 RWPH is a manual payout calculator and copy/prefill helper. It does not send items, send cash, confirm payments, attack, buy, sell, travel, or perform Torn gameplay actions automatically. Users must manually review and confirm all Torn actions.
+
+
+### Points System Results
+
+RWPH now includes a separate **Points System Results** button. This opens a new results tab and splits the payout pool by final contribution score instead of flat per-hit pay. The default score values are:
+
+- War hit on the ranked-war opponent: **10 points**
+- Retaliation hit: **4 points**
+- Assist: **3 points**
+- Outside hit / chain-maintenance hit: **2 points**
+- Hospitalizing result bonus: **+2 points**
+- Fair-fight modifier: applied when Torn exposes a `fair_fight` / `fairFight` attack modifier; otherwise it defaults to `1.00x`.
+
+The normal **Fetch + Calculate** button remains available for the existing weighted payout report. Points System mode uses attack-log data because hospital results and fair-fight modifiers are per-attack details.
 
 ### Public Performance Mode
 
@@ -585,6 +599,12 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.231
+
+- Hardened Payments Copy Panel button hiding so buttons still disappear even if browser clipboard permission is blocked.
+- Added a local fallback handoff for payment rows so Payments can still open from fullscreen cached-result tabs.
+- Hardened Xanax Payment Helper opening on the item tab by restoring the active pending payment code from the backend/database before rendering the helper.
 
 ### v1.1.229
 

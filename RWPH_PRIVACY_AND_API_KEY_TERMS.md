@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.229**
+Version: **1.1.231**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -185,6 +185,12 @@ The **Your Expiration** button is limited in the browser to two manual checks pe
 Payments Copy Panel buttons are hidden after use with a forced hidden state so users can more reliably track which payout copy actions have already been used. The restore button only brings back the most recently hidden payment-copy button.
 
 
+
+## v1.1.231 Reliability Hardening Update
+
+- Payments row handoff now has an extra browser fallback so cached/fullscreen result tabs can pass rows to the Payments Copy Panel more reliably.
+- Payment-copy buttons still disappear after use even if clipboard access is blocked by the browser.
+- The Xanax Payment Helper tries to restore the current pending code from the backend/database on the item tab before showing helper actions.
 
 ## v1.1.229 Help Panel Information Update
 
