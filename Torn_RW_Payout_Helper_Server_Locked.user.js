@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.249
+// @version      1.1.250
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1651,6 +1651,7 @@
   // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
+  // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
   // v1.1.243: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, Per Hit weights are fixed 1-per-hit toggles, and loading/results queue text was removed.
   // v1.1.240: Per Hit results/newsletters show Per Hit Amount, and dropdown cache status is mode-specific.
@@ -4881,44 +4882,51 @@
 
   function buildPayoutCsvText(rows, summary = {}) {
     const pointsMode = summary?.pointsMode || summary?.calculationMode === "points";
+    const memberPayout = rwphSummaryMemberPayout(summary, rows || []);
+    const share = (payout) => memberPayout > 0 ? `${((Number(payout || 0) / memberPayout) * 100).toFixed(2)}%` : "0.00%";
     const header = pointsMode
-      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Own-Faction Hospital Hits", "Enemy War Faction Hospital Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "FF Bonus Per Payable Hit", "Own-Faction Hospital Bonus", "Enemy War Faction Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
-      : ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Total Respect", "Respect", "Payout"];
-    const body = (rows || []).map((r) => pointsMode ? [
-      r.id,
-      r.name,
-      r.warHits ?? r.attacks ?? 0,
-      r.assists,
-      r.outsideHits || 0,
-      r.retaliationHits || 0,
-      r.hospitalizingHits || 0,
-      r.enemyFactionHospitalizingHits || 0,
-      r.totalTrackedHits || 0,
-      r.payableEvents || 0,
-      Number(r.points ?? r.weight ?? 0).toFixed(2),
-      Number(r.basePoints || 0).toFixed(2),
-      Number(r.fairFightBonusPoints || 0).toFixed(2),
-      Number(r.fairFightPerPayableHitBonus || 0).toFixed(2),
-      Number(r.hospitalBonusPoints || 0).toFixed(2),
-      Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2),
-      Number(r.avgFairFight || 1).toFixed(2),
-      Number(r.totalRespect ?? r.respect ?? 0).toFixed(2),
-      Number(r.respect || 0).toFixed(2),
-      Math.round(Number(r.payout || 0)),
-    ] : [
-      r.id,
-      r.name,
-      r.warHits ?? r.attacks ?? 0,
-      r.assists,
-      r.outsideHits || 0,
-      r.retaliationHits || 0,
-      r.totalTrackedHits || 0,
-      r.payableEvents || 0,
-      Number(r.weight || 0).toFixed(2),
-      Number(r.totalRespect ?? r.respect ?? 0).toFixed(2),
-      Number(r.respect || 0).toFixed(2),
-      Math.round(Number(r.payout || 0)),
-    ]);
+      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Own-Faction Hospital Hits", "Own-Faction Hospital Bonus", "Enemy War Faction Hospital Hits", "Enemy War Faction Hospital Bonus", "Points", "Base Points", "Avg Fair Fight", "FF Bonus Per Payable Hit", "Fair Fight Bonus", "Total Respect", "Respect", "Payout", "Share"]
+      : ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Total Respect", "Respect", "Weight", "Payout", "Share"];
+    const body = (rows || []).map((r) => {
+      const payout = Number(r.payout || 0);
+      return pointsMode ? [
+        r.id,
+        r.name,
+        r.warHits ?? r.attacks ?? 0,
+        r.assists,
+        r.outsideHits || 0,
+        r.retaliationHits || 0,
+        r.totalTrackedHits || 0,
+        r.payableEvents || 0,
+        r.hospitalizingHits || 0,
+        Number(r.hospitalBonusPoints || 0).toFixed(2),
+        r.enemyFactionHospitalizingHits || 0,
+        Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2),
+        Number(r.points ?? r.weight ?? 0).toFixed(2),
+        Number(r.basePoints || 0).toFixed(2),
+        Number(r.avgFairFight || 1).toFixed(2),
+        Number(r.fairFightPerPayableHitBonus || 0).toFixed(2),
+        Number(r.fairFightBonusPoints || 0).toFixed(2),
+        Number(r.totalRespect ?? r.respect ?? 0).toFixed(2),
+        Number(r.respect || 0).toFixed(2),
+        Math.round(payout),
+        share(payout),
+      ] : [
+        r.id,
+        r.name,
+        r.warHits ?? r.attacks ?? 0,
+        r.assists,
+        r.outsideHits || 0,
+        r.retaliationHits || 0,
+        r.totalTrackedHits || 0,
+        r.payableEvents || 0,
+        Number(r.totalRespect ?? r.respect ?? 0).toFixed(2),
+        Number(r.respect || 0).toFixed(2),
+        Number(r.weight || 0).toFixed(2),
+        Math.round(payout),
+        share(payout),
+      ];
+    });
 
     return [header, ...body]
       .map((line) => line.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","))
@@ -5891,6 +5899,16 @@
       .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
     }
 
+
+    /* v1.1.250: visual-only cleanup for existing result-card layout */
+    .result-card{border-color:rgba(125,211,252,.22)!important;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(2,6,23,.86))!important;box-shadow:0 14px 32px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.055)!important;}
+    .result-card-head{padding-bottom:2px!important;border-bottom:1px solid rgba(125,211,252,.10)!important;}
+    .result-payout-block .payout{display:inline-flex!important;align-items:center!important;justify-content:flex-end!important;padding:6px 10px!important;border-radius:999px!important;background:rgba(34,197,94,.10)!important;border:1px solid rgba(134,239,172,.18)!important;}
+    .result-highlight,.stats div{box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;}
+    .stats div{display:flex!important;flex-direction:column!important;justify-content:space-between!important;gap:3px!important;min-height:50px!important;}
+    .stats span{display:block!important;min-height:20px!important;}
+    .stats b{display:block!important;}
+
   </style>
 </head>
 <body>
@@ -5988,6 +6006,7 @@
     const rows = ${rowsJson};
     const summary = ${summaryJson};
     const newsletterHtml = ${newsletterJson};
+    const csvText = ${JSON.stringify(csvText).replaceAll("<", "\\u003c")};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
 
     function storePayAllRowsFallback() {
@@ -6013,17 +6032,7 @@
     }
 
     function exportCsv() {
-      const header = ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Total Respect", "Respect", "Payout"];
-      const lines = [header].concat(rows.map((r) => [
-        r.id, r.name, r.warHits ?? r.attacks ?? 0, r.assists, r.outsideHits || 0, r.retaliationHits || 0,
-        r.totalTrackedHits || 0,
-        r.payableEvents || 0,
-        Number(r.weight || 0).toFixed(2),
-        Number(r.respect || 0).toFixed(2),
-        Math.round(Number(r.payout || 0)),
-      ]));
-      const csv = lines.map((line) => line.map((v) => '"' + String(v).replaceAll('"', '""') + '"').join(",")).join("\\n");
-      downloadText("torn-rw-payouts.csv", csv, "text/csv");
+      downloadText("torn-rw-payouts.csv", csvText || "", "text/csv");
     }
 
     function openNewsletter() {
@@ -7807,6 +7816,7 @@
       fairFightPerPayableHitBonus: safeNumber(r.fairFightPerPayableHitBonus),
       avgFairFight: safeNumber(r.avgFairFight || 1),
       points: safeNumber(r.points ?? r.weight),
+      basePoints: safeNumber(r.basePoints),
       weight: safeNumber(r.weight),
       payout: safeNumber(r.payout),
       totalTrackedHits: safeNumber(r.totalTrackedHits),
@@ -7824,8 +7834,10 @@
     const totalRetaliationHits = safeNumber(summary?.totalRetaliationHits) || list.reduce((sum, r) => sum + r.retaliationHits, 0);
     const totalTrackedHits = safeNumber(summary?.totalTrackedHits) || list.reduce((sum, r) => sum + r.totalTrackedHits, 0);
     const totalPayableEvents = safeNumber(summary?.calcMeta?.payableEvents) || list.reduce((sum, r) => sum + r.payableEvents, 0);
-    const totalWeight = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const totalWeight = pointsMode
+      ? (safeNumber(summary?.totalPoints ?? summary?.totalWeight) || list.reduce((sum, r) => sum + r.points, 0))
+      : (safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0));
     const totalEnemyFactionHospitalizingHits = safeNumber(summary?.totalEnemyFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.enemyFactionHospitalizingHits, 0);
     const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
     const totalOwnFactionHospitalizingHits = safeNumber(summary?.totalHospitalizingHits ?? summary?.totalOwnFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.hospitalizingHits, 0);
@@ -7873,9 +7885,10 @@
         <td class="num">${r.retaliationHits}</td>
         <td class="num">${r.totalTrackedHits}</td>
         <td class="num">${r.payableEvents}</td>
-        ${pointsMode ? `<td class="num">${r.enemyFactionHospitalizingHits}</td><td class="num">${r.enemyFactionHospitalBonusPoints.toFixed(2)}</td><td class="num">${r.avgFairFight.toFixed(2)}x</td><td class="num">${r.fairFightPerPayableHitBonus.toFixed(2)}</td><td class="num">${r.fairFightBonusPoints.toFixed(2)}</td>` : ""}
+        ${pointsMode ? `<td class="num">${r.hospitalizingHits}</td><td class="num">${r.hospitalBonusPoints.toFixed(2)}</td><td class="num">${r.enemyFactionHospitalizingHits}</td><td class="num">${r.enemyFactionHospitalBonusPoints.toFixed(2)}</td><td class="num">${r.points.toFixed(2)}</td><td class="num">${r.basePoints?.toFixed ? r.basePoints.toFixed(2) : Number(r.basePoints || 0).toFixed(2)}</td><td class="num">${r.avgFairFight.toFixed(2)}x</td><td class="num">${r.fairFightPerPayableHitBonus.toFixed(2)}</td><td class="num">${r.fairFightBonusPoints.toFixed(2)}</td>` : ""}
+        <td class="num">${r.totalRespect.toFixed(2)}</td>
         <td class="num">${r.respect.toFixed(2)}</td>
-        <td class="num">${r.weight.toFixed(2)}</td>
+        ${pointsMode ? "" : `<td class="num">${r.weight.toFixed(2)}</td>`}
         <td class="num strong">${esc(money(r.payout))}</td>
         <td class="num">${esc(percent(r.payout, totalPayout))}</td>
       </tr>`).join("");
@@ -8159,6 +8172,14 @@
     .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
+    /* v1.1.250: visual-only newsletter cleanup without changing the report layout */
+    .stat-card{min-height:84px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;}
+    .table-wrap{border-radius:16px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;}
+    th{white-space:nowrap!important;}
+    table{min-width:1180px!important;}
+    td{vertical-align:middle!important;}
+    .chart-row{align-items:center!important;}
+
   </style>
 </head>
 <body>
@@ -8213,9 +8234,10 @@
                 <th class="num">Retals</th>
                 <th class="num">Tracked</th>
                 <th class="num">Payable</th>
-                ${pointsMode ? `<th class="num">Enemy Hosp</th><th class="num">Enemy Hosp Pts</th><th class="num">Avg FF</th><th class="num">FF/Hit</th><th class="num">Fair Bonus</th>` : ""}
+                ${pointsMode ? `<th class="num">Own Hosp</th><th class="num">Own Hosp Pts</th><th class="num">Enemy Hosp</th><th class="num">Enemy Hosp Pts</th><th class="num">Points</th><th class="num">Base Points</th><th class="num">Avg FF</th><th class="num">FF/Hit</th><th class="num">Fair Bonus</th>` : ""}
+                <th class="num">Total Respect</th>
                 <th class="num">Respect</th>
-                <th class="num">${pointsMode ? "Points" : "Weight"}</th>
+                ${pointsMode ? "" : `<th class="num">Weight</th>`}
                 <th class="num">Payout</th>
                 <th class="num">Share</th>
               </tr>
@@ -8250,6 +8272,7 @@
       fairFightPerPayableHitBonus: safeNumber(r.fairFightPerPayableHitBonus),
       avgFairFight: safeNumber(r.avgFairFight || 1),
       points: safeNumber(r.points ?? r.weight),
+      basePoints: safeNumber(r.basePoints),
       respect: safeNumber(r.respect),
       totalRespect: safeNumber(r.totalRespect ?? r.respect),
       weight: safeNumber(r.weight),
@@ -8267,10 +8290,14 @@
     const totalRetaliationHits = safeNumber(summary?.totalRetaliationHits) || list.reduce((sum, r) => sum + r.retaliationHits, 0);
     const totalTrackedHits = safeNumber(summary?.totalTrackedHits) || list.reduce((sum, r) => sum + r.totalTrackedHits, 0);
     const totalPayableEvents = safeNumber(summary?.calcMeta?.payableEvents) || list.reduce((sum, r) => sum + r.payableEvents, 0);
-    const totalWeight = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const totalWeight = pointsMode
+      ? (safeNumber(summary?.totalPoints ?? summary?.totalWeight) || list.reduce((sum, r) => sum + r.points, 0))
+      : (safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0));
     const totalEnemyFactionHospitalizingHits = safeNumber(summary?.totalEnemyFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.enemyFactionHospitalizingHits, 0);
     const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
+    const totalOwnFactionHospitalizingHits = safeNumber(summary?.totalHospitalizingHits ?? summary?.totalOwnFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.hospitalizingHits, 0);
+    const totalOwnFactionHospitalBonusPoints = safeNumber(summary?.totalHospitalBonusPoints ?? summary?.totalOwnFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.hospitalBonusPoints, 0);
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const generatedAt = new Date().toLocaleString();
@@ -8291,7 +8318,7 @@
       ["War Hits", String(totalHits), totalAssists + " assists"],
       ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
       ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
-      ...(pointsMode ? [["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"], ["Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit"]] : []),
+      ...(pointsMode ? [["Own Hospital Hits", String(totalOwnFactionHospitalizingHits), totalOwnFactionHospitalBonusPoints.toFixed(2) + " own bonus points"], ["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"], ["Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit"]] : []),
       [pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2), pointsMode ? "contribution score" : "weighted contribution"],
       ["Total Respect", totalRespect.toFixed(2), "ranked-war report"],
     ];
@@ -8320,11 +8347,14 @@
         + '<td>' + r.retaliationHits + '</td>'
         + '<td>' + r.totalTrackedHits + '</td>'
         + '<td>' + r.payableEvents + '</td>'
-        + (pointsMode ? '<td>' + r.enemyFactionHospitalizingHits + '</td><td>' + r.enemyFactionHospitalBonusPoints.toFixed(2) + '</td><td>' + r.avgFairFight.toFixed(2) + 'x</td><td>' + r.fairFightPerPayableHitBonus.toFixed(2) + '</td><td>' + r.fairFightBonusPoints.toFixed(2) + '</td>' : '')
-        + '<td>' + r.weight.toFixed(2) + '</td>'
+        + (pointsMode ? '<td>' + r.hospitalizingHits + '</td><td>' + r.hospitalBonusPoints.toFixed(2) + '</td><td>' + r.enemyFactionHospitalizingHits + '</td><td>' + r.enemyFactionHospitalBonusPoints.toFixed(2) + '</td><td>' + r.points.toFixed(2) + '</td><td>' + r.basePoints.toFixed(2) + '</td><td>' + r.avgFairFight.toFixed(2) + 'x</td><td>' + r.fairFightPerPayableHitBonus.toFixed(2) + '</td><td>' + r.fairFightBonusPoints.toFixed(2) + '</td>' : '')
+        + '<td>' + r.totalRespect.toFixed(2) + '</td>'
+        + '<td>' + r.respect.toFixed(2) + '</td>'
+        + (pointsMode ? '' : '<td>' + r.weight.toFixed(2) + '</td>')
         + '<td class="pay">' + esc(money(r.payout)) + '</td>'
+        + '<td>' + esc(percent(r.payout, totalPayout)) + '</td>'
         + '</tr>';
-    }).join("") || '<tr><td colspan="10">No payout rows available.</td></tr>';
+    }).join("") || '<tr><td colspan="' + (pointsMode ? '21' : '13') + '">No payout rows available.</td></tr>';
 
     const css = isCyber ? `
       :root{--bg:#050514;--panel:rgba(10,14,35,.86);--line:rgba(0,245,255,.28);--text:#f7fbff;--muted:#b7c7ff;--hot:#ff39d4;--main:#00f5ff;--good:#45ff9f;}
@@ -8336,9 +8366,12 @@
       *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:radial-gradient(circle at 50% 0%,rgba(192,147,74,.26),transparent 28%),linear-gradient(180deg,#22170e,#110d09);padding:24px;text-align:center}.shell{max-width:1220px;margin:0 auto;background:linear-gradient(180deg,#f8edcf,#e8d1a3);border:3px solid var(--line);box-shadow:0 18px 80px rgba(0,0,0,.55),inset 0 0 0 7px rgba(123,31,31,.10);padding:18px;display:grid;gap:16px}.hero{border:2px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(192,147,74,.14));padding:22px}.logo{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}.eyebrow{color:var(--accent);font-family:Arial,sans-serif;font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;border:1px solid var(--line);padding:6px 11px;background:#efe0bd;color:var(--accent);font-family:Arial,sans-serif;font-size:11px;font-weight:950;letter-spacing:1px}h1{font-size:34px;margin:10px 0 8px;letter-spacing:.3px}p{margin:0;color:var(--muted);font-family:Arial,sans-serif;font-weight:800}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat-card,.card,.table-card{border:2px solid rgba(111,90,63,.45);background:rgba(255,248,225,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}.stat-card{padding:13px}.stat-card span,.member span{display:block;font-family:Arial,sans-serif;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:21px;color:var(--accent)}.stat-card em{display:block;margin-top:4px;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 12px;color:var(--accent);font-size:22px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;border-bottom:1px dashed rgba(111,90,63,.45);padding:10px 6px}.top-rank{font-weight:950;color:var(--accent)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800}.top-meter{height:12px;background:#dbc08d;border:1px solid rgba(111,90,63,.45);overflow:hidden}.top-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}.top-pay{font-weight:950;color:#315b2f;text-align:right}.table-wrap{overflow:auto;border:2px solid rgba(111,90,63,.45)}table{width:100%;border-collapse:collapse;min-width:840px;background:rgba(255,250,235,.55)}th,td{padding:10px 8px;border-bottom:1px solid rgba(111,90,63,.32);font-size:12px;text-align:center}th{background:rgba(123,31,31,.12);color:var(--accent);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:#315b2f;font-weight:950}.footer{color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800;padding:8px}@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.shell{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
     `;
 
+    const cleanupCss = " .stat-card{min-height:84px;display:flex;flex-direction:column;justify-content:center}.table-wrap{box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}table{min-width:1180px}th{white-space:nowrap}td{vertical-align:middle}.top-row{min-height:58px}";
+    const finalCss = css + cleanupCss;
+
     return '<!doctype html>'
       + '<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-      + '<title>RWPH ' + esc(title) + '</title><style>' + css + '</style></head><body>'
+      + '<title>RWPH ' + esc(title) + '</title><style>' + finalCss + '</style></head><body>'
       + '<main class="shell">'
       + '<header class="hero">'
       + '<img class="logo" src="' + RWPH_LAUNCHER_LOGO_DATA_URI + '" alt="RWPH">'
@@ -8350,7 +8383,7 @@
       + '<section class="stats">' + statsHtml + '</section>'
       + '<section class="card"><h2>Top Payout Board</h2>' + topHtml + '</section>'
       + '<section class="table-card"><h2>Full Payout Ledger</h2><div class="table-wrap"><table><thead><tr>'
-      + '<th>#</th><th>Member</th><th>War Hits</th><th>Assists</th><th>Outside</th><th>Retals</th><th>Tracked</th><th>Payable</th>' + (pointsMode ? '<th>Enemy Hosp</th><th>Enemy Hosp Pts</th>' : '') + '<th>' + (pointsMode ? 'Points' : 'Weight') + '</th><th>Payout</th>'
+      + '<th>#</th><th>Member</th><th>War Hits</th><th>Assists</th><th>Outside</th><th>Retals</th><th>Tracked</th><th>Payable</th>' + (pointsMode ? '<th>Own Hosp</th><th>Own Hosp Pts</th><th>Enemy Hosp</th><th>Enemy Hosp Pts</th><th>Points</th><th>Base Points</th><th>Avg FF</th><th>FF/Hit</th><th>Fair Bonus</th>' : '') + '<th>Total Respect</th><th>Respect</th>' + (pointsMode ? '' : '<th>Weight</th>') + '<th>Payout</th><th>Share</th>'
       + '</tr></thead><tbody>' + tableRows + '</tbody></table></div></section>'
       + '<footer class="footer">Created with Ranked War Payout Helper. Review payouts before sending faction funds.</footer>'
       + '</main></body></html>';
