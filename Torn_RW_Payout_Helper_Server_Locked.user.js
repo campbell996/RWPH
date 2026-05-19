@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.253
+// @version      1.1.255
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -31,6 +31,7 @@
   const PANEL_LAYOUT_STORAGE_KEY = "rw_payout_helper_panel_layout";
   const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
+  const PAYOUT_FORM_SCHEMA_STORAGE_KEY = "rw_payout_helper_payout_form_schema_version";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
   const PAY_ALL_ROWS_FALLBACK_STORAGE_KEY = "rw_payout_helper_pay_all_rows_fallback";
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
@@ -1416,6 +1417,10 @@
     if (state["rw-total"] && !state["rw-points-total"]) state["rw-points-total"] = state["rw-total"];
     if (state["rw-total"] && !state["rw-total-overall"]) state["rw-total-overall"] = state["rw-total"];
     if (state["rw-points-total"] && !state["rw-points-total-overall"]) state["rw-points-total-overall"] = state["rw-points-total"];
+    if (GM_getValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "") !== "retal-bonus-v255") {
+      if (String(state["rw-point-retal"] ?? "").trim() === "4") state["rw-point-retal"] = "0.2";
+      GM_setValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "retal-bonus-v255");
+    }
     for (const [id, value] of Object.entries(state)) {
       const el = document.getElementById(id);
       if (!el) continue;
@@ -1651,7 +1656,7 @@
   // v1.1.233: Basic Calculations now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
-    // v1.1.253: Basic/Advanced calculations keep assists, retals, and outside hits separate from War Hits to prevent double counting.
+    // v1.1.255: Advanced retals on war-faction opponents count as War Hits plus configurable retal bonus. Non-war retals count as Outside Hits.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
@@ -6952,13 +6957,14 @@
         Number(document.getElementById("rw-point-war-hit")?.value || 10),
         Number(document.getElementById("rw-point-assist")?.value || 3),
         Number(document.getElementById("rw-point-outside")?.value || 2),
-        Number(document.getElementById("rw-point-retal")?.value || 4),
+        Number(document.getElementById("rw-point-retal")?.value || 0.2),
         Number(document.getElementById("rw-point-hospital")?.value || 2),
         rwphPointEnemyHospitalBonusValue(),
         document.getElementById("rw-point-fair-fight")?.checked !== false ? "ff" : "no-ff",
         rwphPointFairFightAvgStepValue(),
         rwphPointFairFightBonusStepValue(),
         "avg-ff-custom-step-per-payable-hit-v2",
+        "war-faction-retals-war-hit-plus-bonus-v1",
       );
     }
 
@@ -6979,7 +6985,7 @@
       pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
       pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
       pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
-      pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 4),
+      pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 0.2),
       pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
       pointEnemyHospitalBonus: rwphPointEnemyHospitalBonusValue(),
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
@@ -9523,7 +9529,7 @@
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
               <li><b>Basic Calculations:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
-              <li><b>Advanced Calculations:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
+              <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
               <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
@@ -9535,7 +9541,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Results Loading Screen</div>
             <ul class="rw-how-list">
-              <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
+              <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/non-war retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
               <li><b>Loading counter:</b> the elapsed timer should count while the results tab works.</li>
               <li><b>Normal wait:</b> small wars often take about 10-30 seconds. Big wars or slow Torn/API responses can take 1-3 minutes.</li>
               <li><b>Too many requests:</b> if Torn rate-limits the backend, RWPH pauses and retries using the server retry/backoff settings.</li>
@@ -10119,7 +10125,7 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title">Advanced Calculations</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and the Avg FF per-payable-hit bonus. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
+              <div class="rw-small"><b>Advanced Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most. War-faction retals count as War Hits and add the configurable retal bonus, while non-war-faction retals count as Outside Hits. Assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and the Avg FF per-payable-hit bonus are also included. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
                 <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Per Hit and Points System finished-war caches when your API key and payout settings are ready. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache now live inside their matching settings dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
                 <div id="rw-cache-status-points" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
@@ -10144,8 +10150,8 @@
                 <label>Outside hit points
                   <input id="rw-point-outside" type="number" value="2" step="0.1" min="0">
                 </label>
-                <label>Retal points
-                  <input id="rw-point-retal" type="number" value="4" step="0.1" min="0">
+                <label>War-faction retal bonus points
+                  <input id="rw-point-retal" type="number" value="0.2" step="0.1" min="0">
                 </label>
               </div>
               <div class="rw-row">
@@ -10297,7 +10303,7 @@
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
               <li><b>Basic Calculations:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
-              <li><b>Advanced Calculations:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
+              <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
               <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
@@ -10309,7 +10315,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Results Loading Screen</div>
             <ul class="rw-how-list">
-              <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
+              <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/non-war retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
               <li><b>Loading counter:</b> the elapsed timer should count while the results tab works.</li>
               <li><b>Normal wait:</b> small wars often take about 10-30 seconds. Big wars or slow Torn/API responses can take 1-3 minutes.</li>
               <li><b>Too many requests:</b> if Torn rate-limits the backend, RWPH pauses and retries using the server retry/backoff settings.</li>
@@ -10750,7 +10756,7 @@
       const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
       const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
       const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
-      const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 4);
+      const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 0.2);
       const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
       const pointEnemyHospitalBonus = rwphPointEnemyHospitalBonusValue();
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
@@ -10760,7 +10766,7 @@
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
       if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0) return alert("Weights cannot be negative.");
-      if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0) return alert("Points System values cannot be negative.");
+      if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0) return alert("Advanced Calculation values cannot be negative.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightAvgStep) || pointFairFightAvgStep <= 0)) return alert("Avg FF required per bonus step must be greater than 0.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightBonusPerStep) || pointFairFightBonusPerStep < 0)) return alert("Point bonus per payable hit per step cannot be negative.");
 
@@ -10774,7 +10780,7 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying own-faction/enemy-faction hospital and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
             : "Server is verifying licence, checking the report cache, finding the last finished ranked war, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);

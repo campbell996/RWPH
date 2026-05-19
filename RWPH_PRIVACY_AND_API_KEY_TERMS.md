@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.253**
+Version: **1.1.255**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -315,7 +315,25 @@ RWPH no longer puts result-tab calculations into a report queue. The loading/res
 
 The normal per-hit calculation section is now named **Basic Calculations**. The points-based calculation section is now named **Advanced Calculations**. This is a label/help-text update only and does not change payout calculations, cache handling, exports, payments, or API-key storage.
 
-## v1.1.253 Single-bucket calculation update
+## v1.1.254 Single-bucket calculation update
 
 Basic Calculations and Advanced Calculations now keep assists, retaliation hits, and outside hits separate from War Hits. If a paid assist/retal/extra attack-log event overlaps with a rankedwarreport War Hit for the same member, RWPH removes one report War Hit from that member's calculated result so the same contribution is not counted twice.
+
+
+
+## Recent Changelog
+
+### v1.1.255
+
+- Advanced Calculations retals against enemy ranked-war faction opponents now count as War Hits plus a configurable retal bonus.
+- The Advanced Calculations retal setting is now **War-faction retal bonus points**, defaulting to **0.2**.
+- Non-war-faction retals are classified as Outside Hits.
+- This update changes calculation/classification behavior only; it does not change API-key storage, licence checks, payment verification, or manual-only payment rules.
+
+### v1.1.254
+
+- Retaliation Hits now only count as retaliation when the target is in the selected ranked-war enemy faction.
+- Retals against non-war-faction targets are no longer paid/classified as Retaliation Hits.
+- Basic Calculations and Advanced Calculations still keep assists, eligible retals, and outside hits separate from War Hits to prevent double counting.
+- Updated cache-key protection so cached reports do not mix the older retal rules with the new war-faction-only retal rule.
 

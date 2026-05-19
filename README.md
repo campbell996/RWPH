@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.253**  
+Current package version: **1.1.255**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -29,14 +29,14 @@ RWPH is a manual payout calculator and copy/prefill helper. It does not send ite
 RWPH now includes an **Advanced Calculations** dropdown with its own **Calculate** button. This opens a new results tab and splits the Member Payout by final contribution score instead of flat per-hit pay. The default score values are:
 
 - War hit on the ranked-war opponent: **10 points**
-- Retaliation hit: **4 points**
+- War-faction retal bonus: **+0.2 points** by default. War-faction retals still count as War Hits, then add this bonus. Non-war-faction retals count as Outside Hits.
 - Assist: **3 points**
 - Outside hit / chain-maintenance hit: **2 points**
 - Own-faction hospitalizing target bonus: **+2 points**
 - Enemy war faction hospitalizing target bonus: **-1 point** by default. This can be changed and can be positive or negative.
 - Avg FF bonus: when the fair-fight checkbox is enabled, Avg FF 1.00 gives no bonus; every configured Avg FF step over 1.00 adds the configured point bonus per payable hit. Defaults are +0.02 Avg FF required and +0.01 point per payable hit. Avg FF is capped at 3.00. If the checkbox is off, no fair-fight bonus is added.
 
-The normal per-hit **Calculate** button now lives inside **Basic Calculations** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
+The normal per-hit **Calculate** button now lives inside **Basic Calculations** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, war-faction retal bonus evidence, own-faction/enemy-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
 
 ### Public Performance Mode
 
@@ -94,8 +94,8 @@ This package is not an official Torn product. Use it only in ways that follow To
 2. Confirm your API key is saved or pasted.
 3. Use **Auto-fill Last Finished War** to load the latest completed war window.
 4. Enter the Member Payout, and optionally set Total Payout for the full payout record shown in results/newsletters.
-5. Set the weights you want.
-6. Click **Fetch + Calculate**.
+5. Open **Basic Calculations** or **Advanced Calculations** and set the values you want.
+6. Click **Calculate** inside the matching calculation section.
 7. Wait for the loading dots/results page.
 8. Review all results before paying.
 
@@ -603,12 +603,20 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.253
+### v1.1.255
 
-- Updated Basic Calculations and Advanced Calculations so assists, retaliation hits, and outside hits stay in their own bucket instead of also being paid as War Hits.
-- Retaliation hits now take priority over War Hits when the attack has retaliation evidence, even if the target is the ranked-war opponent.
-- Hybrid rankedwarreport + attack-log calculations now subtract overlapping paid assist/retal/extra events from the member's report War Hit count to avoid double counting.
-- Added cache-key protection for the single-bucket calculation mode so older cached reports do not mix with the new scoring rules.
+- Advanced Calculations now treats retals against enemy ranked-war faction opponents as War Hits plus a configurable retal bonus.
+- Added/updated the Advanced Calculations retal box as **War-faction retal bonus points**, defaulting to **0.2**.
+- Non-war-faction retals are now classified as Outside Hits instead of Retaliation Hits.
+- Updated cache-key protection so old Advanced cached reports do not mix with the new retal bonus rules.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.254
+
+- Retaliation Hits now only count as retaliation when the target is in the selected ranked-war enemy faction.
+- Retals against non-war-faction targets are no longer paid/classified as Retaliation Hits.
+- Basic Calculations and Advanced Calculations still keep assists, eligible retals, and outside hits separate from War Hits to prevent double counting.
+- Updated cache-key protection so cached reports do not mix the older retal rules with the new war-faction-only retal rule.
 
 ### v1.1.252
 
