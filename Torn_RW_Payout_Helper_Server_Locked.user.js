@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.239
+// @version      1.1.242
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1649,6 +1649,9 @@
   // v1.1.235: Per Hit and Points System reports now have separate database cache buttons and both cached report types preserve Payments Copy Panel handoff.
   // v1.1.236: moved each cache/open/delete control inside its matching Per Hit or Points settings dropdown and shortened cached button labels.
   // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
+  // v1.1.242: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, and Per Hit weights are fixed 1-per-hit toggles.
+  // v1.1.240: Per Hit results/newsletters show Per Hit Amount, and dropdown cache status is mode-specific.
+  // v1.1.241: Use Cached Report now checks each mode independently so Per Hit and Points System buttons do not depend on the other dropdown being valid.
   // v1.1.239: Member Payout split field plus Total Payout display field added to both modes, results tabs, and newsletters.
   // v1.1.238: moved public performance/cache status text into both Per Hit Settings and Points System Settings dropdowns.
   // v1.1.237: moved Member Payout into both Per Hit Settings and Points System Settings so each calculation section is self-contained.
@@ -4876,7 +4879,7 @@
   function buildPayoutCsvText(rows, summary = {}) {
     const pointsMode = summary?.pointsMode || summary?.calculationMode === "points";
     const header = pointsMode
-      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Own-Faction Hospital Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "Own-Faction Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
+      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Own-Faction Hospital Hits", "Enemy War Faction Hospital Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "Own-Faction Hospital Bonus", "Enemy War Faction Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
       : ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Total Respect", "Respect", "Payout"];
     const body = (rows || []).map((r) => pointsMode ? [
       r.id,
@@ -4886,12 +4889,14 @@
       r.outsideHits || 0,
       r.retaliationHits || 0,
       r.hospitalizingHits || 0,
+      r.enemyFactionHospitalizingHits || 0,
       r.totalTrackedHits || 0,
       r.payableEvents || 0,
       Number(r.points ?? r.weight ?? 0).toFixed(2),
       Number(r.basePoints || 0).toFixed(2),
       Number(r.fairFightBonusPoints || 0).toFixed(2),
       Number(r.hospitalBonusPoints || 0).toFixed(2),
+      Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2),
       Number(r.avgFairFight || 1).toFixed(2),
       Number(r.totalRespect ?? r.respect ?? 0).toFixed(2),
       Number(r.respect || 0).toFixed(2),
@@ -4999,10 +5004,12 @@
       retaliationHits: Number(r.retaliationHits || 0),
       chainMaintenanceHits: Number(r.chainMaintenanceHits || 0),
       hospitalizingHits: Number(r.hospitalizingHits || 0),
+      enemyFactionHospitalizingHits: Number(r.enemyFactionHospitalizingHits || 0),
       weight: Number(r.weight || 0),
       points: Number(r.points ?? r.weight ?? 0),
       basePoints: Number(r.basePoints || 0),
       hospitalBonusPoints: Number(r.hospitalBonusPoints || 0),
+      enemyFactionHospitalBonusPoints: Number(r.enemyFactionHospitalBonusPoints || 0),
       fairFightBonusPoints: Number(r.fairFightBonusPoints || 0),
       avgFairFight: Number(r.avgFairFight || 1),
       bestFairFight: Number(r.bestFairFight || 1),
@@ -5015,6 +5022,7 @@
 
     const memberPayout = rwphSummaryMemberPayout(summary, list);
     const overallTotalPayout = rwphSummaryOverallTotalPayout(summary, list);
+    const perHitAmount = rwphSummaryPerHitAmount(summary, list);
     const totalPayout = memberPayout;
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
@@ -5048,10 +5056,12 @@
           <div><span>Outside Hits</span><b>${r.outsideHits}</b></div>
           <div><span>Retals</span><b>${r.retaliationHits}</b></div>
           ${pointsMode ? `<div><span>Own-Faction Hospital Hits</span><b>${r.hospitalizingHits}</b></div>
+          <div><span>Enemy War Hospital Hits</span><b>${r.enemyFactionHospitalizingHits}</b></div>
           <div><span>Points</span><b>${r.points.toFixed(2)}</b></div>
           <div><span>Base Points</span><b>${r.basePoints.toFixed(2)}</b></div>
           <div><span>Fair Bonus</span><b>${r.fairFightBonusPoints.toFixed(2)}</b></div>
           <div><span>Own-Faction Hospital Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
+          <div><span>Enemy Hospital Bonus</span><b>${r.enemyFactionHospitalBonusPoints.toFixed(2)}</b></div>
           <div><span>Avg FF</span><b>${r.avgFairFight.toFixed(2)}x</b></div>` : `<div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
           <div><span>Payable</span><b>${r.payableEvents}</b></div>
           <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
@@ -5804,6 +5814,7 @@
         <div class="results-meta-card"><span>Report Type</span><b>${pointsMode ? "Points system" : "Finished war"}</b></div>
         <div class="results-meta-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
         <div class="results-meta-card"><span>Total Payout</span><b>${esc(money(overallTotalPayout))}</b></div>
+        ${pointsMode ? "" : `<div class="results-meta-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
         <div class="results-meta-card"><span>Members Paid</span><b>${list.length}</b></div>
       </div>
     </section>
@@ -5829,6 +5840,7 @@
     <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
       <div class="summary-card"><span>Total Payout</span><b>${esc(money(overallTotalPayout))}</b></div>
+      ${pointsMode ? "" : `<div class="summary-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
       <div class="summary-card"><span>War Source</span><b>${rwphWarSourceLabel(summary?.selectedWar?.timeSource)}</b></div>
       <div class="summary-card"><span>${pointsMode ? "Total Points" : "Total weight"}</span><b>${Number(pointsMode ? (summary?.totalPoints ?? summary?.totalWeight ?? 0) : (summary?.totalWeight || 0)).toFixed(2)}</b></div>
       <div class="summary-card"><span>Total Respect</span><b>${Number(summary?.totalRespect || 0).toFixed(2)}</b></div>
@@ -5837,6 +5849,8 @@
       <div class="summary-card"><span>Outside Hits</span><b>${Number(summary?.totalOutsideHits || 0)}</b></div>
       <div class="summary-card"><span>Retals</span><b>${Number(summary?.totalRetaliationHits || 0)}</b></div>
       <div class="summary-card"><span>${pointsMode ? "Own-Faction Hospital Hits" : "Tracked"}</span><b>${Number(pointsMode ? (summary?.totalHospitalizingHits || 0) : (summary?.totalTrackedHits || 0))}</b></div>
+      ${pointsMode ? `<div class="summary-card"><span>Enemy War Hospital Hits</span><b>${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}</b></div>` : ""}
+      ${pointsMode ? `<div class="summary-card"><span>Enemy Hospital Bonus</span><b>${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)}</b></div>` : ""}
       <div class="summary-card"><span>${pointsMode ? "Fair Bonus" : "Payable"}</span><b>${pointsMode ? Number(summary?.totalFairFightBonusPoints || 0).toFixed(2) : Number(summary?.calcMeta?.payableEvents || 0)}</b></div>
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
@@ -6735,7 +6749,7 @@
   }
 
   function rwphModeLabel(mode) {
-    return rwphNormalizeCalculationMode(mode) === "points" ? "Points" : "Per Hit";
+    return rwphNormalizeCalculationMode(mode) === "points" ? "Points System" : "Per Hit";
   }
 
   function rwphTotalPayoutInputId(mode) {
@@ -6771,6 +6785,30 @@
     return rwphSummaryMemberPayout(summary, rows);
   }
 
+  function rwphSummaryTotalWeight(summary, rows = []) {
+    const explicit = Number(summary?.totalWeight ?? 0);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    return (rows || []).reduce((sum, r) => sum + Number(r?.weight || 0), 0);
+  }
+
+  function rwphSummaryPerHitAmount(summary, rows = []) {
+    const explicit = Number(summary?.perHitAmount ?? summary?.perWeightedHitAmount ?? summary?.calcMeta?.perHitAmount ?? 0);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const totalWeight = rwphSummaryTotalWeight(summary, rows);
+    const memberPayout = rwphSummaryMemberPayout(summary, rows);
+    return totalWeight > 0 ? memberPayout / totalWeight : 0;
+  }
+
+  function rwphFixedPerHitWeight(inputId, defaultValue = 1) {
+    const el = document.getElementById(inputId);
+    if (!el) return defaultValue ? 1 : 0;
+    return el.checked ? 1 : 0;
+  }
+
+  function rwphPointEnemyHospitalBonusValue() {
+    return Number(document.getElementById("rw-point-enemy-hospital")?.value || 2);
+  }
+
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
     rwphCachedReports ||= {};
@@ -6778,23 +6816,39 @@
     return rwphCachedReports[safeMode];
   }
 
-  function rwphGetPayoutCacheSignature() {
+  function rwphGetPayoutCacheSignature(calculationMode = null) {
     const userKey = document.getElementById("rw-key")?.value?.trim() || "";
-    const totalPayout = rwphGetTotalPayoutForMode("standard");
-    const overallTotalPayout = rwphGetOverallTotalPayoutForMode("standard");
-    const pointsTotalPayout = rwphGetTotalPayoutForMode("points");
-    const pointsOverallTotalPayout = rwphGetOverallTotalPayoutForMode("points");
-    const warHitWeight = Number(document.getElementById("rw-war-hit-weight")?.value || 0);
-    const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight")?.value || 0);
-    const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0);
-    const assistWeight = Number(document.getElementById("rw-assist-weight")?.value || 0);
-    const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
-    const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
-    const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
-    const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 4);
-    const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
-    const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
-    return [userKey ? "key" : "no-key", totalPayout, overallTotalPayout, pointsTotalPayout, pointsOverallTotalPayout, warHitWeight, outsideHitWeight, retaliationHitWeight, assistWeight, pointWarHitValue, pointAssistValue, pointOutsideHitValue, pointRetaliationHitValue, pointHospitalBonus, pointFairFightEnabled ? "ff" : "no-ff"].join("|");
+    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
+    const signatureParts = [userKey ? "key" : "no-key"];
+
+    if (!mode || mode === "standard") {
+      signatureParts.push(
+        "standard",
+        rwphGetTotalPayoutForMode("standard"),
+        rwphGetOverallTotalPayoutForMode("standard"),
+        rwphFixedPerHitWeight("rw-war-hit-weight", 1),
+        rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
+        rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
+        rwphFixedPerHitWeight("rw-assist-weight", 0),
+      );
+    }
+
+    if (!mode || mode === "points") {
+      signatureParts.push(
+        "points",
+        rwphGetTotalPayoutForMode("points"),
+        rwphGetOverallTotalPayoutForMode("points"),
+        Number(document.getElementById("rw-point-war-hit")?.value || 10),
+        Number(document.getElementById("rw-point-assist")?.value || 3),
+        Number(document.getElementById("rw-point-outside")?.value || 2),
+        Number(document.getElementById("rw-point-retal")?.value || 4),
+        Number(document.getElementById("rw-point-hospital")?.value || 2),
+        rwphPointEnemyHospitalBonusValue(),
+        document.getElementById("rw-point-fair-fight")?.checked !== false ? "ff" : "no-ff",
+      );
+    }
+
+    return signatureParts.join("|");
   }
 
   function rwphBuildCacheRequestPayload(calculationMode = "standard") {
@@ -6804,15 +6858,16 @@
       calculationMode: rwphNormalizeCalculationMode(calculationMode),
       totalPayout: rwphGetTotalPayoutForMode(calculationMode),
       overallTotalPayout: rwphGetOverallTotalPayoutForMode(calculationMode),
-      warHitWeight: Number(document.getElementById("rw-war-hit-weight")?.value || 0),
-      outsideHitWeight: Number(document.getElementById("rw-outside-hit-weight")?.value || 0),
-      retaliationHitWeight: Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0),
-      assistWeight: Number(document.getElementById("rw-assist-weight")?.value || 0),
+      warHitWeight: rwphFixedPerHitWeight("rw-war-hit-weight", 1),
+      outsideHitWeight: rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
+      retaliationHitWeight: rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
+      assistWeight: rwphFixedPerHitWeight("rw-assist-weight", 0),
       pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
       pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
       pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
       pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 4),
       pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
+      pointEnemyHospitalBonus: rwphPointEnemyHospitalBonusValue(),
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
     };
   }
@@ -6820,41 +6875,46 @@
   function rwphValidateCacheFormForMode(calculationMode = "standard") {
     const payload = rwphBuildCacheRequestPayload(calculationMode);
     const mode = rwphNormalizeCalculationMode(calculationMode);
-    const basicInvalid = !payload.userKey || payload.totalPayout <= 0 || payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0 || payload.overallTotalPayout < 0;
+    const sharedInvalid = !payload.userKey || payload.totalPayout <= 0 || payload.overallTotalPayout < 0;
+    const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0;
     const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0;
-    if (basicInvalid || (mode === "points" && pointsInvalid)) {
+    if (sharedInvalid || (mode === "standard" && perHitInvalid) || (mode === "points" && pointsInvalid)) {
       return { ok: false, payload };
     }
     return { ok: true, payload };
   }
 
-  function rwphCacheStateSummaryText() {
-    const standard = rwphEnsureCacheState("standard");
-    const points = rwphEnsureCacheState("points");
+  function rwphCacheStateSummaryText(calculationMode = null) {
+    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
+    const modes = mode ? [mode] : ["standard", "points"];
     const parts = [];
-    for (const mode of ["standard", "points"]) {
-      const state = rwphEnsureCacheState(mode);
+    for (const currentMode of modes) {
+      const state = rwphEnsureCacheState(currentMode);
       if (!state.available) continue;
       const info = state.info || {};
       const cachedAtMs = Number(info?.cachedAtMs || info?.cache?.cachedAtMs || info?.summary?.cachedAtMs || 0);
       const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
       const savedText = cachedAtMs ? ` saved ${new Date(cachedAtMs).toLocaleString()}` : "";
       const expiryText = expiresAtMs ? ` expires ${new Date(expiresAtMs).toLocaleString()}` : "";
-      parts.push(`${rwphModeLabel(mode)}${savedText}${expiryText}`);
+      parts.push(`${rwphModeLabel(currentMode)}${savedText}${expiryText}`);
     }
-    if (parts.length) return `Database cached report${parts.length === 1 ? "" : "s"} found: ${parts.join(" | ")}. Open it from the matching settings dropdown.`;
-    if (standard.available || points.available) return "Database cached report found.";
+    if (parts.length) return `Database cached ${mode ? rwphModeLabel(mode) + " " : ""}report${parts.length === 1 ? "" : "s"} found: ${parts.join(" | ")}. Open it from the matching settings dropdown.`;
+    if (mode) return `No matching ${rwphModeLabel(mode)} database cached report found yet. Calculate in ${rwphModeLabel(mode)} Settings will create one.`;
     return "No matching database cached reports found yet. Calculate in Per Hit Settings or Points System Settings will create one.";
   }
 
-  function rwphCacheStatusElements() {
-    return ["rw-cache-status-per-hit", "rw-cache-status-points"]
-      .map((id) => document.getElementById(id))
-      .filter(Boolean);
+  function rwphCacheStatusElements(calculationMode = null) {
+    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
+    const ids = mode === "standard"
+      ? ["rw-cache-status-per-hit"]
+      : mode === "points"
+        ? ["rw-cache-status-points"]
+        : ["rw-cache-status-per-hit", "rw-cache-status-points"];
+    return ids.map((id) => document.getElementById(id)).filter(Boolean);
   }
 
-  function rwphSetCacheStatusText(text) {
-    for (const el of rwphCacheStatusElements()) {
+  function rwphSetCacheStatusText(text, calculationMode = null) {
+    for (const el of rwphCacheStatusElements(calculationMode)) {
       el.textContent = text;
     }
   }
@@ -6885,7 +6945,8 @@
     }
 
     if (!silent || rwphEnsureCacheState("standard").available || rwphEnsureCacheState("points").available) {
-      rwphSetCacheStatusText(rwphCacheStateSummaryText());
+      rwphSetCacheStatusText(rwphCacheStateSummaryText("standard"), "standard");
+      rwphSetCacheStatusText(rwphCacheStateSummaryText("points"), "points");
     }
   }
 
@@ -6907,48 +6968,61 @@
     rwphAutoCacheCheckTimer = setTimeout(() => rwphAutoCheckCompletedWarCache(true), Math.max(100, Number(delayMs) || 650));
   }
 
-  async function rwphAutoCheckCompletedWarCache(silent = true) {
+  async function rwphAutoCheckCompletedWarCache(silent = true, calculationMode = null) {
     const status = document.getElementById("rw-status");
-    const standardValidation = rwphValidateCacheFormForMode("standard");
-    const pointsValidation = rwphValidateCacheFormForMode("points");
+    const modes = calculationMode ? [rwphNormalizeCalculationMode(calculationMode)] : ["standard", "points"];
+    const signature = `${calculationMode ? rwphNormalizeCalculationMode(calculationMode) : "both"}|${rwphGetPayoutCacheSignature(calculationMode)}`;
 
-    if (!standardValidation.ok || !pointsValidation.ok) {
-      rwphSetCacheButtonState("standard", false, null, true);
-      rwphSetCacheButtonState("points", false, null, true);
-      rwphSetCacheStatusText("Cache auto-check waits for your API key and payout settings.");
-      return;
-    }
-
-    const signature = rwphGetPayoutCacheSignature();
     if (silent && signature === rwphLastCacheCheckSignature) return;
     rwphLastCacheCheckSignature = signature;
 
-    try {
-      rwphSetCacheStatusText("Auto-checking Per Hit and Points System report caches...");
-      const standardResult = await apiPost("/api/calc/report-cache", standardValidation.payload);
-      const pointsResult = await apiPost("/api/calc/report-cache", pointsValidation.payload);
-      rwphSetCacheButtonState("standard", !!standardResult.cached, standardResult, true);
-      rwphSetCacheButtonState("points", !!pointsResult.cached, pointsResult, true);
-      rwphRenderCacheButtonStates(false);
-      if (!silent && status) {
-        const found = !!standardResult.cached || !!pointsResult.cached;
-        rwphToastPanelInfo(status, found ? "Cached report found and ready to open." : "No matching cached reports found yet.", found ? "info" : "warn", "RWPH Cache");
+    let checkedAny = false;
+    let foundAny = false;
+
+    for (const mode of modes) {
+      const validation = rwphValidateCacheFormForMode(mode);
+      const label = rwphModeLabel(mode);
+
+      if (!validation.ok) {
+        rwphSetCacheButtonState(mode, false, null, true);
+        rwphSetCacheStatusText(`${label} cache auto-check waits for your API key and ${label} payout settings.`, mode);
+        continue;
       }
-    } catch (e) {
-      rwphSetCacheButtonState("standard", false, null, true);
-      rwphSetCacheButtonState("points", false, null, true);
-      const btns = ["rw-use-cache", "rw-use-points-cache", "rw-delete-cache", "rw-delete-points-cache"];
-      for (const id of btns) {
-        const btn = document.getElementById(id);
-        if (btn) {
-          btn.disabled = true;
-          if (id.includes("use")) btn.textContent = "Use Cached Report";
-          if (id.includes("delete")) btn.textContent = "Delete Cache";
-          btn.title = e.message || "Cache auto-check failed.";
+
+      checkedAny = true;
+      try {
+        rwphSetCacheStatusText(`Auto-checking ${label} report cache...`, mode);
+        const result = await apiPost("/api/calc/report-cache", validation.payload);
+        const isCached = !!result.cached;
+        foundAny = foundAny || isCached;
+        rwphSetCacheButtonState(mode, isCached, result, true);
+        rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
+      } catch (e) {
+        rwphSetCacheButtonState(mode, false, null, true);
+        const useId = mode === "points" ? "rw-use-points-cache" : "rw-use-cache";
+        const deleteId = mode === "points" ? "rw-delete-points-cache" : "rw-delete-cache";
+        for (const id of [useId, deleteId]) {
+          const btn = document.getElementById(id);
+          if (btn) {
+            btn.disabled = true;
+            if (id.includes("use")) btn.textContent = "Use Cached Report";
+            if (id.includes("delete")) btn.textContent = "Delete Cache";
+            btn.title = e.message || `${label} cache auto-check failed.`;
+          }
         }
+        rwphSetCacheStatusText(`${label} cache auto-check failed: ${e.message}`, mode);
+        if (!silent) rwphToastPanelError(status, `${label} cache auto-check error: ${e.message}`, "RWPH Cache");
       }
-      rwphSetCacheStatusText(`Cache auto-check failed: ${e.message}`);
-      if (!silent) rwphToastPanelError(status, "Cache auto-check error: " + e.message, "RWPH Cache");
+    }
+
+    rwphRenderCacheButtonStates(true);
+
+    if (!checkedAny && !calculationMode) {
+      rwphSetCacheStatusText("Cache auto-check waits for your API key and payout settings.");
+    }
+
+    if (!silent && status) {
+      rwphToastPanelInfo(status, foundAny ? "Cached report found and ready to open." : "No matching cached reports found yet.", foundAny ? "info" : "warn", "RWPH Cache");
     }
   }
 
@@ -6957,7 +7031,7 @@
     const status = document.getElementById("rw-status");
     rwphClearLastResults();
     if (!rwphEnsureCacheState(mode).available) {
-      await rwphAutoCheckCompletedWarCache(false);
+      await rwphAutoCheckCompletedWarCache(false, mode);
     }
     if (rwphEnsureCacheState(mode).available) {
       await rwphRunCalculation(mode, { useCacheOnly: true });
@@ -6974,7 +7048,7 @@
     const validation = rwphValidateCacheFormForMode(mode);
 
     if (!rwphEnsureCacheState(mode).available) {
-      await rwphAutoCheckCompletedWarCache(false);
+      await rwphAutoCheckCompletedWarCache(false, mode);
     }
     if (!rwphEnsureCacheState(mode).available) {
       return rwphToastPanelError(status, `No matching ${modeLabel} database cached report was found to delete.`, "RWPH Cache");
@@ -6987,11 +7061,11 @@
         deleteBtn.disabled = true;
         deleteBtn.textContent = "Deleting...";
       }
-      rwphSetCacheStatusText(`Deleting matching ${modeLabel} database cached report...`);
+      rwphSetCacheStatusText(`Deleting matching ${modeLabel} database cached report...`, mode);
       const result = await apiPost("/api/calc/report-cache/delete", validation.payload);
       rwphLastCacheCheckSignature = "";
       rwphSetCacheButtonState(mode, false, null, false);
-      rwphSetCacheStatusText(result.deleted ? `Cached ${modeLabel} report deleted. ${modeLabel} Settings Calculate can create a fresh report.` : (result.message || `No matching ${modeLabel} database cached report was found to delete.`));
+      rwphSetCacheStatusText(result.deleted ? `Cached ${modeLabel} report deleted. ${modeLabel} Settings Calculate can create a fresh report.` : (result.message || `No matching ${modeLabel} database cached report was found to delete.`), mode);
       rwphToastPanelInfo(status, result.message || `Cached ${modeLabel} report deleted.`, result.deleted ? "info" : "warn", "RWPH Cache");
     } catch (e) {
       const wait = Number(e?.retryAfterSeconds || 0);
@@ -7021,7 +7095,7 @@
         ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(rwphWarSourceLabel(summary.selectedWar.timeSource))}<br>` : ""}
         <b>${pointsMode ? "Total points" : "Total weight"}:</b> ${Number(pointsMode ? (summary?.totalPoints ?? summary?.totalWeight ?? 0) : (summary?.totalWeight || 0)).toFixed(2)} |
         <b>${pointsMode ? "Scored events" : "Payable events"}:</b> ${Number(summary?.calcMeta?.payableEvents || 0)}<br>
-        ${pointsMode ? `<b>Own-faction hospital hits:</b> ${Number(summary?.totalHospitalizingHits || 0)} | <b>Fair-fight bonus:</b> ${Number(summary?.totalFairFightBonusPoints || 0).toFixed(2)}<br>` : ""}
+        ${pointsMode ? `<b>Own-faction hospital hits:</b> ${Number(summary?.totalHospitalizingHits || 0)} | <b>Enemy war hospital hits:</b> ${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}<br><b>Own hospital bonus:</b> ${Number(summary?.totalHospitalBonusPoints || summary?.totalOwnFactionHospitalBonusPoints || 0).toFixed(2)} | <b>Enemy hospital bonus:</b> ${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)} | <b>Fair-fight bonus:</b> ${Number(summary?.totalFairFightBonusPoints || 0).toFixed(2)}<br>` : ""}
         <b>Total respect:</b> ${Number(summary?.totalRespect || 0).toFixed(2)} |
         <b>Respect:</b> ${Number(summary?.payoutRespect ?? summary?.respect ?? 0).toFixed(2)}<br>
         <b>War hits:</b> ${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)} |
@@ -7073,7 +7147,7 @@
                 <div class="rw-stat-box"><div class="rw-stat-label">Payable</div><div class="rw-stat-value">${Number(r.payableEvents || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Points" : "Weight"}</div><div class="rw-stat-value">${pointsMode ? points.toFixed(2) : weight.toFixed(2)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Own-Faction Hospital Hits" : "Respect"}</div><div class="rw-stat-value">${pointsMode ? Number(r.hospitalizingHits || 0) : respect.toFixed(2)}</div></div>
-                ${pointsMode ? `<div class="rw-stat-box"><div class="rw-stat-label">Fair Bonus</div><div class="rw-stat-value">${Number(r.fairFightBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Avg FF</div><div class="rw-stat-value">${Number(r.avgFairFight || 1).toFixed(2)}x</div></div>` : ""}
+                ${pointsMode ? `<div class="rw-stat-box"><div class="rw-stat-label">Enemy War Hospital Hits</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalizingHits || 0)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Enemy Hospital Bonus</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Fair Bonus</div><div class="rw-stat-value">${Number(r.fairFightBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Avg FF</div><div class="rw-stat-value">${Number(r.avgFairFight || 1).toFixed(2)}x</div></div>` : ""}
               </div>
             </div>`;
         }).join("")}
@@ -7542,6 +7616,11 @@
       retaliationHits: safeNumber(r.retaliationHits),
       totalRespect: safeNumber(r.totalRespect ?? r.respect),
       respect: safeNumber(r.respect),
+      hospitalizingHits: safeNumber(r.hospitalizingHits),
+      enemyFactionHospitalizingHits: safeNumber(r.enemyFactionHospitalizingHits),
+      hospitalBonusPoints: safeNumber(r.hospitalBonusPoints),
+      enemyFactionHospitalBonusPoints: safeNumber(r.enemyFactionHospitalBonusPoints),
+      points: safeNumber(r.points ?? r.weight),
       weight: safeNumber(r.weight),
       payout: safeNumber(r.payout),
       totalTrackedHits: safeNumber(r.totalTrackedHits),
@@ -7551,6 +7630,8 @@
     const memberPayout = safeNumber(summary?.memberPayout ?? summary?.totalPayout) || list.reduce((sum, r) => sum + r.payout, 0);
     const overallTotalPayout = safeNumber(summary?.overallTotalPayout ?? summary?.totalPayoutDisplay) || memberPayout;
     const totalPayout = memberPayout;
+    const totalWeightForPerHit = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
+    const perHitAmount = safeNumber(summary?.perHitAmount ?? summary?.perWeightedHitAmount) || (totalWeightForPerHit > 0 ? memberPayout / totalWeightForPerHit : 0);
     const totalHits = safeNumber(summary?.totalWarHits ?? summary?.totalHits) || list.reduce((sum, r) => sum + r.warHits, 0);
     const totalAssists = safeNumber(summary?.totalAssists) || list.reduce((sum, r) => sum + r.assists, 0);
     const totalOutsideHits = safeNumber(summary?.totalOutsideHits) || list.reduce((sum, r) => sum + r.outsideHits, 0);
@@ -7558,6 +7639,11 @@
     const totalTrackedHits = safeNumber(summary?.totalTrackedHits) || list.reduce((sum, r) => sum + r.totalTrackedHits, 0);
     const totalPayableEvents = safeNumber(summary?.calcMeta?.payableEvents) || list.reduce((sum, r) => sum + r.payableEvents, 0);
     const totalWeight = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
+    const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const totalEnemyFactionHospitalizingHits = safeNumber(summary?.totalEnemyFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.enemyFactionHospitalizingHits, 0);
+    const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
+    const totalOwnFactionHospitalizingHits = safeNumber(summary?.totalHospitalizingHits ?? summary?.totalOwnFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.hospitalizingHits, 0);
+    const totalOwnFactionHospitalBonusPoints = safeNumber(summary?.totalHospitalBonusPoints ?? summary?.totalOwnFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.hospitalBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
@@ -7600,6 +7686,7 @@
         <td class="num">${r.retaliationHits}</td>
         <td class="num">${r.totalTrackedHits}</td>
         <td class="num">${r.payableEvents}</td>
+        ${pointsMode ? `<td class="num">${r.enemyFactionHospitalizingHits}</td><td class="num">${r.enemyFactionHospitalBonusPoints.toFixed(2)}</td>` : ""}
         <td class="num">${r.respect.toFixed(2)}</td>
         <td class="num">${r.weight.toFixed(2)}</td>
         <td class="num strong">${esc(money(r.payout))}</td>
@@ -7902,10 +7989,13 @@
       <div class="stats">
         ${statCard("Member Payout", money(memberPayout), `${list.length} members paid`)}
         ${statCard("Total Payout", money(overallTotalPayout), "full payout record")}
+        ${statCard("Per Hit Amount", money(perHitAmount), "per weighted hit")}
         ${statCard("War Hits", String(totalHits), `${totalAssists} assists`)}
         ${statCard("Outside Hits", String(totalOutsideHits), `${totalRetaliationHits} retals`)}
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
-        ${statCard("Total Weight", totalWeight.toFixed(2))}
+        ${pointsMode ? statCard("Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), `${totalEnemyFactionHospitalBonusPoints.toFixed(2)} enemy bonus points`) : ""}
+        ${pointsMode ? statCard("Own Hospital Hits", String(totalOwnFactionHospitalizingHits), `${totalOwnFactionHospitalBonusPoints.toFixed(2)} own bonus points`) : ""}
+        ${statCard(pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2))}
         ${statCard("Total Respect", totalRespect.toFixed(2), "from ranked war report")}
         ${statCard("Fetched Attacks", String(safeNumber(summary?.attacksFetched)), "from server calculation")}
         ${statCard("Names Loaded", String(safeNumber(summary?.nameCount)), "member name matches")}
@@ -7935,8 +8025,9 @@
                 <th class="num">Retals</th>
                 <th class="num">Tracked</th>
                 <th class="num">Payable</th>
+                ${pointsMode ? `<th class="num">Enemy Hosp</th><th class="num">Enemy Hosp Pts</th>` : ""}
                 <th class="num">Respect</th>
-                <th class="num">Weight</th>
+                <th class="num">${pointsMode ? "Points" : "Weight"}</th>
                 <th class="num">Payout</th>
                 <th class="num">Share</th>
               </tr>
@@ -7963,6 +8054,11 @@
       retaliationHits: safeNumber(r.retaliationHits),
       totalTrackedHits: safeNumber(r.totalTrackedHits),
       payableEvents: safeNumber(r.payableEvents),
+      hospitalizingHits: safeNumber(r.hospitalizingHits),
+      enemyFactionHospitalizingHits: safeNumber(r.enemyFactionHospitalizingHits),
+      hospitalBonusPoints: safeNumber(r.hospitalBonusPoints),
+      enemyFactionHospitalBonusPoints: safeNumber(r.enemyFactionHospitalBonusPoints),
+      points: safeNumber(r.points ?? r.weight),
       respect: safeNumber(r.respect),
       totalRespect: safeNumber(r.totalRespect ?? r.respect),
       weight: safeNumber(r.weight),
@@ -7972,6 +8068,8 @@
     const memberPayout = safeNumber(summary?.memberPayout ?? summary?.totalPayout) || list.reduce((sum, r) => sum + r.payout, 0);
     const overallTotalPayout = safeNumber(summary?.overallTotalPayout ?? summary?.totalPayoutDisplay) || memberPayout;
     const totalPayout = memberPayout;
+    const totalWeightForPerHit = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
+    const perHitAmount = safeNumber(summary?.perHitAmount ?? summary?.perWeightedHitAmount) || (totalWeightForPerHit > 0 ? memberPayout / totalWeightForPerHit : 0);
     const totalHits = safeNumber(summary?.totalWarHits ?? summary?.totalHits) || list.reduce((sum, r) => sum + r.warHits, 0);
     const totalAssists = safeNumber(summary?.totalAssists) || list.reduce((sum, r) => sum + r.assists, 0);
     const totalOutsideHits = safeNumber(summary?.totalOutsideHits) || list.reduce((sum, r) => sum + r.outsideHits, 0);
@@ -7979,6 +8077,9 @@
     const totalTrackedHits = safeNumber(summary?.totalTrackedHits) || list.reduce((sum, r) => sum + r.totalTrackedHits, 0);
     const totalPayableEvents = safeNumber(summary?.calcMeta?.payableEvents) || list.reduce((sum, r) => sum + r.payableEvents, 0);
     const totalWeight = safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0);
+    const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const totalEnemyFactionHospitalizingHits = safeNumber(summary?.totalEnemyFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.enemyFactionHospitalizingHits, 0);
+    const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const generatedAt = new Date().toLocaleString();
     const topRows = [...list].sort((a, b) => b.payout - a.payout).slice(0, 8);
@@ -7994,10 +8095,12 @@
     const statItems = [
       ["Member Payout", money(memberPayout), list.length + " paid members"],
       ["Total Payout", money(overallTotalPayout), "full payout record"],
+      ["Per Hit Amount", money(perHitAmount), "per weighted hit"],
       ["War Hits", String(totalHits), totalAssists + " assists"],
       ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
       ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
-      ["Total Weight", totalWeight.toFixed(2), "weighted contribution"],
+      ...(pointsMode ? [["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"]] : []),
+      [pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2), pointsMode ? "contribution score" : "weighted contribution"],
       ["Total Respect", totalRespect.toFixed(2), "ranked-war report"],
     ];
 
@@ -8025,6 +8128,7 @@
         + '<td>' + r.retaliationHits + '</td>'
         + '<td>' + r.totalTrackedHits + '</td>'
         + '<td>' + r.payableEvents + '</td>'
+        + (pointsMode ? '<td>' + r.enemyFactionHospitalizingHits + '</td><td>' + r.enemyFactionHospitalBonusPoints.toFixed(2) + '</td>' : '')
         + '<td>' + r.weight.toFixed(2) + '</td>'
         + '<td class="pay">' + esc(money(r.payout)) + '</td>'
         + '</tr>';
@@ -8054,7 +8158,7 @@
       + '<section class="stats">' + statsHtml + '</section>'
       + '<section class="card"><h2>Top Payout Board</h2>' + topHtml + '</section>'
       + '<section class="table-card"><h2>Full Payout Ledger</h2><div class="table-wrap"><table><thead><tr>'
-      + '<th>#</th><th>Member</th><th>War Hits</th><th>Assists</th><th>Outside</th><th>Retals</th><th>Tracked</th><th>Payable</th><th>Weight</th><th>Payout</th>'
+      + '<th>#</th><th>Member</th><th>War Hits</th><th>Assists</th><th>Outside</th><th>Retals</th><th>Tracked</th><th>Payable</th>' + (pointsMode ? '<th>Enemy Hosp</th><th>Enemy Hosp Pts</th>' : '') + '<th>' + (pointsMode ? 'Points' : 'Weight') + '</th><th>Payout</th>'
       + '</tr></thead><tbody>' + tableRows + '</tbody></table></div></section>'
       + '<footer class="footer">Created with Ranked War Payout Helper. Review payouts before sending faction funds.</footer>'
       + '</main></body></html>';
@@ -9186,8 +9290,9 @@
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
               <li><b>Member Payout:</b> the money split across eligible members.</li>
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
-              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist Weight control how much each contribution type counts in the normal per-hit report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button.</li>
+              <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
+              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
+              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
               <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
@@ -9756,20 +9861,21 @@
                   <input id="rw-total-overall" type="number" value="100000000" min="0">
                 </label>
               </div>
+              <div class="rw-small">Per Hit values are fixed at <b>1 per counted hit</b>. Use the tick boxes to include or exclude each hit type.</div>
               <div class="rw-row">
-                <label>War Hit Weight
-                  <input id="rw-war-hit-weight" type="number" value="1" step="0.1" min="0">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                  <input id="rw-war-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> War hits — 1 per hit
                 </label>
-                <label>Outside Hit Weight
-                  <input id="rw-outside-hit-weight" type="number" value="1" step="0.1" min="0">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                  <input id="rw-outside-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> Outside hits — 1 per hit
                 </label>
               </div>
               <div class="rw-row">
-                <label>Retaliation Hit Weight
-                  <input id="rw-retaliation-hit-weight" type="number" value="1" step="0.1" min="0">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                  <input id="rw-retaliation-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> Retaliation hits — 1 per hit
                 </label>
-                <label>Assist Weight
-                  <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                  <input id="rw-assist-weight" type="checkbox" style="width:auto;margin:0;"> Assists — 1 per assist
                 </label>
               </div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
@@ -9782,7 +9888,7 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title">Points System Settings</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, and fair-fight modifiers. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members.</div>
+              <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and fair-fight modifiers. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
                 <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Per Hit and Points System finished-war caches when your API key and payout settings are ready. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache now live inside their matching settings dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
                 <div id="rw-cache-status-points" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
@@ -9815,6 +9921,11 @@
                 <label>Own-faction hospital bonus points
                   <input id="rw-point-hospital" type="number" value="2" step="0.1" min="0">
                 </label>
+                <label>Enemy war faction hospital bonus points (can be negative)
+                  <input id="rw-point-enemy-hospital" type="number" value="2" step="0.1">
+                </label>
+              </div>
+              <div class="rw-row">
                 <label style="display:flex;align-items:center;gap:6px;margin-top:6px;">
                   <input id="rw-point-fair-fight" type="checkbox" checked style="width:auto;margin:0;"> Use fair-fight modifier
                 </label>
@@ -9944,8 +10055,9 @@
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
               <li><b>Member Payout:</b> the money split across eligible members.</li>
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
-              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist Weight control how much each contribution type counts in the normal per-hit report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button.</li>
+              <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
+              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
+              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
               <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
@@ -10391,15 +10503,16 @@
       const to = dateTimeLocalToUnix(document.getElementById("rw-to").value);
       const totalPayout = rwphGetTotalPayoutForMode(mode);
       const overallTotalPayout = rwphGetOverallTotalPayoutForMode(mode);
-      const warHitWeight = Number(document.getElementById("rw-war-hit-weight").value);
-      const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight").value);
-      const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight").value);
-      const assistWeight = Number(document.getElementById("rw-assist-weight").value);
+      const warHitWeight = rwphFixedPerHitWeight("rw-war-hit-weight", 1);
+      const outsideHitWeight = rwphFixedPerHitWeight("rw-outside-hit-weight", 1);
+      const retaliationHitWeight = rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1);
+      const assistWeight = rwphFixedPerHitWeight("rw-assist-weight", 0);
       const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
       const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
       const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
       const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 4);
       const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
+      const pointEnemyHospitalBonus = rwphPointEnemyHospitalBonusValue();
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
@@ -10417,7 +10530,7 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying own-faction hospital/fair-fight modifiers, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying own-faction/enemy-faction hospital and fair-fight modifiers, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
             : "Server is verifying licence, checking report cache/queue, finding the last finished ranked war, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
@@ -10441,6 +10554,7 @@
           pointOutsideHitValue,
           pointRetaliationHitValue,
           pointHospitalBonus,
+          pointEnemyHospitalBonus,
           pointFairFightEnabled,
           useCacheOnly,
           forceRefresh,

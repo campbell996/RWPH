@@ -1,4 +1,19 @@
-## v1.1.239
+## v1.1.242
+
+- Added Points System enemy war faction hospital hits and enemy faction hospital bonus points. Enemy war faction hospital bonus can be set to a negative value to subtract points.
+- Points results, CSV export, and newsletter reports now show enemy war faction hospital hit/bonus stats.
+- Per Hit Settings now use fixed 1-per-hit tick boxes instead of editable weight numbers.
+
+
+- **Use Cached Report** now works independently inside each system. Per Hit only checks/opens Per Hit cached reports, and Points System only checks/opens Points System cached reports.
+- One invalid or incomplete dropdown no longer blocks the other dropdown's cached report button.
+- Cache auto-check messages stay mode-specific for each dropdown.
+
+## v1.1.240
+
+- Per Hit results and all newsletter themes now include **Per Hit Amount**.
+- Points System Settings now only shows Points cached-report status.
+- Per Hit Settings now only shows Per Hit cached-report status.
 
 - Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Per Hit Settings** and **Points System Settings**.
 - Added a new **Total Payout** field to both calculation dropdowns. Member Payout is still the amount split across members; Total Payout is saved/displayed as the full payout record amount.
@@ -22,7 +37,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.239**  
+Current package version: **1.1.242**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**

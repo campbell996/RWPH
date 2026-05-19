@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.239**
+Version: **1.1.242**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -262,3 +262,21 @@ The Member Payout and Total Payout fields now appear inside both calculation set
 ## v1.1.239 layout note
 
 The public performance/cache status message now appears inside both calculation settings dropdowns instead of below them in the main panel. Each dropdown shows cache auto-check status beside its own Calculate, Use Cached Report, and Delete Cache controls.
+
+
+## v1.1.240 Results/cache-status update
+
+Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Points System Settings dropdown only reports matching Points System cached reports and the Per Hit Settings dropdown only reports matching Per Hit cached reports.
+
+
+## v1.1.242 Cache button reliability update
+
+Use Cached Report now checks the matching calculation mode only. Per Hit cache opening no longer depends on Points System settings being valid, and Points System cache opening no longer depends on Per Hit settings being valid.
+
+
+## v1.1.242 Points/hospital bonus and fixed per-hit toggle update
+
+Points System reports can separately show enemy war faction hospital hits and enemy faction hospital bonus points. Per Hit settings now use fixed 1-per-hit include/exclude tick boxes instead of editable numeric weights.
+
+
+Enemy war faction hospital bonus can be positive or negative so enemy ranked-war faction hospitalisations can add or subtract contribution points.
