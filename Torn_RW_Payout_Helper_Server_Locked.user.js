@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.255
+// @version      1.1.256
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1656,7 +1656,7 @@
   // v1.1.233: Basic Calculations now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
-    // v1.1.255: Advanced retals on war-faction opponents count as War Hits plus configurable retal bonus. Non-war retals count as Outside Hits.
+    // v1.1.256: Cached reports ignore changed payout fields when matching saved backend/database reports.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
@@ -6935,13 +6935,11 @@
   function rwphGetPayoutCacheSignature(calculationMode = null) {
     const userKey = document.getElementById("rw-key")?.value?.trim() || "";
     const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const signatureParts = [userKey ? "key" : "no-key"];
+    const signatureParts = [userKey ? "key" : "no-key", "ignore-payout-settings-v1"];
 
     if (!mode || mode === "standard") {
       signatureParts.push(
         "standard",
-        rwphGetTotalPayoutForMode("standard"),
-        rwphGetOverallTotalPayoutForMode("standard"),
         rwphFixedPerHitWeight("rw-war-hit-weight", 1),
         rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
         rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
@@ -6952,8 +6950,6 @@
     if (!mode || mode === "points") {
       signatureParts.push(
         "points",
-        rwphGetTotalPayoutForMode("points"),
-        rwphGetOverallTotalPayoutForMode("points"),
         Number(document.getElementById("rw-point-war-hit")?.value || 10),
         Number(document.getElementById("rw-point-assist")?.value || 3),
         Number(document.getElementById("rw-point-outside")?.value || 2),
@@ -6997,7 +6993,9 @@
   function rwphValidateCacheFormForMode(calculationMode = "standard") {
     const payload = rwphBuildCacheRequestPayload(calculationMode);
     const mode = rwphNormalizeCalculationMode(calculationMode);
-    const sharedInvalid = !payload.userKey || payload.totalPayout <= 0 || payload.overallTotalPayout < 0;
+    // Cache lookup/open/delete should not be blocked by changed payout fields.
+    // The saved cached report keeps its own Member Payout and Total Payout values.
+    const sharedInvalid = !payload.userKey;
     const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0;
     const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0));
     if (sharedInvalid || (mode === "standard" && perHitInvalid) || (mode === "points" && pointsInvalid)) {
@@ -7056,7 +7054,7 @@
         useBtn.hidden = false;
         useBtn.disabled = !state.available;
         useBtn.textContent = "Use Cached Report";
-        useBtn.title = state.available ? `Open the matching backend/database cached ${label} report for the latest finished ranked war.` : `RWPH auto-checks the backend/database for a matching ${label} cached report when your key and settings are ready.`;
+        useBtn.title = state.available ? `Open the matching backend/database cached ${label} report for the latest finished ranked war.` : `RWPH auto-checks the backend/database for a matching ${label} cached report when your key and calculation settings are ready. Payout fields do not block cache matching.`;
       }
       if (deleteBtn) {
         deleteBtn.hidden = false;
@@ -7107,7 +7105,7 @@
 
       if (!validation.ok) {
         rwphSetCacheButtonState(mode, false, null, true);
-        rwphSetCacheStatusText(`${label} cache auto-check waits for your API key and ${label} payout settings.`, mode);
+        rwphSetCacheStatusText(`${label} cache auto-check waits for your API key and valid ${label} calculation settings.`, mode);
         continue;
       }
 
@@ -7140,7 +7138,7 @@
     rwphRenderCacheButtonStates(true);
 
     if (!checkedAny && !calculationMode) {
-      rwphSetCacheStatusText("Cache auto-check waits for your API key and payout settings.");
+      rwphSetCacheStatusText("Cache auto-check waits for your API key and valid calculation settings.");
     }
 
     if (!silent && status) {
@@ -7157,7 +7155,7 @@
 
     const validation = rwphValidateCacheFormForMode(mode);
     if (!validation.ok) {
-      return rwphToastPanelError(status, `Enter your API key and valid ${label} payout settings before opening a cached report.`, "RWPH Cache");
+      return rwphToastPanelError(status, `Enter your API key and valid ${label} calculation settings before opening a cached report. Payout fields do not need to match the saved cache.`, "RWPH Cache");
     }
 
     // v1.1.244: Use Cached Report now opens through a dedicated cache-open endpoint.
@@ -10087,8 +10085,8 @@
             <div class="rw-api-tos-content">
               <div class="rw-per-hit-note">These settings control the normal per-hit report. Member Payout is the amount split across members. Total Payout is shown on the results/newsletters for your full payout record. Click Calculate here to run the per-hit report.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
-                <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Per Hit and Points System finished-war caches when your API key and payout settings are ready. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache now live inside their matching settings dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
-                <div id="rw-cache-status-per-hit" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
+                <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Basic and Advanced finished-war caches when your API key and calculation settings are ready. Payout field changes do not stop a saved cached report from opening. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache live inside their matching dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
+                <div id="rw-cache-status-per-hit" class="rw-muted">Cache auto-check waits for your API key and valid calculation settings.</div>
               </div>
               <div class="rw-row">
                 <label>Member Payout
@@ -10127,8 +10125,8 @@
             <div class="rw-api-tos-content">
               <div class="rw-small"><b>Advanced Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most. War-faction retals count as War Hits and add the configurable retal bonus, while non-war-faction retals count as Outside Hits. Assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and the Avg FF per-payable-hit bonus are also included. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
-                <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Per Hit and Points System finished-war caches when your API key and payout settings are ready. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache now live inside their matching settings dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
-                <div id="rw-cache-status-points" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
+                <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Basic and Advanced finished-war caches when your API key and calculation settings are ready. Payout field changes do not stop a saved cached report from opening. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache live inside their matching dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
+                <div id="rw-cache-status-points" class="rw-muted">Cache auto-check waits for your API key and valid calculation settings.</div>
               </div>
               <div class="rw-row">
                 <label>Member Payout
@@ -10740,7 +10738,7 @@
         await rwphAutoCheckCompletedWarCache(false);
         const matchingCache = rwphEnsureCacheState(mode);
         if (matchingCache.available) {
-          rwphToastPanelInfo(status, `There is already a cached ${rwphModeLabel(mode)} report for this finished war and payout settings. Open its settings dropdown and click Use Cached Report, or ask an admin to use Force Refresh if the cached result needs rebuilding.`, "warn", "RWPH Cached Report");
+          rwphToastPanelInfo(status, `There is already a cached ${rwphModeLabel(mode)} report for this finished war and calculation settings. Open its settings dropdown and click Use Cached Report, or ask an admin to use Force Refresh if the cached result needs rebuilding.`, "warn", "RWPH Cached Report");
           return;
         }
       }

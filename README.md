@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.255**  
+Current package version: **1.1.256**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -40,7 +40,7 @@ The normal per-hit **Calculate** button now lives inside **Basic Calculations** 
 
 ### Public Performance Mode
 
-RWPH now protects public servers with completed-war report caching, direct-start calculations, cooldowns, route rate limits, short Torn API memory caching, and admin-only force refresh. Users can open a matching cached report when the same finished war and payout settings were already calculated. Storage remains JSON for now; MySQL can be added later without changing the userscript flow.
+RWPH now protects public servers with completed-war report caching, direct-start calculations, cooldowns, route rate limits, short Torn API memory caching, and admin-only force refresh. Users can open a matching cached report for the same finished war and calculation mode/settings even if Member Payout or Total Payout fields were changed afterward. Storage remains JSON for now; MySQL can be added later without changing the userscript flow.
 
 Before sending Torn money or items, always review the results yourself inside Torn.
 
@@ -602,6 +602,13 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.256
+
+- Backend/database report cache matching now ignores changed payout fields.
+- **Use Cached Report** can still open the saved Basic or Advanced report even if the user changes Member Payout or Total Payout after the cache was created.
+- Cached reports keep and display the payout values saved inside that report; changing payout fields later does not rewrite an old cached report.
+- Cache lookup/open/delete still stay separated by faction, finished war, calculation mode, and non-payout calculation settings.
 
 ### v1.1.255
 

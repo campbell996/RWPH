@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.255**
+Version: **1.1.256**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -252,7 +252,7 @@ The fullscreen Fetch + Calculate results page now uses a report-header layout, a
 
 ## Cached Report Deletion
 
-RWPH lets licensed users delete a matching backend/database cached report for the latest finished ranked war and current payout settings. This action only affects backend/database cached report data. Browser-saved reports are not used as trusted cache data. To protect the server from spam or accidental repeated deletion, a user can successfully delete only one cached report every 10 minutes.
+RWPH lets licensed users delete a matching backend/database cached report for the latest finished ranked war and current calculation mode/settings. This action only affects backend/database cached report data. Browser-saved reports are not used as trusted cache data. To protect the server from spam or accidental repeated deletion, a user can successfully delete only one cached report every 10 minutes.
 
 
 ## v1.1.237 layout note
@@ -322,6 +322,12 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.256
+
+- Backend/database cached reports can now be opened even if Member Payout or Total Payout fields changed after the report was saved.
+- Cache lookup/open/delete still use faction, finished war, calculation mode, and non-payout calculation settings, but payout fields no longer block cache matching.
+- Saved cached reports retain their original saved payout values.
 
 ### v1.1.255
 
