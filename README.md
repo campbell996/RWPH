@@ -1,3 +1,15 @@
+## v1.1.239
+
+- Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Per Hit Settings** and **Points System Settings**.
+- Added a new **Total Payout** field to both calculation dropdowns. Member Payout is still the amount split across members; Total Payout is saved/displayed as the full payout record amount.
+- Results tabs now show both **Member Payout** and **Total Payout**.
+- All newsletter themes now show both **Member Payout** and **Total Payout** in their summary cards.
+- Backend/database report cache keys now include the new Total Payout value so cached reports do not mix different payout records.
+
+## v1.1.237
+
+- Member Payout and Total Payout are now inside both Per Hit Settings and Points System Settings, so each calculation dropdown has its own payout fields, Calculate, Use Cached Report, and Delete Cache controls.
+
 # Ranked War Payout Helper
 
 <p align="center">
@@ -10,7 +22,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.236**  
+Current package version: **1.1.239**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -26,7 +38,7 @@ RWPH is a manual payout calculator and copy/prefill helper. It does not send ite
 
 ### Points System Results
 
-RWPH now includes a **Points System Settings** dropdown with its own **Calculate** button. This opens a new results tab and splits the payout pool by final contribution score instead of flat per-hit pay. The default score values are:
+RWPH now includes a **Points System Settings** dropdown with its own **Calculate** button. This opens a new results tab and splits the Member Payout by final contribution score instead of flat per-hit pay. The default score values are:
 
 - War hit on the ranked-war opponent: **10 points**
 - Retaliation hit: **4 points**
@@ -92,7 +104,7 @@ This package is not an official Torn product. Use it only in ways that follow To
 1. Open the unlocked RWPH panel.
 2. Confirm your API key is saved or pasted.
 3. Use **Auto-fill Last Finished War** to load the latest completed war window.
-4. Enter the total payout pool.
+4. Enter the Member Payout, and optionally set Total Payout for the full payout record shown in results/newsletters.
 5. Set the weights you want.
 6. Click **Fetch + Calculate**.
 7. Wait for the loading dots/results page.
@@ -300,7 +312,8 @@ Inputs:
 - Torn API key
 - War start date/time
 - War end date/time
-- Total payout pool
+- Member Payout
+- Total Payout
 - War Hit Weight
 - Outside Hit Weight
 - Retaliation Hit Weight
@@ -353,7 +366,7 @@ Failed attacks such as losses, stalemates, timeouts, escapes, runaways, misses, 
 
 ### Weight-Based Payout Split
 
-RWPH uses weighted contribution points to split the total payout pool.
+RWPH uses weighted contribution points to split the Member Payout.
 
 Simplified formula:
 
@@ -368,7 +381,7 @@ member weight =
 Then:
 
 ```text
-member payout = total payout pool × (member weight / total faction weight)
+member payout = Member Payout × (member weight / total faction weight)
 ```
 
 If every weight is zero, no meaningful payout split can be calculated.
@@ -382,7 +395,7 @@ The dots turn green as the backend progresses through:
 1. Verifying the licence with the server.
 2. Fetching the attack log for the selected start and finish times.
 3. Sorting war hits, outside hits, retals, and assists.
-4. Applying weights and splitting the payout pool across members.
+4. Applying weights and splitting the Member Payout across members.
 5. Building the fullscreen results page, payment tools, CSV export, and newsletter buttons.
 
 The timer counts total seconds, including past 59 seconds.
@@ -601,7 +614,7 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.236
+### v1.1.237
 - Moved **Use Cached Report** and **Delete Cache** into the matching **Per Hit Settings** dropdown.
 - Moved **Use Cached Report** and **Delete Cache** into the matching **Points System Settings** dropdown.
 - Shortened both cache-open buttons to **Use Cached Report** and both delete buttons to **Delete Cache** because each now sits inside its own settings section.

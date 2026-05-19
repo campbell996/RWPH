@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.236**
+Version: **1.1.239**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -135,7 +135,7 @@ RWPH is a community-made tool and is not an official Torn product. Use it only i
 
 ## Report Cache and Public Server Protection
 
-RWPH may save completed-war report results in the backend JSON database so the same faction, finished war, payout pool, and weight settings can be reused without recalculating. This reduces Torn API pressure and server load. Cached reports contain calculated payout output and report metadata; they are not designed to store user Torn API keys. The backend also uses route rate limits, per-user cooldowns, a calculation queue, and short in-memory Torn API caching to keep public hosting stable.
+RWPH may save completed-war report results in the backend JSON database so the same faction, finished war, Member Payout, Total Payout, and weight settings can be reused without recalculating. This reduces Torn API pressure and server load. Cached reports contain calculated payout output and report metadata; they are not designed to store user Torn API keys. The backend also uses route rate limits, per-user cooldowns, a calculation queue, and short in-memory Torn API caching to keep public hosting stable.
 
 Storage remains JSON in this version. MySQL is not enabled yet.
 
@@ -186,7 +186,13 @@ Payments Copy Panel buttons are hidden after use with a forced hidden state so u
 
 
 
-## v1.1.236 Dropdown Cache Button Layout Update
+## v1.1.239 Member/Total Payout Update
+- The old Total payout pool control is now named **Member Payout** in both Per Hit Settings and Points System Settings.
+- Each mode now also has a **Total Payout** field for showing the full payout record amount in result tabs and newsletters.
+- Member Payout remains the amount used to calculate member rows and payment-copy amounts.
+- Backend/database cached report signatures include Total Payout so different payout records do not reopen the wrong cached result.
+
+## v1.1.237 Dropdown Cache Button Layout Update
 - Per Hit cache controls now live inside the Per Hit Settings dropdown.
 - Points System cache controls now live inside the Points System Settings dropdown.
 - Both cache-open buttons are named Use Cached Report.
@@ -247,3 +253,12 @@ The fullscreen Fetch + Calculate results page now uses a report-header layout, a
 ## Cached Report Deletion
 
 RWPH lets licensed users delete a matching backend/database cached report for the latest finished ranked war and current payout settings. This action only affects backend/database cached report data. Browser-saved reports are not used as trusted cache data. To protect the server from spam or accidental repeated deletion, a user can successfully delete only one cached report every 10 minutes.
+
+
+## v1.1.237 layout note
+
+The Member Payout and Total Payout fields now appear inside both calculation settings dropdowns. Per Hit and Points System cache checks use the values from their matching dropdown.
+
+## v1.1.239 layout note
+
+The public performance/cache status message now appears inside both calculation settings dropdowns instead of below them in the main panel. Each dropdown shows cache auto-check status beside its own Calculate, Use Cached Report, and Delete Cache controls.
