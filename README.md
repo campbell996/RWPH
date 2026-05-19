@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.231**  
+Current package version: **1.1.236**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -26,16 +26,16 @@ RWPH is a manual payout calculator and copy/prefill helper. It does not send ite
 
 ### Points System Results
 
-RWPH now includes a separate **Points System Results** button. This opens a new results tab and splits the payout pool by final contribution score instead of flat per-hit pay. The default score values are:
+RWPH now includes a **Points System Settings** dropdown with its own **Calculate** button. This opens a new results tab and splits the payout pool by final contribution score instead of flat per-hit pay. The default score values are:
 
 - War hit on the ranked-war opponent: **10 points**
 - Retaliation hit: **4 points**
 - Assist: **3 points**
 - Outside hit / chain-maintenance hit: **2 points**
-- Hospitalizing result bonus: **+2 points**
+- Own-faction hospitalizing target bonus: **+2 points**
 - Fair-fight modifier: applied when Torn exposes a `fair_fight` / `fairFight` attack modifier; otherwise it defaults to `1.00x`.
 
-The normal **Fetch + Calculate** button remains available for the existing weighted payout report. Points System mode uses attack-log data because hospital results and fair-fight modifiers are per-attack details.
+The normal per-hit **Calculate** button now lives inside **Per Hit Settings** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and fair-fight modifier details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
 
 ### Public Performance Mode
 
@@ -312,9 +312,10 @@ Useful buttons:
 - **Your Expiration** checks remaining licence time.
 - **Lock Panel** returns to the locked panel.
 - **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
-- **Fetch + Calculate** runs the payout calculation on the backend for the last finished ranked war only.
-- **Use Cached Report** opens a matching backend/database cached report when one exists.
-- **Delete Cached Report** removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
+- **Calculate** inside Per Hit Settings runs the normal backend payout calculation for the last finished ranked war only.
+- **Calculate** inside Points System Settings runs the points-based backend payout calculation for the last finished ranked war only.
+- **Use Cached Report** inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when it exists.
+- **Delete Cache** inside Per Hit Settings or Points System Settings removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
 - Browser-saved report fallback is disabled.
 - **Launcher Movement** moves the floating launcher.
 
@@ -600,6 +601,36 @@ When updating RWPH:
 
 ## Recent Changelog
 
+### v1.1.236
+- Moved **Use Cached Report** and **Delete Cache** into the matching **Per Hit Settings** dropdown.
+- Moved **Use Cached Report** and **Delete Cache** into the matching **Points System Settings** dropdown.
+- Shortened both cache-open buttons to **Use Cached Report** and both delete buttons to **Delete Cache** because each now sits inside its own settings section.
+- Kept separate Per Hit and Points System backend/database cache handling unchanged.
+
+### v1.1.235
+- Added separate backend/database cache support in the panel for both **Per Hit** and **Points System** reports.
+- Added separate cached-report open buttons for Per Hit and Points System reports.
+- Added separate cached-report delete buttons for Per Hit and Points System reports, still protected by the one-successful-delete-per-10-minutes limit.
+- Updated cache checking so both result types can be found without relying on browser-saved report data.
+- Ensured cached Per Hit and cached Points results both keep the Payments handoff so the Payments Copy Panel can open from either cached report type.
+
+### v1.1.234
+- Moved the normal per-hit report button inside **Per Hit Settings** and renamed it **Calculate**.
+- Moved the Points System report button inside **Points System Settings** and renamed it **Calculate**.
+- Changed Points System mode to use the same hybrid source as the normal report when possible: rankedwarreport for war hits/score/total respect plus attack logs for assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers.
+- Kept attack-log-only Points System fallback for wars where Torn does not return a usable rankedwarreport.
+
+### v1.1.233
+- Changed the normal hit weight controls into a collapsed **Per Hit Settings** dropdown.
+- Matched the Per Hit Settings and Points System Settings dropdown cards to the main panel blue/modern theme.
+- Previously kept the existing per-hit and Points System calculations unchanged.
+
+### v1.1.232
+
+- Changed Points System hospital bonus scoring so the bonus is only awarded when the hospitalized target can be verified as one of your own faction members.
+- Added backend tracking for detected hospital results that were skipped because the target was not verified as your own faction.
+- Updated Points System labels/help text to say own-faction hospital bonus instead of a general hospital bonus.
+
 ### v1.1.231
 
 - Hardened Payments Copy Panel button hiding so buttons still disappear even if browser clipboard permission is blocked.
@@ -609,7 +640,7 @@ When updating RWPH:
 ### v1.1.229
 
 - Updated the Help panel to explain the latest cache and payment helper behaviour.
-- Help now covers database-only cached reports, Use Cached Report, Delete Cached Report, 24-hour cache cleanup, and the one-delete-per-10-minutes limit.
+- Help now covers database-only cached reports, cached-report open/delete buttons, 24-hour cache cleanup, and the one-delete-per-10-minutes limit.
 - Help now explains that Payments Copy Panel can open from current results or cached reports, hides clicked buttons, and restores only the most recently hidden payment button.
 - Help now explains that Buy Licence / Extend Licence reopen an existing pending Xanax payment code from the backend/database when one already exists.
 - Help now notes that Your Expiration is limited to 2 manual checks per minute.
@@ -663,8 +694,8 @@ When updating RWPH:
 
 - Removed the old Fetch + Calculate time lock.
 - Fetch + Calculate now shows a popup when a matching cached report already exists.
-- **Use Cached Report** opens the matching cached report.
-- **Delete Cached Report** removes the matching database cached report when a fresh report needs to be created.
+- **Use Cached Report** inside the matching settings dropdown opens the matching cached report.
+- **Delete Cache** inside the matching settings dropdown removes the matching database cached report when a fresh report needs to be created.
 - Cached reports auto-expire and are deleted from the backend/database after 24 hours.
 - Licence verification/check rate limit changed to 2 checks per minute.
 
@@ -673,7 +704,7 @@ When updating RWPH:
 - Removed the separate **Check Cache** button.
 - Added automatic completed-war cache checking when the API key and payout settings are ready.
 - Removed the separate **Reopen Results** button.
-- Changed **Use Cached Report** so it opens the saved/cached results report.
+- Changed **Use Cached Report** so it opens the saved/cached results report. Later versions split this into separate Per Hit and Points cached-report buttons.
 - Backend/database cached reports now expire and are pruned automatically after 24 hours by default.
 - Kept the new cache controls in the same midnight-blue RWPH style/theme/layout.
 

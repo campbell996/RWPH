@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.231
+// @version      1.1.236
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1643,7 +1643,11 @@
   // v1.1.225: Your Expiration has a browser-side 2/minute click guard, and Payments Copy Panel hiding now uses forced !important hidden state.
   // v1.1.226: fullscreen Fetch + Calculate results panel now matches the RWPH midnight-blue main panel theme and layout.
   // v1.1.227: fullscreen Fetch + Calculate results panel layout rebuilt with a report header, summary strip, action side panel, and main member results area.
-  // v1.1.231: added Points System Results mode with attack contribution scoring, hospital bonuses, and fair-fight modifiers.
+  // v1.1.235: Per Hit and Points System reports now have separate database cache buttons and both cached report types preserve Payments Copy Panel handoff.
+  // v1.1.236: moved each cache/open/delete control inside its matching Per Hit or Points settings dropdown and shortened cached button labels.
+  // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
+  // v1.1.232: Points System hospital bonus now only applies to verified own-faction hospitalizations.
+  // v1.1.232: added Points System Results mode with attack contribution scoring, own-faction hospital bonuses, and fair-fight modifiers.
   // v1.1.228: added Delete Cached Report beside Use Cached Report with a 10-minute successful-delete cooldown.
   // v1.1.229: updated Help panel wording for database-only cache deletion, cached-report payments, pending Xanax codes, live payment checks, and new button limits.
   // v1.1.230: hardened cached-report Payments row handoff, payment-copy button hiding when clipboard access fails, and Xanax helper restoration from backend/database on the item tab.
@@ -2695,6 +2699,55 @@
         color: #e0f7ff !important;
         box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 22px rgba(14,165,233,.08) !important;
         text-shadow: 0 0 12px rgba(56,189,248,.18) !important;
+      }
+      #rw-payout-helper .rw-api-tos-card,
+      #rw-payout-helper .rw-settings-dropdown {
+        background:
+          radial-gradient(circle at 18% 0%, rgba(56,189,248,.14), transparent 34%),
+          linear-gradient(180deg, rgba(15,23,42,.76), rgba(2,6,23,.60)) !important;
+        border: 1px solid rgba(125,211,252,.22) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.055) inset, 0 12px 26px rgba(0,0,0,.24) !important;
+        color: #eaf6ff !important;
+      }
+      #rw-payout-helper summary.rw-api-tos-title,
+      #rw-payout-helper .rw-settings-dropdown > summary.rw-api-tos-title {
+        min-height: 38px;
+        background: linear-gradient(135deg, rgba(14,165,233,.22), rgba(99,102,241,.18)) !important;
+        border: 1px solid rgba(125,211,252,.25) !important;
+        color: #e0f7ff !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 20px rgba(14,165,233,.08) !important;
+        text-shadow: 0 0 12px rgba(56,189,248,.18) !important;
+        text-transform: uppercase;
+        letter-spacing: .35px;
+        justify-content: center !important;
+        text-align: center !important;
+      }
+      #rw-payout-helper summary.rw-api-tos-title::after {
+        color: #bae6fd !important;
+        margin-left: auto;
+        text-shadow: 0 0 10px rgba(56,189,248,.24) !important;
+      }
+      #rw-payout-helper details.rw-api-tos-card[open] summary.rw-api-tos-title {
+        border-bottom-color: rgba(125,211,252,.22) !important;
+      }
+      #rw-payout-helper .rw-api-tos-content {
+        color: #cbd5e1 !important;
+      }
+      #rw-payout-helper .rw-per-hit-note {
+        margin: 0 0 8px;
+        color: #cbd5e1 !important;
+        font-size: 11px;
+        line-height: 1.45;
+        font-weight: 800;
+      }
+      #rw-payout-helper .rw-settings-calc-actions {
+        margin-top: 10px !important;
+        padding-top: 10px !important;
+        border-top: 1px solid rgba(125,211,252,.16) !important;
+      }
+      #rw-payout-helper .rw-settings-calc-actions button {
+        width: 100% !important;
       }
       #rw-payout-helper .rw-payment-card {
         background:
@@ -4817,7 +4870,7 @@
   function buildPayoutCsvText(rows, summary = {}) {
     const pointsMode = summary?.pointsMode || summary?.calculationMode === "points";
     const header = pointsMode
-      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Hospitalizing Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
+      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Own-Faction Hospital Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "Own-Faction Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
       : ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Total Respect", "Respect", "Payout"];
     const body = (rows || []).map((r) => pointsMode ? [
       r.id,
@@ -4986,11 +5039,11 @@
           <div><span>Assists</span><b>${r.assists}</b></div>
           <div><span>Outside Hits</span><b>${r.outsideHits}</b></div>
           <div><span>Retals</span><b>${r.retaliationHits}</b></div>
-          ${pointsMode ? `<div><span>Hospital Hits</span><b>${r.hospitalizingHits}</b></div>
+          ${pointsMode ? `<div><span>Own-Faction Hospital Hits</span><b>${r.hospitalizingHits}</b></div>
           <div><span>Points</span><b>${r.points.toFixed(2)}</b></div>
           <div><span>Base Points</span><b>${r.basePoints.toFixed(2)}</b></div>
           <div><span>Fair Bonus</span><b>${r.fairFightBonusPoints.toFixed(2)}</b></div>
-          <div><span>Hosp Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
+          <div><span>Own-Faction Hospital Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
           <div><span>Avg FF</span><b>${r.avgFairFight.toFixed(2)}x</b></div>` : `<div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
           <div><span>Payable</span><b>${r.payableEvents}</b></div>
           <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
@@ -5003,7 +5056,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${pointsMode ? "RWPH Points System Results" : "RWPH Fetch + Calculate Results"}</title>
+  <title>${pointsMode ? "RWPH Points System Results" : "RWPH Per Hit Results"}</title>
   <style>
     :root {
       --bg:#020617;
@@ -5734,8 +5787,8 @@
       <div class="results-hero-head">
         <img class="results-hero-logo" src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
         <div class="results-hero-copy">
-          <h1>${pointsMode ? "Points System Results" : "Fetch + Calculate Results"}</h1>
-          <p class="results-mode-note">${pointsMode ? "Completed ranked-war contribution report. Payouts are split by final points score using war hits, assists, outside hits, retals, hospital bonuses, and fair-fight modifiers." : "Completed ranked-war payout report. Uses backend/database cache only, expires cached reports after 24 hours, and keeps payments manual-review only."}</p>
+          <h1>${pointsMode ? "Points System Results" : "Per Hit Results"}</h1>
+          <p class="results-mode-note">${pointsMode ? "Completed ranked-war contribution report. Uses hybrid rankedwarreport + attack-log scoring when available, then splits payouts by final points score." : "Completed ranked-war payout report. Uses backend/database cache only, expires cached reports after 24 hours, and keeps payments manual-review only."}</p>
         </div>
       </div>
       <div class="results-hero-meta" aria-label="Report details">
@@ -5761,7 +5814,7 @@
       <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(goldNewsletterHref)}" download="rwph-war-payout-newsletter-victory-gold.html" target="_blank" rel="noopener">Create Victory Gold Newsletter</a>
       <p class="newsletter-choice-note">Each newsletter button creates the same payout data with a different report style/theme.</p>
       <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
-      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Fetch + Calculate, the main RWPH panel shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
+      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
     <section class="summary" aria-label="Report summary">
@@ -5773,7 +5826,7 @@
       <div class="summary-card"><span>Assists</span><b>${Number(summary?.totalAssists || 0)}</b></div>
       <div class="summary-card"><span>Outside Hits</span><b>${Number(summary?.totalOutsideHits || 0)}</b></div>
       <div class="summary-card"><span>Retals</span><b>${Number(summary?.totalRetaliationHits || 0)}</b></div>
-      <div class="summary-card"><span>${pointsMode ? "Hospital Hits" : "Tracked"}</span><b>${Number(pointsMode ? (summary?.totalHospitalizingHits || 0) : (summary?.totalTrackedHits || 0))}</b></div>
+      <div class="summary-card"><span>${pointsMode ? "Own-Faction Hospital Hits" : "Tracked"}</span><b>${Number(pointsMode ? (summary?.totalHospitalizingHits || 0) : (summary?.totalTrackedHits || 0))}</b></div>
       <div class="summary-card"><span>${pointsMode ? "Fair Bonus" : "Payable"}</span><b>${pointsMode ? Number(summary?.totalFairFightBonusPoints || 0).toFixed(2) : Number(summary?.calcMeta?.payableEvents || 0)}</b></div>
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
@@ -6350,7 +6403,7 @@
       <div class="rwph-info-grid" aria-label="RWPH loading rules">
         <div class="rwph-info-card"><div class="rwph-info-title">Last finished war only</div><div class="rwph-info-text">Active/current wars are blocked until Torn marks the ranked war as finished.</div></div>
         <div class="rwph-info-card"><div class="rwph-info-title">Database cache only</div><div class="rwph-info-text">Cached reports come from the backend/database, not old browser-saved results.</div></div>
-        <div class="rwph-info-card"><div class="rwph-info-title">24 hour cache</div><div class="rwph-info-text">Matching cached reports can be opened with Use Cached Report and are deleted after 24 hours.</div></div>
+        <div class="rwph-info-card"><div class="rwph-info-title">24 hour cache</div><div class="rwph-info-text">Matching Per Hit and Points System cached reports can be opened separately and are deleted after 24 hours.</div></div>
       </div>
       <ul class="loading-list" aria-label="What RWPH is loading">
         <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence and confirms server access.</li>
@@ -6646,10 +6699,10 @@
     if (actions) actions.hidden = false;
     if (runBtn) {
       runBtn.disabled = false;
-      runBtn.textContent = "Fetch + Calculate";
-      runBtn.title = "Create a payout report for the last finished ranked war. If a matching cached report exists, RWPH will ask you to open it instead.";
+      runBtn.textContent = "Calculate";
+      runBtn.title = "Create the normal per-hit payout report for the last finished ranked war. If a matching cached report exists, RWPH will ask you to open it instead.";
     }
-    rwphSetCacheButtonState(rwphCachedReportAvailable, rwphCachedReportInfo, true);
+    rwphRenderCacheButtonStates(true);
   }
 
   function rwphSaveLastResults(rows, summary) {
@@ -6663,9 +6716,24 @@
     const status = document.getElementById("rw-status");
     rwphClearLastResults();
     rwphUpdateLastResultsButton();
-    rwphToastPanelError(status, "Browser-saved reports are disabled. Click Use Cached Report only when RWPH finds a matching backend/database cached report.", "RWPH Results");
+    rwphToastPanelError(status, "Browser-saved reports are disabled. Use the Per Hit or Points cache buttons only when RWPH finds a matching backend/database cached report.", "RWPH Results");
   }
 
+
+  function rwphNormalizeCalculationMode(mode) {
+    return String(mode || "standard") === "points" ? "points" : "standard";
+  }
+
+  function rwphModeLabel(mode) {
+    return rwphNormalizeCalculationMode(mode) === "points" ? "Points" : "Per Hit";
+  }
+
+  function rwphEnsureCacheState(mode) {
+    const safeMode = rwphNormalizeCalculationMode(mode);
+    rwphCachedReports ||= {};
+    rwphCachedReports[safeMode] ||= { available: false, info: null };
+    return rwphCachedReports[safeMode];
+  }
 
   function rwphGetPayoutCacheSignature() {
     const userKey = document.getElementById("rw-key")?.value?.trim() || "";
@@ -6674,40 +6742,106 @@
     const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight")?.value || 0);
     const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0);
     const assistWeight = Number(document.getElementById("rw-assist-weight")?.value || 0);
-    return [userKey ? "key" : "no-key", totalPayout, warHitWeight, outsideHitWeight, retaliationHitWeight, assistWeight].join("|");
+    const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
+    const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
+    const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
+    const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 4);
+    const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
+    const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
+    return [userKey ? "key" : "no-key", totalPayout, warHitWeight, outsideHitWeight, retaliationHitWeight, assistWeight, pointWarHitValue, pointAssistValue, pointOutsideHitValue, pointRetaliationHitValue, pointHospitalBonus, pointFairFightEnabled ? "ff" : "no-ff"].join("|");
   }
 
-  function rwphSetCacheButtonState(available, info = null, silent = false) {
-    rwphClearLastResults();
-    rwphCachedReportAvailable = !!available;
-    rwphCachedReportInfo = info || null;
-    const buttonAvailable = rwphCachedReportAvailable;
-    const btn = document.getElementById("rw-use-cache");
-    const deleteBtn = document.getElementById("rw-delete-cache");
-    const cacheStatus = document.getElementById("rw-cache-status");
-    const factionName = info?.factionName || info?.summary?.factionName || info?.cache?.factionName || "";
-    const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
-    const cachedAtMs = Number(info?.cachedAtMs || info?.cache?.cachedAtMs || info?.summary?.cachedAtMs || 0);
-    const cachedText = cachedAtMs ? ` Saved ${new Date(cachedAtMs).toLocaleString()}.` : "";
-    const expiryText = expiresAtMs ? ` Expires ${new Date(expiresAtMs).toLocaleString()}.` : "";
+  function rwphBuildCacheRequestPayload(calculationMode = "standard") {
+    return {
+      userKey: document.getElementById("rw-key")?.value?.trim() || "",
+      token: GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, ""),
+      calculationMode: rwphNormalizeCalculationMode(calculationMode),
+      totalPayout: Number(document.getElementById("rw-total")?.value || 0),
+      warHitWeight: Number(document.getElementById("rw-war-hit-weight")?.value || 0),
+      outsideHitWeight: Number(document.getElementById("rw-outside-hit-weight")?.value || 0),
+      retaliationHitWeight: Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0),
+      assistWeight: Number(document.getElementById("rw-assist-weight")?.value || 0),
+      pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
+      pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
+      pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
+      pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 4),
+      pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
+      pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
+    };
+  }
 
-    if (btn) {
-      btn.hidden = false;
-      btn.disabled = !buttonAvailable;
-      btn.textContent = buttonAvailable ? "Use Cached Report" : "No Cached Report Yet";
-      btn.title = buttonAvailable ? "Open the matching backend/database cached report for the latest finished ranked war." : "RWPH auto-checks the backend/database for a matching cached report when your key and payout settings are ready.";
+  function rwphValidateCacheFormForMode(calculationMode = "standard") {
+    const payload = rwphBuildCacheRequestPayload(calculationMode);
+    const mode = rwphNormalizeCalculationMode(calculationMode);
+    const basicInvalid = !payload.userKey || payload.totalPayout <= 0 || payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0;
+    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0;
+    if (basicInvalid || (mode === "points" && pointsInvalid)) {
+      return { ok: false, payload };
     }
-    if (deleteBtn) {
-      deleteBtn.hidden = false;
-      deleteBtn.disabled = !buttonAvailable;
-      deleteBtn.textContent = "Delete Cached Report";
-      deleteBtn.title = buttonAvailable ? "Delete the matching backend/database cached report. You can delete one cached report every 10 minutes." : "Delete becomes available when RWPH finds a matching backend/database cached report.";
+    return { ok: true, payload };
+  }
+
+  function rwphCacheStateSummaryText() {
+    const standard = rwphEnsureCacheState("standard");
+    const points = rwphEnsureCacheState("points");
+    const parts = [];
+    for (const mode of ["standard", "points"]) {
+      const state = rwphEnsureCacheState(mode);
+      if (!state.available) continue;
+      const info = state.info || {};
+      const cachedAtMs = Number(info?.cachedAtMs || info?.cache?.cachedAtMs || info?.summary?.cachedAtMs || 0);
+      const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
+      const savedText = cachedAtMs ? ` saved ${new Date(cachedAtMs).toLocaleString()}` : "";
+      const expiryText = expiresAtMs ? ` expires ${new Date(expiresAtMs).toLocaleString()}` : "";
+      parts.push(`${rwphModeLabel(mode)}${savedText}${expiryText}`);
     }
-    if (cacheStatus && (rwphCachedReportAvailable || !silent)) {
-      cacheStatus.textContent = rwphCachedReportAvailable
-        ? `Database cached report found${factionName ? ` for ${factionName}` : ""}. Click Use Cached Report to open it.${cachedText}${expiryText}`
-        : "No matching database cached report found yet. Fetch + Calculate will create one.";
+    if (parts.length) return `Database cached report${parts.length === 1 ? "" : "s"} found: ${parts.join(" | ")}. Open it from the matching settings dropdown.`;
+    if (standard.available || points.available) return "Database cached report found.";
+    return "No matching database cached reports found yet. Calculate in Per Hit Settings or Points System Settings will create one.";
+  }
+
+  function rwphRenderCacheButtonStates(silent = false) {
+    const cacheStatus = document.getElementById("rw-cache-status");
+    const buttonPairs = [
+      { mode: "standard", useId: "rw-use-cache", deleteId: "rw-delete-cache" },
+      { mode: "points", useId: "rw-use-points-cache", deleteId: "rw-delete-points-cache" },
+    ];
+
+    for (const pair of buttonPairs) {
+      const state = rwphEnsureCacheState(pair.mode);
+      const label = rwphModeLabel(pair.mode);
+      const useBtn = document.getElementById(pair.useId);
+      const deleteBtn = document.getElementById(pair.deleteId);
+      if (useBtn) {
+        useBtn.hidden = false;
+        useBtn.disabled = !state.available;
+        useBtn.textContent = "Use Cached Report";
+        useBtn.title = state.available ? `Open the matching backend/database cached ${label} report for the latest finished ranked war.` : `RWPH auto-checks the backend/database for a matching ${label} cached report when your key and settings are ready.`;
+      }
+      if (deleteBtn) {
+        deleteBtn.hidden = false;
+        deleteBtn.disabled = !state.available;
+        deleteBtn.textContent = "Delete Cache";
+        deleteBtn.title = state.available ? `Delete the matching backend/database cached ${label} report. You can delete one cached report every 10 minutes.` : `Delete becomes available when RWPH finds a matching ${label} backend/database cached report.`;
+      }
     }
+
+    if (cacheStatus && (!silent || rwphEnsureCacheState("standard").available || rwphEnsureCacheState("points").available)) {
+      cacheStatus.textContent = rwphCacheStateSummaryText();
+    }
+  }
+
+  function rwphSetCacheButtonState(calculationMode, available, info = null, silent = false) {
+    rwphClearLastResults();
+    const mode = rwphNormalizeCalculationMode(calculationMode);
+    const state = rwphEnsureCacheState(mode);
+    state.available = !!available;
+    state.info = info || null;
+    if (mode === "standard") {
+      rwphCachedReportAvailable = state.available;
+      rwphCachedReportInfo = state.info;
+    }
+    rwphRenderCacheButtonStates(silent);
   }
 
   function rwphScheduleAutoCacheCheck(delayMs = 650) {
@@ -6718,16 +6852,12 @@
   async function rwphAutoCheckCompletedWarCache(silent = true) {
     const status = document.getElementById("rw-status");
     const cacheStatus = document.getElementById("rw-cache-status");
-    const userKey = document.getElementById("rw-key")?.value?.trim() || "";
-    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
-    const totalPayout = Number(document.getElementById("rw-total")?.value || 0);
-    const warHitWeight = Number(document.getElementById("rw-war-hit-weight")?.value || 0);
-    const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight")?.value || 0);
-    const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0);
-    const assistWeight = Number(document.getElementById("rw-assist-weight")?.value || 0);
+    const standardValidation = rwphValidateCacheFormForMode("standard");
+    const pointsValidation = rwphValidateCacheFormForMode("points");
 
-    if (!userKey || totalPayout <= 0 || warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0) {
-      rwphSetCacheButtonState(false, null, true);
+    if (!standardValidation.ok || !pointsValidation.ok) {
+      rwphSetCacheButtonState("standard", false, null, true);
+      rwphSetCacheButtonState("points", false, null, true);
       if (cacheStatus) cacheStatus.textContent = "Cache auto-check waits for your API key and payout settings.";
       return;
     }
@@ -6737,86 +6867,82 @@
     rwphLastCacheCheckSignature = signature;
 
     try {
-      if (cacheStatus) cacheStatus.textContent = "Auto-checking completed-war report cache...";
-      const result = await apiPost("/api/calc/report-cache", {
-        userKey,
-        token,
-        totalPayout,
-        warHitWeight,
-        outsideHitWeight,
-        retaliationHitWeight,
-        assistWeight,
-      });
-      rwphSetCacheButtonState(!!result.cached, result, false);
+      if (cacheStatus) cacheStatus.textContent = "Auto-checking Per Hit and Points System report caches...";
+      const standardResult = await apiPost("/api/calc/report-cache", standardValidation.payload);
+      const pointsResult = await apiPost("/api/calc/report-cache", pointsValidation.payload);
+      rwphSetCacheButtonState("standard", !!standardResult.cached, standardResult, true);
+      rwphSetCacheButtonState("points", !!pointsResult.cached, pointsResult, true);
+      rwphRenderCacheButtonStates(false);
       if (!silent && status) {
-        rwphToastPanelInfo(status, result.cached ? "Cached report found and ready to open." : "No matching cached report found yet.", result.cached ? "info" : "warn", "RWPH Cache");
+        const found = !!standardResult.cached || !!pointsResult.cached;
+        rwphToastPanelInfo(status, found ? "Cached report found and ready to open." : "No matching cached reports found yet.", found ? "info" : "warn", "RWPH Cache");
       }
     } catch (e) {
-      rwphCachedReportAvailable = false;
-      rwphCachedReportInfo = null;
-      const btn = document.getElementById("rw-use-cache");
-      const deleteBtn = document.getElementById("rw-delete-cache");
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = "Cache Unavailable";
-        btn.title = e.message || "Cache auto-check failed.";
-      }
-      if (deleteBtn) {
-        deleteBtn.disabled = true;
-        deleteBtn.title = e.message || "Cache auto-check failed.";
+      rwphSetCacheButtonState("standard", false, null, true);
+      rwphSetCacheButtonState("points", false, null, true);
+      const btns = ["rw-use-cache", "rw-use-points-cache", "rw-delete-cache", "rw-delete-points-cache"];
+      for (const id of btns) {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.disabled = true;
+          if (id.includes("use")) btn.textContent = "Use Cached Report";
+          if (id.includes("delete")) btn.textContent = "Delete Cache";
+          btn.title = e.message || "Cache auto-check failed.";
+        }
       }
       if (cacheStatus) cacheStatus.textContent = `Cache auto-check failed: ${e.message}`;
       if (!silent) rwphToastPanelError(status, "Cache auto-check error: " + e.message, "RWPH Cache");
     }
   }
 
-
-  async function rwphDeleteMatchingCachedReport() {
+  async function rwphOpenCachedReport(calculationMode = "standard") {
+    const mode = rwphNormalizeCalculationMode(calculationMode);
     const status = document.getElementById("rw-status");
-    const cacheStatus = document.getElementById("rw-cache-status");
-    const deleteBtn = document.getElementById("rw-delete-cache");
-    const userKey = document.getElementById("rw-key")?.value?.trim() || "";
-    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
-    const totalPayout = Number(document.getElementById("rw-total")?.value || 0);
-    const warHitWeight = Number(document.getElementById("rw-war-hit-weight")?.value || 0);
-    const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight")?.value || 0);
-    const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0);
-    const assistWeight = Number(document.getElementById("rw-assist-weight")?.value || 0);
-
-    if (!rwphCachedReportAvailable) {
+    rwphClearLastResults();
+    if (!rwphEnsureCacheState(mode).available) {
       await rwphAutoCheckCompletedWarCache(false);
     }
-    if (!rwphCachedReportAvailable) {
-      return rwphToastPanelError(status, "No matching database cached report was found to delete.", "RWPH Cache");
+    if (rwphEnsureCacheState(mode).available) {
+      await rwphRunCalculation(mode, { useCacheOnly: true });
+      return;
     }
-    if (!userKey) return rwphToastPanelError(status, "Enter your Torn API key before deleting a cached report.", "RWPH Cache");
-    if (totalPayout <= 0) return rwphToastPanelError(status, "Enter a payout pool greater than 0 before deleting a cached report.", "RWPH Cache");
+    rwphToastPanelError(status, `No matching ${rwphModeLabel(mode)} database cached report was found. Use ${rwphModeLabel(mode)} Settings Calculate to create one.`, "RWPH Cache");
+  }
+
+  async function rwphDeleteMatchingCachedReport(calculationMode = "standard") {
+    const mode = rwphNormalizeCalculationMode(calculationMode);
+    const modeLabel = rwphModeLabel(mode);
+    const status = document.getElementById("rw-status");
+    const cacheStatus = document.getElementById("rw-cache-status");
+    const deleteBtn = document.getElementById(mode === "points" ? "rw-delete-points-cache" : "rw-delete-cache");
+    const validation = rwphValidateCacheFormForMode(mode);
+
+    if (!rwphEnsureCacheState(mode).available) {
+      await rwphAutoCheckCompletedWarCache(false);
+    }
+    if (!rwphEnsureCacheState(mode).available) {
+      return rwphToastPanelError(status, `No matching ${modeLabel} database cached report was found to delete.`, "RWPH Cache");
+    }
+    if (!validation.payload.userKey) return rwphToastPanelError(status, "Enter your Torn API key before deleting a cached report.", "RWPH Cache");
+    if (validation.payload.totalPayout <= 0) return rwphToastPanelError(status, "Enter a payout pool greater than 0 before deleting a cached report.", "RWPH Cache");
 
     try {
       if (deleteBtn) {
         deleteBtn.disabled = true;
         deleteBtn.textContent = "Deleting...";
       }
-      if (cacheStatus) cacheStatus.textContent = "Deleting matching database cached report...";
-      const result = await apiPost("/api/calc/report-cache/delete", {
-        userKey,
-        token,
-        totalPayout,
-        warHitWeight,
-        outsideHitWeight,
-        retaliationHitWeight,
-        assistWeight,
-      });
+      if (cacheStatus) cacheStatus.textContent = `Deleting matching ${modeLabel} database cached report...`;
+      const result = await apiPost("/api/calc/report-cache/delete", validation.payload);
       rwphLastCacheCheckSignature = "";
-      rwphSetCacheButtonState(false, null, false);
-      if (cacheStatus) cacheStatus.textContent = result.deleted ? "Cached report deleted. Fetch + Calculate can create a fresh report." : (result.message || "No matching database cached report was found to delete.");
-      rwphToastPanelInfo(status, result.message || "Cached report deleted.", result.deleted ? "info" : "warn", "RWPH Cache");
+      rwphSetCacheButtonState(mode, false, null, false);
+      if (cacheStatus) cacheStatus.textContent = result.deleted ? `Cached ${modeLabel} report deleted. ${modeLabel} Settings Calculate can create a fresh report.` : (result.message || `No matching ${modeLabel} database cached report was found to delete.`);
+      rwphToastPanelInfo(status, result.message || `Cached ${modeLabel} report deleted.`, result.deleted ? "info" : "warn", "RWPH Cache");
     } catch (e) {
       const wait = Number(e?.retryAfterSeconds || 0);
       const msg = wait > 0 ? `You can delete one cached report every 10 minutes. Wait ${wait} seconds, then try again.` : `Delete cached report error: ${e.message}`;
       if (cacheStatus) cacheStatus.textContent = msg;
       rwphToastPanelError(status, msg, "RWPH Cache");
-      rwphSetCacheButtonState(rwphCachedReportAvailable, rwphCachedReportInfo, true);
+      rwphRenderCacheButtonStates(true);
     }
   }
 
@@ -6839,7 +6965,7 @@
         ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(rwphWarSourceLabel(summary.selectedWar.timeSource))}<br>` : ""}
         <b>${pointsMode ? "Total points" : "Total weight"}:</b> ${Number(pointsMode ? (summary?.totalPoints ?? summary?.totalWeight ?? 0) : (summary?.totalWeight || 0)).toFixed(2)} |
         <b>${pointsMode ? "Scored events" : "Payable events"}:</b> ${Number(summary?.calcMeta?.payableEvents || 0)}<br>
-        ${pointsMode ? `<b>Hospital hits:</b> ${Number(summary?.totalHospitalizingHits || 0)} | <b>Fair-fight bonus:</b> ${Number(summary?.totalFairFightBonusPoints || 0).toFixed(2)}<br>` : ""}
+        ${pointsMode ? `<b>Own-faction hospital hits:</b> ${Number(summary?.totalHospitalizingHits || 0)} | <b>Fair-fight bonus:</b> ${Number(summary?.totalFairFightBonusPoints || 0).toFixed(2)}<br>` : ""}
         <b>Total respect:</b> ${Number(summary?.totalRespect || 0).toFixed(2)} |
         <b>Respect:</b> ${Number(summary?.payoutRespect ?? summary?.respect ?? 0).toFixed(2)}<br>
         <b>War hits:</b> ${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)} |
@@ -6890,7 +7016,7 @@
                 <div class="rw-stat-box"><div class="rw-stat-label">Tracked</div><div class="rw-stat-value">${Number(r.totalTrackedHits || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">Payable</div><div class="rw-stat-value">${Number(r.payableEvents || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Points" : "Weight"}</div><div class="rw-stat-value">${pointsMode ? points.toFixed(2) : weight.toFixed(2)}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Hosp Hits" : "Respect"}</div><div class="rw-stat-value">${pointsMode ? Number(r.hospitalizingHits || 0) : respect.toFixed(2)}</div></div>
+                <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Own-Faction Hospital Hits" : "Respect"}</div><div class="rw-stat-value">${pointsMode ? Number(r.hospitalizingHits || 0) : respect.toFixed(2)}</div></div>
                 ${pointsMode ? `<div class="rw-stat-box"><div class="rw-stat-label">Fair Bonus</div><div class="rw-stat-value">${Number(r.fairFightBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Avg FF</div><div class="rw-stat-value">${Number(r.avgFairFight || 1).toFixed(2)}x</div></div>` : ""}
               </div>
             </div>`;
@@ -8853,7 +8979,7 @@
           This version is server-locked. The backend verifies your license and performs the payout calculation server-side.
         </div>
         <div class="rw-small">
-          After unlocking, RWPH only creates reports for the latest completed ranked war. Current/active wars must finish first. If a matching backend/database cached report exists, RWPH shows a popup and Use Cached Report opens the backend/database cached report. Delete Cached Report removes the matching database cached report with a one-delete-per-10-minutes limit.
+          After unlocking, RWPH only creates reports for the latest completed ranked war. Current/active wars must finish first. If a matching backend/database cached report exists, RWPH shows a popup and the matching cached-report button opens the backend/database cached report. Delete Cache inside the matching settings dropdown removes that database cached report with a one-delete-per-10-minutes limit.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Locked panel tabs">
@@ -8954,8 +9080,8 @@
               <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
               <li><b>3. Unlock or buy/extend:</b> Unlock Panel checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
               <li><b>4. Set the war times:</b> use Auto-fill Last Finished War to load the completed war window.</li>
-              <li><b>5. Fetch + Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
-              <li><b>Points System Results:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
+              <li><b>5. Per Hit Settings Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
+              <li><b>Points System Settings Calculate:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
             </ul>
           </div>
 
@@ -8965,9 +9091,9 @@
               <li><b>Last finished war only:</b> Fetch + Calculate only creates a report for the latest completed ranked war.</li>
               <li><b>No current-war reports:</b> if a ranked war is still active, RWPH waits until it finishes before allowing a payout report.</li>
               <li><b>Auto-fill Last Finished War:</b> this button fills the completed war window and should be used before calculating.</li>
-              <li><b>Cached report prompt:</b> if a matching database cached report already exists, Fetch + Calculate shows a popup instead of creating a duplicate.</li>
-              <li><b>Use Cached Report:</b> opens the matching backend/database cached report. Browser-saved reports are not used as the source of truth.</li>
-              <li><b>Delete Cached Report:</b> removes the matching backend/database cached report for the latest finished war and current payout settings. A user can successfully delete only one cached report every 10 minutes.</li>
+              <li><b>Cached report prompt:</b> if a matching database cached report already exists, Calculate shows a popup instead of creating a duplicate.</li>
+              <li><b>Use Cached Report:</b> inside either settings dropdown opens the matching backend/database cached report for that result type. Browser-saved reports are not used as the source of truth.</li>
+              <li><b>Delete Cache:</b> inside either settings dropdown removes the matching backend/database cached report for that result type, latest finished war, and current settings. A user can successfully delete only one cached report every 10 minutes.</li>
               <li><b>24-hour cleanup:</b> cached reports are deleted from the backend/database automatically after 24 hours.</li>
               <li><b>Why this exists:</b> completed-war-only reports reduce API/server load, prevent changing live-war data from causing wrong payouts, and stop repeated duplicate reports.</li>
             </ul>
@@ -8997,12 +9123,12 @@
               <li><b>War start/end:</b> controls the exact time window used for attack and payout calculations.</li>
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
               <li><b>Total payout pool:</b> the total money you want split across eligible members.</li>
-              <li><b>Weights:</b> War Hit, Outside Hit, Retaliation Hit, and Assist weight control how much each contribution type counts in the normal report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, hospital bonuses, and fair-fight modifiers control the contribution score used by Points System Results.</li>
-              <li><b>Fetch + Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
-              <li><b>Points System Results:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
-              <li><b>Use Cached Report:</b> opens a matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
-              <li><b>Delete Cached Report:</b> deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
+              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist Weight control how much each contribution type counts in the normal per-hit report.</li>
+              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button.</li>
+              <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
+              <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
+              <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
+              <li><b>Delete Cache:</b> inside Per Hit Settings or Points System Settings deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
@@ -9022,8 +9148,8 @@
             <div class="rw-how-title">Results Tab</div>
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
-              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, hospital hits, fair-fight bonus, and payout from final score.</li>
-              <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click Use Cached Report to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
+              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, fair-fight bonus, and payout from final score.</li>
+              <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
               <li><b>Newsletter buttons:</b> Create Torn Newsletter, Create Cyber Neon Newsletter, Create War Ledger Newsletter, Create Crimson Raid Newsletter, and Create Victory Gold Newsletter each create a different HTML payout report theme.</li>
@@ -9033,7 +9159,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Payments Copy Panel</div>
             <ul class="rw-how-list">
-              <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with Use Cached Report.</li>
+              <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with a matching cached-report button.</li>
               <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you.</li>
               <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
               <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
@@ -9191,7 +9317,7 @@
 
       <div id="rw-results-panel" class="rw-results-panel" hidden>
         <div class="rw-head">
-          <span>Fetch + Calculate Results</span>
+          <span>Per Hit Results</span>
           <button id="rw-results-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
         </div>
         <div class="rw-body">
@@ -9475,8 +9601,13 @@
 
 
   let rwphNextUseCacheOnly = false;
+  let rwphNextUseCacheOnlyMode = "standard";
   let rwphAutoCacheCheckTimer = null;
   let rwphLastCacheCheckSignature = "";
+  let rwphCachedReports = {
+    standard: { available: false, info: null },
+    points: { available: false, info: null },
+  };
   let rwphCachedReportAvailable = false;
   let rwphCachedReportInfo = null;
 
@@ -9498,7 +9629,7 @@
           Server-side locked version. Your backend verifies the license and calculates payouts.
         </div>
         <div class="rw-small">
-          Completed-war mode: Fetch + Calculate only reports the latest finished ranked war. If a matching cached report exists, RWPH shows a popup and asks you to open it with Use Cached Report instead of creating a duplicate report.
+          Completed-war mode: Per Hit Settings and Points System Settings only report the latest finished ranked war. If a matching cached report exists, RWPH shows a popup and asks you to open the matching cached report instead of creating a duplicate report.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Main panel tabs">
@@ -9545,30 +9676,41 @@
           <div class="rw-actions">
             <button id="rw-autofill" class="secondary">Auto-fill Last Finished War</button>
           </div>
-          <div class="rw-small">RWPH only creates payout reports for the latest completed ranked war. Active/current wars cannot be calculated until they finish. If a matching backend/database cached report exists, RWPH shows a popup and Use Cached Report opens the backend/database cached result.</div>
+          <div class="rw-small">RWPH only creates payout reports for the latest completed ranked war. Active/current wars cannot be calculated until they finish. If a matching backend/database cached report exists, RWPH shows a popup and the matching cached-report button opens the backend/database cached result.</div>
           <label>Total payout pool
             <input id="rw-total" type="number" value="100000000" min="0">
           </label>
-          <div class="rw-row">
-            <label>War Hit Weight
-              <input id="rw-war-hit-weight" type="number" value="1" step="0.1" min="0">
-            </label>
-            <label>Outside Hit Weight
-              <input id="rw-outside-hit-weight" type="number" value="1" step="0.1" min="0">
-            </label>
-          </div>
-          <div class="rw-row">
-            <label>Retaliation Hit Weight
-              <input id="rw-retaliation-hit-weight" type="number" value="1" step="0.1" min="0">
-            </label>
-            <label>Assist weight
-              <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
-            </label>
-          </div>
-          <details class="rw-api-tos-card rw-api-tos-dropdown">
+          <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
+            <summary class="rw-api-tos-title">Per Hit Settings</summary>
+            <div class="rw-api-tos-content">
+              <div class="rw-per-hit-note">These settings control the normal per-hit report. They change how much each hit type counts before the payout pool is split. Click Calculate here to run the per-hit report.</div>
+              <div class="rw-row">
+                <label>War Hit Weight
+                  <input id="rw-war-hit-weight" type="number" value="1" step="0.1" min="0">
+                </label>
+                <label>Outside Hit Weight
+                  <input id="rw-outside-hit-weight" type="number" value="1" step="0.1" min="0">
+                </label>
+              </div>
+              <div class="rw-row">
+                <label>Retaliation Hit Weight
+                  <input id="rw-retaliation-hit-weight" type="number" value="1" step="0.1" min="0">
+                </label>
+                <label>Assist Weight
+                  <input id="rw-assist-weight" type="number" value="0" step="0.1" min="0">
+                </label>
+              </div>
+              <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
+                <button id="rw-run" type="button">Calculate</button>
+                <button id="rw-use-cache" class="secondary" type="button" disabled>Use Cached Report</button>
+                <button id="rw-delete-cache" class="danger" type="button" disabled>Delete Cache</button>
+              </div>
+            </div>
+          </details>
+          <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title">Points System Settings</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-small"><b>Points System Results</b> opens a separate results tab and splits the payout pool by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, hospital bonuses, and fair-fight modifiers.</div>
+              <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the payout pool by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, and fair-fight modifiers. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members.</div>
               <div class="rw-row">
                 <label>War hit points
                   <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
@@ -9586,33 +9728,30 @@
                 </label>
               </div>
               <div class="rw-row">
-                <label>Hospital bonus points
+                <label>Own-faction hospital bonus points
                   <input id="rw-point-hospital" type="number" value="2" step="0.1" min="0">
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;margin-top:6px;">
                   <input id="rw-point-fair-fight" type="checkbox" checked style="width:auto;margin:0;"> Use fair-fight modifier
                 </label>
               </div>
+              <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
+                <button id="rw-points-run" class="secondary" type="button">Calculate</button>
+                <button id="rw-use-points-cache" class="secondary" type="button" disabled>Use Cached Report</button>
+                <button id="rw-delete-points-cache" class="danger" type="button" disabled>Delete Cache</button>
+              </div>
             </div>
           </details>
-          <div class="rw-actions rw-primary-calc-actions">
-            <button id="rw-run">Fetch + Calculate</button>
-            <button id="rw-points-run" class="secondary" type="button">Points System Results</button>
-          </div>
           <div class="rw-cache-tools">
-            <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks finished-war report cache when your API key and payout settings are ready. If a matching backend/database cached report exists, Use Cached Report opens it without creating a new report. Delete Cached Report removes the matching database cache, limited to one successful delete every 10 minutes.</div>
+            <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Per Hit and Points System finished-war caches when your API key and payout settings are ready. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache now live inside their matching settings dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
             <div id="rw-cache-status" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
-            <div class="rw-actions">
-              <button id="rw-use-cache" class="secondary" type="button" disabled>No Cached Report Yet</button>
-              <button id="rw-delete-cache" class="danger" type="button" disabled>Delete Cached Report</button>
-            </div>
           </div>
           <div class="rw-actions" id="rw-last-results-actions">
             <button id="rw-move-launcher" class="secondary">Launcher Movement</button>
           </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
-          <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after Fetch + Calculate.</div>
+          <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after you click Calculate in Per Hit Settings or Points System Settings.</div>
         </div>
 
         <div id="rw-admin-tab-section" class="rw-tab-section rw-unified-tab-panel" hidden>
@@ -9681,8 +9820,8 @@
               <li><b>2. Save Key:</b> saves your API key locally in the browser/Torn PDA storage and shows a popup panel under RWPH.</li>
               <li><b>3. Unlock or buy/extend:</b> Unlock Panel checks your current licence. Buy Licence or Extend Licence opens the Xanax Payment Helper and closes the main panel so you can complete the payment.</li>
               <li><b>4. Set the war times:</b> use Auto-fill Last Finished War to load the completed war window.</li>
-              <li><b>5. Fetch + Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
-              <li><b>Points System Results:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
+              <li><b>5. Per Hit Settings Calculate:</b> opens a loading/results tab and calculates the latest finished ranked war using the backend.</li>
+              <li><b>Points System Settings Calculate:</b> opens a separate results tab that splits the payout by total contribution points instead of flat per-hit pay.</li>
             </ul>
           </div>
 
@@ -9692,9 +9831,9 @@
               <li><b>Last finished war only:</b> Fetch + Calculate only creates a report for the latest completed ranked war.</li>
               <li><b>No current-war reports:</b> if a ranked war is still active, RWPH waits until it finishes before allowing a payout report.</li>
               <li><b>Auto-fill Last Finished War:</b> this button fills the completed war window and should be used before calculating.</li>
-              <li><b>Cached report prompt:</b> if a matching database cached report already exists, Fetch + Calculate shows a popup instead of creating a duplicate.</li>
-              <li><b>Use Cached Report:</b> opens the matching backend/database cached report. Browser-saved reports are not used as the source of truth.</li>
-              <li><b>Delete Cached Report:</b> removes the matching backend/database cached report for the latest finished war and current payout settings. A user can successfully delete only one cached report every 10 minutes.</li>
+              <li><b>Cached report prompt:</b> if a matching database cached report already exists, Calculate shows a popup instead of creating a duplicate.</li>
+              <li><b>Use Cached Report:</b> inside either settings dropdown opens the matching backend/database cached report for that result type. Browser-saved reports are not used as the source of truth.</li>
+              <li><b>Delete Cache:</b> inside either settings dropdown removes the matching backend/database cached report for that result type, latest finished war, and current settings. A user can successfully delete only one cached report every 10 minutes.</li>
               <li><b>24-hour cleanup:</b> cached reports are deleted from the backend/database automatically after 24 hours.</li>
               <li><b>Why this exists:</b> completed-war-only reports reduce API/server load, prevent changing live-war data from causing wrong payouts, and stop repeated duplicate reports.</li>
             </ul>
@@ -9724,12 +9863,12 @@
               <li><b>War start/end:</b> controls the exact time window used for attack and payout calculations.</li>
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
               <li><b>Total payout pool:</b> the total money you want split across eligible members.</li>
-              <li><b>Weights:</b> War Hit, Outside Hit, Retaliation Hit, and Assist weight control how much each contribution type counts in the normal report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, hospital bonuses, and fair-fight modifiers control the contribution score used by Points System Results.</li>
-              <li><b>Fetch + Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
-              <li><b>Points System Results:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
-              <li><b>Use Cached Report:</b> opens a matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
-              <li><b>Delete Cached Report:</b> deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
+              <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist Weight control how much each contribution type counts in the normal per-hit report.</li>
+              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button.</li>
+              <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
+              <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
+              <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
+              <li><b>Delete Cache:</b> inside Per Hit Settings or Points System Settings deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
@@ -9749,8 +9888,8 @@
             <div class="rw-how-title">Results Tab</div>
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
-              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, hospital hits, fair-fight bonus, and payout from final score.</li>
-              <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click Use Cached Report to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
+              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, fair-fight bonus, and payout from final score.</li>
+              <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
               <li><b>Newsletter buttons:</b> Create Torn Newsletter, Create Cyber Neon Newsletter, Create War Ledger Newsletter, Create Crimson Raid Newsletter, and Create Victory Gold Newsletter each create a different HTML payout report theme.</li>
@@ -9760,7 +9899,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Payments Copy Panel</div>
             <ul class="rw-how-list">
-              <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with Use Cached Report.</li>
+              <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with a matching cached-report button.</li>
               <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you.</li>
               <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
               <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
@@ -9918,7 +10057,7 @@
 
       <div id="rw-results-panel" class="rw-results-panel" hidden>
         <div class="rw-head">
-          <span>Fetch + Calculate Results</span>
+          <span>Per Hit Results</span>
           <button id="rw-results-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
         </div>
         <div class="rw-body">
@@ -9968,9 +10107,12 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight"].forEach((id) => {
+    ["rw-key", "rw-total", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-fair-fight"].forEach((id) => {
       const input = document.getElementById(id);
-      if (input) input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
+      if (input) {
+        input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
+        input.addEventListener("change", () => rwphScheduleAutoCacheCheck(700));
+      }
     });
     rwphScheduleAutoCacheCheck(900);
 
@@ -10126,38 +10268,40 @@
     });
 
     document.getElementById("rw-use-cache")?.addEventListener("click", async () => {
-      rwphClearLastResults();
-      if (!rwphCachedReportAvailable) {
-        await rwphAutoCheckCompletedWarCache(false);
-      }
-      if (rwphCachedReportAvailable) {
-        rwphNextUseCacheOnly = true;
-        document.getElementById("rw-run")?.click();
-        return;
-      }
-      rwphToastPanelError(document.getElementById("rw-status"), "No matching database cached report was found. Use Fetch + Calculate to create one.", "RWPH Cache");
+      await rwphOpenCachedReport("standard");
+    });
+
+    document.getElementById("rw-use-points-cache")?.addEventListener("click", async () => {
+      await rwphOpenCachedReport("points");
     });
 
     document.getElementById("rw-delete-cache")?.addEventListener("click", async () => {
-      await rwphDeleteMatchingCachedReport();
+      await rwphDeleteMatchingCachedReport("standard");
     });
 
-    async function rwphRunCalculation(calculationMode = "standard") {
+    document.getElementById("rw-delete-points-cache")?.addEventListener("click", async () => {
+      await rwphDeleteMatchingCachedReport("points");
+    });
+
+    async function rwphRunCalculation(calculationMode = "standard", runOptions = {}) {
       rwphSavePayoutFormState();
       const status = document.getElementById("rw-status");
       const results = document.getElementById("rw-results");
-      const isPointsMode = String(calculationMode || "standard") === "points";
+      const mode = rwphNormalizeCalculationMode(calculationMode);
+      const isPointsMode = mode === "points";
       const userKey = document.getElementById("rw-key").value.trim();
       const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
-      const useCacheOnly = !isPointsMode && !!rwphNextUseCacheOnly;
+      const useCacheOnly = !!runOptions.useCacheOnly || (rwphNextUseCacheOnly && rwphNormalizeCalculationMode(rwphNextUseCacheOnlyMode) === mode);
       rwphNextUseCacheOnly = false;
+      rwphNextUseCacheOnlyMode = "standard";
       const forceRefresh = !!document.getElementById("rw-admin-force-refresh")?.checked;
       const adminKeyForRefresh = forceRefresh ? (GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || document.getElementById("rw-admin-key")?.value?.trim() || "") : "";
 
-      if (!isPointsMode && !useCacheOnly && !forceRefresh) {
+      if (!useCacheOnly && !forceRefresh) {
         await rwphAutoCheckCompletedWarCache(false);
-        if (rwphCachedReportAvailable) {
-          rwphToastPanelInfo(status, "There is already a cached report for this finished war and payout settings. Click Use Cached Report to open it, or ask an admin to use Force Refresh if the cached result needs rebuilding.", "warn", "RWPH Cached Report");
+        const matchingCache = rwphEnsureCacheState(mode);
+        if (matchingCache.available) {
+          rwphToastPanelInfo(status, `There is already a cached ${rwphModeLabel(mode)} report for this finished war and payout settings. Open its settings dropdown and click Use Cached Report, or ask an admin to use Force Refresh if the cached result needs rebuilding.`, "warn", "RWPH Cached Report");
           return;
         }
       }
@@ -10190,7 +10334,7 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying hospital/fair-fight modifiers, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying own-faction hospital/fair-fight modifiers, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
             : "Server is verifying licence, checking report cache/queue, finding the last finished ranked war, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
@@ -10223,8 +10367,8 @@
           if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
             try { preOpenedResultsTab.close(); } catch (_) {}
           }
-          rwphSetCacheButtonState(true, result, false);
-          rwphToastPanelInfo(status, result.message || "There is already a cached report. Click Use Cached Report to open it.", "warn", "RWPH Cached Report");
+          rwphSetCacheButtonState(result.calculationMode || (isPointsMode ? "points" : "standard"), true, result, false);
+          rwphToastPanelInfo(status, result.message || "There is already a cached report. Open the matching settings dropdown and click Use Cached Report.", "warn", "RWPH Cached Report");
           return;
         }
 
@@ -10232,7 +10376,8 @@
         lastSummary = result.summary || {};
         rwphStorePayAllRows(lastRows);
         rwphSaveLastResults(lastRows, lastSummary);
-        if (!isPointsMode) rwphSetCacheButtonState(true, { factionName: lastSummary?.factionName || result.factionName || "", cache: result.cache || null, expiresAtMs: result.cache?.expiresAtMs || 0, cachedAtMs: result.cache?.cachedAtMs || 0 }, false);
+        const reportCacheReady = !!(result.cached || result.cache?.hit || result.cache?.saved || lastSummary?.cacheSaved);
+        rwphSetCacheButtonState(isPointsMode ? "points" : "standard", reportCacheReady, { factionName: lastSummary?.factionName || result.factionName || "", cache: result.cache || null, expiresAtMs: result.cache?.expiresAtMs || 0, cachedAtMs: result.cache?.cachedAtMs || 0, summary: lastSummary }, false);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
         if (stopProgressPolling) {
@@ -10282,7 +10427,7 @@
     .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
-  </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>${String(e.message || e).toLowerCase().includes("too many requests") || String(e.message || e).toLowerCase().includes("rate limit") ? "Torn is rate limiting API requests right now. RWPH now retries automatically, but if this still appears wait 1-3 minutes before running Fetch + Calculate again." : "You can close this tab and try Fetch + Calculate again."}</p></div></body></html>`);
+  </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>${String(e.message || e).toLowerCase().includes("too many requests") || String(e.message || e).toLowerCase().includes("rate limit") ? "Torn is rate limiting API requests right now. RWPH now retries automatically, but if this still appears wait 1-3 minutes before running Fetch + Calculate again." : "You can close this tab and try Calculate again."}</p></div></body></html>`);
             preOpenedResultsTab.document.close();
           } catch (_) {}
         }

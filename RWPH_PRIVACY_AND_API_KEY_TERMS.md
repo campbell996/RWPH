@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.231**
+Version: **1.1.236**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -142,12 +142,12 @@ Storage remains JSON in this version. MySQL is not enabled yet.
 
 ## v1.1.219 Cache and Licence Check Update
 
-RWPH no longer uses an old Fetch + Calculate time lock after successful reports. If a matching cached report exists, the panel tells the user in a popup and the user can open it with **Use Cached Report**. Browser-saved report fallback is disabled: cached reports are only opened when the backend/database has a matching report. Cached reports are automatically deleted from the backend/database after 24 hours. Licence verification/check requests are limited to 2 checks per minute per identity to reduce abuse and protect the backend.
+RWPH no longer uses an old Fetch + Calculate time lock after successful reports. If a matching cached report exists, the panel tells the user in a popup and the user can open it with the matching Per Hit or Points cached-report button. Browser-saved report fallback is disabled: cached reports are only opened when the backend/database has a matching report. Cached reports are automatically deleted from the backend/database after 24 hours. Licence verification/check requests are limited to 2 checks per minute per identity to reduce abuse and protect the backend.
 
 
 ## v1.1.219 Database-Only Cached Report Update
 
-RWPH no longer reopens old browser-saved payout reports as a cache fallback. **Use Cached Report** only works when the backend/database report cache returns a matching completed-war report. Old local last-results data is cleared by the userscript after updating. Cached reports are also pruned from the backend/database on startup and on a scheduled cleanup timer after the 24-hour expiry window.
+RWPH no longer reopens old browser-saved payout reports as a cache fallback. Cached-report open buttons only work when the backend/database report cache returns a matching completed-war report. Old local last-results data is cleared by the userscript after updating. Cached reports are also pruned from the backend/database on startup and on a scheduled cleanup timer after the 24-hour expiry window.
 
 
 ## v1.1.220 Panel Layout Update
@@ -186,6 +186,35 @@ Payments Copy Panel buttons are hidden after use with a forced hidden state so u
 
 
 
+## v1.1.236 Dropdown Cache Button Layout Update
+- Per Hit cache controls now live inside the Per Hit Settings dropdown.
+- Points System cache controls now live inside the Points System Settings dropdown.
+- Both cache-open buttons are named Use Cached Report.
+- Both cache-delete buttons are named Delete Cache.
+
+## v1.1.235 Dual Cache + Payments Handoff Update
+- Per Hit and Points System results now have separate backend/database cache checks and separate open/delete controls in the panel.
+- Cached report opens remain backend/database-only; browser-saved reports are not accepted as the source of truth.
+- Cached Per Hit and cached Points reports both preserve payout rows for the manual Payments Copy Panel.
+- The one-successful-delete-per-10-minutes cache-delete limit still applies.
+
+## v1.1.234 Calculate Button + Hybrid Points Update
+- The normal per-hit calculation button now sits inside **Per Hit Settings** and is named **Calculate**.
+- The Points System calculation button now sits inside **Points System Settings** and is named **Calculate**.
+- Points System results now use the same hybrid source as the normal result when Torn exposes a ranked-war report: rankedwarreport for war hits/score/total respect, plus attack logs for assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifier details.
+- If rankedwarreport is unavailable, Points System mode falls back to attack-log-only point scoring.
+
+## v1.1.233 Per Hit Settings Dropdown Update
+- The normal per-hit weight controls now sit inside a **Per Hit Settings** dropdown.
+- The dropdown styling now matches the main panel theme and the Points System Settings styling.
+- This is a UI/layout update only and does not change what data is read or sent.
+
+## v1.1.232 Points System Hospital Bonus Update
+
+- Points System hospital bonus points now only apply when the hospitalized target is verified as one of your own faction members.
+- Hospital results against non-verified targets are still detected for backend warnings, but they do not add hospital bonus points.
+- Help/results labels now describe the value as an own-faction hospital bonus.
+
 ## v1.1.231 Reliability Hardening Update
 
 - Payments row handoff now has an extra browser fallback so cached/fullscreen result tabs can pass rows to the Payments Copy Panel more reliably.
@@ -197,8 +226,8 @@ Payments Copy Panel buttons are hidden after use with a forced hidden state so u
 The in-panel Help section was updated to describe the current cache/payment behaviour more clearly:
 
 - Cached payout reports are backend/database-only and expire after 24 hours.
-- Use Cached Report opens matching backend/database cached reports.
-- Delete Cached Report removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
+- Use Cached Report inside the matching settings dropdown opens matching backend/database cached reports.
+- Delete Cache inside the matching settings dropdown removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
 - Payments Copy Panel can use current results or database cached reports.
 - Payments Copy Panel buttons hide after use, and Bring Back Disappeared Button restores only the most recently hidden button.
 - Xanax licence payment codes can be recovered from the backend/database while pending, but payment/licence status still requires live backend verification.
