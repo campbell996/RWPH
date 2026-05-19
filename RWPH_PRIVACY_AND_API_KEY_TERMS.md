@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.247**
+Version: **1.1.249**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -268,6 +268,14 @@ The public performance/cache status message now appears inside both calculation 
 
 Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Points System Settings dropdown only reports matching Points System cached reports and the Per Hit Settings dropdown only reports matching Per Hit cached reports.
 
+
+## v1.1.249 Results card layout cleanup
+
+The fullscreen Per Hit and Points System result tabs now use a cleaner member-card layout. This is a display-only change and does not change API-key storage, Torn API usage, payout calculations, cache handling, or manual-only payment rules.
+
+## v1.1.248 Default enemy hospital bonus update
+
+The default Enemy war faction hospital bonus points value is now -1. The field can still be changed by the user and can be positive or negative. This update does not change API-key storage, licence checks, or manual-only payment rules.
 
 ## v1.1.247 Avg FF fair-fight bonus update
 

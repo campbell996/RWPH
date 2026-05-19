@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.247
+// @version      1.1.249
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1649,7 +1649,8 @@
   // v1.1.235: Per Hit and Points System reports now have separate database cache buttons and both cached report types preserve Payments Copy Panel handoff.
   // v1.1.236: moved each cache/open/delete control inside its matching Per Hit or Points settings dropdown and shortened cached button labels.
   // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
-  // v1.1.247: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
+  // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
+  // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
   // v1.1.243: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, Per Hit weights are fixed 1-per-hit toggles, and loading/results queue text was removed.
   // v1.1.240: Per Hit results/newsletters show Per Hit Amount, and dropdown cache status is mode-specific.
@@ -5045,34 +5046,46 @@
     const goldNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(goldNewsletterHtml)}`;
     const payAllHref = rwphFactionControlsPayAllUrl();
 
-    const cards = list.map((r) => `
-      <article class="result-card">
-        <div class="result-top">
-          <div>
-            <div class="result-name">${esc(r.rank)}. ${esc(r.name)}</div>
+    const cards = list.map((r) => {
+      const mainMetricLabel = pointsMode ? "Points" : "Weight";
+      const mainMetricValue = pointsMode ? r.points.toFixed(2) : r.weight.toFixed(2);
+      const secondaryMetricLabel = pointsMode ? "Payable Hits" : "Payable";
+      const secondaryMetricValue = Number(r.payableEvents || 0);
+      return `
+      <article class="result-card ${pointsMode ? "result-card-points" : "result-card-per-hit"}">
+        <div class="result-card-head">
+          <div class="result-rank-pill">#${esc(r.rank)}</div>
+          <div class="result-player">
+            <div class="result-name">${esc(r.name)}</div>
             <div class="result-id">Torn ID: ${esc(r.id)}</div>
           </div>
-          <div class="payout">${esc(money(r.payout))}</div>
+          <div class="result-payout-block">
+            <span>Payout</span>
+            <b class="payout">${esc(money(r.payout))}</b>
+          </div>
+        </div>
+        <div class="result-quick-row">
+          <div class="result-highlight"><span>${mainMetricLabel}</span><b>${mainMetricValue}</b></div>
+          <div class="result-highlight"><span>${secondaryMetricLabel}</span><b>${secondaryMetricValue}</b></div>
         </div>
         <div class="stats">
-          <div><span>War Hits</span><b>${r.warHits}</b></div>
+          <div><span>War</span><b>${r.warHits}</b></div>
           <div><span>Assists</span><b>${r.assists}</b></div>
-          <div><span>Outside Hits</span><b>${r.outsideHits}</b></div>
+          <div><span>Outside</span><b>${r.outsideHits}</b></div>
           <div><span>Retals</span><b>${r.retaliationHits}</b></div>
-          ${pointsMode ? `<div><span>Own-Faction Hospital Hits</span><b>${r.hospitalizingHits}</b></div>
-          <div><span>Enemy War Hospital Hits</span><b>${r.enemyFactionHospitalizingHits}</b></div>
-          <div><span>Points</span><b>${r.points.toFixed(2)}</b></div>
-          <div><span>Base Points</span><b>${r.basePoints.toFixed(2)}</b></div>
+          ${pointsMode ? `<div><span>Own Hosp</span><b>${r.hospitalizingHits}</b></div>
+          <div><span>Enemy Hosp</span><b>${r.enemyFactionHospitalizingHits}</b></div>
+          <div><span>Base</span><b>${r.basePoints.toFixed(2)}</b></div>
           <div><span>Fair Bonus</span><b>${r.fairFightBonusPoints.toFixed(2)}</b></div>
-          <div><span>FF/Payable Hit</span><b>${r.fairFightPerPayableHitBonus.toFixed(2)}</b></div>
-          <div><span>Own-Faction Hospital Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
-          <div><span>Enemy Hospital Bonus</span><b>${r.enemyFactionHospitalBonusPoints.toFixed(2)}</b></div>
+          <div><span>FF / Hit</span><b>${r.fairFightPerPayableHitBonus.toFixed(2)}</b></div>
+          <div><span>Own Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
+          <div><span>Enemy Bonus</span><b>${r.enemyFactionHospitalBonusPoints.toFixed(2)}</b></div>
           <div><span>Avg FF</span><b>${r.avgFairFight.toFixed(2)}x</b></div>` : `<div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
           <div><span>Payable</span><b>${r.payableEvents}</b></div>
-          <div><span>Weight</span><b>${r.weight.toFixed(2)}</b></div>
           <div><span>Respect</span><b>${r.respect.toFixed(2)}</b></div>`}
         </div>
-      </article>`).join("");
+      </article>`;
+    }).join("");
 
     return `<!doctype html>
 <html lang="en">
@@ -5760,17 +5773,91 @@
       gap:11px!important;
       margin:0!important;
     }
-    .result-card{text-align:left!important;}
-    .result-top{
-      justify-content:space-between!important;
-      align-items:flex-start!important;
-      flex-direction:row!important;
+    .result-card{text-align:left!important;display:flex!important;flex-direction:column!important;gap:10px!important;padding:13px!important;}
+    .result-card-head{
+      display:grid!important;
+      grid-template-columns:auto minmax(0,1fr) auto!important;
+      gap:10px!important;
+      align-items:center!important;
+      min-width:0!important;
+    }
+    .result-rank-pill{
+      display:grid!important;
+      place-items:center!important;
+      min-width:42px!important;
+      height:42px!important;
+      padding:0 8px!important;
+      border-radius:14px!important;
+      border:1px solid rgba(125,211,252,.24)!important;
+      background:linear-gradient(180deg, rgba(56,189,248,.18), rgba(15,23,42,.78))!important;
+      color:#e0f2fe!important;
+      font-size:13px!important;
+      font-weight:950!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.92)!important;
+    }
+    .result-player{min-width:0!important;text-align:left!important;}
+    .result-name{
+      text-align:left!important;
+      font-size:15px!important;
+      line-height:1.12!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .result-id{text-align:left!important;font-size:10px!important;margin-top:4px!important;}
+    .result-payout-block{
+      display:grid!important;
+      gap:3px!important;
+      justify-items:end!important;
+      text-align:right!important;
+      min-width:112px!important;
+    }
+    .result-payout-block span{
+      color:#bfdbfe!important;
+      font-size:10px!important;
+      letter-spacing:.52px!important;
+      text-transform:uppercase!important;
+      font-weight:950!important;
+      text-shadow:0 1px 1px rgba(0,0,0,.70)!important;
+    }
+    .result-payout-block .payout,
+    .payout{text-align:right!important;margin:0!important;white-space:nowrap!important;}
+    .result-quick-row{
+      display:grid!important;
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      gap:8px!important;
+    }
+    .result-highlight{
+      padding:9px 10px!important;
+      border-radius:14px!important;
+      border:1px solid rgba(125,211,252,.18)!important;
+      background:linear-gradient(180deg, rgba(30,41,59,.74), rgba(2,6,23,.58))!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+      text-align:left!important;
+      min-width:0!important;
+    }
+    .result-highlight span{
+      display:block!important;
+      color:#bfdbfe!important;
+      font-size:10px!important;
+      letter-spacing:.48px!important;
+      text-transform:uppercase!important;
+      font-weight:950!important;
       text-align:left!important;
     }
-    .result-name,.result-id{text-align:left!important;}
-    .payout{text-align:right!important;}
-    .stats{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+    .result-highlight b{
+      display:block!important;
+      margin-top:3px!important;
+      color:#ffffff!important;
+      font-size:15px!important;
+      line-height:1.1!important;
+      text-align:left!important;
+    }
+    .stats{grid-template-columns:repeat(4,minmax(0,1fr))!important;margin:0!important;}
+    .stats div{padding:8px 9px!important;min-width:0!important;}
     .stats div,.stats span,.stats b{text-align:left!important;}
+    .stats span{font-size:9.5px!important;line-height:1.1!important;}
+    .stats b{font-size:13px!important;line-height:1.12!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
     @media (max-width:1100px){
       body{padding:12px!important;}
       .app{
@@ -5797,8 +5884,10 @@
       .newsletter-zone,.results-action-zone,.summary,.results-hero-meta{grid-template-columns:1fr!important;}
       .results-section-head{display:block!important;}
       .grid{grid-template-columns:1fr!important;}
-      .result-top{flex-direction:column!important;align-items:flex-start!important;}
-      .payout{text-align:left!important;}
+      .result-card-head{grid-template-columns:auto minmax(0,1fr)!important;align-items:start!important;}
+      .result-payout-block{grid-column:1 / -1!important;justify-items:start!important;text-align:left!important;min-width:0!important;width:100%!important;}
+      .result-payout-block .payout,.payout{text-align:left!important;width:100%!important;}
+      .result-quick-row{grid-template-columns:1fr!important;}
       .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
     }
 
@@ -6811,7 +6900,7 @@
   }
 
   function rwphPointEnemyHospitalBonusValue() {
-    return Number(document.getElementById("rw-point-enemy-hospital")?.value || 2);
+    return Number(document.getElementById("rw-point-enemy-hospital")?.value || -1);
   }
 
   function rwphPointFairFightAvgStepValue() {
@@ -10025,7 +10114,7 @@
                   <input id="rw-point-hospital" type="number" value="2" step="0.1" min="0">
                 </label>
                 <label>Enemy war faction hospital bonus points (can be negative)
-                  <input id="rw-point-enemy-hospital" type="number" value="2" step="0.1">
+                  <input id="rw-point-enemy-hospital" type="number" value="-1" step="0.1">
                 </label>
               </div>
               <div class="rw-row">

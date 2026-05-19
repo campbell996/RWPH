@@ -1,43 +1,3 @@
-## v1.1.247
-
-- Added two editable Points System fair-fight controls: **Avg FF required per bonus step** and **Point bonus per payable hit per step**.
-- Fair-fight bonus is only applied when **Use fair-fight modifier** is ticked; unticked means no fair-fight bonus points.
-- Defaults remain **0.02 Avg FF required** and **0.01 point per payable hit per step**.
-
-- Changed Points System fair-fight scoring to use the member's **Avg FF** instead of multiplying attack points.
-- Fair-fight checkbox now uses editable step settings. By default it awards **+0.01 point per payable hit for every +0.02 Avg FF over 1.00**. Avg FF is capped at **3.00** and no bonus is added when the checkbox is off.
-- Points results now show the per-payable-hit fair-fight bonus value alongside total Fair Bonus.
-
-- Fixed both **Use Cached Report** buttons so Per Hit and Points System open cached reports through a dedicated backend cache-open route instead of re-entering the normal calculation route.
-- Cached reports now pre-open the results tab immediately from the button click, which helps prevent browser/Torn PDA popup blocking.
-- Removed the report queue from the loading/results tabs. Calculations now start directly, while Torn API retry/backoff and database report caching remain enabled.
-
-
-- Added Points System enemy war faction hospital hits and enemy faction hospital bonus points. Enemy war faction hospital bonus can be set to a negative value to subtract points.
-- Points results, CSV export, and newsletter reports now show enemy war faction hospital hit/bonus stats.
-- Per Hit Settings now use fixed 1-per-hit tick boxes instead of editable weight numbers.
-
-
-- **Use Cached Report** now works independently inside each system. Per Hit only checks/opens Per Hit cached reports, and Points System only checks/opens Points System cached reports.
-- One invalid or incomplete dropdown no longer blocks the other dropdown's cached report button.
-- Cache auto-check messages stay mode-specific for each dropdown.
-
-## v1.1.240
-
-- Per Hit results and all newsletter themes now include **Per Hit Amount**.
-- Points System Settings now only shows Points cached-report status.
-- Per Hit Settings now only shows Per Hit cached-report status.
-
-- Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Per Hit Settings** and **Points System Settings**.
-- Added a new **Total Payout** field to both calculation dropdowns. Member Payout is still the amount split across members; Total Payout is saved/displayed as the full payout record amount.
-- Results tabs now show both **Member Payout** and **Total Payout**.
-- All newsletter themes now show both **Member Payout** and **Total Payout** in their summary cards.
-- Backend/database report cache keys now include the new Total Payout value so cached reports do not mix different payout records.
-
-## v1.1.237
-
-- Member Payout and Total Payout are now inside both Per Hit Settings and Points System Settings, so each calculation dropdown has its own payout fields, Calculate, Use Cached Report, and Delete Cache controls.
-
 # Ranked War Payout Helper
 
 <p align="center">
@@ -50,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.247**  
+Current package version: **1.1.249**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -73,6 +33,7 @@ RWPH now includes a **Points System Settings** dropdown with its own **Calculate
 - Assist: **3 points**
 - Outside hit / chain-maintenance hit: **2 points**
 - Own-faction hospitalizing target bonus: **+2 points**
+- Enemy war faction hospitalizing target bonus: **-1 point** by default. This can be changed and can be positive or negative.
 - Avg FF bonus: when the fair-fight checkbox is enabled, Avg FF 1.00 gives no bonus; every configured Avg FF step over 1.00 adds the configured point bonus per payable hit. Defaults are +0.02 Avg FF required and +0.01 point per payable hit. Avg FF is capped at 3.00. If the checkbox is off, no fair-fight bonus is added.
 
 The normal per-hit **Calculate** button now lives inside **Per Hit Settings** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
@@ -642,11 +603,48 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.237
-- Moved **Use Cached Report** and **Delete Cache** into the matching **Per Hit Settings** dropdown.
-- Moved **Use Cached Report** and **Delete Cache** into the matching **Points System Settings** dropdown.
-- Shortened both cache-open buttons to **Use Cached Report** and both delete buttons to **Delete Cache** because each now sits inside its own settings section.
-- Kept separate Per Hit and Points System backend/database cache handling unchanged.
+### v1.1.249
+- Cleaned up the member/user card layout in both Per Hit and Points System results tabs so names, payout, main score, and hit stats are easier to read.
+- Result-card layout only changed display styling; calculations, cache handling, exports, and Payments handoff are unchanged.
+- Moved the long v1.1.247 and v1.1.240 release notes into this Recent Changelog section and removed the old standalone v1.1.237 layout note from the top of the README.
+- Changed the default **Enemy war faction hospital bonus points** value from **2** to **-1**. The setting can still be positive or negative.
+
+### v1.1.247
+
+- Added two editable Points System fair-fight controls: **Avg FF required per bonus step** and **Point bonus per payable hit per step**.
+- Fair-fight bonus is only applied when **Use fair-fight modifier** is ticked; unticked means no fair-fight bonus points.
+- Defaults remain **0.02 Avg FF required** and **0.01 point per payable hit per step**.
+
+- Changed Points System fair-fight scoring to use the member's **Avg FF** instead of multiplying attack points.
+- Fair-fight checkbox now uses editable step settings. By default it awards **+0.01 point per payable hit for every +0.02 Avg FF over 1.00**. Avg FF is capped at **3.00** and no bonus is added when the checkbox is off.
+- Points results now show the per-payable-hit fair-fight bonus value alongside total Fair Bonus.
+
+- Fixed both **Use Cached Report** buttons so Per Hit and Points System open cached reports through a dedicated backend cache-open route instead of re-entering the normal calculation route.
+- Cached reports now pre-open the results tab immediately from the button click, which helps prevent browser/Torn PDA popup blocking.
+- Removed the report queue from the loading/results tabs. Calculations now start directly, while Torn API retry/backoff and database report caching remain enabled.
+
+
+- Added Points System enemy war faction hospital hits and enemy faction hospital bonus points. Enemy war faction hospital bonus can be set to a negative value to subtract points.
+- Points results, CSV export, and newsletter reports now show enemy war faction hospital hit/bonus stats.
+- Per Hit Settings now use fixed 1-per-hit tick boxes instead of editable weight numbers.
+
+
+- **Use Cached Report** now works independently inside each system. Per Hit only checks/opens Per Hit cached reports, and Points System only checks/opens Points System cached reports.
+- One invalid or incomplete dropdown no longer blocks the other dropdown's cached report button.
+- Cache auto-check messages stay mode-specific for each dropdown.
+
+### v1.1.240
+
+- Per Hit results and all newsletter themes now include **Per Hit Amount**.
+- Points System Settings now only shows Points cached-report status.
+- Per Hit Settings now only shows Per Hit cached-report status.
+
+- Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Per Hit Settings** and **Points System Settings**.
+- Added a new **Total Payout** field to both calculation dropdowns. Member Payout is still the amount split across members; Total Payout is saved/displayed as the full payout record amount.
+- Results tabs now show both **Member Payout** and **Total Payout**.
+- All newsletter themes now show both **Member Payout** and **Total Payout** in their summary cards.
+- Backend/database report cache keys now include the new Total Payout value so cached reports do not mix different payout records.
+
 
 ### v1.1.235
 - Added separate backend/database cache support in the panel for both **Per Hit** and **Points System** reports.
