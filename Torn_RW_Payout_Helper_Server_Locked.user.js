@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.242
+// @version      1.1.247
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1397,7 +1397,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-fair-fight"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1425,7 +1425,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-fair-fight"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -1649,7 +1649,9 @@
   // v1.1.235: Per Hit and Points System reports now have separate database cache buttons and both cached report types preserve Payments Copy Panel handoff.
   // v1.1.236: moved each cache/open/delete control inside its matching Per Hit or Points settings dropdown and shortened cached button labels.
   // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
-  // v1.1.242: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, and Per Hit weights are fixed 1-per-hit toggles.
+  // v1.1.247: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
+  // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
+  // v1.1.243: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, Per Hit weights are fixed 1-per-hit toggles, and loading/results queue text was removed.
   // v1.1.240: Per Hit results/newsletters show Per Hit Amount, and dropdown cache status is mode-specific.
   // v1.1.241: Use Cached Report now checks each mode independently so Per Hit and Points System buttons do not depend on the other dropdown being valid.
   // v1.1.239: Member Payout split field plus Total Payout display field added to both modes, results tabs, and newsletters.
@@ -4879,7 +4881,7 @@
   function buildPayoutCsvText(rows, summary = {}) {
     const pointsMode = summary?.pointsMode || summary?.calculationMode === "points";
     const header = pointsMode
-      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Own-Faction Hospital Hits", "Enemy War Faction Hospital Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "Own-Faction Hospital Bonus", "Enemy War Faction Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
+      ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Own-Faction Hospital Hits", "Enemy War Faction Hospital Hits", "Total Tracked", "Payable Events", "Points", "Base Points", "Fair Fight Bonus", "FF Bonus Per Payable Hit", "Own-Faction Hospital Bonus", "Enemy War Faction Hospital Bonus", "Avg Fair Fight", "Total Respect", "Respect", "Payout"]
       : ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Weight", "Total Respect", "Respect", "Payout"];
     const body = (rows || []).map((r) => pointsMode ? [
       r.id,
@@ -4895,6 +4897,7 @@
       Number(r.points ?? r.weight ?? 0).toFixed(2),
       Number(r.basePoints || 0).toFixed(2),
       Number(r.fairFightBonusPoints || 0).toFixed(2),
+      Number(r.fairFightPerPayableHitBonus || 0).toFixed(2),
       Number(r.hospitalBonusPoints || 0).toFixed(2),
       Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2),
       Number(r.avgFairFight || 1).toFixed(2),
@@ -5011,6 +5014,7 @@
       hospitalBonusPoints: Number(r.hospitalBonusPoints || 0),
       enemyFactionHospitalBonusPoints: Number(r.enemyFactionHospitalBonusPoints || 0),
       fairFightBonusPoints: Number(r.fairFightBonusPoints || 0),
+      fairFightPerPayableHitBonus: Number(r.fairFightPerPayableHitBonus || 0),
       avgFairFight: Number(r.avgFairFight || 1),
       bestFairFight: Number(r.bestFairFight || 1),
       totalRespect: Number(r.totalRespect ?? r.respect ?? 0),
@@ -5060,6 +5064,7 @@
           <div><span>Points</span><b>${r.points.toFixed(2)}</b></div>
           <div><span>Base Points</span><b>${r.basePoints.toFixed(2)}</b></div>
           <div><span>Fair Bonus</span><b>${r.fairFightBonusPoints.toFixed(2)}</b></div>
+          <div><span>FF/Payable Hit</span><b>${r.fairFightPerPayableHitBonus.toFixed(2)}</b></div>
           <div><span>Own-Faction Hospital Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
           <div><span>Enemy Hospital Bonus</span><b>${r.enemyFactionHospitalBonusPoints.toFixed(2)}</b></div>
           <div><span>Avg FF</span><b>${r.avgFairFight.toFixed(2)}x</b></div>` : `<div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
@@ -6436,7 +6441,7 @@
         <li data-rwph-load-step="3">Applies your weights and splits the Member Payout across members.</li>
         <li data-rwph-load-step="4">Builds the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
       </ul>
-      <div class="wait-note"><b>Public performance mode:</b> RWPH queues heavy calculations, reuses matching completed-war database cache, and retries Torn API rate limits automatically. Small wars often load quickly; bigger wars or Torn/API delays can take longer.</div>
+      <div class="wait-note"><b>Public performance mode:</b> RWPH starts the selected calculation directly, reuses matching completed-war database cache, and retries Torn API rate limits automatically. Small wars often load quickly; bigger wars or Torn/API delays can take longer.</div>
     </section>
   </main>
   <script>
@@ -6809,6 +6814,14 @@
     return Number(document.getElementById("rw-point-enemy-hospital")?.value || 2);
   }
 
+  function rwphPointFairFightAvgStepValue() {
+    return Number(document.getElementById("rw-point-fair-fight-avg-step")?.value || 0.02);
+  }
+
+  function rwphPointFairFightBonusStepValue() {
+    return Number(document.getElementById("rw-point-fair-fight-bonus-step")?.value || 0.01);
+  }
+
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
     rwphCachedReports ||= {};
@@ -6845,6 +6858,9 @@
         Number(document.getElementById("rw-point-hospital")?.value || 2),
         rwphPointEnemyHospitalBonusValue(),
         document.getElementById("rw-point-fair-fight")?.checked !== false ? "ff" : "no-ff",
+        rwphPointFairFightAvgStepValue(),
+        rwphPointFairFightBonusStepValue(),
+        "avg-ff-custom-step-per-payable-hit-v2",
       );
     }
 
@@ -6869,6 +6885,8 @@
       pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
       pointEnemyHospitalBonus: rwphPointEnemyHospitalBonusValue(),
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
+      pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
+      pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
     };
   }
 
@@ -6877,7 +6895,7 @@
     const mode = rwphNormalizeCalculationMode(calculationMode);
     const sharedInvalid = !payload.userKey || payload.totalPayout <= 0 || payload.overallTotalPayout < 0;
     const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0;
-    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0;
+    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0));
     if (sharedInvalid || (mode === "standard" && perHitInvalid) || (mode === "points" && pointsInvalid)) {
       return { ok: false, payload };
     }
@@ -7028,16 +7046,92 @@
 
   async function rwphOpenCachedReport(calculationMode = "standard") {
     const mode = rwphNormalizeCalculationMode(calculationMode);
+    const label = rwphModeLabel(mode);
     const status = document.getElementById("rw-status");
+    const results = document.getElementById("rw-results");
     rwphClearLastResults();
-    if (!rwphEnsureCacheState(mode).available) {
-      await rwphAutoCheckCompletedWarCache(false, mode);
+
+    const validation = rwphValidateCacheFormForMode(mode);
+    if (!validation.ok) {
+      return rwphToastPanelError(status, `Enter your API key and valid ${label} payout settings before opening a cached report.`, "RWPH Cache");
     }
-    if (rwphEnsureCacheState(mode).available) {
-      await rwphRunCalculation(mode, { useCacheOnly: true });
-      return;
+
+    // v1.1.244: Use Cached Report now opens through a dedicated cache-open endpoint.
+    // This avoids running the normal calculation route and lets the tab pre-open immediately
+    // from the click handler, which fixes popup blockers for both Per Hit and Points System.
+    const progressId = `rwph-cache-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    let preOpenedResultsTab = null;
+    let stopProgressPolling = null;
+
+    try {
+      if (status) status.textContent = `Opening matching cached ${label} report...`;
+      rwphSetCacheStatusText(`Opening matching cached ${label} report...`, mode);
+      preOpenedResultsTab = openBlankResultsTab(progressId);
+      stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
+      rwphSetResultsLoadingStepDone(preOpenedResultsTab, 0);
+
+      const result = await apiPost("/api/calc/report-cache/open", {
+        ...validation.payload,
+        progressId,
+      });
+
+      lastRows = result.rows || [];
+      lastSummary = result.summary || {};
+      rwphStorePayAllRows(lastRows);
+      rwphSaveLastResults(lastRows, lastSummary);
+      rwphSetCacheButtonState(mode, true, {
+        factionName: lastSummary?.factionName || result.factionName || "",
+        cache: result.cache || null,
+        expiresAtMs: result.cache?.expiresAtMs || 0,
+        cachedAtMs: result.cache?.cachedAtMs || 0,
+        summary: lastSummary,
+      }, true);
+      if (results) results.innerHTML = renderRows(lastRows, lastSummary);
+
+      if (stopProgressPolling) {
+        stopProgressPolling();
+        stopProgressPolling = null;
+      }
+      await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
+      const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
+      if (openedResultsTab) {
+        const resultsPanel = document.getElementById("rw-results-panel");
+        if (resultsPanel) {
+          resultsPanel.hidden = true;
+          resultsPanel.setAttribute("hidden", "");
+          resultsPanel.style.display = "none";
+        }
+        rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
+        rwphToastPanelInfo(status, `Cached ${label} report opened. ${lastRows.length} members loaded.`, "info", "RWPH Cache");
+      } else {
+        const resultsPanel = document.getElementById("rw-results-panel");
+        if (resultsPanel) {
+          resultsPanel.hidden = false;
+          resultsPanel.removeAttribute("hidden");
+          resultsPanel.style.display = "block";
+          resultsPanel.style.visibility = "visible";
+          resultsPanel.style.opacity = "1";
+          resultsPanel.scrollTop = 0;
+        }
+        rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
+        rwphToastPanelInfo(status, `Cached ${label} report opened in the panel because the results tab was blocked.`, "warn", "RWPH Cache");
+      }
+    } catch (e) {
+      if (stopProgressPolling) {
+        stopProgressPolling();
+        stopProgressPolling = null;
+      }
+      if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
+        try {
+          preOpenedResultsTab.document.open();
+          preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Cached Report</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121212;color:#d7d7d7;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center}.box{max-width:560px;border:1px solid #474747;border-radius:8px;background:linear-gradient(180deg,#242424,#1a1a1a);padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#f2f2f2}p{color:#c8c8c8;font-weight:800}</style></head><body><div class="box"><h1>Cached Report Not Opened</h1><p>${esc(e.message || e)}</p><p>Close this tab, then use ${label} Settings Calculate to create or refresh the cached report.</p></div></body></html>`);
+          preOpenedResultsTab.document.close();
+        } catch (_) {}
+      }
+      rwphSetCacheButtonState(mode, false, null, true);
+      rwphSetCacheStatusText(`${label} cached report open failed: ${e.message}`, mode);
+      rwphToastPanelError(status, `${label} cached report open failed: ${e.message}`, "RWPH Cache");
     }
-    rwphToastPanelError(status, `No matching ${rwphModeLabel(mode)} database cached report was found. Use ${rwphModeLabel(mode)} Settings Calculate to create one.`, "RWPH Cache");
   }
 
   async function rwphDeleteMatchingCachedReport(calculationMode = "standard") {
@@ -7147,7 +7241,7 @@
                 <div class="rw-stat-box"><div class="rw-stat-label">Payable</div><div class="rw-stat-value">${Number(r.payableEvents || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Points" : "Weight"}</div><div class="rw-stat-value">${pointsMode ? points.toFixed(2) : weight.toFixed(2)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Own-Faction Hospital Hits" : "Respect"}</div><div class="rw-stat-value">${pointsMode ? Number(r.hospitalizingHits || 0) : respect.toFixed(2)}</div></div>
-                ${pointsMode ? `<div class="rw-stat-box"><div class="rw-stat-label">Enemy War Hospital Hits</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalizingHits || 0)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Enemy Hospital Bonus</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Fair Bonus</div><div class="rw-stat-value">${Number(r.fairFightBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Avg FF</div><div class="rw-stat-value">${Number(r.avgFairFight || 1).toFixed(2)}x</div></div>` : ""}
+                ${pointsMode ? `<div class="rw-stat-box"><div class="rw-stat-label">Enemy War Hospital Hits</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalizingHits || 0)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Enemy Hospital Bonus</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Fair Bonus</div><div class="rw-stat-value">${Number(r.fairFightBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">FF/Payable Hit</div><div class="rw-stat-value">${Number(r.fairFightPerPayableHitBonus || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Avg FF</div><div class="rw-stat-value">${Number(r.avgFairFight || 1).toFixed(2)}x</div></div>` : ""}
               </div>
             </div>`;
         }).join("")}
@@ -7620,6 +7714,9 @@
       enemyFactionHospitalizingHits: safeNumber(r.enemyFactionHospitalizingHits),
       hospitalBonusPoints: safeNumber(r.hospitalBonusPoints),
       enemyFactionHospitalBonusPoints: safeNumber(r.enemyFactionHospitalBonusPoints),
+      fairFightBonusPoints: safeNumber(r.fairFightBonusPoints),
+      fairFightPerPayableHitBonus: safeNumber(r.fairFightPerPayableHitBonus),
+      avgFairFight: safeNumber(r.avgFairFight || 1),
       points: safeNumber(r.points ?? r.weight),
       weight: safeNumber(r.weight),
       payout: safeNumber(r.payout),
@@ -7644,6 +7741,7 @@
     const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
     const totalOwnFactionHospitalizingHits = safeNumber(summary?.totalHospitalizingHits ?? summary?.totalOwnFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.hospitalizingHits, 0);
     const totalOwnFactionHospitalBonusPoints = safeNumber(summary?.totalHospitalBonusPoints ?? summary?.totalOwnFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.hospitalBonusPoints, 0);
+    const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
@@ -7686,7 +7784,7 @@
         <td class="num">${r.retaliationHits}</td>
         <td class="num">${r.totalTrackedHits}</td>
         <td class="num">${r.payableEvents}</td>
-        ${pointsMode ? `<td class="num">${r.enemyFactionHospitalizingHits}</td><td class="num">${r.enemyFactionHospitalBonusPoints.toFixed(2)}</td>` : ""}
+        ${pointsMode ? `<td class="num">${r.enemyFactionHospitalizingHits}</td><td class="num">${r.enemyFactionHospitalBonusPoints.toFixed(2)}</td><td class="num">${r.avgFairFight.toFixed(2)}x</td><td class="num">${r.fairFightPerPayableHitBonus.toFixed(2)}</td><td class="num">${r.fairFightBonusPoints.toFixed(2)}</td>` : ""}
         <td class="num">${r.respect.toFixed(2)}</td>
         <td class="num">${r.weight.toFixed(2)}</td>
         <td class="num strong">${esc(money(r.payout))}</td>
@@ -7995,6 +8093,7 @@
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
         ${pointsMode ? statCard("Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), `${totalEnemyFactionHospitalBonusPoints.toFixed(2)} enemy bonus points`) : ""}
         ${pointsMode ? statCard("Own Hospital Hits", String(totalOwnFactionHospitalizingHits), `${totalOwnFactionHospitalBonusPoints.toFixed(2)} own bonus points`) : ""}
+        ${pointsMode ? statCard("Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit") : ""}
         ${statCard(pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2))}
         ${statCard("Total Respect", totalRespect.toFixed(2), "from ranked war report")}
         ${statCard("Fetched Attacks", String(safeNumber(summary?.attacksFetched)), "from server calculation")}
@@ -8025,7 +8124,7 @@
                 <th class="num">Retals</th>
                 <th class="num">Tracked</th>
                 <th class="num">Payable</th>
-                ${pointsMode ? `<th class="num">Enemy Hosp</th><th class="num">Enemy Hosp Pts</th>` : ""}
+                ${pointsMode ? `<th class="num">Enemy Hosp</th><th class="num">Enemy Hosp Pts</th><th class="num">Avg FF</th><th class="num">FF/Hit</th><th class="num">Fair Bonus</th>` : ""}
                 <th class="num">Respect</th>
                 <th class="num">${pointsMode ? "Points" : "Weight"}</th>
                 <th class="num">Payout</th>
@@ -8058,6 +8157,9 @@
       enemyFactionHospitalizingHits: safeNumber(r.enemyFactionHospitalizingHits),
       hospitalBonusPoints: safeNumber(r.hospitalBonusPoints),
       enemyFactionHospitalBonusPoints: safeNumber(r.enemyFactionHospitalBonusPoints),
+      fairFightBonusPoints: safeNumber(r.fairFightBonusPoints),
+      fairFightPerPayableHitBonus: safeNumber(r.fairFightPerPayableHitBonus),
+      avgFairFight: safeNumber(r.avgFairFight || 1),
       points: safeNumber(r.points ?? r.weight),
       respect: safeNumber(r.respect),
       totalRespect: safeNumber(r.totalRespect ?? r.respect),
@@ -8080,6 +8182,7 @@
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
     const totalEnemyFactionHospitalizingHits = safeNumber(summary?.totalEnemyFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.enemyFactionHospitalizingHits, 0);
     const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
+    const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const generatedAt = new Date().toLocaleString();
     const topRows = [...list].sort((a, b) => b.payout - a.payout).slice(0, 8);
@@ -8099,7 +8202,7 @@
       ["War Hits", String(totalHits), totalAssists + " assists"],
       ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
       ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
-      ...(pointsMode ? [["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"]] : []),
+      ...(pointsMode ? [["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"], ["Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit"]] : []),
       [pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2), pointsMode ? "contribution score" : "weighted contribution"],
       ["Total Respect", totalRespect.toFixed(2), "ranked-war report"],
     ];
@@ -8128,7 +8231,7 @@
         + '<td>' + r.retaliationHits + '</td>'
         + '<td>' + r.totalTrackedHits + '</td>'
         + '<td>' + r.payableEvents + '</td>'
-        + (pointsMode ? '<td>' + r.enemyFactionHospitalizingHits + '</td><td>' + r.enemyFactionHospitalBonusPoints.toFixed(2) + '</td>' : '')
+        + (pointsMode ? '<td>' + r.enemyFactionHospitalizingHits + '</td><td>' + r.enemyFactionHospitalBonusPoints.toFixed(2) + '</td><td>' + r.avgFairFight.toFixed(2) + 'x</td><td>' + r.fairFightPerPayableHitBonus.toFixed(2) + '</td><td>' + r.fairFightBonusPoints.toFixed(2) + '</td>' : '')
         + '<td>' + r.weight.toFixed(2) + '</td>'
         + '<td class="pay">' + esc(money(r.payout)) + '</td>'
         + '</tr>';
@@ -9292,7 +9395,7 @@
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
               <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
+              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
               <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
@@ -9307,8 +9410,8 @@
               <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
               <li><b>Loading counter:</b> the elapsed timer should count while the results tab works.</li>
               <li><b>Normal wait:</b> small wars often take about 10-30 seconds. Big wars or slow Torn/API responses can take 1-3 minutes.</li>
-              <li><b>Too many requests:</b> if Torn rate-limits the backend, RWPH pauses and retries using the server queue/backoff settings.</li>
-              <li><b>Do not spam calculate:</b> RWPH auto-checks cache first, rate-limits routes, and queues calculations to protect the backend.</li>
+              <li><b>Too many requests:</b> if Torn rate-limits the backend, RWPH pauses and retries using the server retry/backoff settings.</li>
+              <li><b>Do not spam calculate:</b> RWPH auto-checks cache first, rate-limits routes, and reuses cached reports to protect the backend.</li>
             </ul>
           </div>
 
@@ -9316,7 +9419,7 @@
             <div class="rw-how-title">Results Tab</div>
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
-              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, fair-fight bonus, and payout from final score.</li>
+              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, custom Avg FF bonus per payable hit, and payout from final score.</li>
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
@@ -9635,12 +9738,12 @@
     }
 
     function renderAdminStatusSummary(result) {
-      const queue = result.queue || {};
+      const calculations = result.calculations || {};
       const cache = result.cache || {};
       const stats = result.stats || {};
       return `
         <div class="rw-admin-status-grid">
-          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Queue</div><div class="rw-admin-status-value">${Number(queue.active || 0)} active / ${Number(queue.pending || 0)} waiting</div></div>
+          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Calculations</div><div class="rw-admin-status-value">${Number(calculations.active || 0)} active / direct start</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Report cache</div><div class="rw-admin-status-value">${Number(cache.reportCacheEntries || 0)} saved</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
@@ -9657,7 +9760,7 @@
       status.textContent = "Loading server status...";
       const result = await adminRequest("GET", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
-      rwphToastPanelInfo(status, `Server online. Queue ${Number(result.queue?.active || 0)} active / ${Number(result.queue?.pending || 0)} waiting. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
+      rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     }
 
     async function refreshAdminLicenses() {
@@ -9888,7 +9991,7 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title">Points System Settings</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and fair-fight modifiers. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
+              <div class="rw-small"><b>Points System Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most, then retals, assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and the Avg FF per-payable-hit bonus. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
                 <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Per Hit and Points System finished-war caches when your API key and payout settings are ready. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache now live inside their matching settings dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
                 <div id="rw-cache-status-points" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
@@ -9930,6 +10033,15 @@
                   <input id="rw-point-fair-fight" type="checkbox" checked style="width:auto;margin:0;"> Use fair-fight modifier
                 </label>
               </div>
+              <div class="rw-row">
+                <label>Avg FF required per bonus step
+                  <input id="rw-point-fair-fight-avg-step" type="number" value="0.02" step="0.01" min="0.01">
+                </label>
+                <label>Point bonus per payable hit per step
+                  <input id="rw-point-fair-fight-bonus-step" type="number" value="0.01" step="0.01" min="0">
+                </label>
+              </div>
+              <div class="rw-small">When Use fair-fight modifier is ticked, Avg FF 1.00 gives no bonus. Every configured Avg FF step over 1.00 adds the configured point bonus to each payable hit. Avg FF is capped at 3.00. If the tickbox is off, no fair-fight bonus points are added.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-points-run" class="secondary" type="button">Calculate</button>
                 <button id="rw-use-points-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -10057,7 +10169,7 @@
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
               <li><b>Per Hit Settings:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
-              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and fair-fight modifiers control the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
+              <li><b>Points System Settings:</b> War hits, assists, outside hits, retals, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Points System Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Per Hit Settings Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Points System Settings Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
               <li><b>Use Cached Report:</b> inside Per Hit Settings or Points System Settings opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
@@ -10072,8 +10184,8 @@
               <li><b>What it loads:</b> licence verification, attack logs, ranked war/outside/retal/assist sorting, payout weighting, member results, newsletters, export tools, and payment tools.</li>
               <li><b>Loading counter:</b> the elapsed timer should count while the results tab works.</li>
               <li><b>Normal wait:</b> small wars often take about 10-30 seconds. Big wars or slow Torn/API responses can take 1-3 minutes.</li>
-              <li><b>Too many requests:</b> if Torn rate-limits the backend, RWPH pauses and retries using the server queue/backoff settings.</li>
-              <li><b>Do not spam calculate:</b> RWPH auto-checks cache first, rate-limits routes, and queues calculations to protect the backend.</li>
+              <li><b>Too many requests:</b> if Torn rate-limits the backend, RWPH pauses and retries using the server retry/backoff settings.</li>
+              <li><b>Do not spam calculate:</b> RWPH auto-checks cache first, rate-limits routes, and reuses cached reports to protect the backend.</li>
             </ul>
           </div>
 
@@ -10081,7 +10193,7 @@
             <div class="rw-how-title">Results Tab</div>
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
-              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, fair-fight bonus, and payout from final score.</li>
+              <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, custom Avg FF bonus per payable hit, and payout from final score.</li>
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
@@ -10300,7 +10412,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-fair-fight"].forEach((id) => {
+    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -10514,11 +10626,15 @@
       const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
       const pointEnemyHospitalBonus = rwphPointEnemyHospitalBonusValue();
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
+      const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
+      const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
       if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0) return alert("Weights cannot be negative.");
       if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0) return alert("Points System values cannot be negative.");
+      if (pointFairFightEnabled && (!Number.isFinite(pointFairFightAvgStep) || pointFairFightAvgStep <= 0)) return alert("Avg FF required per bonus step must be greater than 0.");
+      if (pointFairFightEnabled && (!Number.isFinite(pointFairFightBonusPerStep) || pointFairFightBonusPerStep < 0)) return alert("Point bonus per payable hit per step cannot be negative.");
 
       let preOpenedResultsTab = null;
       let stopProgressPolling = null;
@@ -10530,8 +10646,8 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying own-faction/enemy-faction hospital and fair-fight modifiers, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
-            : "Server is verifying licence, checking report cache/queue, finding the last finished ranked war, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
+            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying own-faction/enemy-faction hospital and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            : "Server is verifying licence, checking the report cache, finding the last finished ranked war, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
         rwphSetResultsLoadingStepDone(preOpenedResultsTab, 0);
@@ -10556,6 +10672,8 @@
           pointHospitalBonus,
           pointEnemyHospitalBonus,
           pointFairFightEnabled,
+          pointFairFightAvgStep,
+          pointFairFightBonusPerStep,
           useCacheOnly,
           forceRefresh,
           adminKey: adminKeyForRefresh,
@@ -10647,12 +10765,12 @@
     }
 
     function renderAdminStatusSummary(result) {
-      const queue = result.queue || {};
+      const calculations = result.calculations || {};
       const cache = result.cache || {};
       const stats = result.stats || {};
       return `
         <div class="rw-admin-status-grid">
-          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Queue</div><div class="rw-admin-status-value">${Number(queue.active || 0)} active / ${Number(queue.pending || 0)} waiting</div></div>
+          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Calculations</div><div class="rw-admin-status-value">${Number(calculations.active || 0)} active / direct start</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Report cache</div><div class="rw-admin-status-value">${Number(cache.reportCacheEntries || 0)} saved</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
@@ -10669,7 +10787,7 @@
       status.textContent = "Loading server status...";
       const result = await adminRequest("GET", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
-      rwphToastPanelInfo(status, `Server online. Queue ${Number(result.queue?.active || 0)} active / ${Number(result.queue?.pending || 0)} waiting. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
+      rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     }
 
     async function refreshAdminLicenses() {

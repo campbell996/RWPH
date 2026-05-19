@@ -1,4 +1,17 @@
-## v1.1.242
+## v1.1.247
+
+- Added two editable Points System fair-fight controls: **Avg FF required per bonus step** and **Point bonus per payable hit per step**.
+- Fair-fight bonus is only applied when **Use fair-fight modifier** is ticked; unticked means no fair-fight bonus points.
+- Defaults remain **0.02 Avg FF required** and **0.01 point per payable hit per step**.
+
+- Changed Points System fair-fight scoring to use the member's **Avg FF** instead of multiplying attack points.
+- Fair-fight checkbox now uses editable step settings. By default it awards **+0.01 point per payable hit for every +0.02 Avg FF over 1.00**. Avg FF is capped at **3.00** and no bonus is added when the checkbox is off.
+- Points results now show the per-payable-hit fair-fight bonus value alongside total Fair Bonus.
+
+- Fixed both **Use Cached Report** buttons so Per Hit and Points System open cached reports through a dedicated backend cache-open route instead of re-entering the normal calculation route.
+- Cached reports now pre-open the results tab immediately from the button click, which helps prevent browser/Torn PDA popup blocking.
+- Removed the report queue from the loading/results tabs. Calculations now start directly, while Torn API retry/backoff and database report caching remain enabled.
+
 
 - Added Points System enemy war faction hospital hits and enemy faction hospital bonus points. Enemy war faction hospital bonus can be set to a negative value to subtract points.
 - Points results, CSV export, and newsletter reports now show enemy war faction hospital hit/bonus stats.
@@ -37,7 +50,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.242**  
+Current package version: **1.1.247**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -60,13 +73,13 @@ RWPH now includes a **Points System Settings** dropdown with its own **Calculate
 - Assist: **3 points**
 - Outside hit / chain-maintenance hit: **2 points**
 - Own-faction hospitalizing target bonus: **+2 points**
-- Fair-fight modifier: applied when Torn exposes a `fair_fight` / `fairFight` attack modifier; otherwise it defaults to `1.00x`.
+- Avg FF bonus: when the fair-fight checkbox is enabled, Avg FF 1.00 gives no bonus; every configured Avg FF step over 1.00 adds the configured point bonus per payable hit. Defaults are +0.02 Avg FF required and +0.01 point per payable hit. Avg FF is capped at 3.00. If the checkbox is off, no fair-fight bonus is added.
 
-The normal per-hit **Calculate** button now lives inside **Per Hit Settings** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and fair-fight modifier details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
+The normal per-hit **Calculate** button now lives inside **Per Hit Settings** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, retals, own-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
 
 ### Public Performance Mode
 
-RWPH now protects public servers with completed-war report caching, a calculation queue, cooldowns, route rate limits, short Torn API memory caching, and admin-only force refresh. Users can open a matching cached report when the same finished war and payout settings were already calculated. Storage remains JSON for now; MySQL can be added later without changing the userscript flow.
+RWPH now protects public servers with completed-war report caching, direct-start calculations, cooldowns, route rate limits, short Torn API memory caching, and admin-only force refresh. Users can open a matching cached report when the same finished war and payout settings were already calculated. Storage remains JSON for now; MySQL can be added later without changing the userscript flow.
 
 Before sending Torn money or items, always review the results yourself inside Torn.
 
@@ -708,7 +721,7 @@ When updating RWPH:
 
 ### v1.1.221
 
-- Updated the loading/results tab information to explain completed-war mode, database-only cached reports, 24-hour cache expiry, queueing, and Torn API retries.
+- Updated the loading/results tab information to explain completed-war mode, database-only cached reports, 24-hour cache expiry, direct-start loading and Torn API retries.
 - Restyled the loading/results tab to match the midnight-blue RWPH panel/card theme.
 - Fixed cached-report status text so it updates immediately when a matching backend/database cached report exists.
 - Backend now returns saved cache expiry metadata after creating a new report.
@@ -740,7 +753,7 @@ When updating RWPH:
 
 - Added completed-war report caching for same faction/war/settings reports.
 - Added Use Cached Report and Check Cache controls.
-- Added backend calculation queue, route rate limits, and per-user cooldown protection.
+- Replaced the backend calculation queue with direct-start calculations while keeping route rate limits and per-user cooldown protection.
 - Added short Torn API memory caching for finished-war/faction data.
 - Added admin-only force refresh and server status tools.
 - Kept storage on the current JSON database for now, with MySQL-ready organisation for a later update.

@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.242**
+Version: **1.1.247**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -135,7 +135,7 @@ RWPH is a community-made tool and is not an official Torn product. Use it only i
 
 ## Report Cache and Public Server Protection
 
-RWPH may save completed-war report results in the backend JSON database so the same faction, finished war, Member Payout, Total Payout, and weight settings can be reused without recalculating. This reduces Torn API pressure and server load. Cached reports contain calculated payout output and report metadata; they are not designed to store user Torn API keys. The backend also uses route rate limits, per-user cooldowns, a calculation queue, and short in-memory Torn API caching to keep public hosting stable.
+RWPH may save completed-war report results in the backend JSON database so the same faction, finished war, Member Payout, Total Payout, and weight settings can be reused without recalculating. This reduces Torn API pressure and server load. Cached reports contain calculated payout output and report metadata; they are not designed to store user Torn API keys. The backend also uses route rate limits, per-user cooldowns, direct-start calculations and short in-memory Torn API caching to keep public hosting stable.
 
 Storage remains JSON in this version. MySQL is not enabled yet.
 
@@ -161,7 +161,7 @@ RWPH now shows cached report status using exact saved and expiry timestamps inst
 
 ## v1.1.221 Loading Results and Cache Status Update
 
-The loading/results tab now uses the same midnight-blue RWPH card style as the public cache/admin controls. It explains completed-war-only calculation, database-only cached reports, 24-hour cache expiry, queueing, and API retry behaviour. Cached-report status text is also updated as soon as the backend/database confirms a matching report, so users are not told there is no report when one exists.
+The loading/results tab now uses the same midnight-blue RWPH card style as the public cache/admin controls. It explains completed-war-only calculation, database-only cached reports, 24-hour cache expiry, direct-start loading and API retry behaviour. Cached-report status text is also updated as soon as the backend/database confirms a matching report, so users are not told there is no report when one exists.
 
 ## v1.1.224 Payment and Cached Report Handling
 
@@ -269,14 +269,23 @@ The public performance/cache status message now appears inside both calculation 
 Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Points System Settings dropdown only reports matching Points System cached reports and the Per Hit Settings dropdown only reports matching Per Hit cached reports.
 
 
-## v1.1.242 Cache button reliability update
+## v1.1.247 Avg FF fair-fight bonus update
 
-Use Cached Report now checks the matching calculation mode only. Per Hit cache opening no longer depends on Points System settings being valid, and Points System cache opening no longer depends on Per Hit settings being valid.
+Points System fair-fight scoring now uses editable stepped Avg FF bonus settings per payable hit. Avg FF 1.00 gives no bonus; every configured Avg FF step over 1.00 adds the configured point bonus per payable hit. Defaults remain +0.02 Avg FF required and +0.01 point per payable hit per step. Avg FF is capped at 3.00, and if the fair-fight checkbox is off no fair-fight bonus points are added. This replaces the older attack-point multiplier behaviour.
+
+## v1.1.244 Cache button reliability update
+
+Use Cached Report now opens through a dedicated backend cache-open route instead of re-entering the normal calculation route. Per Hit and Points System each fetch only their own cached report, and the results tab pre-opens immediately from the button click to reduce browser/Torn PDA popup blocking.
 
 
-## v1.1.242 Points/hospital bonus and fixed per-hit toggle update
+## v1.1.244 Points/hospital bonus and fixed per-hit toggle update
 
 Points System reports can separately show enemy war faction hospital hits and enemy faction hospital bonus points. Per Hit settings now use fixed 1-per-hit include/exclude tick boxes instead of editable numeric weights.
 
 
 Enemy war faction hospital bonus can be positive or negative so enemy ranked-war faction hospitalisations can add or subtract contribution points.
+
+
+## v1.1.244 Loading/results queue removal update
+
+RWPH no longer puts result-tab calculations into a report queue. The loading/results tab now starts the selected calculation directly. Backend/database cached reports, route rate limits, cooldowns, and Torn API retry/backoff protection remain in place.
