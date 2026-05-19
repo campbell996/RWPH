@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.250
+// @version      1.1.251
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1651,6 +1651,7 @@
   // v1.1.233: Per Hit Settings now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
+  // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
   // v1.1.243: Points mode adds enemy-war-faction hospital hit bonuses/newsletter stats, Per Hit weights are fixed 1-per-hit toggles, and loading/results queue text was removed.
@@ -5036,6 +5037,7 @@
     const memberPayout = rwphSummaryMemberPayout(summary, list);
     const overallTotalPayout = rwphSummaryOverallTotalPayout(summary, list);
     const perHitAmount = rwphSummaryPerHitAmount(summary, list);
+    const perPointAmount = pointsMode ? rwphSummaryPerHitAmount(summary, list) : 0;
     const totalPayout = memberPayout;
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
@@ -5900,7 +5902,7 @@
     }
 
 
-    /* v1.1.250: visual-only cleanup for existing result-card layout */
+    /* v1.1.251: visual-only cleanup for existing result-card layout and top summary cards */
     .result-card{border-color:rgba(125,211,252,.22)!important;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(2,6,23,.86))!important;box-shadow:0 14px 32px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.055)!important;}
     .result-card-head{padding-bottom:2px!important;border-bottom:1px solid rgba(125,211,252,.10)!important;}
     .result-payout-block .payout{display:inline-flex!important;align-items:center!important;justify-content:flex-end!important;padding:6px 10px!important;border-radius:999px!important;background:rgba(34,197,94,.10)!important;border:1px solid rgba(134,239,172,.18)!important;}
@@ -5924,10 +5926,7 @@
       <div class="results-hero-meta" aria-label="Report details">
         <div class="results-meta-card"><span>Faction</span><b>${esc(summary?.factionName || summary?.faction?.name || "Faction")}</b></div>
         <div class="results-meta-card"><span>Report Type</span><b>${pointsMode ? "Points system" : "Finished war"}</b></div>
-        <div class="results-meta-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
-        <div class="results-meta-card"><span>Total Payout</span><b>${esc(money(overallTotalPayout))}</b></div>
-        ${pointsMode ? "" : `<div class="results-meta-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
-        <div class="results-meta-card"><span>Members Paid</span><b>${list.length}</b></div>
+        ${pointsMode ? `<div class="results-meta-card"><span>Total Points</span><b>${Number(summary?.totalPoints ?? summary?.totalWeight ?? 0).toFixed(2)}</b></div>` : `<div class="results-meta-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
       </div>
     </section>
 
@@ -5952,7 +5951,7 @@
     <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
       <div class="summary-card"><span>Total Payout</span><b>${esc(money(overallTotalPayout))}</b></div>
-      ${pointsMode ? "" : `<div class="summary-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
+      ${pointsMode ? `<div class="summary-card"><span>Per Point Amount</span><b>${esc(money(perPointAmount))}</b></div>` : `<div class="summary-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
       <div class="summary-card"><span>War Source</span><b>${rwphWarSourceLabel(summary?.selectedWar?.timeSource)}</b></div>
       <div class="summary-card"><span>${pointsMode ? "Total Points" : "Total weight"}</span><b>${Number(pointsMode ? (summary?.totalPoints ?? summary?.totalWeight ?? 0) : (summary?.totalWeight || 0)).toFixed(2)}</b></div>
       <div class="summary-card"><span>Total Respect</span><b>${Number(summary?.totalRespect || 0).toFixed(2)}</b></div>
@@ -8172,13 +8171,19 @@
     .btn.secondary,button.secondary,a.secondary{background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88))!important;color:#eaf6ff!important;border-color:rgba(125,211,252,.24)!important;}
     th{background:linear-gradient(180deg,#333,#242424)!important;color:#eee!important;border-color:#474747!important;}td,table{border-color:#373737!important;}.bar,.fill,.bar-fill{background:linear-gradient(90deg,#8f2623,#d24a43)!important;}
 
-    /* v1.1.250: visual-only newsletter cleanup without changing the report layout */
-    .stat-card{min-height:84px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;}
-    .table-wrap{border-radius:16px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;}
+    /* v1.1.251: visual-only newsletter fit cleanup without changing the report layout */
+    body{overflow-x:hidden!important;}
+    .newsletter{width:100%!important;max-width:min(1380px,100%)!important;}
+    .content,.section,.table-wrap{min-width:0!important;max-width:100%!important;}
+    .stat-card{min-height:76px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;overflow:hidden!important;}
+    .stat-value,.stat-sub{overflow-wrap:anywhere!important;word-break:normal!important;}
+    .table-wrap{border-radius:16px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;-webkit-overflow-scrolling:touch!important;}
     th{white-space:nowrap!important;}
-    table{min-width:1180px!important;}
+    table{min-width:${pointsMode ? "1080px" : "820px"}!important;}
+    th,td{padding:8px 6px!important;}
     td{vertical-align:middle!important;}
     .chart-row{align-items:center!important;}
+    @media(max-width:760px){.section{padding:10px!important}.table-wrap{width:calc(100% + 8px)!important;margin-left:-4px!important;margin-right:-4px!important}th,td{font-size:10px!important;padding:6px 4px!important}.stat-card{min-height:auto!important;padding:10px!important}}
 
   </style>
 </head>
@@ -8197,7 +8202,7 @@
       <div class="stats">
         ${statCard("Member Payout", money(memberPayout), `${list.length} members paid`)}
         ${statCard("Total Payout", money(overallTotalPayout), "full payout record")}
-        ${statCard("Per Hit Amount", money(perHitAmount), "per weighted hit")}
+        ${statCard(pointsMode ? "Per Point Amount" : "Per Hit Amount", money(perHitAmount), pointsMode ? "per weighted Point" : "per weighted hit")}
         ${statCard("War Hits", String(totalHits), `${totalAssists} assists`)}
         ${statCard("Outside Hits", String(totalOutsideHits), `${totalRetaliationHits} retals`)}
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
@@ -8314,7 +8319,7 @@
     const statItems = [
       ["Member Payout", money(memberPayout), list.length + " paid members"],
       ["Total Payout", money(overallTotalPayout), "full payout record"],
-      ["Per Hit Amount", money(perHitAmount), "per weighted hit"],
+      [pointsMode ? "Per Point Amount" : "Per Hit Amount", money(perHitAmount), pointsMode ? "per weighted Point" : "per weighted hit"],
       ["War Hits", String(totalHits), totalAssists + " assists"],
       ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
       ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
@@ -8366,7 +8371,7 @@
       *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:radial-gradient(circle at 50% 0%,rgba(192,147,74,.26),transparent 28%),linear-gradient(180deg,#22170e,#110d09);padding:24px;text-align:center}.shell{max-width:1220px;margin:0 auto;background:linear-gradient(180deg,#f8edcf,#e8d1a3);border:3px solid var(--line);box-shadow:0 18px 80px rgba(0,0,0,.55),inset 0 0 0 7px rgba(123,31,31,.10);padding:18px;display:grid;gap:16px}.hero{border:2px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(192,147,74,.14));padding:22px}.logo{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}.eyebrow{color:var(--accent);font-family:Arial,sans-serif;font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;border:1px solid var(--line);padding:6px 11px;background:#efe0bd;color:var(--accent);font-family:Arial,sans-serif;font-size:11px;font-weight:950;letter-spacing:1px}h1{font-size:34px;margin:10px 0 8px;letter-spacing:.3px}p{margin:0;color:var(--muted);font-family:Arial,sans-serif;font-weight:800}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat-card,.card,.table-card{border:2px solid rgba(111,90,63,.45);background:rgba(255,248,225,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}.stat-card{padding:13px}.stat-card span,.member span{display:block;font-family:Arial,sans-serif;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:21px;color:var(--accent)}.stat-card em{display:block;margin-top:4px;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 12px;color:var(--accent);font-size:22px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;border-bottom:1px dashed rgba(111,90,63,.45);padding:10px 6px}.top-rank{font-weight:950;color:var(--accent)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800}.top-meter{height:12px;background:#dbc08d;border:1px solid rgba(111,90,63,.45);overflow:hidden}.top-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}.top-pay{font-weight:950;color:#315b2f;text-align:right}.table-wrap{overflow:auto;border:2px solid rgba(111,90,63,.45)}table{width:100%;border-collapse:collapse;min-width:840px;background:rgba(255,250,235,.55)}th,td{padding:10px 8px;border-bottom:1px solid rgba(111,90,63,.32);font-size:12px;text-align:center}th{background:rgba(123,31,31,.12);color:var(--accent);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:#315b2f;font-weight:950}.footer{color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800;padding:8px}@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.shell{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
     `;
 
-    const cleanupCss = " .stat-card{min-height:84px;display:flex;flex-direction:column;justify-content:center}.table-wrap{box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}table{min-width:1180px}th{white-space:nowrap}td{vertical-align:middle}.top-row{min-height:58px}";
+    const cleanupCss = " body{overflow-x:hidden}.shell{width:100%;max-width:100%}.stat-card{min-height:76px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}.stat-card b,.stat-card em{overflow-wrap:anywhere}.table-card,.table-wrap{min-width:0;max-width:100%}.table-wrap{box-shadow:inset 0 1px 0 rgba(255,255,255,.035);-webkit-overflow-scrolling:touch}table{min-width:" + (pointsMode ? "1080px" : "820px") + "}th{white-space:nowrap}th,td{padding:8px 6px}td{vertical-align:middle}.top-row{min-height:58px}@media(max-width:640px){th,td{font-size:10px;padding:6px 4px}.table-card{padding:10px}.stat-card{min-height:auto}}";
     const finalCss = css + cleanupCss;
 
     return '<!doctype html>'

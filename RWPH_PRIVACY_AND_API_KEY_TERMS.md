@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.250**
+Version: **1.1.251**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -269,7 +269,7 @@ The public performance/cache status message now appears inside both calculation 
 Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Points System Settings dropdown only reports matching Points System cached reports and the Per Hit Settings dropdown only reports matching Per Hit cached reports.
 
 
-## v1.1.250 Results/export/newsletter layout and stat alignment
+## v1.1.251 Results/export/newsletter layout and stat alignment
 
 - Cleaned up visual spacing/readability in both result tabs without changing calculations or the existing result layout structure.
 - Aligned CSV export columns and newsletter stat tables so Per Hit and Points System reports show matching stat names and values.
@@ -303,3 +303,10 @@ Enemy war faction hospital bonus can be positive or negative so enemy ranked-war
 ## v1.1.244 Loading/results queue removal update
 
 RWPH no longer puts result-tab calculations into a report queue. The loading/results tab now starts the selected calculation directly. Backend/database cached reports, route rate limits, cooldowns, and Torn API retry/backoff protection remain in place.
+
+
+## v1.1.251 Results/newsletter payout display cleanup
+
+- Fullscreen result tabs no longer show Member Payout, Total Payout, or Members Paid in the top hero metadata area.
+- Points System result summaries and newsletters can display Per Point Amount wording.
+- Newsletter CSS was tightened to improve screen fit without changing newsletter themes or calculation behavior.
