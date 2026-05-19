@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.227**
+Version: **1.1.229**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -185,7 +185,20 @@ The **Your Expiration** button is limited in the browser to two manual checks pe
 Payments Copy Panel buttons are hidden after use with a forced hidden state so users can more reliably track which payout copy actions have already been used. The restore button only brings back the most recently hidden payment-copy button.
 
 
-## v1.1.227 Results Panel Layout Update
+
+## v1.1.229 Help Panel Information Update
+
+The in-panel Help section was updated to describe the current cache/payment behaviour more clearly:
+
+- Cached payout reports are backend/database-only and expire after 24 hours.
+- Use Cached Report opens matching backend/database cached reports.
+- Delete Cached Report removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
+- Payments Copy Panel can use current results or database cached reports.
+- Payments Copy Panel buttons hide after use, and Bring Back Disappeared Button restores only the most recently hidden button.
+- Xanax licence payment codes can be recovered from the backend/database while pending, but payment/licence status still requires live backend verification.
+- Manual Your Expiration checks are limited to 2 per minute.
+
+## v1.1.228 Results Panel Layout Update
 
 The fullscreen Fetch + Calculate results page now uses a report-header layout, a dedicated actions/export side panel, a summary card strip, and a main member payout area. This is a layout/UI change only and does not change the manual-only payment rules, backend/database cache rules, API-key handling, or licence verification rules.
 
@@ -194,3 +207,8 @@ The fullscreen Fetch + Calculate results page now uses a report-header layout, a
 - The fullscreen Fetch + Calculate results panel was restyled to match the main RWPH midnight-blue panel theme.
 - This is a visual/layout update only. It does not change what data is collected, saved, verified, or cached.
 - Payments remain manual-only and cached reports still come only from the backend/database.
+
+
+## Cached Report Deletion
+
+RWPH lets licensed users delete a matching backend/database cached report for the latest finished ranked war and current payout settings. This action only affects backend/database cached report data. Browser-saved reports are not used as trusted cache data. To protect the server from spam or accidental repeated deletion, a user can successfully delete only one cached report every 10 minutes.

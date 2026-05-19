@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.227
+// @version      1.1.229
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1474,7 +1474,11 @@
           try {
             const json = JSON.parse(res.responseText || "{}");
             if (!json.ok) {
-              reject(new Error(json.error || `Server error ${res.status}`));
+              const err = new Error(json.error || `Server error ${res.status}`);
+              err.retryAfterSeconds = Number(json.retryAfterSeconds || 0);
+              err.cooldownEndsAtMs = Number(json.cooldownEndsAtMs || 0);
+              err.status = Number(res.status || 0);
+              reject(err);
             } else {
               resolve(json);
             }
@@ -1638,6 +1642,8 @@
   // v1.1.225: Your Expiration has a browser-side 2/minute click guard, and Payments Copy Panel hiding now uses forced !important hidden state.
   // v1.1.226: fullscreen Fetch + Calculate results panel now matches the RWPH midnight-blue main panel theme and layout.
   // v1.1.227: fullscreen Fetch + Calculate results panel layout rebuilt with a report header, summary strip, action side panel, and main member results area.
+  // v1.1.228: added Delete Cached Report beside Use Cached Report with a 10-minute successful-delete cooldown.
+  // v1.1.229: updated Help panel wording for database-only cache deletion, cached-report payments, pending Xanax codes, live payment checks, and new button limits.
   // v1.1.195: loading dots also update on PC/desktop through direct DOM, postMessage, and loading-tab self polling.
   // v1.1.157: info-style button feedback moved out of the panel footer.
   // v1.1.158: expanded feedback across Admin, Results, Payments, and Xanax helper actions.
@@ -6604,6 +6610,7 @@
     rwphCachedReportInfo = info || null;
     const buttonAvailable = rwphCachedReportAvailable;
     const btn = document.getElementById("rw-use-cache");
+    const deleteBtn = document.getElementById("rw-delete-cache");
     const cacheStatus = document.getElementById("rw-cache-status");
     const factionName = info?.factionName || info?.summary?.factionName || info?.cache?.factionName || "";
     const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
@@ -6616,6 +6623,12 @@
       btn.disabled = !buttonAvailable;
       btn.textContent = buttonAvailable ? "Use Cached Report" : "No Cached Report Yet";
       btn.title = buttonAvailable ? "Open the matching backend/database cached report for the latest finished ranked war." : "RWPH auto-checks the backend/database for a matching cached report when your key and payout settings are ready.";
+    }
+    if (deleteBtn) {
+      deleteBtn.hidden = false;
+      deleteBtn.disabled = !buttonAvailable;
+      deleteBtn.textContent = "Delete Cached Report";
+      deleteBtn.title = buttonAvailable ? "Delete the matching backend/database cached report. You can delete one cached report every 10 minutes." : "Delete becomes available when RWPH finds a matching backend/database cached report.";
     }
     if (cacheStatus && (rwphCachedReportAvailable || !silent)) {
       cacheStatus.textContent = rwphCachedReportAvailable
@@ -6669,13 +6682,68 @@
       rwphCachedReportAvailable = false;
       rwphCachedReportInfo = null;
       const btn = document.getElementById("rw-use-cache");
+      const deleteBtn = document.getElementById("rw-delete-cache");
       if (btn) {
         btn.disabled = true;
         btn.textContent = "Cache Unavailable";
         btn.title = e.message || "Cache auto-check failed.";
       }
+      if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.title = e.message || "Cache auto-check failed.";
+      }
       if (cacheStatus) cacheStatus.textContent = `Cache auto-check failed: ${e.message}`;
       if (!silent) rwphToastPanelError(status, "Cache auto-check error: " + e.message, "RWPH Cache");
+    }
+  }
+
+
+  async function rwphDeleteMatchingCachedReport() {
+    const status = document.getElementById("rw-status");
+    const cacheStatus = document.getElementById("rw-cache-status");
+    const deleteBtn = document.getElementById("rw-delete-cache");
+    const userKey = document.getElementById("rw-key")?.value?.trim() || "";
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    const totalPayout = Number(document.getElementById("rw-total")?.value || 0);
+    const warHitWeight = Number(document.getElementById("rw-war-hit-weight")?.value || 0);
+    const outsideHitWeight = Number(document.getElementById("rw-outside-hit-weight")?.value || 0);
+    const retaliationHitWeight = Number(document.getElementById("rw-retaliation-hit-weight")?.value || 0);
+    const assistWeight = Number(document.getElementById("rw-assist-weight")?.value || 0);
+
+    if (!rwphCachedReportAvailable) {
+      await rwphAutoCheckCompletedWarCache(false);
+    }
+    if (!rwphCachedReportAvailable) {
+      return rwphToastPanelError(status, "No matching database cached report was found to delete.", "RWPH Cache");
+    }
+    if (!userKey) return rwphToastPanelError(status, "Enter your Torn API key before deleting a cached report.", "RWPH Cache");
+    if (totalPayout <= 0) return rwphToastPanelError(status, "Enter a payout pool greater than 0 before deleting a cached report.", "RWPH Cache");
+
+    try {
+      if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Deleting...";
+      }
+      if (cacheStatus) cacheStatus.textContent = "Deleting matching database cached report...";
+      const result = await apiPost("/api/calc/report-cache/delete", {
+        userKey,
+        token,
+        totalPayout,
+        warHitWeight,
+        outsideHitWeight,
+        retaliationHitWeight,
+        assistWeight,
+      });
+      rwphLastCacheCheckSignature = "";
+      rwphSetCacheButtonState(false, null, false);
+      if (cacheStatus) cacheStatus.textContent = result.deleted ? "Cached report deleted. Fetch + Calculate can create a fresh report." : (result.message || "No matching database cached report was found to delete.");
+      rwphToastPanelInfo(status, result.message || "Cached report deleted.", result.deleted ? "info" : "warn", "RWPH Cache");
+    } catch (e) {
+      const wait = Number(e?.retryAfterSeconds || 0);
+      const msg = wait > 0 ? `You can delete one cached report every 10 minutes. Wait ${wait} seconds, then try again.` : `Delete cached report error: ${e.message}`;
+      if (cacheStatus) cacheStatus.textContent = msg;
+      rwphToastPanelError(status, msg, "RWPH Cache");
+      rwphSetCacheButtonState(rwphCachedReportAvailable, rwphCachedReportInfo, true);
     }
   }
 
@@ -8688,7 +8756,7 @@
           This version is server-locked. The backend verifies your license and performs the payout calculation server-side.
         </div>
         <div class="rw-small">
-          After unlocking, RWPH only creates reports for the latest completed ranked war. Current/active wars must finish first. If a matching backend/database cached report exists, RWPH shows a popup and Use Cached Report opens the backend/database cached report.
+          After unlocking, RWPH only creates reports for the latest completed ranked war. Current/active wars must finish first. If a matching backend/database cached report exists, RWPH shows a popup and Use Cached Report opens the backend/database cached report. Delete Cached Report removes the matching database cached report with a one-delete-per-10-minutes limit.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Locked panel tabs">
@@ -8774,7 +8842,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">RWPH Help - Current Features</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, reopen recent results, create payout newsletters, export records, and prepare manual payment helpers.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, open database cached reports, create payout newsletters, export records, and prepare manual payment helpers.
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
@@ -8794,12 +8862,15 @@
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
-            <div class="rw-how-title">Completed War and Report Lock Rules</div>
+            <div class="rw-how-title">Completed War and Database Cache Rules</div>
             <ul class="rw-how-list">
               <li><b>Last finished war only:</b> Fetch + Calculate only creates a report for the latest completed ranked war.</li>
               <li><b>No current-war reports:</b> if a ranked war is still active, RWPH waits until it finishes before allowing a payout report.</li>
               <li><b>Auto-fill Last Finished War:</b> this button fills the completed war window and should be used before calculating.</li>
-              <li><b>Cached report prompt:</b> if a matching cached report already exists, Fetch + Calculate shows a popup and Use Cached Report opens the backend/database cached report.</li>
+              <li><b>Cached report prompt:</b> if a matching database cached report already exists, Fetch + Calculate shows a popup instead of creating a duplicate.</li>
+              <li><b>Use Cached Report:</b> opens the matching backend/database cached report. Browser-saved reports are not used as the source of truth.</li>
+              <li><b>Delete Cached Report:</b> removes the matching backend/database cached report for the latest finished war and current payout settings. A user can successfully delete only one cached report every 10 minutes.</li>
+              <li><b>24-hour cleanup:</b> cached reports are deleted from the backend/database automatically after 24 hours.</li>
               <li><b>Why this exists:</b> completed-war-only reports reduce API/server load, prevent changing live-war data from causing wrong payouts, and stop repeated duplicate reports.</li>
             </ul>
           </div>
@@ -8807,8 +8878,8 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Licence, Payment Codes, and Timers</div>
             <ul class="rw-how-list">
-              <li><b>Buy Licence:</b> creates a payment code and opens the Xanax Payment Helper.</li>
-              <li><b>Extend Licence:</b> creates an extension payment code and opens the same helper.</li>
+              <li><b>Buy Licence:</b> creates a payment code and opens the Xanax Payment Helper. If an active pending code already exists in the backend/database, RWPH reopens that helper instead of creating a new code.</li>
+              <li><b>Extend Licence:</b> creates an extension payment code and opens the same helper. If an active pending code already exists in the backend/database, RWPH reopens that helper instead of creating a new code.</li>
               <li><b>Each Xanax:</b> extends the licence by the amount configured on the server.</li>
               <li><b>Payment Code Ready:</b> shows the receiver, payment code, and a live expiry timer.</li>
               <li><b>Xanax Payment Helper:</b> can restore the current pending payment code from the backend/database, so refreshing the page can recover an active code.</li>
@@ -8816,7 +8887,7 @@
               <li><b>No browser-only licence/payment truth:</b> browser-saved licence or payment status is not accepted as final. Current pending codes must exist in the backend/database.</li>
               <li><b>Manual Xanax confirmation:</b> RWPH can show/copy/prefill the receiver and payment code, but you must personally review and confirm the Xanax send inside Torn.</li>
               <li><b>Copy buttons:</b> Copy Receiver and Copy Code are in the helper so you can paste the exact details into Torn.</li>
-              <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel.</li>
+              <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel. Manual expiry checks are limited to 2 per minute.</li>
               <li><b>Lock Panel:</b> clears/unlocks the current panel state and returns RWPH to the locked screen.</li>
             </ul>
           </div>
@@ -8831,6 +8902,7 @@
               <li><b>Weights:</b> War Hit, Outside Hit, Retaliation Hit, and Assist weight control how much each contribution type counts.</li>
               <li><b>Fetch + Calculate:</b> sends the calculation request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Use Cached Report:</b> opens a matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
+              <li><b>Delete Cached Report:</b> deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
@@ -8851,10 +8923,21 @@
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
               <li><b>Member cards:</b> show payout details and contribution breakdowns. Total Respect was removed from each member card to keep the results cleaner.</li>
-              <li><b>Cached report reopen:</b> after a successful calculation, return to the main RWPH panel and click Use Cached Report to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
+              <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click Use Cached Report to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Payments:</b> opens the manual payment helper that replaces the old Pay All button name.</li>
+              <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
               <li><b>Newsletter buttons:</b> Create Torn Newsletter, Create Cyber Neon Newsletter, Create War Ledger Newsletter, Create Crimson Raid Newsletter, and Create Victory Gold Newsletter each create a different HTML payout report theme.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
+            <div class="rw-how-title">Payments Copy Panel</div>
+            <ul class="rw-how-list">
+              <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with Use Cached Report.</li>
+              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you.</li>
+              <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
+              <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
+              <li><b>Review first:</b> always check the member name, amount, and Torn page before manually sending any payment.</li>
             </ul>
           </div>
 
@@ -9386,10 +9469,11 @@
             <button id="rw-run">Fetch + Calculate</button>
           </div>
           <div class="rw-cache-tools">
-            <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks finished-war report cache when your API key and payout settings are ready. If a matching backend/database cached report exists, Use Cached Report opens it without creating a new report.</div>
+            <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks finished-war report cache when your API key and payout settings are ready. If a matching backend/database cached report exists, Use Cached Report opens it without creating a new report. Delete Cached Report removes the matching database cache, limited to one successful delete every 10 minutes.</div>
             <div id="rw-cache-status" class="rw-muted">Cache auto-check waits for your API key and payout settings.</div>
             <div class="rw-actions">
               <button id="rw-use-cache" class="secondary" type="button" disabled>No Cached Report Yet</button>
+              <button id="rw-delete-cache" class="danger" type="button" disabled>Delete Cached Report</button>
             </div>
           </div>
           <div class="rw-actions" id="rw-last-results-actions">
@@ -9451,7 +9535,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">RWPH Help - Current Features</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, reopen recent results, create payout newsletters, export records, and prepare manual payment helpers.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, open database cached reports, create payout newsletters, export records, and prepare manual payment helpers.
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
@@ -9471,12 +9555,15 @@
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
-            <div class="rw-how-title">Completed War and Report Lock Rules</div>
+            <div class="rw-how-title">Completed War and Database Cache Rules</div>
             <ul class="rw-how-list">
               <li><b>Last finished war only:</b> Fetch + Calculate only creates a report for the latest completed ranked war.</li>
               <li><b>No current-war reports:</b> if a ranked war is still active, RWPH waits until it finishes before allowing a payout report.</li>
               <li><b>Auto-fill Last Finished War:</b> this button fills the completed war window and should be used before calculating.</li>
-              <li><b>Cached report prompt:</b> if a matching cached report already exists, Fetch + Calculate shows a popup and Use Cached Report opens the backend/database cached report.</li>
+              <li><b>Cached report prompt:</b> if a matching database cached report already exists, Fetch + Calculate shows a popup instead of creating a duplicate.</li>
+              <li><b>Use Cached Report:</b> opens the matching backend/database cached report. Browser-saved reports are not used as the source of truth.</li>
+              <li><b>Delete Cached Report:</b> removes the matching backend/database cached report for the latest finished war and current payout settings. A user can successfully delete only one cached report every 10 minutes.</li>
+              <li><b>24-hour cleanup:</b> cached reports are deleted from the backend/database automatically after 24 hours.</li>
               <li><b>Why this exists:</b> completed-war-only reports reduce API/server load, prevent changing live-war data from causing wrong payouts, and stop repeated duplicate reports.</li>
             </ul>
           </div>
@@ -9484,8 +9571,8 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Licence, Payment Codes, and Timers</div>
             <ul class="rw-how-list">
-              <li><b>Buy Licence:</b> creates a payment code and opens the Xanax Payment Helper.</li>
-              <li><b>Extend Licence:</b> creates an extension payment code and opens the same helper.</li>
+              <li><b>Buy Licence:</b> creates a payment code and opens the Xanax Payment Helper. If an active pending code already exists in the backend/database, RWPH reopens that helper instead of creating a new code.</li>
+              <li><b>Extend Licence:</b> creates an extension payment code and opens the same helper. If an active pending code already exists in the backend/database, RWPH reopens that helper instead of creating a new code.</li>
               <li><b>Each Xanax:</b> extends the licence by the amount configured on the server.</li>
               <li><b>Payment Code Ready:</b> shows the receiver, payment code, and a live expiry timer.</li>
               <li><b>Xanax Payment Helper:</b> can restore the current pending payment code from the backend/database, so refreshing the page can recover an active code.</li>
@@ -9493,7 +9580,7 @@
               <li><b>No browser-only licence/payment truth:</b> browser-saved licence or payment status is not accepted as final. Current pending codes must exist in the backend/database.</li>
               <li><b>Manual Xanax confirmation:</b> RWPH can show/copy/prefill the receiver and payment code, but you must personally review and confirm the Xanax send inside Torn.</li>
               <li><b>Copy buttons:</b> Copy Receiver and Copy Code are in the helper so you can paste the exact details into Torn.</li>
-              <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel.</li>
+              <li><b>Your Expiration:</b> checks how long your licence has left and shows the result in a popup panel. Manual expiry checks are limited to 2 per minute.</li>
               <li><b>Lock Panel:</b> clears/unlocks the current panel state and returns RWPH to the locked screen.</li>
             </ul>
           </div>
@@ -9508,6 +9595,7 @@
               <li><b>Weights:</b> War Hit, Outside Hit, Retaliation Hit, and Assist weight control how much each contribution type counts.</li>
               <li><b>Fetch + Calculate:</b> sends the calculation request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Use Cached Report:</b> opens a matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
+              <li><b>Delete Cached Report:</b> deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
             </ul>
           </div>
@@ -9528,10 +9616,21 @@
             <ul class="rw-how-list">
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
               <li><b>Member cards:</b> show payout details and contribution breakdowns. Total Respect was removed from each member card to keep the results cleaner.</li>
-              <li><b>Cached report reopen:</b> after a successful calculation, return to the main RWPH panel and click Use Cached Report to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
+              <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click Use Cached Report to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
-              <li><b>Payments:</b> opens the manual payment helper that replaces the old Pay All button name.</li>
+              <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
               <li><b>Newsletter buttons:</b> Create Torn Newsletter, Create Cyber Neon Newsletter, Create War Ledger Newsletter, Create Crimson Raid Newsletter, and Create Victory Gold Newsletter each create a different HTML payout report theme.</li>
+            </ul>
+          </div>
+
+          <div class="rw-how-box rw-help-api-card rw-help-section-card">
+            <div class="rw-how-title">Payments Copy Panel</div>
+            <ul class="rw-how-list">
+              <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with Use Cached Report.</li>
+              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you.</li>
+              <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
+              <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
+              <li><b>Review first:</b> always check the member name, amount, and Torn page before manually sending any payment.</li>
             </ul>
           </div>
 
@@ -9903,6 +10002,10 @@
         return;
       }
       rwphToastPanelError(document.getElementById("rw-status"), "No matching database cached report was found. Use Fetch + Calculate to create one.", "RWPH Cache");
+    });
+
+    document.getElementById("rw-delete-cache")?.addEventListener("click", async () => {
+      await rwphDeleteMatchingCachedReport();
     });
 
     document.getElementById("rw-run").addEventListener("click", async () => {

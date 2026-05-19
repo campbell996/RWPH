@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.227**  
+Current package version: **1.1.229**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -299,7 +299,9 @@ Useful buttons:
 - **Lock Panel** returns to the locked panel.
 - **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
 - **Fetch + Calculate** runs the payout calculation on the backend for the last finished ranked war only.
-- **Use Cached Report** opens a matching backend/database cached report when one exists. Browser-saved report fallback is disabled.
+- **Use Cached Report** opens a matching backend/database cached report when one exists.
+- **Delete Cached Report** removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
+- Browser-saved report fallback is disabled.
 - **Launcher Movement** moves the floating launcher.
 
 ### Auto-Fill War Times
@@ -584,7 +586,15 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.227
+### v1.1.229
+
+- Updated the Help panel to explain the latest cache and payment helper behaviour.
+- Help now covers database-only cached reports, Use Cached Report, Delete Cached Report, 24-hour cache cleanup, and the one-delete-per-10-minutes limit.
+- Help now explains that Payments Copy Panel can open from current results or cached reports, hides clicked buttons, and restores only the most recently hidden payment button.
+- Help now explains that Buy Licence / Extend Licence reopen an existing pending Xanax payment code from the backend/database when one already exists.
+- Help now notes that Your Expiration is limited to 2 manual checks per minute.
+
+### v1.1.228
 
 - Rebuilt the fullscreen Fetch + Calculate results page layout to better match the main RWPH panel layout.
 - Added a cleaner report header with faction, report type, total payout, and members paid.
@@ -634,6 +644,7 @@ When updating RWPH:
 - Removed the old Fetch + Calculate time lock.
 - Fetch + Calculate now shows a popup when a matching cached report already exists.
 - **Use Cached Report** opens the matching cached report.
+- **Delete Cached Report** removes the matching database cached report when a fresh report needs to be created.
 - Cached reports auto-expire and are deleted from the backend/database after 24 hours.
 - Licence verification/check rate limit changed to 2 checks per minute.
 
