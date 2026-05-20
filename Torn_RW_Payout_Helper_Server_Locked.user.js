@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.268
+// @version      1.1.269
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
   // v1.1.268: newsletter buttons use rich clipboard, rendered-copy fallback, plain-text fallback, and manual-copy fallback.
 
   // Change this after hosting your backend online.
@@ -5112,6 +5113,13 @@
       crimson: buildTornFactionNewsletterBundle(rows || [], summary || {}, "crimson"),
       gold: buildTornFactionNewsletterBundle(rows || [], summary || {}, "gold"),
     };
+    const tornNewsletterPlainHrefs = {
+      standard: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.standard.text || "")}`,
+      cyber: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.cyber.text || "")}`,
+      ledger: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.ledger.text || "")}`,
+      crimson: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.crimson.text || "")}`,
+      gold: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.gold.text || "")}`,
+    };
     const tornNewsletterBundlesJson = JSON.stringify(tornNewsletterBundles).replaceAll("<", "\\u003c");
     const newsletterJson = JSON.stringify(newsletterHtml).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list, summary || {});
@@ -6005,13 +6013,13 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-copy-torn-newsletter="standard">Copy Torn Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-copy-torn-newsletter="cyber">Copy Cyber Neon Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-copy-torn-newsletter="ledger">Copy War Ledger Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-copy-torn-newsletter="crimson">Copy Crimson Raid Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-copy-torn-newsletter="gold">Copy Victory Gold Newsletter</button>
-      <p class="newsletter-choice-note">Each newsletter button copies the same payout data with a different Torn-safe report style.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Copy newsletter button, then paste into Torn's faction newsletter editor. Do not paste raw HTML source/code; Torn will show that as text or strip the CSS/background.</p>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(tornNewsletterPlainHrefs.standard)}" download="rwph-torn-newsletter.txt" data-copy-torn-newsletter="standard">Copy/Open Torn Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(tornNewsletterPlainHrefs.cyber)}" download="rwph-torn-newsletter-cyber-neon.txt" data-copy-torn-newsletter="cyber">Copy/Open Cyber Neon Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(tornNewsletterPlainHrefs.ledger)}" download="rwph-torn-newsletter-war-ledger.txt" data-copy-torn-newsletter="ledger">Copy/Open War Ledger Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(tornNewsletterPlainHrefs.crimson)}" download="rwph-torn-newsletter-crimson-raid.txt" data-copy-torn-newsletter="crimson">Copy/Open Crimson Raid Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(tornNewsletterPlainHrefs.gold)}" download="rwph-torn-newsletter-victory-gold.txt" data-copy-torn-newsletter="gold">Copy/Open Victory Gold Newsletter</a>
+      <p class="newsletter-choice-note">Each newsletter link opens a visible copy panel when scripts run. If scripts/clipboard are blocked, it still downloads a Torn-safe text newsletter.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Copy/Open newsletter link, use the visible copy panel, then paste into Torn's normal faction newsletter editor. Do not paste raw HTML source/code; Torn will show that as text or strip the CSS/background.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6197,7 +6205,7 @@
       panel.style.cssText = "position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;background:linear-gradient(180deg,#0f172a,#020617);border:1px solid rgba(125,211,252,.45);border-radius:18px;padding:14px;box-shadow:0 24px 80px rgba(0,0,0,.72);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;";
       panel.innerHTML = [
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">',
-        '<div><b style="font-size:15px;">Manual Newsletter Copy</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Clipboard was blocked. Select/copy this Torn-safe text, or open the styled preview.</div></div>',
+        '<div><b style="font-size:15px;">Torn Newsletter Copy Panel</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Use Copy Text, or select this Torn-safe text manually. Open Styled Preview/Download HTML are optional backups.</div></div>',
         '<button type="button" data-close-manual-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:8px 10px;cursor:pointer;">×</button>',
         '</div>',
         '<textarea style="width:100%;min-height:280px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;">' + escapeHtml(plainText) + '</textarea>',
@@ -6327,17 +6335,18 @@
       btn.disabled = true;
       btn.textContent = "Copying...";
       try {
+        showManualNewsletterCopy(bundle, key);
         const mode = await copyTornNewsletterBundle(bundle);
         if (mode === "rich" || mode === "rich-rendered") {
-          showToast("Styled newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode.", "info");
+          showToast("Newsletter panel opened and styled copy was attempted. Paste into Torn's normal faction newsletter editor, not raw HTML/source mode.", "info");
         } else if (mode === "plain") {
-          showToast("Torn-safe plain newsletter copied. Your browser blocked styled copy, but the text version is ready to paste.", "warn");
+          showToast("Newsletter panel opened and plain text was copied. Paste the text version into Torn's faction newsletter editor.", "info");
         } else {
-          showManualNewsletterCopy(bundle, key);
-          showToast("Clipboard was blocked, so a manual copy panel was opened.", "warn");
+          showToast("Newsletter panel opened. Clipboard was blocked, so use Copy Text or select the text manually.", "warn");
         }
       } catch (err) {
-        showToast("Newsletter copy failed: " + (err && err.message ? err.message : err), "error");
+        showManualNewsletterCopy(bundle, key);
+        showToast("Newsletter panel opened. If auto-copy failed, use Copy Text or select the text manually.", "warn");
       } finally {
         setTimeout(function(){ btn.disabled = false; btn.textContent = oldText; }, 450);
       }
@@ -10051,7 +10060,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Copy Torn Newsletter, Copy Cyber Neon Newsletter, Copy War Ledger Newsletter, Copy Crimson Raid Newsletter, and Copy Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
+              <li><b>Newsletter buttons:</b> Copy/Open Torn Newsletter, Copy/Open Cyber Neon Newsletter, Copy/Open War Ledger Newsletter, Copy/Open Crimson Raid Newsletter, and Copy/Open Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
             </ul>
           </div>
 
@@ -10069,7 +10078,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using Torn-safe Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Copy a newsletter:</b> click one of the Copy newsletter buttons in the results tab.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the Copy/Open newsletter links in the results tab.</li>
               <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
               <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
@@ -10208,7 +10217,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you pasted with the Copy newsletter button into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the Copy/Open newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
             </ul>
           </div>
 
@@ -10834,7 +10843,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Copy Torn Newsletter, Copy Cyber Neon Newsletter, Copy War Ledger Newsletter, Copy Crimson Raid Newsletter, and Copy Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
+              <li><b>Newsletter buttons:</b> Copy/Open Torn Newsletter, Copy/Open Cyber Neon Newsletter, Copy/Open War Ledger Newsletter, Copy/Open Crimson Raid Newsletter, and Copy/Open Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
             </ul>
           </div>
 
@@ -10852,7 +10861,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using Torn-safe Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Copy a newsletter:</b> click one of the Copy newsletter buttons in the results tab.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the Copy/Open newsletter links in the results tab.</li>
               <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
               <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
@@ -10991,7 +11000,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you pasted with the Copy newsletter button into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the Copy/Open newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
             </ul>
           </div>
 
@@ -11141,16 +11150,19 @@
         if (!lastRows.length) return alert("Calculate results first.");
 
         try {
-          const mode = await copyTornFactionNewsletterBundleToClipboard(buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard"));
+          const bundle = buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard");
+          const mode = await copyTornFactionNewsletterBundleToClipboard(bundle);
           if (mode === "rich" || mode === "rich-rendered") {
-            rwphToastPanelInfo(status, "Styled Torn-safe newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode.", "info", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Styled Torn-safe newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode. If Torn strips styling, open the fullscreen results tab and use Copy/Open for the visible text panel.", "info", "RWPH Newsletter");
           } else if (mode === "plain") {
-            rwphToastPanelInfo(status, "Plain Torn-safe newsletter copied. Your browser blocked styled copy, but the text version is ready to paste.", "warn", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Plain Torn-safe newsletter copied. Paste it into Torn's faction newsletter editor. For a visible manual panel, open the fullscreen results tab and use Copy/Open.", "warn", "RWPH Newsletter");
           } else {
-            rwphToastPanelError(status, "Newsletter copy failed. Open the fullscreen results tab and use its manual-copy fallback.", "RWPH Newsletter");
+            createHtmlNewsletter(lastRows, lastSummary || {});
+            rwphToastPanelInfo(status, "Clipboard was blocked, so an HTML preview/download was created. For the manual text panel, open the fullscreen results tab and use Copy/Open Torn Newsletter.", "warn", "RWPH Newsletter");
           }
         } catch (err) {
-          rwphToastPanelError(status, "Newsletter error: " + err.message, "RWPH Newsletter");
+          try { createHtmlNewsletter(lastRows, lastSummary || {}); } catch (_) {}
+          rwphToastPanelError(status, "Newsletter clipboard failed. I created the HTML preview/download if possible. Open the fullscreen results tab for the manual text panel.", "RWPH Newsletter");
         }
         return;
       }
