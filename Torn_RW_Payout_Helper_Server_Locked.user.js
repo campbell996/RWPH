@@ -1,8 +1,10 @@
 // ==UserScript==
-// @name         RWPH
-// @namespace    rwph
-// @version      1.1.278
-// @description  Torn ranked-war payout helper
+// @name         Ranked War Payout Helper
+// @namespace    RankedWarPayoutHelper
+// @author       Evil_Panda_420
+// @version      1.1.274
+// @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
+// @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
@@ -11,17 +13,9 @@
 // @grant        GM_setClipboard
 // @connect      api.torn.com
 // @connect      gooey-eagle-rentable.ngrok-free.dev
-// @run-at       document-idle
+
 (function () {
   "use strict";
-
-  // v1.1.278: compact Torn PDA metadata header kept under parser limit to fix no-header install errors.
-  // v1.1.276: Newsletter buttons open the raw HTML panel inside the results tab instead of Torn faction controls.
-  // v1.1.275: Torn PDA install header rebuilt/validated; standalone .user.js starts with metadata at byte 0.
-  // v1.1.273: Basic/Advanced newsletters now use five different Torn-compatible inline-table HTML layouts and themes based on the uploaded working faction newsletter style.
-  // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
-  // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
-  // v1.1.268: newsletter buttons use rich clipboard, rendered-copy fallback, plain-text fallback, and manual-copy fallback.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -6136,13 +6130,13 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-open-newsletter-controls="standard">Open Torn Newsletter HTML Panel</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-open-newsletter-controls="cyber">Open Cyber Neon HTML Panel</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-open-newsletter-controls="ledger">Open War Ledger HTML Panel</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-open-newsletter-controls="crimson">Open Crimson Raid HTML Panel</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-open-newsletter-controls="gold">Open Victory Gold HTML Panel</button>
-      <p class="newsletter-choice-note">Each newsletter opens the raw HTML code panel directly in this results tab.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a newsletter button, Copy All the raw HTML, then paste it into Torn's faction newsletter HTML/source editor. Use Preview in New Tab to check the layout.</p>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="standard">Open Torn Newsletter Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="cyber">Open Cyber Neon Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="ledger">Open War Ledger Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="crimson">Open Crimson Raid Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="gold">Open Victory Gold Controls</a>
+      <p class="newsletter-choice-note">Each newsletter opens Torn faction controls and shows a RWPH raw HTML panel there.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a newsletter button, then use the RWPH panel on Torn faction controls to Copy All raw HTML or Preview in New Tab.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6226,10 +6220,9 @@
     }
 
     function openNewsletterControlsFromResults(key, html) {
-      // v1.1.276: newsletter panels stay inside the results tab; do not open Torn faction controls.
       storeNewsletterHtmlForControls(key, html);
-      showRwphHtmlNewsletterPanel(html, key);
-      return true;
+      const opened = window.open(rwphNewsletterControlsUrl, "_blank", "noopener,noreferrer");
+      return !!opened;
     }
 
     function money(n) {
@@ -6543,8 +6536,13 @@
       ev.stopPropagation();
       const key = btn.getAttribute("data-open-newsletter-controls") || "standard";
       const htmlCode = (rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[key] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "";
-      openNewsletterControlsFromResults(key, htmlCode);
-      showToast("Newsletter HTML panel opened in this results tab. Use Copy All or Preview in New Tab.", "info");
+      const opened = openNewsletterControlsFromResults(key, htmlCode);
+      if (opened) {
+        showToast("Torn faction newsletter controls opened. Use the RWPH panel there to Copy All raw HTML or Preview in New Tab.", "info");
+      } else {
+        showRwphHtmlNewsletterPanel(htmlCode, key);
+        showToast("Popup was blocked, so the local HTML code panel opened here instead.", "warn");
+      }
     });
 
     document.addEventListener("click", async function(ev) {
@@ -10746,7 +10744,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Open Torn Newsletter HTML Panel, Open Cyber Neon HTML Panel, Open War Ledger HTML Panel, Open Crimson Raid HTML Panel, and Open Victory Gold HTML Panel each open the raw HTML-code panel directly inside the results tab.</li>
+              <li><b>Newsletter buttons:</b> Open Torn Newsletter Controls, Open Cyber Neon Controls, Open War Ledger Controls, Open Crimson Raid Controls, and Open Victory Gold Controls each open Torn faction controls with a raw HTML-code panel for that theme.</li>
             </ul>
           </div>
 
@@ -10903,7 +10901,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> use the RWPH newsletter HTML panel in the results tab and paste with Torn's HTML/source-capable editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> use the RWPH newsletter panel on faction controls and paste with Torn's HTML/source-capable editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</li>
             </ul>
           </div>
 
@@ -11529,7 +11527,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Open Torn Newsletter HTML Panel, Open Cyber Neon HTML Panel, Open War Ledger HTML Panel, Open Crimson Raid HTML Panel, and Open Victory Gold HTML Panel each open the raw HTML-code panel directly inside the results tab.</li>
+              <li><b>Newsletter buttons:</b> Open Torn Newsletter Controls, Open Cyber Neon Controls, Open War Ledger Controls, Open Crimson Raid Controls, and Open Victory Gold Controls each open Torn faction controls with a raw HTML-code panel for that theme.</li>
             </ul>
           </div>
 
@@ -11686,7 +11684,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> use the RWPH newsletter HTML panel in the results tab and paste with Torn's HTML/source-capable editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> use the RWPH newsletter panel on faction controls and paste with Torn's HTML/source-capable editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</li>
             </ul>
           </div>
 
@@ -11839,7 +11837,7 @@
           const htmlCode = buildRwphTornHtmlCodeNewsletter(lastRows, lastSummary || {}, "standard");
           const opened = rwphOpenNewsletterControlsWithHtml(htmlCode, "standard");
           if (opened) {
-            rwphToastPanelInfo(status, "the newsletter HTML panel opened. Use the RWPH panel there to Copy All raw HTML or Preview in New Tab.", "info", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Torn faction newsletter controls opened. Use the RWPH panel there to Copy All raw HTML or Preview in New Tab.", "info", "RWPH Newsletter");
           } else {
             renderNewsletterHtmlControlsPanel({ html: htmlCode, key: "standard", createdAt: Date.now() });
             rwphToastPanelInfo(status, "Popup was blocked, so the RWPH raw HTML panel opened here instead.", "warn", "RWPH Newsletter");
