@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.281**  
+Current package version: **1.1.282**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -601,11 +601,12 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.281
+### v1.1.282
 
-- Fixed raw newsletter panel **Copy All** so it copies directly from the visible full-code textarea selection first.
-- This improves Torn PDA/browser webview support where async clipboard access or hidden textarea copying can be blocked or incomplete.
-- If every clipboard route is blocked, the full raw HTML remains selected for manual copy.
+- Rebuilt the raw newsletter code area from a textarea into a selectable contenteditable code block.
+- **Select All** now uses DOM range selection so the full raw HTML visibly highlights in Torn PDA/webviews.
+- **Copy All** now copies from the stored full HTML source and keeps the full code highlighted if clipboard access is blocked.
+- Added a manual copy prompt fallback when both normal clipboard routes are blocked.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.275
