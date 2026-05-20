@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.273
+// @version      1.1.274
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.274: newsletter buttons open Torn faction controls and inject a raw HTML code panel with Copy All and Preview in New Tab.
   // v1.1.273: Basic/Advanced newsletters now use five different Torn-compatible inline-table HTML layouts and themes based on the uploaded working faction newsletter style.
   // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
   // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
@@ -40,6 +41,7 @@
   const PAYOUT_FORM_SCHEMA_STORAGE_KEY = "rw_payout_helper_payout_form_schema_version";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
   const PAY_ALL_ROWS_FALLBACK_STORAGE_KEY = "rw_payout_helper_pay_all_rows_fallback";
+  const NEWSLETTER_HTML_STORAGE_KEY = "rw_payout_helper_newsletter_html";
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
@@ -4953,6 +4955,111 @@
     return "https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1";
   }
 
+  function rwphFactionNewsletterControlsUrl() {
+    return "https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1";
+  }
+
+  function rwphBuildNewsletterHtmlPayload(htmlCode, key = "standard") {
+    return JSON.stringify({
+      createdAt: Date.now(),
+      key: String(key || "standard"),
+      html: String(htmlCode || ""),
+    });
+  }
+
+  function rwphParseNewsletterHtmlPayload(raw) {
+    if (!raw) return null;
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!parsed || !parsed.html) return null;
+    const createdAt = Number(parsed.createdAt || 0);
+    if (Date.now() - createdAt > 6 * 60 * 60 * 1000) return null;
+    return { html: String(parsed.html || ""), key: String(parsed.key || "standard"), createdAt };
+  }
+
+  function rwphStoreNewsletterHtmlForFactionControls(htmlCode, key = "standard") {
+    const payload = rwphBuildNewsletterHtmlPayload(htmlCode, key);
+    try { GM_setValue(NEWSLETTER_HTML_STORAGE_KEY, payload); } catch (_) {}
+    try { localStorage.setItem(NEWSLETTER_HTML_STORAGE_KEY, payload); } catch (_) {}
+  }
+
+  function rwphGetStoredNewsletterHtmlForFactionControls() {
+    const sources = [];
+    try { sources.push(GM_getValue(NEWSLETTER_HTML_STORAGE_KEY, "")); } catch (_) {}
+    try { sources.push(localStorage.getItem(NEWSLETTER_HTML_STORAGE_KEY) || ""); } catch (_) {}
+    let best = null;
+    for (const raw of sources) {
+      try {
+        const payload = rwphParseNewsletterHtmlPayload(raw);
+        if (payload?.html && (!best || payload.createdAt > best.createdAt)) best = payload;
+      } catch (e) {
+        console.warn("Could not load RWPH newsletter HTML payload:", e);
+      }
+    }
+    return best;
+  }
+
+  function rwphNewsletterFilenameForKey(key = "standard") {
+    const safe = String(key || "standard").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "standard";
+    return `rwph-newsletter-${safe}-html-code.html`;
+  }
+
+  function rwphOpenNewsletterPreviewTab(htmlCode) {
+    const html = String(htmlCode || "");
+    try {
+      const tab = window.open("about:blank", "_blank");
+      if (tab && tab.document) {
+        tab.document.open();
+        tab.document.write(html);
+        tab.document.close();
+        return true;
+      }
+    } catch (e) {
+      console.warn("Could not open newsletter preview tab:", e);
+    }
+    try {
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      return !!opened;
+    } catch (e) {
+      console.warn("Could not open blob newsletter preview:", e);
+      return false;
+    }
+  }
+
+  function rwphDownloadTextFile(filename, text, type = "text/plain") {
+    const blob = new Blob([String(text || "")], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function rwphOpenNewsletterControlsWithHtml(htmlCode, key = "standard") {
+    rwphStoreNewsletterHtmlForFactionControls(htmlCode, key);
+    const url = rwphFactionNewsletterControlsUrl();
+    try {
+      if (typeof GM_openInTab === "function") {
+        GM_openInTab(url, { active: true, insert: true, setParent: true });
+        return true;
+      }
+    } catch (e) {
+      console.warn("GM_openInTab failed for Newsletter controls tab:", e);
+    }
+    try {
+      const tab = window.open(url, "_blank", "noopener,noreferrer");
+      return !!tab;
+    } catch (e) {
+      console.warn("window.open failed for Newsletter controls tab:", e);
+      return false;
+    }
+  }
+
   function rwphPayAllRowAmount(row) {
     const r = row || {};
     const candidates = [
@@ -6030,13 +6137,13 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(rwphNewsletterHtmlHrefs.standard)}" download="rwph-torn-newsletter-html-code.html" data-open-html-newsletter="standard">HTML Code Torn Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(rwphNewsletterHtmlHrefs.cyber)}" download="rwph-torn-newsletter-cyber-neon-html-code.html" data-open-html-newsletter="cyber">HTML Code Cyber Neon Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(rwphNewsletterHtmlHrefs.ledger)}" download="rwph-torn-newsletter-war-ledger-html-code.html" data-open-html-newsletter="ledger">HTML Code War Ledger Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(rwphNewsletterHtmlHrefs.crimson)}" download="rwph-torn-newsletter-crimson-raid-html-code.html" data-open-html-newsletter="crimson">HTML Code Crimson Raid Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(rwphNewsletterHtmlHrefs.gold)}" download="rwph-torn-newsletter-victory-gold-html-code.html" data-open-html-newsletter="gold">HTML Code Victory Gold Newsletter</a>
-      <p class="newsletter-choice-note">Each newsletter opens a full HTML-code panel with the themed layout, preview, copy buttons, and HTML download.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, copy the HTML code, then paste it into Torn's HTML/source-capable faction newsletter editor. Use Copy Rendered Preview only if your Torn editor accepts rich pasted content.</p>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="standard">Open Torn Newsletter Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="cyber">Open Cyber Neon Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="ledger">Open War Ledger Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="crimson">Open Crimson Raid Controls</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1" target="_blank" rel="noopener" data-open-newsletter-controls="gold">Open Victory Gold Controls</a>
+      <p class="newsletter-choice-note">Each newsletter opens Torn faction controls and shows a RWPH raw HTML panel there.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a newsletter button, then use the RWPH panel on Torn faction controls to Copy All raw HTML or Preview in New Tab.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6110,6 +6217,20 @@
     }
 
     storePayAllRowsFallback();
+
+    const rwphNewsletterStorageKey = "rw_payout_helper_newsletter_html";
+    const rwphNewsletterControlsUrl = "https://www.torn.com/factions.php?step=your#/tab=controls&rwphNewsletter=1";
+
+    function storeNewsletterHtmlForControls(key, html) {
+      const payload = JSON.stringify({ createdAt: Date.now(), key: String(key || "standard"), html: String(html || "") });
+      try { localStorage.setItem(rwphNewsletterStorageKey, payload); } catch (e) {}
+    }
+
+    function openNewsletterControlsFromResults(key, html) {
+      storeNewsletterHtmlForControls(key, html);
+      const opened = window.open(rwphNewsletterControlsUrl, "_blank", "noopener,noreferrer");
+      return !!opened;
+    }
 
     function money(n) {
       return "$" + Math.round(Number(n || 0)).toLocaleString();
@@ -6230,7 +6351,7 @@
         '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">',
         '<button type="button" data-manual-copy-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy Text</button>',
         '<button type="button" data-open-newsletter-preview style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Open Styled Preview</button>',
-        '<button type="button" data-download-newsletter-html style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML</button>',
+        '<button type="button" data-download-newsletter-html style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML Backup</button>',
         '</div>'
       ].join('');
       document.body.appendChild(panel);
@@ -6376,9 +6497,9 @@
         '</div>',
         '<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;">',
         '<div style="display:flex;flex-wrap:wrap;gap:8px;">',
-        '<button type="button" data-copy-html-newsletter-code style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy HTML Code</button>',
-        '<button type="button" data-copy-rendered-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Copy Rendered Preview</button>',
-        '<button type="button" data-download-html-newsletter-code style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML</button>',
+        '<button type="button" data-copy-html-newsletter-code style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy All</button>',
+        '<button type="button" data-copy-rendered-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Preview in New Tab</button>',
+        '<button type="button" data-download-html-newsletter-code style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML Backup</button>',
         '</div>',
         '<textarea spellcheck="false" style="width:100%;min-height:230px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;"></textarea>',
         '<div style="font-size:12px;color:#bfdbfe;font-weight:900;">Live preview below:</div>',
@@ -6401,8 +6522,11 @@
           return;
         }
         if (ev.target.closest('[data-copy-rendered-newsletter]')) {
-          const ok = copyRenderedNewsletterHtml(html);
-          showToast(ok ? 'Rendered newsletter copied. Paste into Torn normal editor only if it accepts rich content.' : 'Rendered copy blocked. Use Copy HTML Code instead.', ok ? 'info' : 'warn');
+          const blob = new Blob([html], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const opened = window.open(url, '_blank', 'noopener,noreferrer');
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 10000);
+          showToast(opened ? 'Newsletter preview opened in a new tab.' : 'Preview popup was blocked. Use Download HTML Backup.', opened ? 'info' : 'warn');
           return;
         }
         if (ev.target.closest('[data-download-html-newsletter-code]')) {
@@ -6413,14 +6537,19 @@
     }
 
     document.addEventListener("click", function(ev) {
-      const btn = ev.target && ev.target.closest ? ev.target.closest("[data-open-html-newsletter]") : null;
+      const btn = ev.target && ev.target.closest ? ev.target.closest("[data-open-newsletter-controls]") : null;
       if (!btn) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const key = btn.getAttribute("data-open-html-newsletter") || "standard";
+      const key = btn.getAttribute("data-open-newsletter-controls") || "standard";
       const htmlCode = (rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[key] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "";
-      showRwphHtmlNewsletterPanel(htmlCode, key);
-      showToast("Newsletter HTML code panel opened. Copy HTML Code for Torn HTML/source mode, or Copy Rendered Preview for rich paste.", "info");
+      const opened = openNewsletterControlsFromResults(key, htmlCode);
+      if (opened) {
+        showToast("Torn faction newsletter controls opened. Use the RWPH panel there to Copy All raw HTML or Preview in New Tab.", "info");
+      } else {
+        showRwphHtmlNewsletterPanel(htmlCode, key);
+        showToast("Popup was blocked, so the local HTML code panel opened here instead.", "warn");
+      }
     });
 
     document.addEventListener("click", async function(ev) {
@@ -8128,6 +8257,91 @@
         rwphHidePayAllActionButton(amountBtn, "Amount", payAllUndoStack);
       }
     });
+  }
+
+  function closeNewsletterHtmlControlsPanel() {
+    const old = document.getElementById("rwph-newsletter-controls-panel");
+    if (old) old.remove();
+  }
+
+  function renderNewsletterHtmlControlsPanel(payload) {
+    const htmlCode = String(payload?.html || "");
+    const key = String(payload?.key || "standard");
+    closeNewsletterHtmlControlsPanel();
+    const panel = document.createElement("div");
+    panel.id = "rwph-newsletter-controls-panel";
+    panel.style.cssText = "position:fixed;z-index:2147483647;right:18px;top:92px;width:min(760px,calc(100vw - 28px));max-height:calc(100vh - 112px);overflow:auto;background:linear-gradient(180deg,#08111f,#020617);border:1px solid rgba(56,189,248,.55);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.78);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;";
+    panel.innerHTML = [
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 14px 10px;border-bottom:1px solid rgba(125,211,252,.22);background:rgba(15,23,42,.86);border-radius:18px 18px 0 0;">',
+      '<div><div style="font-size:18px;color:#fff;font-weight:900;line-height:1.2;">RWPH Newsletter HTML Code</div><div style="font-size:12px;color:#bfdbfe;margin-top:4px;font-weight:800;line-height:1.35;">Paste this raw HTML into Torn faction newsletter HTML/source mode. Use Preview in New Tab to check the layout before sending.</div></div>',
+      '<button type="button" data-rwph-newsletter-close style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:8px 10px;cursor:pointer;">×</button>',
+      '</div>',
+      '<div style="padding:12px;display:grid;gap:10px;">',
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;">',
+      '<button type="button" data-rwph-newsletter-copy-all style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy All</button>',
+      '<button type="button" data-rwph-newsletter-preview-tab style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Preview in New Tab</button>',
+      '<button type="button" data-rwph-newsletter-download style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML Backup</button>',
+      '</div>',
+      '<textarea spellcheck="false" data-rwph-newsletter-html-code style="width:100%;min-height:360px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,Menlo,monospace;box-sizing:border-box;white-space:pre;overflow:auto;"></textarea>',
+      '<div style="font-size:12px;color:#bfdbfe;font-weight:800;line-height:1.35;">Tip: after clicking Copy All, paste into the faction newsletter editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</div>',
+      '</div>'
+    ].join("");
+    document.body.appendChild(panel);
+    const ta = panel.querySelector("[data-rwph-newsletter-html-code]");
+    ta.value = htmlCode;
+    ta.focus();
+    ta.select();
+    rwphEnablePanelMoveResize(panel, "#rwph-newsletter-controls-panel > div:first-child");
+
+    panel.addEventListener("click", async (ev) => {
+      if (ev.target.closest?.("[data-rwph-newsletter-close]")) {
+        closeNewsletterHtmlControlsPanel();
+        return;
+      }
+      if (ev.target.closest?.("[data-rwph-newsletter-copy-all]")) {
+        ta.focus();
+        ta.select();
+        try {
+          await copyText(ta.value);
+          rwphShowToast("Newsletter HTML copied. Paste it into Torn faction newsletter HTML/source mode.", "info", 12000, "RWPH Newsletter", panel);
+        } catch (e) {
+          rwphShowToast("Clipboard blocked. The code is selected, so press Ctrl+C or long-press copy.", "warn", 16000, "RWPH Newsletter", panel);
+        }
+        return;
+      }
+      if (ev.target.closest?.("[data-rwph-newsletter-preview-tab]")) {
+        const ok = rwphOpenNewsletterPreviewTab(ta.value);
+        rwphShowToast(ok ? "Newsletter preview opened in a new tab." : "Preview popup was blocked. Allow popups or use Download HTML Backup.", ok ? "info" : "warn", 12000, "RWPH Newsletter", panel);
+        return;
+      }
+      if (ev.target.closest?.("[data-rwph-newsletter-download]")) {
+        rwphDownloadTextFile(rwphNewsletterFilenameForKey(key), ta.value, "text/html");
+      }
+    });
+
+    return panel;
+  }
+
+  function rwphMaybeOpenNewsletterFromFactionControlsUrl() {
+    if (!(window.location.href || "").includes("/factions.php")) return false;
+    if (!(window.location.href || "").includes("rwphNewsletter=1")) return false;
+
+    rwphSetPanelOpenState(false);
+    setLauncherOpenState(false);
+    const mainPanel = document.getElementById("rw-payout-helper");
+    if (mainPanel) mainPanel.remove();
+
+    setTimeout(() => {
+      closePanel();
+      const payload = rwphGetStoredNewsletterHtmlForFactionControls();
+      if (payload?.html) {
+        const panel = renderNewsletterHtmlControlsPanel(payload);
+        rwphConsumeCrossTabPopup("newsletter", panel, 350);
+      } else {
+        rwphShowToast("No RWPH newsletter HTML was found. Go back to the results tab and click a newsletter button again.", "warn", 18000, "RWPH Newsletter");
+      }
+    }, 900);
+    return true;
   }
 
   function rwphMaybeOpenPayAllFromFactionControlsUrl() {
@@ -10537,7 +10751,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each copy a HTML-code payout report theme.</li>
+              <li><b>Newsletter buttons:</b> Open Torn Newsletter Controls, Open Cyber Neon Controls, Open War Ledger Controls, Open Crimson Raid Controls, and Open Victory Gold Controls each open Torn faction controls with a raw HTML-code panel for that theme.</li>
             </ul>
           </div>
 
@@ -10555,7 +10769,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using HTML-code Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Copy a newsletter:</b> click one of the HTML Code newsletter buttons in the results tab.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the newsletter controls buttons in the results tab.</li>
               <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
               <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
@@ -10694,7 +10908,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the HTML Code newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> use the RWPH newsletter panel on faction controls and paste with Torn's HTML/source-capable editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</li>
             </ul>
           </div>
 
@@ -11320,7 +11534,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each copy a HTML-code payout report theme.</li>
+              <li><b>Newsletter buttons:</b> Open Torn Newsletter Controls, Open Cyber Neon Controls, Open War Ledger Controls, Open Crimson Raid Controls, and Open Victory Gold Controls each open Torn faction controls with a raw HTML-code panel for that theme.</li>
             </ul>
           </div>
 
@@ -11338,7 +11552,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using HTML-code Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Copy a newsletter:</b> click one of the HTML Code newsletter buttons in the results tab.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the newsletter controls buttons in the results tab.</li>
               <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
               <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
@@ -11477,7 +11691,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the HTML Code newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> use the RWPH newsletter panel on faction controls and paste with Torn's HTML/source-capable editor. If Torn shows tags as text, switch the Torn editor to HTML/source mode before pasting.</li>
             </ul>
           </div>
 
@@ -11627,19 +11841,16 @@
         if (!lastRows.length) return alert("Calculate results first.");
 
         try {
-          const bundle = buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard");
-          const mode = await copyTornFactionNewsletterBundleToClipboard(bundle);
-          if (mode === "rich" || mode === "rich-rendered") {
-            rwphToastPanelInfo(status, "Styled HTML-code newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode. If Torn strips styling, open the fullscreen results tab and use HTML Code for the visible text panel.", "info", "RWPH Newsletter");
-          } else if (mode === "plain") {
-            rwphToastPanelInfo(status, "Plain HTML-code newsletter copied. Paste it into Torn's faction newsletter editor. For a visible manual panel, open the fullscreen results tab and use HTML Code.", "warn", "RWPH Newsletter");
+          const htmlCode = buildRwphTornHtmlCodeNewsletter(lastRows, lastSummary || {}, "standard");
+          const opened = rwphOpenNewsletterControlsWithHtml(htmlCode, "standard");
+          if (opened) {
+            rwphToastPanelInfo(status, "Torn faction newsletter controls opened. Use the RWPH panel there to Copy All raw HTML or Preview in New Tab.", "info", "RWPH Newsletter");
           } else {
-            createHtmlNewsletter(lastRows, lastSummary || {});
-            rwphToastPanelInfo(status, "Clipboard was blocked, so an HTML preview/download was created. For the manual text panel, open the fullscreen results tab and use HTML Code Torn Newsletter.", "warn", "RWPH Newsletter");
+            renderNewsletterHtmlControlsPanel({ html: htmlCode, key: "standard", createdAt: Date.now() });
+            rwphToastPanelInfo(status, "Popup was blocked, so the RWPH raw HTML panel opened here instead.", "warn", "RWPH Newsletter");
           }
         } catch (err) {
-          try { createHtmlNewsletter(lastRows, lastSummary || {}); } catch (_) {}
-          rwphToastPanelError(status, "Newsletter clipboard failed. I created the HTML preview/download if possible. Open the fullscreen results tab for the manual text panel.", "RWPH Newsletter");
+          rwphToastPanelError(status, "Newsletter controls open failed: " + (err?.message || err), "RWPH Newsletter");
         }
         return;
       }
@@ -12067,6 +12278,7 @@
   syncLauncherButtonVisibility();
   rwphScheduleXanaxPaymentHelperOpen();
   rwphMaybeOpenPayAllFromFactionControlsUrl();
+  rwphMaybeOpenNewsletterFromFactionControlsUrl();
   if (rwphIsTornFactionPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);
   }
