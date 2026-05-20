@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.280
+// @version      1.1.281
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,8 @@
 (function () {
   "use strict";
 
-  // v1.1.280: Copy All now copies directly from the visible raw HTML textarea selection before clipboard fallbacks.
+  // v1.1.281: Copy All uses direct per-panel HTML source, visible editable textarea selection, async clipboard overwrite, execCommand fallback, and prompt fallback.
+  // v1.1.281: Copy All now copies directly from the visible raw HTML textarea selection before clipboard fallbacks.
   // v1.1.278: removed Preview in New Tab buttons from raw HTML newsletter panels.
   // v1.1.277: newsletter buttons open pre-rendered CSS-target raw HTML panels, so opening no longer depends on JS click handlers.
   // v1.1.275: newsletter raw HTML code panel now matches RWPH results panel styling and supports move, resize, size presets, and close.
@@ -5154,13 +5155,15 @@
       <a class="rwph-newsletter-code-close" href="#" title="Close newsletter code panel">×</a>
     </div>
     <div class="rwph-newsletter-code-actions">
-      <button class="btn" type="button" data-rwph-copy-newsletter-panel="${key}">Copy All</button>
+      <button class="btn" type="button" data-rwph-copy-newsletter-panel="${key}" onclick="return window.rwphCopyNewsletterHtmlCodePanel && window.rwphCopyNewsletterHtmlCodePanel('${key}', this);">Copy All</button>
+      <button class="btn secondary" type="button" onclick="return window.rwphSelectNewsletterHtmlCodePanel && window.rwphSelectNewsletterHtmlCodePanel('${key}', this);">Select All</button>
       <a class="btn secondary" href="#" title="Close newsletter code panel">Close Panel</a>
     </div>
     <div class="rwph-newsletter-code-body">
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Raw HTML Code</div>
-        <textarea readonly spellcheck="false" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
+        <textarea spellcheck="false" id="rwph-newsletter-code-textarea-${key}" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
+        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">Tip: if browser copy is blocked, press Select All then use Ctrl+C / long-press Copy.</div>
       </div>
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Live Preview</div>
@@ -5427,7 +5430,8 @@
     .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
     .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
     .rwph-newsletter-code-label{text-align:center;color:#bfdbfe;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
-    .rwph-newsletter-code-box textarea{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+    .rwph-newsletter-code-box textarea{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text;user-select:text;}
+    .rwph-newsletter-copy-status{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#bfdbfe;text-align:center;padding:5px 6px;border:1px solid rgba(125,211,252,.18);border-radius:10px;background:rgba(2,6,23,.48);}
     .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(125,211,252,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(125,211,252,.3);border-left:4px solid rgba(56,189,248,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#eaf6ff!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
     @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
@@ -6233,65 +6237,129 @@
       }
     }
 
-    function copyVisibleTextareaSelection(textarea) {
-      if (!textarea) return false;
+    function rwphNewsletterTextareaForKey(key) {
+      const newsletterKey = key || "standard";
+      return document.getElementById("rwph-newsletter-code-textarea-" + newsletterKey)
+        || document.querySelector('textarea[data-rwph-newsletter-code="' + newsletterKey + '"]');
+    }
+
+    function rwphNewsletterStatusForKey(key) {
+      return document.querySelector('[data-rwph-newsletter-copy-status="' + (key || "standard") + '"]');
+    }
+
+    function rwphSetNewsletterCopyStatus(key, message, good) {
+      const status = rwphNewsletterStatusForKey(key);
+      if (status) {
+        status.textContent = message;
+        status.style.color = good ? "#bbf7d0" : "#fde68a";
+        status.style.borderColor = good ? "rgba(34,197,94,.45)" : "rgba(250,204,21,.45)";
+      }
+    }
+
+    function rwphSelectFullNewsletterTextarea(textarea) {
+      if (!textarea) return "";
       try {
         textarea.removeAttribute("readonly");
+        textarea.readOnly = false;
+        textarea.style.pointerEvents = "auto";
         textarea.focus({ preventScroll: true });
-        textarea.select();
-        try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
-        const ok = document.execCommand && document.execCommand("copy");
-        textarea.setAttribute("readonly", "readonly");
-        return !!ok;
-      } catch (e) {
-        try { textarea.setAttribute("readonly", "readonly"); } catch (_) {}
+      } catch (_) {
+        try { textarea.focus(); } catch (__) {}
+      }
+      try { textarea.select(); } catch (_) {}
+      try { textarea.selectionStart = 0; textarea.selectionEnd = textarea.value.length; } catch (_) {}
+      try { textarea.setSelectionRange(0, textarea.value.length, "forward"); } catch (_) {}
+      return String(textarea.value || "");
+    }
+
+    function rwphPromptManualNewsletterCopy(html) {
+      try {
+        window.prompt("Clipboard copy is blocked here. Press Ctrl+C / long-press Copy, then paste into Torn.", html);
+        return true;
+      } catch (_) {
         return false;
       }
     }
 
-    async function copyFullNewsletterHtmlCode(key, textarea) {
+    function rwphCopyNewsletterHtmlCodePanelSync(key, trigger) {
       const newsletterKey = key || "standard";
+      const textarea = rwphNewsletterTextareaForKey(newsletterKey);
       const fromObject = rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard);
-      const fromTextarea = textarea ? textarea.value : "";
-      const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || fromTextarea || "");
-      if (!html) return false;
+      const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || (textarea ? textarea.value : "") || "");
+      if (!html) {
+        rwphSetNewsletterCopyStatus(newsletterKey, "No HTML code was found for this newsletter.", false);
+        return false;
+      }
       if (textarea && textarea.value !== html) textarea.value = html;
-      if (textarea) {
-        textarea.focus({ preventScroll: true });
-        textarea.select();
-        try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
-      }
-      // Torn PDA/browser webviews can block async clipboard calls, but they usually
-      // allow copying the currently selected visible textarea during the button tap.
-      if (copyVisibleTextareaSelection(textarea)) return true;
+      rwphSelectFullNewsletterTextarea(textarea);
+
+      let syncOk = false;
+      try { syncOk = !!(document.execCommand && document.execCommand("copy")); } catch (_) { syncOk = false; }
+
       if (typeof GM_setClipboard === "function") {
-        try { GM_setClipboard(html, "text"); return true; } catch (_) {}
+        try { GM_setClipboard(html, "text"); syncOk = true; } catch (_) {}
       }
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(html);
-          return true;
-        }
-      } catch (_) {}
-      if (await copyText(html)) return true;
-      // Leave the full code selected for manual long-press / Ctrl+C if every clipboard route is blocked.
-      if (textarea) {
-        textarea.focus({ preventScroll: true });
-        textarea.select();
-        try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
+
+      // Run async clipboard as an overwrite with the full source. Some webviews return
+      // true from execCommand but copy an incomplete selection; this fixes modern browsers.
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(html).then(function() {
+          rwphSetNewsletterCopyStatus(newsletterKey, "Copied full HTML code (" + html.length + " characters).", true);
+          try { showToast("Full newsletter HTML copied.", "info"); } catch (_) {}
+        }).catch(function() {
+          if (syncOk) {
+            rwphSetNewsletterCopyStatus(newsletterKey, "Copy attempted and full code selected (" + html.length + " characters). If paste is incomplete, use Select All then copy manually.", true);
+          } else {
+            rwphSetNewsletterCopyStatus(newsletterKey, "Clipboard blocked. Full code is selected; use Ctrl+C / long-press Copy.", false);
+          }
+        });
       }
+
+      if (!syncOk && !(navigator.clipboard && navigator.clipboard.writeText)) {
+        rwphPromptManualNewsletterCopy(html);
+      }
+
+      rwphSetNewsletterCopyStatus(
+        newsletterKey,
+        syncOk
+          ? "Copy attempted and full code is selected (" + html.length + " characters). Paste now."
+          : "Clipboard blocked. Full code is selected (" + html.length + " characters); use Ctrl+C / long-press Copy.",
+        syncOk
+      );
+      try { if (trigger) { trigger.textContent = syncOk ? "Copied / Selected" : "Selected All"; setTimeout(function(){ trigger.textContent = "Copy All"; }, 1200); } } catch (_) {}
       return false;
     }
 
-    document.addEventListener("click", async function(ev) {
+    window.rwphCopyNewsletterHtmlCodePanel = function(key, trigger) {
+      rwphCopyNewsletterHtmlCodePanelSync(key || "standard", trigger || null);
+      return false;
+    };
+
+    window.rwphSelectNewsletterHtmlCodePanel = function(key, trigger) {
+      const newsletterKey = key || "standard";
+      const textarea = rwphNewsletterTextareaForKey(newsletterKey);
+      const fromObject = rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard);
+      const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || (textarea ? textarea.value : "") || "");
+      if (textarea && html && textarea.value !== html) textarea.value = html;
+      rwphSelectFullNewsletterTextarea(textarea);
+      rwphSetNewsletterCopyStatus(newsletterKey, "Full HTML selected (" + String(textarea && textarea.value || html || "").length + " characters). Use Ctrl+C / long-press Copy if Copy All is blocked.", false);
+      try { if (trigger) { trigger.textContent = "Selected"; setTimeout(function(){ trigger.textContent = "Select All"; }, 1000); } } catch (_) {}
+      return false;
+    };
+
+    async function copyFullNewsletterHtmlCode(key, textarea) {
+      rwphCopyNewsletterHtmlCodePanelSync(key || "standard", null);
+      return true;
+    }
+
+
+    document.addEventListener("click", function(ev) {
       const copyBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-copy-newsletter-panel]") : null;
       if (!copyBtn) return;
       ev.preventDefault();
+      ev.stopPropagation();
       const key = copyBtn.getAttribute("data-rwph-copy-newsletter-panel") || "standard";
-      const ta = document.querySelector('textarea[data-rwph-newsletter-code="' + key + '"]');
-      if (!ta) { showToast("Newsletter code box was not found. Reopen the newsletter panel and try again.", "error"); return; }
-      const ok = await copyFullNewsletterHtmlCode(key, ta);
-      showToast(ok ? "Full newsletter HTML copied. Paste it into Torn's faction newsletter HTML/source editor." : "Copy blocked. Select the code and press Ctrl+C / long-press copy.", ok ? "info" : "warn");
+      window.rwphCopyNewsletterHtmlCodePanel(key, copyBtn);
     });
 
     function copyRenderedHtmlFallback(richHtml, plainText) {
@@ -6558,6 +6626,7 @@
         '</div>',
         '<div class="rwph-html-newsletter-actions" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 10px;flex:0 0 auto;">',
           '<button class="btn" type="button" data-copy-html-newsletter-code>Copy All</button>',
+          '<button class="btn secondary" type="button" data-select-html-newsletter-code>Select All</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="wide">Wide</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="small">Small</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="tall">Tall</button>',
@@ -6566,7 +6635,8 @@
         '<div class="rwph-html-newsletter-body" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-height:0;overflow:auto;flex:1 1 auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36);">',
           '<div style="display:grid;gap:6px;text-align:left;min-height:0;">',
             '<div style="font-size:11px;color:#bfdbfe;font-weight:950;text-transform:uppercase;letter-spacing:.45px;text-align:center;">Raw HTML Code</div>',
-            '<textarea spellcheck="false" style="width:100%;min-height:240px;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;resize:vertical;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);"></textarea>',
+            '<textarea spellcheck="false" data-rwph-newsletter-code="' + (key || 'standard') + '" id="rwph-newsletter-code-textarea-' + (key || 'standard') + '-dynamic" style="width:100%;min-height:240px;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;resize:vertical;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text;user-select:text;"></textarea>',
+            '<div data-rwph-newsletter-copy-status="' + (key || 'standard') + '" style="font-size:11px;color:#bfdbfe;text-align:center;padding:5px 6px;border:1px solid rgba(125,211,252,.18);border-radius:10px;background:rgba(2,6,23,.48);">Tip: if browser copy is blocked, press Select All then use Ctrl+C / long-press Copy.</div>',
           '</div>',
           '<div style="display:grid;gap:6px;text-align:left;min-height:0;">',
             '<div style="font-size:11px;color:#bfdbfe;font-weight:950;text-transform:uppercase;letter-spacing:.45px;text-align:center;">Live Preview</div>',
@@ -6623,9 +6693,12 @@
         if (ev.target.closest('[data-close-html-newsletter]')) { panel.remove(); return; }
         const sizeBtn = ev.target.closest('[data-html-newsletter-size]');
         if (sizeBtn) { applyNewsletterSize(sizeBtn.getAttribute('data-html-newsletter-size') || 'wide'); return; }
+        if (ev.target.closest('[data-select-html-newsletter-code]')) {
+          window.rwphSelectNewsletterHtmlCodePanel(key, ev.target.closest('[data-select-html-newsletter-code]'));
+          return;
+        }
         if (ev.target.closest('[data-copy-html-newsletter-code]')) {
-          const ok = await copyFullNewsletterHtmlCode(key, ta);
-          showToast(ok ? 'Full newsletter HTML copied. Paste it into Torn HTML/source editor.' : 'Copy blocked. Select the code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn');
+          window.rwphCopyNewsletterHtmlCodePanel(key, ev.target.closest('[data-copy-html-newsletter-code]'));
           return;
         }
       });
