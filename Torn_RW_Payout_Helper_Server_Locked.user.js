@@ -1,23 +1,21 @@
 // ==UserScript==
-// @name         Ranked War Payout Helper
-// @namespace    RankedWarPayoutHelper
-// @author       Evil_Panda_420
-// @version      1.1.276
-// @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
-// @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
+// @name         RWPH
+// @namespace    rwph
+// @version      1.1.278
+// @description  Torn ranked-war payout helper
 // @match        https://www.torn.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
 // @grant        GM_setClipboard
-// @run-at       document-idle
 // @connect      api.torn.com
 // @connect      gooey-eagle-rentable.ngrok-free.dev
-// ==/UserScript==
+// @run-at       document-idle
 (function () {
   "use strict";
 
+  // v1.1.278: compact Torn PDA metadata header kept under parser limit to fix no-header install errors.
   // v1.1.276: Newsletter buttons open the raw HTML panel inside the results tab instead of Torn faction controls.
   // v1.1.275: Torn PDA install header rebuilt/validated; standalone .user.js starts with metadata at byte 0.
   // v1.1.273: Basic/Advanced newsletters now use five different Torn-compatible inline-table HTML layouts and themes based on the uploaded working faction newsletter style.
