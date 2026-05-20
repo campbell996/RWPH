@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.257
+// @version      1.1.258
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1656,6 +1656,7 @@
   // v1.1.233: Basic Calculations now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
+    // v1.1.258: Payments Copy Panel rows now carry explicit payout amount aliases and the amount prefill detector is more reliable on Torn banking fields.
     // v1.1.257: Cached reports ignore changed payout fields when matching saved backend/database reports.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
@@ -4944,8 +4945,49 @@
     return "https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1";
   }
 
+  function rwphPayAllRowAmount(row) {
+    const r = row || {};
+    const candidates = [
+      r.payout,
+      r.payoutAmount,
+      r.paymentAmount,
+      r.memberPayment,
+      r.amount,
+      r.payAmount,
+      r.payableAmount,
+      r.money,
+      r.cash,
+    ];
+    for (const candidate of candidates) {
+      const n = Number(candidate);
+      if (Number.isFinite(n) && n > 0) return Math.round(n);
+    }
+    return 0;
+  }
+
+  function rwphNormalizePayAllRow(row) {
+    const r = row || {};
+    const amount = rwphPayAllRowAmount(r);
+    const id = String(r.id || r.tornId || r.userId || "unknown");
+    const name = r.name || r.username || r.memberName || `Unknown ${id}`;
+    return {
+      ...r,
+      id,
+      name,
+      payout: amount,
+      payoutAmount: amount,
+      paymentAmount: amount,
+      memberPayment: amount,
+      amount,
+    };
+  }
+
+  function rwphNormalizePayAllRows(rows) {
+    return (Array.isArray(rows) ? rows : []).map(rwphNormalizePayAllRow);
+  }
+
   function rwphBuildPayAllRowsPayload(rows) {
-    return JSON.stringify({ createdAt: Date.now(), rows: Array.isArray(rows) ? rows : [] });
+    return JSON.stringify({ createdAt: Date.now(), rows: rwphNormalizePayAllRows(rows || []) });
   }
 
   function rwphParsePayAllRowsPayload(raw) {
@@ -4985,7 +5027,7 @@
         console.warn("Could not load Payments rows from one storage source:", e);
       }
     }
-    return best?.rows || [];
+    return rwphNormalizePayAllRows(best?.rows || []);
   }
 
   function rwphOpenPayAllInFactionControls(rows) {
@@ -5036,6 +5078,10 @@
       totalRespect: Number(r.totalRespect ?? r.respect ?? 0),
       respect: Number(r.respect || 0),
       payout: Number(r.payout || 0),
+      payoutAmount: Number(r.payout || 0),
+      paymentAmount: Number(r.payout || 0),
+      memberPayment: Number(r.payout || 0),
+      amount: Number(r.payout || 0),
       totalTrackedHits: Number(r.totalTrackedHits || 0),
       payableEvents: Number(r.payableEvents || 0),
     }));
@@ -7458,7 +7504,7 @@
           ${safeRows.map((r, index) => {
             const name = r.name || `Unknown ${r.id || "unknown"}`;
             const id = String(r.id || "unknown");
-            const payout = Math.round(Number(r.payout || 0));
+            const payout = rwphPayAllRowAmount(r);
             return `
               <div class="rw-pay-all-row">
                 <div class="rw-pay-all-member">${index + 1}. ${esc(name)} [${esc(id)}]<span class="rw-pay-all-payout">${money(payout)}</span></div>
@@ -7515,38 +7561,45 @@
 
   function rwphFindPayAllAmountField() {
     const fields = rwphPayAllEditableFields();
+    const amountRe = /\b(amount|money|cash|balance|dollar|payout|payment|pay|value|funds|give|transfer|deposit|send|add\s*money|add\s*to\s*balance)\b/;
+    const hardNoRe = /\b(message|comment|reason|note|search|filter|api|key|code)\b/;
+    const memberRe = /\b(user|player|member|recipient|username|profile|name|id|torn)\b/;
 
-    const looksLikeAmount = (el) => {
-      const meta = rwphPayAllFieldMeta(el);
+    const fieldTypeScore = (el) => {
       const type = String(el.type || "").toLowerCase();
       const inputMode = String(el.getAttribute?.("inputmode") || "").toLowerCase();
-      if (/\b(user|player|member|recipient|username|profile|name|id|message|comment|reason|note|search|filter)\b/.test(meta)) return false;
-      if (["number", "tel"].includes(type)) return true;
-      if (/\b(numeric|decimal)\b/.test(inputMode)) return true;
-      if (/\b(amount|money|cash|balance|dollar|payout|value|funds|give|transfer|deposit|add\s*money|add\s*to\s*balance)\b/.test(meta)) return true;
-      return false;
+      let score = 0;
+      if (["number", "tel"].includes(type)) score += 10;
+      if (/\b(numeric|decimal)\b/.test(inputMode)) score += 8;
+      if (el.getAttribute?.("role") === "spinbutton") score += 6;
+      if ((el.tagName || "").toLowerCase() === "input" && ["text", "", "tel", "number"].includes(type)) score += 2;
+      return score;
     };
 
     // Best case: Torn exposes useful field text, name, id, placeholder, type, role, or inputmode.
     const scored = fields.map((el, index) => {
       const meta = rwphPayAllFieldMeta(el);
-      const type = String(el.type || "").toLowerCase();
-      const inputMode = String(el.getAttribute?.("inputmode") || "").toLowerCase();
-      let score = 0;
-      if (/\b(amount|money|cash|balance|dollar|payout|value|funds)\b/.test(meta)) score += 14;
-      if (/\b(add\s*money|add\s*to\s*balance|give|transfer|deposit)\b/.test(meta)) score += 8;
-      if (["number", "tel"].includes(type)) score += 8;
-      if (/\b(numeric|decimal)\b/.test(inputMode)) score += 7;
-      if (el.getAttribute?.("role") === "spinbutton") score += 6;
-      if (/[$]/.test(meta)) score += 4;
-      if (/\b(user|player|member|recipient|username|profile|name|id|message|comment|reason|note|search|filter)\b/.test(meta)) score -= 25;
+      const hasAmountWords = amountRe.test(meta) || /[$]/.test(meta);
+      let score = fieldTypeScore(el);
+      if (hasAmountWords) score += 18;
+      if (/\b(add\s*money|add\s*to\s*balance|give|transfer|deposit|send|payment|payout)\b/.test(meta)) score += 8;
+      if (/[$]/.test(meta)) score += 5;
+      // Do not reject an amount field just because the surrounding Torn form also contains member text.
+      // Only penalize member/search words when the field has no money/amount clues.
+      if (memberRe.test(meta) && !hasAmountWords) score -= 18;
+      if (hardNoRe.test(meta) && !hasAmountWords) score -= 20;
       score += Math.min(index, 8) * 0.05;
-      return { el, score };
+      return { el, score, meta, hasAmountWords };
     }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
 
     if (scored[0]?.el) return scored[0].el;
 
-    const numeric = fields.find(looksLikeAmount);
+    const numeric = fields.find((el) => {
+      const meta = rwphPayAllFieldMeta(el);
+      const typeScore = fieldTypeScore(el);
+      if (!typeScore) return false;
+      return !hardNoRe.test(meta) && !/\b(search|filter|message|comment|reason|note)\b/.test(meta);
+    });
     if (numeric) return numeric;
 
     // Last-resort Torn fallback: after the member field is visible, use the next editable field that is not clearly text/member/message/search.
@@ -7556,7 +7609,9 @@
       const meta = rwphPayAllFieldMeta(el);
       const type = String(el.type || "").toLowerCase();
       if (["search", "email", "url"].includes(type)) return false;
-      return !/\b(user|player|member|recipient|username|profile|name|id|message|comment|reason|note|search|filter)\b/.test(meta);
+      if (hardNoRe.test(meta)) return false;
+      if (amountRe.test(meta) || fieldTypeScore(el) > 0) return true;
+      return !memberRe.test(meta);
     });
     return afterMember || null;
   }
@@ -7657,9 +7712,16 @@
   }
 
   async function rwphPrefillPayAllAmount(row) {
-    const value = String(Math.round(Number(row?.payout || 0)));
-    const field = rwphFindPayAllAmountField();
-    const filled = rwphSetPayAllFieldValue(field, value);
+    const value = String(rwphPayAllRowAmount(row));
+    let field = rwphFindPayAllAmountField();
+    let filled = rwphSetPayAllFieldValue(field, value);
+    // Torn can render the amount field shortly after the member field/search selection changes.
+    // Keep the button action immediate, but briefly retry before falling back to copy-only.
+    for (let attempt = 0; !filled && attempt < 6; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      field = rwphFindPayAllAmountField();
+      filled = rwphSetPayAllFieldValue(field, value);
+    }
     await copyText(value).catch(() => false);
     return { filled, value };
   }
@@ -7781,7 +7843,7 @@
   function buildPayoutText(rows) {
     return (rows || [])
       .map((r, index) => {
-        const payout = Math.round(Number(r.payout || 0));
+        const payout = rwphPayAllRowAmount(r);
         const id = String(r.id || "unknown");
         const name = r.name || `Unknown ${id}`;
         return `${index + 1}. ${name} [${id}] — ${money(payout)} — RW payout`;
