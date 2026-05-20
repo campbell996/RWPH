@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.288**  
+Current package version: **1.1.290**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -601,11 +601,26 @@ When updating RWPH:
 
 ## Recent Changelog
 
+### v1.1.290
+
+- Newsletter payout cards now show a compact rank badge again, plus player name and payout amount.
+- Newsletter **All Result Stats** sections were simplified to only show **Member Payout**, **Per Hit/Per Point Amount**, and **Payable Hits**.
+- Kept all five newsletter styles and the phone-friendly compact layout.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.289
+
+- Simplified newsletter payout user cards so they only show the player name and payout amount.
+- Removed per-player stat grids, ranks, IDs, metric blocks, share values, and extra details from the payout cards themselves.
+- Kept full Basic/Advanced result stats in the newsletter summary/stat sections outside the payout cards.
+- Applied the simplified payout-card layout to all 5 newsletter themes.
+- Updated README, terms, server version, package version, and userscript version.
+
 ### v1.1.288
 
 - Made generated newsletter HTML more phone/Torn PDA friendly.
-- Compacted payout user cards to roughly half the previous height by tightening padding, font sizes, and spacing.
-- Changed payout cards to a compact 3-column stat grid while keeping the full Basic/Advanced stat detail set.
+- Compacted payout user cards to roughly one-quarter of the previous size by tightening padding, font sizes, and spacing.
+- Changed payout cards to a compact 4-column stat grid while keeping the full Basic/Advanced stat detail set.
 - Reduced newsletter max widths and section spacing for better mobile fit.
 - Kept panel scrollbars and kept generated newsletter HTML free of scrollbar/overflow CSS.
 - Updated README, terms, server version, package version, and userscript version.
