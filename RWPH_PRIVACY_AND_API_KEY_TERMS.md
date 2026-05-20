@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.262**
+Version: **1.1.264**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -322,6 +322,17 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.264
+
+- Result tabs now hide **Removed Left-Member Hits** when **Include members who left the faction** is ticked.
+- The removed-hit stat still shows when former members are excluded.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.263
+
+- Fixed the removed-left-member hit counter so hybrid Basic and Advanced results count former-member hits after report and attack-log data are merged.
+- Updated cache matching version to avoid reusing old cached reports with the incorrect removed-hit total.
 
 ### v1.1.262
 - Added an off-by-default **Include members who left the faction** checkbox in both Basic Calculations and Advanced Calculations.

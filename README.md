@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.262**  
+Current package version: **1.1.264**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -600,6 +600,18 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.264
+
+- Result tabs now hide **Removed Left-Member Hits** when **Include members who left the faction** is ticked.
+- The removed-hit stat still shows when former members are excluded, so users can see how many hits were removed.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.263
+
+- Fixed **Removed Left-Member Hits** showing `0` in hybrid Basic/Advanced results when former members were already filtered inside report/attack-log sub-calculations.
+- Hybrid Basic and Advanced now defer the current-faction filter until after report rows and attack-log extras are merged, so removed hits are counted correctly when **Include members who left the faction** is unticked.
+- Updated cache matching version so new reports do not reuse old cached results with the incorrect removed-hit counter.
 
 ### v1.1.262
 - Added an off-by-default **Include members who left the faction** checkbox inside both Basic Calculations and Advanced Calculations.

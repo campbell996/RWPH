@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.262
+// @version      1.1.264
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5092,6 +5092,8 @@
     const overallTotalPayout = rwphSummaryOverallTotalPayout(summary, list);
     const perHitAmount = rwphSummaryPerHitAmount(summary, list);
     const perPointAmount = pointsMode ? rwphSummaryPerHitAmount(summary, list) : 0;
+    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
+    const removedLeftFactionHits = Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0);
     const totalPayout = memberPayout;
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
@@ -6025,7 +6027,7 @@
       ${pointsMode ? `<div class="summary-card"><span>Enemy War Hospital Hits</span><b>${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}</b></div>` : ""}
       ${pointsMode ? `<div class="summary-card"><span>Enemy Hospital Bonus</span><b>${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)}</b></div>` : ""}
       <div class="summary-card"><span>${pointsMode ? "Fair Bonus" : "Payable"}</span><b>${pointsMode ? Number(summary?.totalFairFightBonusPoints || 0).toFixed(2) : Number(summary?.calcMeta?.payableEvents || 0)}</b></div>
-      <div class="summary-card"><span>Removed Left-Member Hits</span><b>${Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0)}</b></div>
+      ${includeLeftFactionMembers ? "" : `<div class="summary-card"><span>Removed Left-Member Hits</span><b>${removedLeftFactionHits}</b></div>`}
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
 
@@ -7393,6 +7395,8 @@
   function renderRows(rows, summary) {
     if (!rows || !rows.length) return `<div class="rw-muted">No payable or tracked attacks found.</div>`;
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
+    const removedLeftFactionHits = Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0);
 
     return `
       <div class="rw-summary">
@@ -7407,8 +7411,8 @@
         <b>Assists:</b> ${Number(summary?.totalAssists || 0)}<br>
         <b>Outside hits:</b> ${Number(summary?.totalOutsideHits || 0)} |
         <b>Retaliation hits:</b> ${Number(summary?.totalRetaliationHits || 0)}<br>
-        <b>Tracked hits:</b> ${Number(summary?.totalTrackedHits || 0)} |
-        <b>Removed left-member hits:</b> ${Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0)}<br>
+        <b>Tracked hits:</b> ${Number(summary?.totalTrackedHits || 0)}${includeLeftFactionMembers ? "" : ` |
+        <b>Removed left-member hits:</b> ${removedLeftFactionHits}`}<br>
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)}<br>
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
         <b>Skipped failed:</b> ${Number(summary?.calcMeta?.skippedFailed || 0)}<br>
