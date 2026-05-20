@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.294
+// @version      1.1.295
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.295: Test Newsletter keeps compact code but restores the full results stat set for 150-member testing.
   // v1.1.294: all newsletters use compact-code HTML; test newsletter repeats to 150 members.
   // v1.1.292: added results-tab Test Newsletter raw HTML panel with repeated members for mobile/long-newsletter testing.
   // v1.1.291: generated newsletter HTML is fluid-width with no fixed table widths to prevent white mobile scrollbars.
@@ -8627,11 +8628,35 @@
       ${items.reduce((out, item, idx) => idx % 2 === 0 ? out + statPair(item, items[idx + 1] || ["", ""], idx / 2) : out, "")}
     </table>`;
 
-    const newsletterStats = [
+    const baseNewsletterStats = [
       ["Member Payout", money(m.memberPayout), `${m.list.length} paid members`],
       [perUnitLabel, money(m.perUnitAmount), perUnitSub],
       ["Payable Hits", String(m.totalPayableEvents || 0), modeLabel],
     ];
+    const fullTestNewsletterStats = [
+      ["Member Payout", money(m.memberPayout), `${m.list.length} paid members`],
+      ["Total Payout", money(m.overallTotalPayout), "full payout record"],
+      [perUnitLabel, money(m.perUnitAmount), perUnitSub],
+      [metricLabel, Number(m.totalWeight || 0).toFixed(2), m.pointsMode ? "total points" : "total weight"],
+      ["Payable Hits", String(m.totalPayableEvents || 0), modeLabel],
+      ["War Hits", String(m.totalHits || 0), `${m.totalAssists || 0} assists`],
+      ["Outside Hits", String(m.totalOutsideHits || 0), `${m.totalRetaliationHits || 0} retals`],
+      ["Tracked Hits", String(m.totalTrackedHits || 0), "unique tracked hits"],
+      [m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits", m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits || 0), "left-member setting"],
+      ["Total Respect", Number(m.totalRespect || 0).toFixed(2), "ranked-war total"],
+      ["Pay Respect", Number(m.totalPayRespect || 0).toFixed(2), "payable respect"],
+      ["Fetched Attacks", String(m.attacksFetched || 0), "server pull"],
+      ["Names Loaded", String(m.nameCount || 0), "member matches"],
+      ...(m.pointsMode ? [
+        ["Own Hosp", String(m.totalOwnFactionHospitalizingHits || 0), `${Number(m.totalOwnFactionHospitalBonusPoints || 0).toFixed(2)} bonus pts`],
+        ["Enemy Hosp", String(m.totalEnemyFactionHospitalizingHits || 0), `${Number(m.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)} bonus pts`],
+        ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2), "Avg FF bonus"],
+        ["Advanced Mode", "Points", "weighted score payout"],
+      ] : [
+        ["Basic Mode", "Per Hit", "fixed included hits"],
+      ]),
+    ];
+    const newsletterStats = summary?.testNewsletter ? fullTestNewsletterStats : baseNewsletterStats;
 
     const statGrid = statTable(newsletterStats);
     const barTable = statGrid;
