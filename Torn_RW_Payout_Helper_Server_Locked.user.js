@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.279
+// @version      1.1.280
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.279: removed Torn newsletter marker comments from raw HTML and fixed Copy All to copy the full raw code.
+  // v1.1.280: Copy All now copies directly from the visible raw HTML textarea selection before clipboard fallbacks.
   // v1.1.278: removed Preview in New Tab buttons from raw HTML newsletter panels.
   // v1.1.277: newsletter buttons open pre-rendered CSS-target raw HTML panels, so opening no longer depends on JS click handlers.
   // v1.1.275: newsletter raw HTML code panel now matches RWPH results panel styling and supports move, resize, size presets, and close.
@@ -6233,21 +6233,54 @@
       }
     }
 
+    function copyVisibleTextareaSelection(textarea) {
+      if (!textarea) return false;
+      try {
+        textarea.removeAttribute("readonly");
+        textarea.focus({ preventScroll: true });
+        textarea.select();
+        try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
+        const ok = document.execCommand && document.execCommand("copy");
+        textarea.setAttribute("readonly", "readonly");
+        return !!ok;
+      } catch (e) {
+        try { textarea.setAttribute("readonly", "readonly"); } catch (_) {}
+        return false;
+      }
+    }
+
     async function copyFullNewsletterHtmlCode(key, textarea) {
       const newsletterKey = key || "standard";
       const fromObject = rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard);
       const fromTextarea = textarea ? textarea.value : "";
       const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || fromTextarea || "");
+      if (!html) return false;
       if (textarea && textarea.value !== html) textarea.value = html;
       if (textarea) {
-        textarea.focus();
+        textarea.focus({ preventScroll: true });
         textarea.select();
         try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
       }
+      // Torn PDA/browser webviews can block async clipboard calls, but they usually
+      // allow copying the currently selected visible textarea during the button tap.
+      if (copyVisibleTextareaSelection(textarea)) return true;
       if (typeof GM_setClipboard === "function") {
         try { GM_setClipboard(html, "text"); return true; } catch (_) {}
       }
-      return await copyText(html);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(html);
+          return true;
+        }
+      } catch (_) {}
+      if (await copyText(html)) return true;
+      // Leave the full code selected for manual long-press / Ctrl+C if every clipboard route is blocked.
+      if (textarea) {
+        textarea.focus({ preventScroll: true });
+        textarea.select();
+        try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
+      }
+      return false;
     }
 
     document.addEventListener("click", async function(ev) {
