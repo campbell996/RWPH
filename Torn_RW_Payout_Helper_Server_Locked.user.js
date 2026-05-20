@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.293
+// @version      1.1.294
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,8 +18,8 @@
 (function () {
   "use strict";
 
-  // v1.1.293: compact long/test newsletters so 100-member raw HTML is shorter for Torn limits.
-  // v1.1.292: added results-tab Test Newsletter raw HTML panel with 100 repeated members for mobile/long-newsletter testing.
+  // v1.1.294: all newsletters use compact-code HTML; test newsletter repeats to 150 members.
+  // v1.1.292: added results-tab Test Newsletter raw HTML panel with repeated members for mobile/long-newsletter testing.
   // v1.1.291: generated newsletter HTML is fluid-width with no fixed table widths to prevent white mobile scrollbars.
   // v1.1.290: newsletter payout cards show rank badge plus name/payout, and All Result Stats is reduced to Member Payout, Per Hit/Point Amount, and Payable Hits.
   // v1.1.289: ultra-compacted mobile newsletter payout cards to roughly one-quarter size.
@@ -5136,12 +5136,12 @@
       totalRespect: 0,
       avgFairFight: 1,
     }];
-    const rwphNewsletterTestRows = Array.from({ length: 100 }, (_, idx) => ({
+    const rwphNewsletterTestRows = Array.from({ length: 150 }, (_, idx) => ({
       ...rwphNewsletterSourceRows[idx % rwphNewsletterSourceRows.length],
     }));
     const rwphNewsletterTestSummary = {
       ...(summary || {}),
-      nameCount: 100,
+      nameCount: 150,
       testNewsletter: true,
     };
     const tornNewsletterBundles = {
@@ -5153,11 +5153,11 @@
       test100: buildTornFactionNewsletterBundle(rwphNewsletterTestRows, rwphNewsletterTestSummary, "standard"),
     };
     const rwphNewsletterHtmlCode = {
-      standard: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard")),
-      cyber: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "cyber")),
-      ledger: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "ledger")),
-      crimson: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "crimson")),
-      gold: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "gold")),
+      standard: rwphCleanNewsletterHtmlCode(buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, "standard")),
+      cyber: rwphCleanNewsletterHtmlCode(buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, "cyber")),
+      ledger: rwphCleanNewsletterHtmlCode(buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, "ledger")),
+      crimson: rwphCleanNewsletterHtmlCode(buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, "crimson")),
+      gold: rwphCleanNewsletterHtmlCode(buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, "gold")),
       test100: rwphCleanNewsletterHtmlCode(buildRwphTornCompactCodeNewsletter(rwphNewsletterTestRows, rwphNewsletterTestSummary, "standard")),
     };
     const rwphNewsletterHtmlCodeJson = JSON.stringify(rwphNewsletterHtmlCode).replaceAll("<", "\\u003c");
@@ -5175,7 +5175,7 @@
       ledger: "War Ledger Newsletter",
       crimson: "Crimson Raid Newsletter",
       gold: "Victory Gold Newsletter",
-      test100: "Test Newsletter - 100 Members",
+      test100: "Test Newsletter - 150 Members",
     };
     const rwphNewsletterPanelHtml = ["standard", "cyber", "ledger", "crimson", "gold", "test100"].map((key) => {
       const htmlCode = rwphCleanNewsletterHtmlCode(rwphNewsletterHtmlCode[key] || "");
@@ -6125,7 +6125,7 @@
       <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="#rwph-newsletter-code-panel-ledger">HTML Code War Ledger Newsletter</a>
       <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="#rwph-newsletter-code-panel-crimson">HTML Code Crimson Raid Newsletter</a>
       <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="#rwph-newsletter-code-panel-gold">HTML Code Victory Gold Newsletter</a>
-      <a class="btn secondary newsletter-top-btn" id="newsletterTest100Btn" href="#rwph-newsletter-code-panel-test100">HTML Code Test Newsletter (100 Members)</a>
+      <a class="btn secondary newsletter-top-btn" id="newsletterTest100Btn" href="#rwph-newsletter-code-panel-test100">HTML Code Test Newsletter (150 Members)</a>
       <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab. The test newsletter repeats the existing result rows until it has 100 members so you can test long mobile newsletters.</p>
       <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, then manually copy the raw HTML code. On computer, right-click the code box, choose Select All, then press CTRL+C. On phone/Torn PDA, hold the code box, choose Select All, then Copy. Paste it into Torn faction newsletter controls in the Source code tab.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
@@ -8306,9 +8306,7 @@
   }
 
   function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
-    if ((Array.isArray(rows) && rows.length >= 80) || !!summary?.testNewsletter) {
-      return buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, themeKey);
-    }
+    return buildRwphTornCompactCodeNewsletter(rows || [], summary || {}, themeKey);
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
     const metricLabel = m.pointsMode ? "Points" : "Weight";
@@ -8551,7 +8549,7 @@
   }
 
   // v1.1.293: compact long/test newsletter builder. Keeps the same summary + payout data,
-  // but uses short table markup so 100-member test newsletters can fit Torn limits.
+  // but uses short table markup so 150-member test newsletters can fit Torn limits.
   function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
