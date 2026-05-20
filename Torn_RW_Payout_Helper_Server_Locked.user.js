@@ -13,7 +13,7 @@
 // @grant        GM_setClipboard
 // @connect      api.torn.com
 // @connect      gooey-eagle-rentable.ngrok-free.dev
-
+// ==/UserScript==
 (function () {
   "use strict";
 
