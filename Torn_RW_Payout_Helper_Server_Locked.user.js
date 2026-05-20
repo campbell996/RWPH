@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.267
+// @version      1.1.268
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -10,6 +10,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
+// @grant        GM_setClipboard
 // @connect      api.torn.com
 // @connect      gooey-eagle-rentable.ngrok-free.dev
 // ==/UserScript==
@@ -17,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.267: fixed Removed Left-Member Hits to count only calculation-included hits for Basic/Advanced.
+  // v1.1.268: newsletter buttons use rich clipboard, rendered-copy fallback, plain-text fallback, and manual-copy fallback.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -6133,6 +6134,31 @@
       }
     }
 
+    function copyRenderedHtmlFallback(richHtml, plainText) {
+      if (!richHtml || !document.body || !document.createRange) return false;
+      const holder = document.createElement("div");
+      holder.setAttribute("contenteditable", "true");
+      holder.setAttribute("aria-hidden", "true");
+      holder.style.cssText = "position:fixed;left:-9999px;top:0;width:900px;max-width:900px;background:#fff;color:#000;pointer-events:none;user-select:text;-webkit-user-select:text;";
+      holder.innerHTML = richHtml;
+      document.body.appendChild(holder);
+      const selection = window.getSelection && window.getSelection();
+      let ok = false;
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(holder);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        ok = document.execCommand("copy");
+      } catch (e) {
+        ok = false;
+      }
+      try { selection && selection.removeAllRanges(); } catch (_) {}
+      holder.remove();
+      if (!ok && plainText) return false;
+      return !!ok;
+    }
+
     async function copyTornNewsletterBundle(bundle) {
       const richHtml = String(bundle && bundle.html || "");
       const plainText = String(bundle && bundle.text || richHtml || "");
@@ -6147,8 +6173,55 @@
           return "rich";
         } catch (e) {}
       }
+      if (richHtml && copyRenderedHtmlFallback(richHtml, plainText)) return "rich-rendered";
       const ok = await copyText(plainText);
       return ok ? "plain" : "failed";
+    }
+
+    function openNewsletterPreview(bundle) {
+      const richHtml = String(bundle && bundle.html || newsletterHtml || "");
+      const blob = new Blob([richHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 8000);
+      return !!opened;
+    }
+
+    function showManualNewsletterCopy(bundle, key) {
+      const old = document.getElementById("rwphManualNewsletterCopyPanel");
+      if (old) old.remove();
+      const plainText = String(bundle && bundle.text || "");
+      const richHtml = String(bundle && bundle.html || newsletterHtml || "");
+      const panel = document.createElement("div");
+      panel.id = "rwphManualNewsletterCopyPanel";
+      panel.style.cssText = "position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;background:linear-gradient(180deg,#0f172a,#020617);border:1px solid rgba(125,211,252,.45);border-radius:18px;padding:14px;box-shadow:0 24px 80px rgba(0,0,0,.72);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;";
+      panel.innerHTML = [
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">',
+        '<div><b style="font-size:15px;">Manual Newsletter Copy</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Clipboard was blocked. Select/copy this Torn-safe text, or open the styled preview.</div></div>',
+        '<button type="button" data-close-manual-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:8px 10px;cursor:pointer;">×</button>',
+        '</div>',
+        '<textarea style="width:100%;min-height:280px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;">' + escapeHtml(plainText) + '</textarea>',
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">',
+        '<button type="button" data-manual-copy-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy Text</button>',
+        '<button type="button" data-open-newsletter-preview style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Open Styled Preview</button>',
+        '<button type="button" data-download-newsletter-html style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML</button>',
+        '</div>'
+      ].join('');
+      document.body.appendChild(panel);
+      const ta = panel.querySelector("textarea");
+      ta.focus();
+      ta.select();
+      panel.addEventListener("click", async function(ev) {
+        if (ev.target.closest("[data-close-manual-newsletter]")) { panel.remove(); return; }
+        if (ev.target.closest("[data-manual-copy-newsletter]")) {
+          ta.focus(); ta.select();
+          const ok = await copyText(ta.value);
+          showToast(ok ? "Newsletter text copied." : "Select the text and press Ctrl+C / long-press copy.", ok ? "info" : "warn");
+          return;
+        }
+        if (ev.target.closest("[data-open-newsletter-preview]")) { openNewsletterPreview({ html: richHtml, text: plainText }); return; }
+        if (ev.target.closest("[data-download-newsletter-html]")) { downloadText("rwph-newsletter-" + String(key || "standard") + ".html", richHtml, "text/html"); return; }
+      });
     }
 
     function showToast(message, mode) {
@@ -6255,12 +6328,13 @@
       btn.textContent = "Copying...";
       try {
         const mode = await copyTornNewsletterBundle(bundle);
-        if (mode === "rich") {
-          showToast("Styled newsletter copied. Paste it into Torn's faction newsletter editor, not into HTML/source code mode. Torn may still strip some CSS, but raw HTML will not be pasted as text.", "info");
+        if (mode === "rich" || mode === "rich-rendered") {
+          showToast("Styled newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode.", "info");
         } else if (mode === "plain") {
-          showToast("Torn-safe plain newsletter copied. Your browser blocked rich HTML clipboard copy, so paste this text version into the faction newsletter editor.", "warn");
+          showToast("Torn-safe plain newsletter copied. Your browser blocked styled copy, but the text version is ready to paste.", "warn");
         } else {
-          showToast("Could not copy the newsletter. Try opening this results page in a normal browser tab and press the button again.", "error");
+          showManualNewsletterCopy(bundle, key);
+          showToast("Clipboard was blocked, so a manual copy panel was opened.", "warn");
         }
       } catch (err) {
         showToast("Newsletter copy failed: " + (err && err.message ? err.message : err), "error");
@@ -8150,6 +8224,48 @@
     };
   }
 
+  function rwphCopyRenderedHtmlFallback(richHtml) {
+    if (!richHtml || !document.body || !document.createRange) return false;
+    const holder = document.createElement("div");
+    holder.setAttribute("contenteditable", "true");
+    holder.setAttribute("aria-hidden", "true");
+    holder.style.cssText = "position:fixed;left:-9999px;top:0;width:900px;max-width:900px;background:#fff;color:#000;pointer-events:none;user-select:text;-webkit-user-select:text;";
+    holder.innerHTML = richHtml;
+    document.body.appendChild(holder);
+    const selection = window.getSelection && window.getSelection();
+    let ok = false;
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(holder);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      ok = document.execCommand("copy");
+    } catch (e) { ok = false; }
+    try { selection && selection.removeAllRanges(); } catch (_) {}
+    holder.remove();
+    return !!ok;
+  }
+
+  function rwphPlainClipboardFallback(plainText) {
+    try {
+      if (typeof GM_setClipboard === "function") {
+        GM_setClipboard(String(plainText || ""), "text");
+        return true;
+      }
+    } catch (_) {}
+    const ta = document.createElement("textarea");
+    ta.value = String(plainText || "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
+    ta.remove();
+    return !!ok;
+  }
+
   async function copyTornFactionNewsletterBundleToClipboard(bundle) {
     const richHtml = String(bundle && bundle.html || "");
     const plainText = String(bundle && bundle.text || richHtml || "");
@@ -8164,20 +8280,12 @@
         return "rich";
       } catch (e) {}
     }
+    if (richHtml && rwphCopyRenderedHtmlFallback(richHtml)) return "rich-rendered";
     try {
       await navigator.clipboard.writeText(plainText);
       return "plain";
     } catch (e) {
-      const ta = document.createElement("textarea");
-      ta.value = plainText;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      return ok ? "plain" : "failed";
+      return rwphPlainClipboardFallback(plainText) ? "plain" : "failed";
     }
   }
 
@@ -11034,12 +11142,12 @@
 
         try {
           const mode = await copyTornFactionNewsletterBundleToClipboard(buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard"));
-          if (mode === "rich") {
+          if (mode === "rich" || mode === "rich-rendered") {
             rwphToastPanelInfo(status, "Styled Torn-safe newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode.", "info", "RWPH Newsletter");
           } else if (mode === "plain") {
-            rwphToastPanelInfo(status, "Plain Torn-safe newsletter copied. Your browser blocked rich HTML clipboard copy, but the text version is ready to paste.", "warn", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Plain Torn-safe newsletter copied. Your browser blocked styled copy, but the text version is ready to paste.", "warn", "RWPH Newsletter");
           } else {
-            rwphToastPanelError(status, "Newsletter copy failed. Try from the fullscreen results tab or a normal browser tab.", "RWPH Newsletter");
+            rwphToastPanelError(status, "Newsletter copy failed. Open the fullscreen results tab and use its manual-copy fallback.", "RWPH Newsletter");
           }
         } catch (err) {
           rwphToastPanelError(status, "Newsletter error: " + err.message, "RWPH Newsletter");
