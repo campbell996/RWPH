@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.276
+// @version      1.1.277
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.276: fixed result-tab newsletter buttons so they always call the raw HTML panel opener and show a fallback error panel if needed.
+  // v1.1.277: newsletter buttons open pre-rendered CSS-target raw HTML panels, so opening no longer depends on JS click handlers.
   // v1.1.275: newsletter raw HTML code panel now matches RWPH results panel styling and supports move, resize, size presets, and close.
   // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
   // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
@@ -5131,6 +5131,43 @@
       crimson: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.crimson || "")}`,
       gold: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.gold || "")}`,
     };
+    const rwphNewsletterPanelLabels = {
+      standard: "Torn Newsletter",
+      cyber: "Cyber Neon Newsletter",
+      ledger: "War Ledger Newsletter",
+      crimson: "Crimson Raid Newsletter",
+      gold: "Victory Gold Newsletter",
+    };
+    const rwphNewsletterPanelHtml = ["standard", "cyber", "ledger", "crimson", "gold"].map((key) => {
+      const htmlCode = rwphNewsletterHtmlCode[key] || "";
+      const label = rwphNewsletterPanelLabels[key] || "Newsletter";
+      const targetId = `rwph-newsletter-code-panel-${key}`;
+      return `
+  <section class="rwph-newsletter-code-panel" id="${targetId}" aria-label="${esc(label)} raw HTML code panel">
+    <div class="rwph-newsletter-code-head">
+      <div>
+        <div class="rwph-newsletter-code-title">${esc(label)} HTML Code</div>
+        <div class="rwph-newsletter-code-note">This panel is already in the results tab. Copy all HTML, paste it into Torn's faction newsletter HTML/source editor, or preview it in a new tab.</div>
+      </div>
+      <a class="rwph-newsletter-code-close" href="#" title="Close newsletter code panel">×</a>
+    </div>
+    <div class="rwph-newsletter-code-actions">
+      <button class="btn" type="button" data-rwph-copy-newsletter-panel="${key}">Copy All</button>
+      <a class="btn secondary" href="${esc(rwphNewsletterHtmlHrefs[key] || '#')}" target="_blank" rel="noopener" data-rwph-preview-newsletter-panel="${key}">Preview in New Tab</a>
+      <a class="btn secondary" href="#" title="Close newsletter code panel">Close Panel</a>
+    </div>
+    <div class="rwph-newsletter-code-body">
+      <div class="rwph-newsletter-code-box">
+        <div class="rwph-newsletter-code-label">Raw HTML Code</div>
+        <textarea readonly spellcheck="false" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
+      </div>
+      <div class="rwph-newsletter-code-box">
+        <div class="rwph-newsletter-code-label">Live Preview</div>
+        <div class="rwph-newsletter-code-preview">${htmlCode}</div>
+      </div>
+    </div>
+  </section>`;
+    }).join("\n");
     const tornNewsletterPlainHrefs = {
       standard: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.standard.text || "")}`,
       cyber: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.cyber.text || "")}`,
@@ -5379,6 +5416,20 @@
     .newsletter-top-btn { margin-top:0; max-width:none; align-self:stretch; }
     .newsletter-choice-note { margin:0 0 2px; color:#d7d7d7; font-size:11px; font-weight:800; line-height:1.35; }
     .newsletter-use-note { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(184,136,89,.22); background:rgba(34,24,18,.64); color:#ead7bd; font-size:11px; font-weight:800; line-height:1.38; text-align:center; }
+    .rwph-newsletter-code-panel{display:none;position:fixed;z-index:2147483646;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 28px));height:min(820px,calc(100vh - 28px));max-height:calc(100vh - 28px);overflow:hidden;box-sizing:border-box;border-radius:22px;border:1px solid rgba(56,189,248,.52);background:linear-gradient(180deg,rgba(15,23,42,.99),rgba(2,6,23,.98));box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 45px rgba(56,189,248,.16);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;padding:14px;}
+    .rwph-newsletter-code-panel:target{display:flex;flex-direction:column;gap:10px;}
+    .rwph-newsletter-code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid rgba(125,211,252,.22);border-radius:16px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(8,47,73,.68));box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+    .rwph-newsletter-code-title{font:950 15px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.35px;text-transform:uppercase;color:#f8fafc;text-shadow:0 0 16px rgba(56,189,248,.22);}
+    .rwph-newsletter-code-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#bfdbfe;margin-top:3px;}
+    .rwph-newsletter-code-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+    .rwph-newsletter-code-actions .btn{width:100%;}
+    .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
+    .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
+    .rwph-newsletter-code-label{text-align:center;color:#bfdbfe;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
+    .rwph-newsletter-code-box textarea{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+    .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(125,211,252,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+    .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(125,211,252,.3);border-left:4px solid rgba(56,189,248,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#eaf6ff!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
+    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
     .close-hint { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.58); color:#cbd5e1; font-size:11px; font-weight:800; line-height:1.35; text-align:center; }
     .results-action-zone { display:grid; gap:8px; margin:10px 0 0; padding-top:12px; border-top:1px solid rgba(125,211,252,.18); }
     .results-action-zone .btn { width:100%; }
@@ -6031,15 +6082,17 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-open-html-newsletter="standard" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('standard', this); return false;">HTML Code Torn Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-open-html-newsletter="cyber" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('cyber', this); return false;">HTML Code Cyber Neon Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-open-html-newsletter="ledger" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('ledger', this); return false;">HTML Code War Ledger Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-open-html-newsletter="crimson" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('crimson', this); return false;">HTML Code Crimson Raid Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-open-html-newsletter="gold" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('gold', this); return false;">HTML Code Victory Gold Newsletter</button>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="#rwph-newsletter-code-panel-standard">HTML Code Torn Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="#rwph-newsletter-code-panel-cyber">HTML Code Cyber Neon Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="#rwph-newsletter-code-panel-ledger">HTML Code War Ledger Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="#rwph-newsletter-code-panel-crimson">HTML Code Crimson Raid Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="#rwph-newsletter-code-panel-gold">HTML Code Victory Gold Newsletter</a>
       <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab.</p>
       <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, press <b>Copy All</b>, then paste the HTML into Torn's HTML/source-capable faction newsletter editor. Use <b>Preview in New Tab</b> to inspect the layout before posting.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
+
+    ${rwphNewsletterPanelHtml}
 
     <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
@@ -6160,6 +6213,19 @@
         return ok;
       }
     }
+
+    document.addEventListener("click", async function(ev) {
+      const copyBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-copy-newsletter-panel]") : null;
+      if (!copyBtn) return;
+      ev.preventDefault();
+      const key = copyBtn.getAttribute("data-rwph-copy-newsletter-panel") || "standard";
+      const ta = document.querySelector('textarea[data-rwph-newsletter-code="' + key + '"]');
+      if (!ta) { showToast("Newsletter code box was not found. Reopen the newsletter panel and try again.", "error"); return; }
+      ta.focus();
+      ta.select();
+      const ok = await copyText(ta.value);
+      showToast(ok ? "Newsletter HTML copied. Paste it into Torn's faction newsletter HTML/source editor." : "Copy blocked. Select the code and press Ctrl+C / long-press copy.", ok ? "info" : "warn");
+    });
 
     function copyRenderedHtmlFallback(richHtml, plainText) {
       if (!richHtml || !document.body || !document.createRange) return false;
