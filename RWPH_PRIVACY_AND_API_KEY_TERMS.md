@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.264**
+Version: **1.1.266**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -322,6 +322,19 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.266
+
+- Removed former-member bonus points from totals when **Include members who left the faction** is unticked.
+- Bonus-only values such as war-faction retal bonus, own-faction hospital bonus, enemy war-faction hospital bonus, and fair-fight bonus are stripped with the former member, but they do **not** increase **Removed Left-Member Hits**.
+- Kept **Removed Left-Member Hits** as a unique tracked-hit count only.
+- Applied the fix to both Basic Calculations and Advanced Calculations, including cached-report reopening.
+
+### v1.1.265
+
+- Fixed **Removed Left-Member Hits** over-counting by counting unique tracked hits only. Bonus-only stats such as war-faction retal bonus, hospital bonus, and fair-fight bonus are no longer added as extra removed hits.
+- Applied the corrected removed-left-member hit counter to both Basic Calculations and Advanced Calculations.
+- Updated newsletter output to show the corrected **Removed Left-Member Hits** stat when former members are excluded.
 
 ### v1.1.264
 

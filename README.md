@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.264**  
+Current package version: **1.1.266**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -600,6 +600,21 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.266
+
+- Removed former-member bonus points from totals when **Include members who left the faction** is unticked.
+- Bonus-only values such as war-faction retal bonus, own-faction hospital bonus, enemy war-faction hospital bonus, and fair-fight bonus are stripped with the former member, but they do **not** increase **Removed Left-Member Hits**.
+- Kept **Removed Left-Member Hits** as a unique tracked-hit count only.
+- Applied the fix to both **Basic Calculations** and **Advanced Calculations**, including cached-report reopening.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.265
+
+- Fixed **Removed Left-Member Hits** over-counting by counting unique tracked hits only. Bonus-only stats such as war-faction retal bonus, hospital bonus, and fair-fight bonus are no longer added as extra removed hits.
+- Applied the corrected removed-left-member hit counter to both **Basic Calculations** and **Advanced Calculations**.
+- Updated Torn-safe newsletters and HTML newsletter themes to show the corrected **Removed Left-Member Hits** stat when former members are excluded.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.264
 

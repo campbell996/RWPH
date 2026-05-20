@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.264
+// @version      1.1.266
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -16,6 +16,8 @@
 
 (function () {
   "use strict";
+
+  // v1.1.266: removed former-member bonus points without counting bonuses as Removed Left-Member Hits.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -8033,12 +8035,14 @@
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
+    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
+    const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
     return {
       list, pointsMode, memberPayout, overallTotalPayout, totalWeight, perUnitAmount,
       totalHits, totalAssists, totalOutsideHits, totalRetaliationHits, totalTrackedHits,
       totalPayableEvents, totalEnemyFactionHospitalizingHits, totalEnemyFactionHospitalBonusPoints,
       totalOwnFactionHospitalizingHits, totalOwnFactionHospitalBonusPoints, totalFairFightBonusPoints,
-      totalRespect, totalPayRespect, generatedAt: new Date().toLocaleString(),
+      totalRespect, totalPayRespect, includeLeftFactionMembers, removedLeftFactionHits, generatedAt: new Date().toLocaleString(),
       factionName: summary?.factionName || summary?.faction?.name || "Faction",
       attacksFetched: safeNumber(summary?.attacksFetched),
       nameCount: safeNumber(summary?.nameCount),
@@ -8073,6 +8077,7 @@
     lines.push(`${perUnitLabel}: ${money(m.perUnitAmount)} ${perUnitSub}`);
     lines.push(`${metricLabel}: ${m.totalWeight.toFixed(2)} · Paid Members: ${m.list.length}`);
     lines.push(`War Hits: ${m.totalHits} · Assists: ${m.totalAssists} · Outside: ${m.totalOutsideHits} · Retals: ${m.totalRetaliationHits}`);
+    if (!m.includeLeftFactionMembers) lines.push(`Removed Left-Member Hits: ${m.removedLeftFactionHits}`);
     if (m.pointsMode) {
       lines.push(`Own Hosp: ${m.totalOwnFactionHospitalizingHits} (${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts) · Enemy Hosp: ${m.totalEnemyFactionHospitalizingHits} (${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} pts)`);
       lines.push(`Fair Bonus: ${m.totalFairFightBonusPoints.toFixed(2)} pts`);
@@ -8124,6 +8129,7 @@
       <table style="width:100%;border-collapse:separate;border-spacing:6px;margin-bottom:10px;"><tbody>
         <tr>${card("Member Payout", money(m.memberPayout), `${m.list.length} members paid`)}${card("Total Payout", money(m.overallTotalPayout), "full payout record")}${card(perUnitLabel, money(m.perUnitAmount), perUnitSub)}${card(metricLabel, m.totalWeight.toFixed(2), m.pointsMode ? "total points" : "total weight")}</tr>
         <tr>${card("War Hits", String(m.totalHits), `${m.totalAssists} assists`)}${card("Outside Hits", String(m.totalOutsideHits), `${m.totalRetaliationHits} retals`)}${card("Tracked", String(m.totalTrackedHits), `${m.totalPayableEvents} payable`)}${card("Total Respect", m.totalRespect.toFixed(2), "ranked war report")}</tr>
+        ${!m.includeLeftFactionMembers ? `<tr>${card("Removed Left-Member Hits", String(m.removedLeftFactionHits), "excluded former-member hits")}${card("Paid Members", String(m.list.length), "current faction results")}${card("Fetched Attacks", String(m.attacksFetched), "server calculation")}${card("Names Loaded", String(m.nameCount), "member matches")}</tr>` : ""}
         ${m.pointsMode ? `<tr>${card("Own Hosp", String(m.totalOwnFactionHospitalizingHits), `${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Enemy Hosp", String(m.totalEnemyFactionHospitalizingHits), `${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Fair Bonus", m.totalFairFightBonusPoints.toFixed(2), "Avg FF bonus")}${card("Pay Respect", m.totalPayRespect.toFixed(2), "payable respect")}</tr>` : ""}
       </tbody></table>
       <div style="overflow-x:auto;border:1px solid ${t.line};border-radius:12px;background:${t.panel};">
@@ -8224,6 +8230,8 @@
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
+    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
+    const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
     const maxWeight = Math.max(1, ...list.map((r) => r.weight));
     const generatedAt = new Date().toLocaleString();
@@ -8586,6 +8594,7 @@
         ${statCard("War Hits", String(totalHits), `${totalAssists} assists`)}
         ${statCard("Outside Hits", String(totalOutsideHits), `${totalRetaliationHits} retals`)}
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
+        ${!includeLeftFactionMembers ? statCard("Removed Left-Member Hits", String(removedLeftFactionHits), "excluded former-member hits") : ""}
         ${pointsMode ? statCard("Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), `${totalEnemyFactionHospitalBonusPoints.toFixed(2)} enemy bonus points`) : ""}
         ${pointsMode ? statCard("Own Hospital Hits", String(totalOwnFactionHospitalizingHits), `${totalOwnFactionHospitalBonusPoints.toFixed(2)} own bonus points`) : ""}
         ${pointsMode ? statCard("Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit") : ""}
@@ -8685,6 +8694,8 @@
     const totalOwnFactionHospitalBonusPoints = safeNumber(summary?.totalHospitalBonusPoints ?? summary?.totalOwnFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.hospitalBonusPoints, 0);
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
+    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
+    const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
     const generatedAt = new Date().toLocaleString();
     const topRows = [...list].sort((a, b) => b.payout - a.payout).slice(0, 8);
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
@@ -8703,6 +8714,7 @@
       ["War Hits", String(totalHits), totalAssists + " assists"],
       ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
       ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
+      ...(!includeLeftFactionMembers ? [["Removed Left-Member Hits", String(removedLeftFactionHits), "excluded former-member hits"]] : []),
       ...(pointsMode ? [["Own Hospital Hits", String(totalOwnFactionHospitalizingHits), totalOwnFactionHospitalBonusPoints.toFixed(2) + " own bonus points"], ["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"], ["Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit"]] : []),
       [pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2), pointsMode ? "contribution score" : "weighted contribution"],
       ["Total Respect", totalRespect.toFixed(2), "ranked-war report"],
