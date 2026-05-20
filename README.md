@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.259**  
+Current package version: **1.1.260**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -603,11 +603,12 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.259
-- Fixed Payments Copy Panel amount handoff so each row carries explicit `payout`, `payoutAmount`, `paymentAmount`, `memberPayment`, and `amount` values.
-- Improved Torn faction-controls amount field detection so the **Amount** button is more reliable when the form text contains both member and money labels.
-- Amount buttons now briefly retry field detection after click, because Torn can render the money field after the member field/search area updates.
-- Payment rows still copy the amount even if Torn blocks direct field prefill.
+### v1.1.260
+- Basic and Advanced calculation results now automatically remove members who are not in your current faction member list at calculation/open time.
+- Ranked-war report rows, attack-log fallback rows, hybrid report rows, cached result tabs, CSV exports, newsletters, and Payments Copy Panel rows all use the filtered current-member result list.
+- If former members are removed, RWPH adds a warning naming the removed Torn IDs where available.
+- Cache keys include the current-member filter mode so new reports stay separated from older calculation behavior.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.257
 
