@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.272
+// @version      1.1.273
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.272: Basic/Advanced newsletters now use five different Torn-compatible inline-table HTML layouts and themes based on the uploaded working faction newsletter style.
+  // v1.1.273: Basic/Advanced newsletters now use five different Torn-compatible inline-table HTML layouts and themes based on the uploaded working faction newsletter style.
   // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
   // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
   // v1.1.268: newsletter buttons use rich clipboard, rendered-copy fallback, plain-text fallback, and manual-copy fallback.
@@ -8219,13 +8219,14 @@
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
     const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
     const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
+    const factionName = String(summary?.factionName || summary?.faction?.name || "Faction");
+    const newsletterTitle = `${factionName} Payout Newsletter`;
     return {
       list, pointsMode, memberPayout, overallTotalPayout, totalWeight, perUnitAmount,
       totalHits, totalAssists, totalOutsideHits, totalRetaliationHits, totalTrackedHits,
       totalPayableEvents, totalEnemyFactionHospitalizingHits, totalEnemyFactionHospitalBonusPoints,
       totalOwnFactionHospitalizingHits, totalOwnFactionHospitalBonusPoints, totalFairFightBonusPoints,
-      totalRespect, totalPayRespect, includeLeftFactionMembers, removedLeftFactionHits, generatedAt: new Date().toLocaleString(),
-      factionName: summary?.factionName || summary?.faction?.name || "Faction",
+      totalRespect, totalPayRespect, includeLeftFactionMembers, removedLeftFactionHits, factionName, newsletterTitle, generatedAt: new Date().toLocaleString(),
       attacksFetched: safeNumber(summary?.attacksFetched),
       nameCount: safeNumber(summary?.nameCount),
     };
@@ -8250,7 +8251,7 @@
     const perUnitSub = m.pointsMode ? "per weighted Point" : "per weighted hit";
     const divider = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
     const lines = [];
-    lines.push(`${t.icon} ${t.title}`);
+    lines.push(`${t.icon} ${m.newsletterTitle}`);
     lines.push(`Ranked War Payout Helper · ${m.factionName}`);
     lines.push(`Generated: ${m.generatedAt}`);
     lines.push(divider);
@@ -8305,7 +8306,7 @@
     return `<div style="background:${t.bg};color:${t.text};font-family:Arial,Helvetica,sans-serif;padding:16px;border:1px solid ${t.line};border-radius:14px;max-width:1100px;margin:0 auto;text-align:center;">
       <div style="background:${t.panel};border:1px solid ${t.line};border-radius:14px;padding:14px;margin-bottom:12px;">
         <div style="font-size:12px;color:${t.muted};font-weight:900;letter-spacing:1px;text-transform:uppercase;">Ranked War Payout Helper · ${esc(m.factionName)}</div>
-        <div style="font-size:24px;font-weight:900;color:${t.text};margin:4px 0;">${esc(t.icon)} ${esc(t.title)}</div>
+        <div style="font-size:24px;font-weight:900;color:${t.text};margin:4px 0;">${esc(t.icon)} ${esc(m.newsletterTitle)}</div>
         <div style="font-size:12px;color:${t.muted};">Generated ${esc(m.generatedAt)} · ${m.list.length} paid members</div>
       </div>
       <table style="width:100%;border-collapse:separate;border-spacing:6px;margin-bottom:10px;"><tbody>
@@ -8477,7 +8478,7 @@
         <table width="620" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:620px; border-collapse:collapse; background-color:${theme.outer}; border:1px solid ${theme.line};">
           <tr>
             <td style="padding:22px 18px; background-color:${theme.header}; border-bottom:2px solid ${theme.strongLine}; text-align:center;">
-              <div style="font-size:26px; font-weight:bold; color:${theme.accent}; letter-spacing:1px; font-family:Arial, Helvetica, sans-serif; line-height:1.25;">${esc(theme.icon)} ${esc(theme.title)}</div>
+              <div style="font-size:26px; font-weight:bold; color:${theme.accent}; letter-spacing:1px; font-family:Arial, Helvetica, sans-serif; line-height:1.25;">${esc(theme.icon)} ${esc(m.newsletterTitle)}</div>
               <div style="font-size:13px; color:${theme.soft}; margin-top:6px; font-family:Arial, Helvetica, sans-serif; line-height:1.35;">Ranked War Payout Helper • ${m.pointsMode ? "Advanced Calculations" : "Basic Calculations"} • Payments</div>
             </td>
           </tr>
@@ -8561,7 +8562,7 @@
 
 
 
-  // v1.1.272: final newsletter HTML-code builder override. Each of the 5 newsletter buttons now uses a different Torn-safe table layout, not only a different colour palette.
+  // v1.1.273: final newsletter HTML-code builder override. Each of the 5 newsletter buttons now uses a different Torn-safe table layout, not only a different colour palette.
   function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
@@ -8631,7 +8632,7 @@
       <tr><td style="padding:10px;background-color:${theme.panelA};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• Contact leadership if your payout looks wrong.</td></tr>
     </table>`;
     const wrapper = (inner, max = 620) => `<!-- TORN NEWSLETTER START -->\n<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">\n<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;"><tr><td align="center" style="padding:18px 8px;">\n<table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};">${inner}</table>\n</td></tr></table>\n</div>\n<!-- TORN NEWSLETTER END -->`;
-    const headerClassic = `<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;"><div style="font-size:26px;font-weight:bold;color:${theme.accent};letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;line-height:1.25;">${esc(theme.icon)} ${esc(theme.title)}</div><div style="font-size:13px;color:${theme.soft};margin-top:6px;font-family:Arial,Helvetica,sans-serif;line-height:1.35;">Ranked War Payout Helper • ${esc(modeLabel)} • Payments</div></td></tr>`;
+    const headerClassic = `<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;"><div style="font-size:26px;font-weight:bold;color:${theme.accent};letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;line-height:1.25;">${esc(theme.icon)} ${esc(m.newsletterTitle)}</div><div style="font-size:13px;color:${theme.soft};margin-top:6px;font-family:Arial,Helvetica,sans-serif;line-height:1.35;">Ranked War Payout Helper • ${esc(modeLabel)} • Payments</div></td></tr>`;
     const top3 = m.list.slice(0,3);
     const topCards = top3.map((r, idx) => {
       const metric = m.pointsMode ? r.points : r.weight;
@@ -8657,15 +8658,15 @@
     }
 
     if (key === "ledger") {
-      return wrapper(`<tr><td style="padding:18px;background-color:${theme.header};border-bottom:1px solid ${theme.strongLine};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="font-family:Georgia,'Times New Roman',serif;color:${theme.accent};font-size:25px;font-weight:bold;">${esc(theme.title)}</td><td style="font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:12px;text-align:right;">${esc(modeLabel)}<br>RWPH War Ledger</td></tr></table></td></tr><tr><td style="padding:14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "33.33%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelA, "33.33%", perUnitSub)} ${cell(removedLabel, removedValue, theme.panelA, "33.33%")}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Signed Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 720);
+      return wrapper(`<tr><td style="padding:18px;background-color:${theme.header};border-bottom:1px solid ${theme.strongLine};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="font-family:Georgia,'Times New Roman',serif;color:${theme.accent};font-size:25px;font-weight:bold;">${esc(m.newsletterTitle)}</td><td style="font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:12px;text-align:right;">${esc(modeLabel)}<br>RWPH War Ledger</td></tr></table></td></tr><tr><td style="padding:14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "33.33%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelA, "33.33%", perUnitSub)} ${cell(removedLabel, removedValue, theme.panelA, "33.33%")}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Signed Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 720);
     }
 
     if (key === "crimson") {
-      return wrapper(`<tr><td style="padding:16px 18px;background-color:${theme.header};border-bottom:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:24px;color:${theme.accent};font-weight:bold;text-transform:uppercase;letter-spacing:1px;">${esc(theme.title)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;">Raid payout command report • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:12px 18px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("War Hits", String(m.totalHits), theme.panelA, "25%")} ${cell("Tracked", String(m.totalTrackedHits), theme.panelB, "25%")} ${cell(removedLabel, removedValue, theme.panelA, "25%")} ${cell("Members", String(m.list.length), theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 18px 14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No top payouts.</td>`}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${miniTable}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 700);
+      return wrapper(`<tr><td style="padding:16px 18px;background-color:${theme.header};border-bottom:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:24px;color:${theme.accent};font-weight:bold;text-transform:uppercase;letter-spacing:1px;">${esc(m.newsletterTitle)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;">Raid payout command report • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:12px 18px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("War Hits", String(m.totalHits), theme.panelA, "25%")} ${cell("Tracked", String(m.totalTrackedHits), theme.panelB, "25%")} ${cell(removedLabel, removedValue, theme.panelA, "25%")} ${cell("Members", String(m.list.length), theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 18px 14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No top payouts.</td>`}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${miniTable}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 700);
     }
 
     if (key === "gold") {
-      return wrapper(`<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:28px;color:${theme.accent};font-weight:bold;">${esc(theme.icon)} ${esc(theme.title)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;margin-top:4px;">Victory payout board • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No podium rows.</td>`}</tr></table></td></tr><tr><td style="padding:0 16px 14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "25%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelB, "25%", perUnitSub)} ${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "25%")} ${cell(removedLabel, removedValue, theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 16px 18px 16px;">${fullLedgerTable("Full Victory Payouts")}</td></tr><tr><td style="padding:0 16px 18px 16px;">${noticeTable("left")}</td></tr>`, 740);
+      return wrapper(`<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:28px;color:${theme.accent};font-weight:bold;">${esc(theme.icon)} ${esc(m.newsletterTitle)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;margin-top:4px;">Victory payout board • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No podium rows.</td>`}</tr></table></td></tr><tr><td style="padding:0 16px 14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "25%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelB, "25%", perUnitSub)} ${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "25%")} ${cell(removedLabel, removedValue, theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 16px 18px 16px;">${fullLedgerTable("Full Victory Payouts")}</td></tr><tr><td style="padding:0 16px 18px 16px;">${noticeTable("left")}</td></tr>`, 740);
     }
 
     return wrapper(`${headerClassic}<tr><td style="padding:18px;color:${theme.text};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:18px;font-weight:bold;color:#ffffff;margin-bottom:8px;">War Payout Results</div><div style="color:${theme.soft};line-height:1.5;">Final ranked-war payout results are below. Member Payout is the amount split across members. Total Payout is shown as the full payout record amount. Review all rows before sending funds.</div></td></tr><tr><td style="padding:0 18px;"><div style="border-top:1px solid ${theme.line};height:1px;line-height:1px;">&nbsp;</div></td></tr><tr><td style="padding:18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">War Summary</div>${summaryGrid}</td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">Important Notices</div>${noticeTable("left")}</td></tr><tr><td style="padding:16px 18px;background-color:${theme.bg};border-top:1px solid ${theme.line};text-align:center;"><div style="font-size:12px;color:${theme.muted};font-family:Arial,Helvetica,sans-serif;">Generated by Ranked War Payout Helper</div><div style="font-size:12px;color:${theme.soft};margin-top:4px;font-family:Arial,Helvetica,sans-serif;">Stay active. Hit hard. Get paid.</div></td></tr>`, 620);
@@ -8840,7 +8841,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RWPH Ranked War Payout Newsletter</title>
+  <title>RWPH ${esc(String(summary?.factionName || summary?.faction?.name || "Faction"))} Payout Newsletter</title>
   <style>
     :root {
       --bg:#020617;
@@ -9136,7 +9137,7 @@
       <div class="eyebrow">Ranked War Payout Helper</div>
       <div class="title">
         <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
-        <h1>Ranked War Payout Newsletter</h1>
+        <h1>${esc(String(summary?.factionName || summary?.faction?.name || "Faction"))} Payout Newsletter</h1>
       </div>
       <div class="subtitle">Generated ${esc(generatedAt)} · ${list.length} paid members</div>
     </header>
@@ -9256,7 +9257,7 @@
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
     const isCyber = themeKey === "cyber";
 
-    const title = isCyber ? "Cyber Neon Payout Newsletter" : "War Ledger Payout Newsletter";
+    const title = String(summary?.factionName || summary?.faction?.name || "Faction") + " Payout Newsletter";
     const subtitle = isCyber
       ? "Neon command-board version for Discord posts, faction news, or a high-impact war recap."
       : "Formal war-ledger version for clean records, faction archives, or officer reports.";
@@ -9364,7 +9365,7 @@
 
   function buildWarPayoutNewsletterCrimsonHtml(rows, summary) {
     return themedTornNewsletterHtml(rows, summary || {}, {
-      title: "Crimson Raid Payout Newsletter",
+      title: String(summary?.factionName || summary?.faction?.name || "Faction") + " Payout Newsletter",
       subtitle: "Aggressive red raid-board version for high-impact faction war recaps",
       css: `
     /* v1.1.129 Crimson Raid newsletter theme */
@@ -9385,7 +9386,7 @@
 
   function buildWarPayoutNewsletterVictoryGoldHtml(rows, summary) {
     return themedTornNewsletterHtml(rows, summary || {}, {
-      title: "Victory Gold Payout Newsletter",
+      title: String(summary?.factionName || summary?.faction?.name || "Faction") + " Payout Newsletter",
       subtitle: "Premium gold trophy version for faction announcements and end-of-war highlights",
       css: `
     /* v1.1.129 Victory Gold newsletter theme */
@@ -9404,7 +9405,7 @@
     });
   }
 
-  // v1.1.272: hard-route every newsletter path to the new Torn-compatible inline table HTML template.
+  // v1.1.273: hard-route every newsletter path to the new Torn-compatible inline table HTML template.
   function buildWarPayoutNewsletterHtml(rows, summary) {
     return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard");
   }
