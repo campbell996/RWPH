@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.260
+// @version      1.1.262
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1398,7 +1398,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-include-left-members", "rw-points-include-left-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1430,7 +1430,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-include-left-members", "rw-points-include-left-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -1657,6 +1657,7 @@
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
     // v1.1.258: Payments Copy Panel rows now carry explicit payout amount aliases and the amount prefill detector is more reliable on Torn banking fields.
+    // v1.1.261: newsletter buttons now copy Torn-safe rich/plain newsletter content instead of requiring raw HTML source in faction newsletters.
     // v1.1.260: Payments Copy Panel amount prefill is scoped to the current selected member/payment form so the next payout does not land in the previous amount field.
     // v1.1.257: Cached reports ignore changed payout fields when matching saved backend/database reports.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
@@ -5099,6 +5100,14 @@
     const ledgerNewsletterHtml = buildWarPayoutNewsletterLedgerHtml(rows || [], summary || {});
     const crimsonNewsletterHtml = buildWarPayoutNewsletterCrimsonHtml(rows || [], summary || {});
     const goldNewsletterHtml = buildWarPayoutNewsletterVictoryGoldHtml(rows || [], summary || {});
+    const tornNewsletterBundles = {
+      standard: buildTornFactionNewsletterBundle(rows || [], summary || {}, "standard"),
+      cyber: buildTornFactionNewsletterBundle(rows || [], summary || {}, "cyber"),
+      ledger: buildTornFactionNewsletterBundle(rows || [], summary || {}, "ledger"),
+      crimson: buildTornFactionNewsletterBundle(rows || [], summary || {}, "crimson"),
+      gold: buildTornFactionNewsletterBundle(rows || [], summary || {}, "gold"),
+    };
+    const tornNewsletterBundlesJson = JSON.stringify(tornNewsletterBundles).replaceAll("<", "\\u003c");
     const newsletterJson = JSON.stringify(newsletterHtml).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list, summary || {});
     const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvText)}`;
@@ -5991,13 +6000,13 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(newsletterHref)}" download="rwph-war-payout-newsletter.html" target="_blank" rel="noopener">Create Torn Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(cyberNewsletterHref)}" download="rwph-war-payout-newsletter-cyber-neon.html" target="_blank" rel="noopener">Create Cyber Neon Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(ledgerNewsletterHref)}" download="rwph-war-payout-newsletter-war-ledger.html" target="_blank" rel="noopener">Create War Ledger Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(crimsonNewsletterHref)}" download="rwph-war-payout-newsletter-crimson-raid.html" target="_blank" rel="noopener">Create Crimson Raid Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(goldNewsletterHref)}" download="rwph-war-payout-newsletter-victory-gold.html" target="_blank" rel="noopener">Create Victory Gold Newsletter</a>
-      <p class="newsletter-choice-note">Each newsletter button creates the same payout data with a different report style/theme.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click the style you want, open the downloaded HTML report, copy the finished newsletter content or HTML source your Torn faction newsletter editor accepts, paste it into the faction newsletter, then preview/review before sending.</p>
+      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-copy-torn-newsletter="standard">Copy Torn Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-copy-torn-newsletter="cyber">Copy Cyber Neon Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-copy-torn-newsletter="ledger">Copy War Ledger Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-copy-torn-newsletter="crimson">Copy Crimson Raid Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-copy-torn-newsletter="gold">Copy Victory Gold Newsletter</button>
+      <p class="newsletter-choice-note">Each newsletter button copies the same payout data with a different Torn-safe report style.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Copy newsletter button, then paste into Torn's faction newsletter editor. Do not paste raw HTML source/code; Torn will show that as text or strip the CSS/background.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6016,6 +6025,7 @@
       ${pointsMode ? `<div class="summary-card"><span>Enemy War Hospital Hits</span><b>${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}</b></div>` : ""}
       ${pointsMode ? `<div class="summary-card"><span>Enemy Hospital Bonus</span><b>${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)}</b></div>` : ""}
       <div class="summary-card"><span>${pointsMode ? "Fair Bonus" : "Payable"}</span><b>${pointsMode ? Number(summary?.totalFairFightBonusPoints || 0).toFixed(2) : Number(summary?.calcMeta?.payableEvents || 0)}</b></div>
+      <div class="summary-card"><span>Removed Left-Member Hits</span><b>${Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0)}</b></div>
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
 
@@ -6058,6 +6068,7 @@
     const rows = ${rowsJson};
     const summary = ${summaryJson};
     const newsletterHtml = ${newsletterJson};
+    const tornNewsletterBundles = ${tornNewsletterBundlesJson};
     const csvText = ${JSON.stringify(csvText).replaceAll("<", "\\u003c")};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
 
@@ -6116,6 +6127,24 @@
         ta.remove();
         return ok;
       }
+    }
+
+    async function copyTornNewsletterBundle(bundle) {
+      const richHtml = String(bundle && bundle.html || "");
+      const plainText = String(bundle && bundle.text || richHtml || "");
+      if (richHtml && navigator.clipboard && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/html": new Blob([richHtml], { type: "text/html" }),
+              "text/plain": new Blob([plainText], { type: "text/plain" })
+            })
+          ]);
+          return "rich";
+        } catch (e) {}
+      }
+      const ok = await copyText(plainText);
+      return ok ? "plain" : "failed";
     }
 
     function showToast(message, mode) {
@@ -6208,6 +6237,33 @@
       setTimeout(function(){ positionPanel(); panel.style.opacity = "1"; panel.style.transform = "translateY(0) scale(1)"; bar.style.transform = "scaleX(0)"; }, 30);
       setTimeout(remove, 30000);
     }
+
+
+    document.addEventListener("click", async function(ev) {
+      const btn = ev.target && ev.target.closest ? ev.target.closest("[data-copy-torn-newsletter]") : null;
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const key = btn.getAttribute("data-copy-torn-newsletter") || "standard";
+      const bundle = (tornNewsletterBundles && (tornNewsletterBundles[key] || tornNewsletterBundles.standard)) || null;
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Copying...";
+      try {
+        const mode = await copyTornNewsletterBundle(bundle);
+        if (mode === "rich") {
+          showToast("Styled newsletter copied. Paste it into Torn's faction newsletter editor, not into HTML/source code mode. Torn may still strip some CSS, but raw HTML will not be pasted as text.", "info");
+        } else if (mode === "plain") {
+          showToast("Torn-safe plain newsletter copied. Your browser blocked rich HTML clipboard copy, so paste this text version into the faction newsletter editor.", "warn");
+        } else {
+          showToast("Could not copy the newsletter. Try opening this results page in a normal browser tab and press the button again.", "error");
+        }
+      } catch (err) {
+        showToast("Newsletter copy failed: " + (err && err.message ? err.message : err), "error");
+      } finally {
+        setTimeout(function(){ btn.disabled = false; btn.textContent = oldText; }, 450);
+      }
+    });
 
     const payAllUndoStack = [];
 
@@ -6991,6 +7047,7 @@
         rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
         rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
         rwphFixedPerHitWeight("rw-assist-weight", 0),
+        document.getElementById("rw-include-left-members")?.checked ? "include-left-members" : "current-members-only",
       );
     }
 
@@ -7008,6 +7065,7 @@
         rwphPointFairFightBonusStepValue(),
         "avg-ff-custom-step-per-payable-hit-v2",
         "war-faction-retals-war-hit-plus-bonus-v1",
+        document.getElementById("rw-points-include-left-members")?.checked ? "include-left-members" : "current-members-only",
       );
     }
 
@@ -7035,6 +7093,9 @@
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
       pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
       pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
+      includeLeftFactionMembers: rwphNormalizeCalculationMode(calculationMode) === "points"
+        ? !!document.getElementById("rw-points-include-left-members")?.checked
+        : !!document.getElementById("rw-include-left-members")?.checked,
     };
   }
 
@@ -7347,12 +7408,13 @@
         <b>Outside hits:</b> ${Number(summary?.totalOutsideHits || 0)} |
         <b>Retaliation hits:</b> ${Number(summary?.totalRetaliationHits || 0)}<br>
         <b>Tracked hits:</b> ${Number(summary?.totalTrackedHits || 0)} |
+        <b>Removed left-member hits:</b> ${Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0)}<br>
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)}<br>
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
         <b>Skipped failed:</b> ${Number(summary?.calcMeta?.skippedFailed || 0)}<br>
         ${(summary?.warnings || []).length ? `<div class="rw-code">${(summary.warnings || []).map(esc).join("<br>")}</div>` : ""}
         <div class="rw-actions rw-newsletter-actions">
-          <button class="secondary" data-create-newsletter="1">Create Torn Newsletter</button>
+          <button class="secondary" data-create-newsletter="1">Copy Torn Newsletter</button>
         </div>
         <div class="rw-actions">
           <button class="secondary" data-export-csv="1">Export CSV</button>
@@ -7919,6 +7981,194 @@
     const t = safeNumber(total);
     if (!t) return "0.0%";
     return ((v / t) * 100).toFixed(1) + "%";
+  }
+
+
+  function buildTornFactionNewsletterModel(rows, summary) {
+    const list = (rows || []).map((r, index) => ({
+      rank: index + 1,
+      id: String(r.id || "unknown"),
+      name: r.name || `Unknown ${r.id || "unknown"}`,
+      warHits: safeNumber(r.warHits ?? r.attacks),
+      assists: safeNumber(r.assists),
+      outsideHits: safeNumber(r.outsideHits),
+      retaliationHits: safeNumber(r.retaliationHits),
+      totalTrackedHits: safeNumber(r.totalTrackedHits),
+      payableEvents: safeNumber(r.payableEvents),
+      hospitalizingHits: safeNumber(r.hospitalizingHits),
+      enemyFactionHospitalizingHits: safeNumber(r.enemyFactionHospitalizingHits),
+      hospitalBonusPoints: safeNumber(r.hospitalBonusPoints),
+      enemyFactionHospitalBonusPoints: safeNumber(r.enemyFactionHospitalBonusPoints),
+      fairFightBonusPoints: safeNumber(r.fairFightBonusPoints),
+      fairFightPerPayableHitBonus: safeNumber(r.fairFightPerPayableHitBonus),
+      avgFairFight: safeNumber(r.avgFairFight || 1),
+      points: safeNumber(r.points ?? r.weight),
+      basePoints: safeNumber(r.basePoints),
+      respect: safeNumber(r.respect),
+      totalRespect: safeNumber(r.totalRespect ?? r.respect),
+      weight: safeNumber(r.weight),
+      payout: safeNumber(r.payout),
+    }));
+    const memberPayout = safeNumber(summary?.memberPayout ?? summary?.totalPayout) || list.reduce((sum, r) => sum + r.payout, 0);
+    const overallTotalPayout = safeNumber(summary?.overallTotalPayout ?? summary?.totalPayoutDisplay) || memberPayout;
+    const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const totalWeight = pointsMode
+      ? (safeNumber(summary?.totalPoints ?? summary?.totalWeight) || list.reduce((sum, r) => sum + r.points, 0))
+      : (safeNumber(summary?.totalWeight) || list.reduce((sum, r) => sum + r.weight, 0));
+    const perUnitAmount = safeNumber(summary?.perHitAmount ?? summary?.perWeightedHitAmount) || (totalWeight > 0 ? memberPayout / totalWeight : 0);
+    const totalHits = safeNumber(summary?.totalWarHits ?? summary?.totalHits) || list.reduce((sum, r) => sum + r.warHits, 0);
+    const totalAssists = safeNumber(summary?.totalAssists) || list.reduce((sum, r) => sum + r.assists, 0);
+    const totalOutsideHits = safeNumber(summary?.totalOutsideHits) || list.reduce((sum, r) => sum + r.outsideHits, 0);
+    const totalRetaliationHits = safeNumber(summary?.totalRetaliationHits) || list.reduce((sum, r) => sum + r.retaliationHits, 0);
+    const totalTrackedHits = safeNumber(summary?.totalTrackedHits) || list.reduce((sum, r) => sum + r.totalTrackedHits, 0);
+    const totalPayableEvents = safeNumber(summary?.calcMeta?.payableEvents) || list.reduce((sum, r) => sum + r.payableEvents, 0);
+    const totalEnemyFactionHospitalizingHits = safeNumber(summary?.totalEnemyFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.enemyFactionHospitalizingHits, 0);
+    const totalEnemyFactionHospitalBonusPoints = safeNumber(summary?.totalEnemyFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.enemyFactionHospitalBonusPoints, 0);
+    const totalOwnFactionHospitalizingHits = safeNumber(summary?.totalHospitalizingHits ?? summary?.totalOwnFactionHospitalizingHits) || list.reduce((sum, r) => sum + r.hospitalizingHits, 0);
+    const totalOwnFactionHospitalBonusPoints = safeNumber(summary?.totalHospitalBonusPoints ?? summary?.totalOwnFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.hospitalBonusPoints, 0);
+    const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
+    const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
+    const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
+    return {
+      list, pointsMode, memberPayout, overallTotalPayout, totalWeight, perUnitAmount,
+      totalHits, totalAssists, totalOutsideHits, totalRetaliationHits, totalTrackedHits,
+      totalPayableEvents, totalEnemyFactionHospitalizingHits, totalEnemyFactionHospitalBonusPoints,
+      totalOwnFactionHospitalizingHits, totalOwnFactionHospitalBonusPoints, totalFairFightBonusPoints,
+      totalRespect, totalPayRespect, generatedAt: new Date().toLocaleString(),
+      factionName: summary?.factionName || summary?.faction?.name || "Faction",
+      attacksFetched: safeNumber(summary?.attacksFetched),
+      nameCount: safeNumber(summary?.nameCount),
+    };
+  }
+
+  function tornNewsletterTheme(themeKey) {
+    const themes = {
+      standard: { title: "Ranked War Payout Newsletter", accent: "#38bdf8", bg: "#111827", panel: "#1f2937", line: "#334155", text: "#f8fafc", muted: "#cbd5e1", icon: "⚔️" },
+      cyber: { title: "Cyber Neon Payout Newsletter", accent: "#22d3ee", bg: "#08111f", panel: "#0f172a", line: "#155e75", text: "#ecfeff", muted: "#a5f3fc", icon: "🟦" },
+      ledger: { title: "War Ledger Payout Newsletter", accent: "#94a3b8", bg: "#171717", panel: "#262626", line: "#525252", text: "#f5f5f5", muted: "#d4d4d4", icon: "📜" },
+      crimson: { title: "Crimson Raid Payout Newsletter", accent: "#f97316", bg: "#1f0a0a", panel: "#2b1111", line: "#7f1d1d", text: "#fff7ed", muted: "#fed7aa", icon: "🟥" },
+      gold: { title: "Victory Gold Payout Newsletter", accent: "#facc15", bg: "#1c1606", panel: "#2b2208", line: "#854d0e", text: "#fffbe6", muted: "#fef3c7", icon: "🏆" },
+    };
+    return themes[themeKey] || themes.standard;
+  }
+
+  function buildTornFactionNewsletterText(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const t = tornNewsletterTheme(themeKey);
+    const metricLabel = m.pointsMode ? "Points" : "Weight";
+    const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
+    const perUnitSub = m.pointsMode ? "per weighted Point" : "per weighted hit";
+    const divider = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    const lines = [];
+    lines.push(`${t.icon} ${t.title}`);
+    lines.push(`Ranked War Payout Helper · ${m.factionName}`);
+    lines.push(`Generated: ${m.generatedAt}`);
+    lines.push(divider);
+    lines.push(`Member Payout: ${money(m.memberPayout)}`);
+    lines.push(`Total Payout: ${money(m.overallTotalPayout)}`);
+    lines.push(`${perUnitLabel}: ${money(m.perUnitAmount)} ${perUnitSub}`);
+    lines.push(`${metricLabel}: ${m.totalWeight.toFixed(2)} · Paid Members: ${m.list.length}`);
+    lines.push(`War Hits: ${m.totalHits} · Assists: ${m.totalAssists} · Outside: ${m.totalOutsideHits} · Retals: ${m.totalRetaliationHits}`);
+    if (m.pointsMode) {
+      lines.push(`Own Hosp: ${m.totalOwnFactionHospitalizingHits} (${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts) · Enemy Hosp: ${m.totalEnemyFactionHospitalizingHits} (${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} pts)`);
+      lines.push(`Fair Bonus: ${m.totalFairFightBonusPoints.toFixed(2)} pts`);
+    }
+    lines.push(`Total Respect: ${m.totalRespect.toFixed(2)} · Pay Respect: ${m.totalPayRespect.toFixed(2)}`);
+    lines.push(divider);
+    lines.push(`# | Member | War | Ast | Out | Ret | Payable | ${metricLabel} | Payout | Share`);
+    m.list.forEach((r) => {
+      const metric = m.pointsMode ? r.points : r.weight;
+      lines.push(`${r.rank}. ${r.name} [${r.id}] | W ${r.warHits} | A ${r.assists} | O ${r.outsideHits} | R ${r.retaliationHits} | P ${r.payableEvents} | ${metric.toFixed(2)} | ${money(r.payout)} | ${percent(r.payout, m.memberPayout)}`);
+      if (m.pointsMode) {
+        lines.push(`   Hosp: own ${r.hospitalizingHits}/${r.hospitalBonusPoints.toFixed(2)} pts · enemy ${r.enemyFactionHospitalizingHits}/${r.enemyFactionHospitalBonusPoints.toFixed(2)} pts · Avg FF ${r.avgFairFight.toFixed(2)}x · FF bonus ${r.fairFightBonusPoints.toFixed(2)}`);
+      }
+    });
+    lines.push(divider);
+    lines.push("Review payouts before sending faction funds. RWPH never sends money automatically.");
+    return lines.join("\n");
+  }
+
+  function buildTornFactionNewsletterRichHtml(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const t = tornNewsletterTheme(themeKey);
+    const metricLabel = m.pointsMode ? "Points" : "Weight";
+    const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
+    const perUnitSub = m.pointsMode ? "per weighted Point" : "per weighted hit";
+    const card = (label, value, sub = "") => `<td style="width:25%;padding:8px;"><div style="background:${t.panel};border:1px solid ${t.line};border-radius:10px;padding:10px;text-align:center;color:${t.text};"><div style="font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:${t.muted};font-weight:800;">${esc(label)}</div><div style="font-size:16px;font-weight:900;color:${t.accent};margin-top:3px;">${esc(value)}</div>${sub ? `<div style="font-size:10px;color:${t.muted};margin-top:3px;">${esc(sub)}</div>` : ""}</div></td>`;
+    const rowHtml = m.list.map((r, i) => {
+      const metric = m.pointsMode ? r.points : r.weight;
+      const even = i % 2 === 1;
+      return `<tr style="background:${even ? "rgba(255,255,255,.04)" : "transparent"};">
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};">${r.rank}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};color:${t.text};"><b>${esc(r.name)}</b><br><span style="color:${t.muted};font-size:11px;">${esc(r.id)}</span></td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};">${r.warHits}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};">${r.assists}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};">${r.outsideHits}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};">${r.retaliationHits}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};">${r.payableEvents}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.accent};font-weight:900;">${metric.toFixed(2)}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:#86efac;font-weight:900;white-space:nowrap;">${money(r.payout)}</td>
+        <td style="padding:8px;border-bottom:1px solid ${t.line};text-align:center;color:${t.text};white-space:nowrap;">${percent(r.payout, m.memberPayout)}</td>
+      </tr>${m.pointsMode ? `<tr style="background:${even ? "rgba(255,255,255,.04)" : "transparent"};"><td></td><td colspan="9" style="padding:6px 8px 9px;border-bottom:1px solid ${t.line};color:${t.muted};font-size:11px;text-align:left;">Own hosp ${r.hospitalizingHits} / ${r.hospitalBonusPoints.toFixed(2)} pts · Enemy hosp ${r.enemyFactionHospitalizingHits} / ${r.enemyFactionHospitalBonusPoints.toFixed(2)} pts · Avg FF ${r.avgFairFight.toFixed(2)}x · FF bonus ${r.fairFightBonusPoints.toFixed(2)}</td></tr>` : ""}`;
+    }).join("");
+    return `<div style="background:${t.bg};color:${t.text};font-family:Arial,Helvetica,sans-serif;padding:16px;border:1px solid ${t.line};border-radius:14px;max-width:1100px;margin:0 auto;text-align:center;">
+      <div style="background:${t.panel};border:1px solid ${t.line};border-radius:14px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:12px;color:${t.muted};font-weight:900;letter-spacing:1px;text-transform:uppercase;">Ranked War Payout Helper · ${esc(m.factionName)}</div>
+        <div style="font-size:24px;font-weight:900;color:${t.text};margin:4px 0;">${esc(t.icon)} ${esc(t.title)}</div>
+        <div style="font-size:12px;color:${t.muted};">Generated ${esc(m.generatedAt)} · ${m.list.length} paid members</div>
+      </div>
+      <table style="width:100%;border-collapse:separate;border-spacing:6px;margin-bottom:10px;"><tbody>
+        <tr>${card("Member Payout", money(m.memberPayout), `${m.list.length} members paid`)}${card("Total Payout", money(m.overallTotalPayout), "full payout record")}${card(perUnitLabel, money(m.perUnitAmount), perUnitSub)}${card(metricLabel, m.totalWeight.toFixed(2), m.pointsMode ? "total points" : "total weight")}</tr>
+        <tr>${card("War Hits", String(m.totalHits), `${m.totalAssists} assists`)}${card("Outside Hits", String(m.totalOutsideHits), `${m.totalRetaliationHits} retals`)}${card("Tracked", String(m.totalTrackedHits), `${m.totalPayableEvents} payable`)}${card("Total Respect", m.totalRespect.toFixed(2), "ranked war report")}</tr>
+        ${m.pointsMode ? `<tr>${card("Own Hosp", String(m.totalOwnFactionHospitalizingHits), `${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Enemy Hosp", String(m.totalEnemyFactionHospitalizingHits), `${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Fair Bonus", m.totalFairFightBonusPoints.toFixed(2), "Avg FF bonus")}${card("Pay Respect", m.totalPayRespect.toFixed(2), "payable respect")}</tr>` : ""}
+      </tbody></table>
+      <div style="overflow-x:auto;border:1px solid ${t.line};border-radius:12px;background:${t.panel};">
+        <table style="width:100%;min-width:820px;border-collapse:collapse;">
+          <thead><tr style="background:${t.line};">
+            <th style="padding:8px;color:${t.text};font-size:11px;">#</th><th style="padding:8px;color:${t.text};font-size:11px;text-align:left;">Member</th><th style="padding:8px;color:${t.text};font-size:11px;">War</th><th style="padding:8px;color:${t.text};font-size:11px;">Ast</th><th style="padding:8px;color:${t.text};font-size:11px;">Out</th><th style="padding:8px;color:${t.text};font-size:11px;">Ret</th><th style="padding:8px;color:${t.text};font-size:11px;">Payable</th><th style="padding:8px;color:${t.text};font-size:11px;">${esc(metricLabel)}</th><th style="padding:8px;color:${t.text};font-size:11px;">Payout</th><th style="padding:8px;color:${t.text};font-size:11px;">Share</th>
+          </tr></thead><tbody>${rowHtml}</tbody>
+        </table>
+      </div>
+      <div style="padding:12px 4px 0;color:${t.muted};font-size:11px;font-weight:800;">Review payouts before sending faction funds. RWPH never sends money automatically.</div>
+    </div>`;
+  }
+
+  function buildTornFactionNewsletterBundle(rows, summary, themeKey) {
+    return {
+      html: buildTornFactionNewsletterRichHtml(rows || [], summary || {}, themeKey),
+      text: buildTornFactionNewsletterText(rows || [], summary || {}, themeKey),
+    };
+  }
+
+  async function copyTornFactionNewsletterBundleToClipboard(bundle) {
+    const richHtml = String(bundle && bundle.html || "");
+    const plainText = String(bundle && bundle.text || richHtml || "");
+    if (richHtml && navigator.clipboard && window.ClipboardItem) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([richHtml], { type: "text/html" }),
+            "text/plain": new Blob([plainText], { type: "text/plain" })
+          })
+        ]);
+        return "rich";
+      } catch (e) {}
+    }
+    try {
+      await navigator.clipboard.writeText(plainText);
+      return "plain";
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = plainText;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok ? "plain" : "failed";
+    }
   }
 
   function buildWarPayoutNewsletterHtml(rows, summary) {
@@ -9651,6 +9901,7 @@
               <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
+              <li><b>Include members who left the faction:</b> off by default in both Basic and Advanced Calculations. When off, RWPH removes members who are no longer in your faction and shows how many hits were removed in the results.</li>
               <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
               <li><b>Delete Cache:</b> inside Basic Calculations or Advanced Calculations deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
@@ -9676,7 +9927,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Create Torn Newsletter, Create Cyber Neon Newsletter, Create War Ledger Newsletter, Create Crimson Raid Newsletter, and Create Victory Gold Newsletter each create a different HTML payout report theme.</li>
+              <li><b>Newsletter buttons:</b> Copy Torn Newsletter, Copy Cyber Neon Newsletter, Copy War Ledger Newsletter, Copy Crimson Raid Newsletter, and Copy Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
             </ul>
           </div>
 
@@ -9692,13 +9943,13 @@
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
-            <div class="rw-how-title">Using HTML Newsletters in Torn</div>
+            <div class="rw-how-title">Using Torn-safe Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Generate a newsletter:</b> click one of the newsletter buttons in the results tab.</li>
-              <li><b>2. Open the downloaded HTML file:</b> open it in your browser and select/copy the newsletter content.</li>
-              <li><b>3. Paste into Torn:</b> go to your faction newsletter editor in Torn and paste the copied newsletter content.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the Copy newsletter buttons in the results tab.</li>
+              <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
+              <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
-              <li><b>Tip:</b> if Torn strips some styling, try a different newsletter theme because each one uses a different layout/style balance.</li>
+              <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable Torn-safe text still remains.</li>
             </ul>
           </div>
 
@@ -9833,7 +10084,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> try a different newsletter theme or paste through Torn's editor again after previewing.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you pasted with the Copy newsletter button into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
             </ul>
           </div>
 
@@ -10218,6 +10469,10 @@
                 </label>
               </div>
               <div class="rw-small">Per Hit values are fixed at <b>1 per counted hit</b>. Use the tick boxes to include or exclude each hit type.</div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <input id="rw-include-left-members" type="checkbox" style="width:auto;margin:0;"> Include members who left the faction
+              </label>
+              <div class="rw-small">Off by default: members no longer in your faction are removed and their removed hit count is shown in the results.</div>
               <div class="rw-row">
                 <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
                   <input id="rw-war-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> War hits — 1 per hit
@@ -10257,6 +10512,10 @@
                   <input id="rw-points-total-overall" type="number" value="100000000" min="0">
                 </label>
               </div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <input id="rw-points-include-left-members" type="checkbox" style="width:auto;margin:0;"> Include members who left the faction
+              </label>
+              <div class="rw-small">Off by default: members no longer in your faction are removed and their removed hit count is shown in the results.</div>
               <div class="rw-row">
                 <label>War hit points
                   <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
@@ -10425,6 +10684,7 @@
               <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
+              <li><b>Include members who left the faction:</b> off by default in both Basic and Advanced Calculations. When off, RWPH removes members who are no longer in your faction and shows how many hits were removed in the results.</li>
               <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
               <li><b>Delete Cache:</b> inside Basic Calculations or Advanced Calculations deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
@@ -10450,7 +10710,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Create Torn Newsletter, Create Cyber Neon Newsletter, Create War Ledger Newsletter, Create Crimson Raid Newsletter, and Create Victory Gold Newsletter each create a different HTML payout report theme.</li>
+              <li><b>Newsletter buttons:</b> Copy Torn Newsletter, Copy Cyber Neon Newsletter, Copy War Ledger Newsletter, Copy Crimson Raid Newsletter, and Copy Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
             </ul>
           </div>
 
@@ -10466,13 +10726,13 @@
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
-            <div class="rw-how-title">Using HTML Newsletters in Torn</div>
+            <div class="rw-how-title">Using Torn-safe Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Generate a newsletter:</b> click one of the newsletter buttons in the results tab.</li>
-              <li><b>2. Open the downloaded HTML file:</b> open it in your browser and select/copy the newsletter content.</li>
-              <li><b>3. Paste into Torn:</b> go to your faction newsletter editor in Torn and paste the copied newsletter content.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the Copy newsletter buttons in the results tab.</li>
+              <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
+              <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
-              <li><b>Tip:</b> if Torn strips some styling, try a different newsletter theme because each one uses a different layout/style balance.</li>
+              <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable Torn-safe text still remains.</li>
             </ul>
           </div>
 
@@ -10607,7 +10867,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> try a different newsletter theme or paste through Torn's editor again after previewing.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you pasted with the Copy newsletter button into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
             </ul>
           </div>
 
@@ -10665,7 +10925,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"].forEach((id) => {
+    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-include-left-members", "rw-points-include-left-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -10757,8 +11017,14 @@
         if (!lastRows.length) return alert("Calculate results first.");
 
         try {
-          const filename = createHtmlNewsletter(lastRows, lastSummary);
-          rwphToastPanelInfo(status, `HTML newsletter created: ${filename}. A preview tab should open and the file should download.`, "info", "RWPH Newsletter");
+          const mode = await copyTornFactionNewsletterBundleToClipboard(buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard"));
+          if (mode === "rich") {
+            rwphToastPanelInfo(status, "Styled Torn-safe newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode.", "info", "RWPH Newsletter");
+          } else if (mode === "plain") {
+            rwphToastPanelInfo(status, "Plain Torn-safe newsletter copied. Your browser blocked rich HTML clipboard copy, but the text version is ready to paste.", "warn", "RWPH Newsletter");
+          } else {
+            rwphToastPanelError(status, "Newsletter copy failed. Try from the fullscreen results tab or a normal browser tab.", "RWPH Newsletter");
+          }
         } catch (err) {
           rwphToastPanelError(status, "Newsletter error: " + err.message, "RWPH Newsletter");
         }
@@ -10881,6 +11147,9 @@
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
       const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
       const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
+      const includeLeftFactionMembers = isPointsMode
+        ? !!document.getElementById("rw-points-include-left-members")?.checked
+        : !!document.getElementById("rw-include-left-members")?.checked;
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
@@ -10928,6 +11197,7 @@
           pointFairFightEnabled,
           pointFairFightAvgStep,
           pointFairFightBonusPerStep,
+          includeLeftFactionMembers,
           useCacheOnly,
           forceRefresh,
           adminKey: adminKeyForRefresh,

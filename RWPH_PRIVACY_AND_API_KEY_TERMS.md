@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.260**
+Version: **1.1.262**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -323,8 +323,20 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ## Recent Changelog
 
+### v1.1.262
+- Added an off-by-default **Include members who left the faction** checkbox in both Basic Calculations and Advanced Calculations.
+- Result tabs now show **Removed Left-Member Hits** so users can see how many tracked hits were excluded when former members are filtered out.
+- Cache matching includes this include-left-members setting, while payout amount changes still do not block cached reports.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.261
+- Newsletter buttons now copy Torn-safe rich/plain newsletter content for Torn faction newsletters instead of requiring raw HTML source/code.
+- Rich HTML clipboard copy is attempted first, with a readable plain-text fallback if the browser or Torn strips styling.
+- Help wording now explains that raw HTML/CSS can show as text in Torn faction newsletters.
+- Updated README, terms, server version, package version, and userscript version.
+
 ### v1.1.260
-- RWPH removes former faction members from Basic and Advanced result rows when the current faction member list can be loaded.
+- RWPH removes former faction members from Basic and Advanced result rows when the current faction member list can be loaded, unless the matching Include members who left the faction checkbox is ticked.
 - Current-member filtering also applies when opening compatible cached reports, so result tabs, exports, newsletters, and payment rows stay aligned to the current faction.
 - Removed former members are noted in calculation warnings where possible.
 - Updated README, terms, server version, package version, and userscript version.

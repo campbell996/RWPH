@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.260**  
+Current package version: **1.1.262**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -104,7 +104,7 @@ This package is not an official Torn product. Use it only in ways that follow To
 After a successful calculation, use:
 
 - **Export CSV** for spreadsheet records.
-- **Create Torn Newsletter** for a formatted Torn newsletter.
+- **Copy Torn Newsletter** for a Torn-safe formatted newsletter.
 - **Payments** to open the manual copy/prefill payment helper.
 
 ---
@@ -411,18 +411,16 @@ The results page can export a CSV file for spreadsheet use. The CSV includes pay
 
 ### Torn Newsletter Generator
 
-RWPH can create a Torn newsletter HTML file from the results.
+RWPH now copies Torn-safe newsletter content from the results tab instead of asking you to paste raw HTML source into Torn.
 
 General workflow:
 
 1. Calculate results.
-2. Click a newsletter button.
-3. Open the downloaded HTML file.
-4. Copy the formatted newsletter content.
-5. Paste it into Torn's faction newsletter editor.
-6. Preview and adjust if Torn strips any styling.
+2. Click one of the **Copy** newsletter buttons.
+3. Paste directly into Torn's normal faction newsletter editor.
+4. Preview and review before sending.
 
-Different newsletter themes/layouts may survive Torn formatting differently.
+Do not paste raw HTML source/code into Torn. Torn can show HTML/CSS as text or strip the background/layout styling. RWPH copies rich HTML plus a readable plain-text fallback so faction newsletters stay usable even when Torn removes some styling.
 
 ### Payments Copy Panel
 
@@ -603,8 +601,22 @@ When updating RWPH:
 
 ## Recent Changelog
 
+### v1.1.262
+- Added an off-by-default **Include members who left the faction** checkbox inside both Basic Calculations and Advanced Calculations.
+- When the checkbox is off, former faction members are removed automatically as before. When it is ticked, former members are kept in that calculation's result rows.
+- Both result tabs now show **Removed Left-Member Hits**, the number of tracked hits removed because members had left the faction.
+- Cache matching includes the include-left-members setting, while still ignoring changed payout amounts.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.261
+- Newsletter buttons now copy Torn-safe newsletter content instead of making users paste raw HTML source/code into Torn faction newsletters.
+- Copy newsletter buttons attempt rich HTML clipboard copy with inline styling first, then fall back to a readable plain-text payout newsletter if the browser or Torn blocks rich styling.
+- Results tab newsletter actions were renamed from Create to Copy to better match how Torn faction newsletters should be used.
+- Help text and README now explain not to paste raw HTML source into Torn because it can show as text or lose CSS/background styling.
+- Updated README, terms, server version, package version, and userscript version.
+
 ### v1.1.260
-- Basic and Advanced calculation results now automatically remove members who are not in your current faction member list at calculation/open time.
+- Basic and Advanced calculation results automatically remove members who are not in your current faction member list at calculation/open time unless the matching Include members who left the faction checkbox is ticked.
 - Ranked-war report rows, attack-log fallback rows, hybrid report rows, cached result tabs, CSV exports, newsletters, and Payments Copy Panel rows all use the filtered current-member result list.
 - If former members are removed, RWPH adds a warning naming the removed Torn IDs where available.
 - Cache keys include the current-member filter mode so new reports stay separated from older calculation behavior.
