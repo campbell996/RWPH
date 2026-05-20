@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.274**
+Version: **1.1.275**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -323,11 +323,18 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ## Recent Changelog
 
+### v1.1.275
+
+- Raw newsletter HTML code panel now uses the same RWPH dark panel layout/style/theme as the results tools.
+- Added move support via the panel title bar, resize handles, size preset buttons, and close control.
+- Kept the newsletter workflow manual-only: users copy HTML and preview manually before using Torn faction newsletters.
+- Updated README, terms, server version, package version, and userscript version.
+
 ### v1.1.274
 
-- Newsletter buttons now open Torn faction newsletter controls instead of downloading HTML files.
-- The faction controls page now shows a RWPH raw HTML panel with Copy All, Preview in New Tab, and Download HTML Backup.
-- Newsletter generation remains manual-only; RWPH does not send faction newsletters automatically.
+- Newsletter buttons now open a raw HTML-code panel directly inside the results tab instead of downloading HTML files.
+- The panel includes raw HTML code, **Copy All**, **Preview in New Tab**, and a live inline preview.
+- This applies to all Basic and Advanced newsletter themes and remains manual-only.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.273
