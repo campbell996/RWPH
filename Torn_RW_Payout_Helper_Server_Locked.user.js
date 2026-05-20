@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.266
+// @version      1.1.267
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -17,7 +17,7 @@
 (function () {
   "use strict";
 
-  // v1.1.266: removed former-member bonus points without counting bonuses as Removed Left-Member Hits.
+  // v1.1.267: fixed Removed Left-Member Hits to count only calculation-included hits for Basic/Advanced.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.

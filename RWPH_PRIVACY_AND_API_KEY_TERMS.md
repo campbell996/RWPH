@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.266**
+Version: **1.1.267**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -322,6 +322,12 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.267
+
+- Fixed **Removed Left-Member Hits** over-counting in both Basic Calculations and Advanced Calculations by counting only hits that were actually included in that mode's calculation.
+- Disabled Basic tickbox categories and zero-point Advanced categories no longer increase the removed-hit stat.
+- Bonus-only values are still removed with former members, but they still do not count as removed hits.
 
 ### v1.1.266
 
