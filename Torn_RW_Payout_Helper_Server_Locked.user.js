@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.269
+// @version      1.1.271
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.271: replaced all Basic/Advanced newsletter builders with one Torn-compatible inline table HTML template based on the uploaded working faction newsletter layout.
+  // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
   // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
   // v1.1.268: newsletter buttons use rich clipboard, rendered-copy fallback, plain-text fallback, and manual-copy fallback.
 
@@ -1661,7 +1663,7 @@
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
     // v1.1.258: Payments Copy Panel rows now carry explicit payout amount aliases and the amount prefill detector is more reliable on Torn banking fields.
-    // v1.1.261: newsletter buttons now copy Torn-safe rich/plain newsletter content instead of requiring raw HTML source in faction newsletters.
+    // v1.1.261: newsletter buttons now copy HTML-code rich/plain newsletter content instead of requiring raw HTML source in faction newsletters.
     // v1.1.260: Payments Copy Panel amount prefill is scoped to the current selected member/payment form so the next payout does not land in the previous amount field.
     // v1.1.257: Cached reports ignore changed payout fields when matching saved backend/database reports.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
@@ -5113,6 +5115,21 @@
       crimson: buildTornFactionNewsletterBundle(rows || [], summary || {}, "crimson"),
       gold: buildTornFactionNewsletterBundle(rows || [], summary || {}, "gold"),
     };
+    const rwphNewsletterHtmlCode = {
+      standard: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard"),
+      cyber: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "cyber"),
+      ledger: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "ledger"),
+      crimson: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "crimson"),
+      gold: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "gold"),
+    };
+    const rwphNewsletterHtmlCodeJson = JSON.stringify(rwphNewsletterHtmlCode).replaceAll("<", "\\u003c");
+    const rwphNewsletterHtmlHrefs = {
+      standard: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.standard || "")}`,
+      cyber: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.cyber || "")}`,
+      ledger: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.ledger || "")}`,
+      crimson: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.crimson || "")}`,
+      gold: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.gold || "")}`,
+    };
     const tornNewsletterPlainHrefs = {
       standard: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.standard.text || "")}`,
       cyber: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.cyber.text || "")}`,
@@ -6013,13 +6030,13 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(tornNewsletterPlainHrefs.standard)}" download="rwph-torn-newsletter.txt" data-copy-torn-newsletter="standard">Copy/Open Torn Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(tornNewsletterPlainHrefs.cyber)}" download="rwph-torn-newsletter-cyber-neon.txt" data-copy-torn-newsletter="cyber">Copy/Open Cyber Neon Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(tornNewsletterPlainHrefs.ledger)}" download="rwph-torn-newsletter-war-ledger.txt" data-copy-torn-newsletter="ledger">Copy/Open War Ledger Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(tornNewsletterPlainHrefs.crimson)}" download="rwph-torn-newsletter-crimson-raid.txt" data-copy-torn-newsletter="crimson">Copy/Open Crimson Raid Newsletter</a>
-      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(tornNewsletterPlainHrefs.gold)}" download="rwph-torn-newsletter-victory-gold.txt" data-copy-torn-newsletter="gold">Copy/Open Victory Gold Newsletter</a>
-      <p class="newsletter-choice-note">Each newsletter link opens a visible copy panel when scripts run. If scripts/clipboard are blocked, it still downloads a Torn-safe text newsletter.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Copy/Open newsletter link, use the visible copy panel, then paste into Torn's normal faction newsletter editor. Do not paste raw HTML source/code; Torn will show that as text or strip the CSS/background.</p>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="${esc(rwphNewsletterHtmlHrefs.standard)}" download="rwph-torn-newsletter-html-code.html" data-open-html-newsletter="standard">HTML Code Torn Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="${esc(rwphNewsletterHtmlHrefs.cyber)}" download="rwph-torn-newsletter-cyber-neon-html-code.html" data-open-html-newsletter="cyber">HTML Code Cyber Neon Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="${esc(rwphNewsletterHtmlHrefs.ledger)}" download="rwph-torn-newsletter-war-ledger-html-code.html" data-open-html-newsletter="ledger">HTML Code War Ledger Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="${esc(rwphNewsletterHtmlHrefs.crimson)}" download="rwph-torn-newsletter-crimson-raid-html-code.html" data-open-html-newsletter="crimson">HTML Code Crimson Raid Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="${esc(rwphNewsletterHtmlHrefs.gold)}" download="rwph-torn-newsletter-victory-gold-html-code.html" data-open-html-newsletter="gold">HTML Code Victory Gold Newsletter</a>
+      <p class="newsletter-choice-note">Each newsletter opens a full HTML-code panel with the themed layout, preview, copy buttons, and HTML download.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, copy the HTML code, then paste it into Torn's HTML/source-capable faction newsletter editor. Use Copy Rendered Preview only if your Torn editor accepts rich pasted content.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6082,6 +6099,7 @@
     const summary = ${summaryJson};
     const newsletterHtml = ${newsletterJson};
     const tornNewsletterBundles = ${tornNewsletterBundlesJson};
+    const rwphNewsletterHtmlCode = ${rwphNewsletterHtmlCodeJson};
     const csvText = ${JSON.stringify(csvText).replaceAll("<", "\\u003c")};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
 
@@ -6205,7 +6223,7 @@
       panel.style.cssText = "position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;background:linear-gradient(180deg,#0f172a,#020617);border:1px solid rgba(125,211,252,.45);border-radius:18px;padding:14px;box-shadow:0 24px 80px rgba(0,0,0,.72);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;";
       panel.innerHTML = [
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">',
-        '<div><b style="font-size:15px;">Torn Newsletter Copy Panel</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Use Copy Text, or select this Torn-safe text manually. Open Styled Preview/Download HTML are optional backups.</div></div>',
+        '<div><b style="font-size:15px;">Torn Newsletter Copy Panel</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Use Copy Text, or select this HTML-code text manually. Open Styled Preview/Download HTML are optional backups.</div></div>',
         '<button type="button" data-close-manual-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:8px 10px;cursor:pointer;">×</button>',
         '</div>',
         '<textarea style="width:100%;min-height:280px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;">' + escapeHtml(plainText) + '</textarea>',
@@ -6323,6 +6341,87 @@
       setTimeout(remove, 30000);
     }
 
+
+
+    function copyRenderedNewsletterHtml(html) {
+      const holder = document.createElement("div");
+      holder.style.cssText = "position:fixed;left:-10000px;top:0;width:1000px;background:#fff;color:#000;z-index:-1;";
+      holder.innerHTML = html;
+      document.body.appendChild(holder);
+      let ok = false;
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(holder);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        ok = document.execCommand("copy");
+        sel.removeAllRanges();
+      } catch (e) { ok = false; }
+      holder.remove();
+      return ok;
+    }
+
+    function showRwphHtmlNewsletterPanel(htmlCode, key) {
+      const old = document.getElementById("rwphHtmlNewsletterPanel");
+      if (old) old.remove();
+      const html = String(htmlCode || "");
+      const panel = document.createElement("div");
+      panel.id = "rwphHtmlNewsletterPanel";
+      panel.style.cssText = "position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1040px,calc(100vw - 26px));max-height:calc(100vh - 26px);overflow:auto;background:linear-gradient(180deg,#08111f,#020617);border:1px solid rgba(56,189,248,.55);border-radius:18px;padding:14px;box-shadow:0 24px 80px rgba(0,0,0,.76);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;";
+      panel.innerHTML = [
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;">',
+        '<div><b style="font-size:16px;color:#fff;">RWPH Torn Newsletter HTML Code</b><div style="font-size:12px;color:#bfdbfe;margin-top:4px;font-weight:800;line-height:1.35;">Copy the HTML code for Torn\'s HTML/source editor, or copy the rendered preview if your Torn editor accepts rich pasted layouts. This is a full themed layout, not plain text.</div></div>',
+        '<button type="button" data-close-html-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:8px 10px;cursor:pointer;">×</button>',
+        '</div>',
+        '<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;">',
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;">',
+        '<button type="button" data-copy-html-newsletter-code style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy HTML Code</button>',
+        '<button type="button" data-copy-rendered-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Copy Rendered Preview</button>',
+        '<button type="button" data-download-html-newsletter-code style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#0f172a;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML</button>',
+        '</div>',
+        '<textarea spellcheck="false" style="width:100%;min-height:230px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;"></textarea>',
+        '<div style="font-size:12px;color:#bfdbfe;font-weight:900;">Live preview below:</div>',
+        '<div data-html-newsletter-preview style="background:#111827;border:1px solid rgba(125,211,252,.25);border-radius:14px;padding:10px;overflow:auto;max-height:46vh;"></div>',
+        '</div>'
+      ].join('');
+      document.body.appendChild(panel);
+      const ta = panel.querySelector('textarea');
+      const preview = panel.querySelector('[data-html-newsletter-preview]');
+      ta.value = html;
+      preview.innerHTML = html;
+      ta.focus();
+      ta.select();
+      panel.addEventListener('click', async function(ev) {
+        if (ev.target.closest('[data-close-html-newsletter]')) { panel.remove(); return; }
+        if (ev.target.closest('[data-copy-html-newsletter-code]')) {
+          ta.focus(); ta.select();
+          const ok = await copyText(ta.value);
+          showToast(ok ? 'Newsletter HTML code copied. Paste it into Torn HTML/source editor.' : 'Copy blocked. Select the HTML code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn');
+          return;
+        }
+        if (ev.target.closest('[data-copy-rendered-newsletter]')) {
+          const ok = copyRenderedNewsletterHtml(html);
+          showToast(ok ? 'Rendered newsletter copied. Paste into Torn normal editor only if it accepts rich content.' : 'Rendered copy blocked. Use Copy HTML Code instead.', ok ? 'info' : 'warn');
+          return;
+        }
+        if (ev.target.closest('[data-download-html-newsletter-code]')) {
+          downloadText('rwph-newsletter-' + String(key || 'standard') + '-html-code.html', html, 'text/html');
+          return;
+        }
+      });
+    }
+
+    document.addEventListener("click", function(ev) {
+      const btn = ev.target && ev.target.closest ? ev.target.closest("[data-open-html-newsletter]") : null;
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const key = btn.getAttribute("data-open-html-newsletter") || "standard";
+      const htmlCode = (rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[key] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "";
+      showRwphHtmlNewsletterPanel(htmlCode, key);
+      showToast("Newsletter HTML code panel opened. Copy HTML Code for Torn HTML/source mode, or Copy Rendered Preview for rich paste.", "info");
+    });
 
     document.addEventListener("click", async function(ev) {
       const btn = ev.target && ev.target.closest ? ev.target.closest("[data-copy-torn-newsletter]") : null;
@@ -8233,6 +8332,234 @@
     };
   }
 
+
+  function rwphNewsletterHtmlTheme(themeKey) {
+    const key = String(themeKey || "standard").toLowerCase();
+    const themes = {
+      standard: {
+        title: "Ranked War Payout Newsletter",
+        icon: "⚔️",
+        bg: "#111217",
+        outer: "#1a1c24",
+        header: "#232737",
+        panelA: "#242836",
+        panelB: "#202331",
+        head: "#2c3142",
+        line: "#3a4050",
+        strongLine: "#f2b84b",
+        accent: "#f2b84b",
+        text: "#f2f2f2",
+        muted: "#aeb4c2",
+        soft: "#d8d8d8",
+      },
+      cyber: {
+        title: "Cyber Neon Payout Newsletter",
+        icon: "🟦",
+        bg: "#06111d",
+        outer: "#0c1726",
+        header: "#10263a",
+        panelA: "#102437",
+        panelB: "#0c1d2e",
+        head: "#11334a",
+        line: "#155e75",
+        strongLine: "#22d3ee",
+        accent: "#22d3ee",
+        text: "#ecfeff",
+        muted: "#a5f3fc",
+        soft: "#cffafe",
+      },
+      ledger: {
+        title: "War Ledger Payout Newsletter",
+        icon: "📜",
+        bg: "#12100c",
+        outer: "#211b13",
+        header: "#2b2418",
+        panelA: "#2f271a",
+        panelB: "#261f16",
+        head: "#3a2f1f",
+        line: "#5b4a31",
+        strongLine: "#d6b36a",
+        accent: "#d6b36a",
+        text: "#fff7e6",
+        muted: "#d6c4a4",
+        soft: "#f4e3be",
+      },
+      crimson: {
+        title: "Crimson Raid Payout Newsletter",
+        icon: "🟥",
+        bg: "#160909",
+        outer: "#241111",
+        header: "#351717",
+        panelA: "#351818",
+        panelB: "#2b1111",
+        head: "#421818",
+        line: "#7f1d1d",
+        strongLine: "#fb923c",
+        accent: "#fb923c",
+        text: "#fff7ed",
+        muted: "#fecaca",
+        soft: "#fed7aa",
+      },
+      gold: {
+        title: "Victory Gold Payout Newsletter",
+        icon: "🏆",
+        bg: "#171104",
+        outer: "#241b08",
+        header: "#35280b",
+        panelA: "#3a2b0c",
+        panelB: "#2b2208",
+        head: "#46360e",
+        line: "#854d0e",
+        strongLine: "#facc15",
+        accent: "#facc15",
+        text: "#fffbe6",
+        muted: "#fef3c7",
+        soft: "#fde68a",
+      },
+    };
+    return themes[key] || themes.standard;
+  }
+
+  function buildRwphNewsletterStatCell(label, value, theme, bg, width = "50%") {
+    return `<td style="width:${width}; padding:8px; background-color:${bg}; border:1px solid ${theme.line}; vertical-align:top;">
+      <div style="font-size:12px; color:${theme.muted}; font-family:Arial, Helvetica, sans-serif; font-weight:bold; line-height:1.3;">${esc(label)}</div>
+      <div style="font-size:19px; font-weight:bold; color:${theme.text}; font-family:Arial, Helvetica, sans-serif; line-height:1.3; margin-top:2px;">${esc(value)}</div>
+    </td>`;
+  }
+
+  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const theme = rwphNewsletterHtmlTheme(themeKey);
+    const metricLabel = m.pointsMode ? "Points" : "Weight";
+    const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
+    const perUnitSub = m.pointsMode ? "per weighted point" : "per weighted hit";
+    const memberRows = m.list.map((r, idx) => {
+      const bg = idx % 2 ? theme.panelA : theme.panelB;
+      const metric = m.pointsMode ? r.points : r.weight;
+      const details = m.pointsMode
+        ? `<tr><td colspan="9" style="padding:7px 8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.muted}; font-family:Arial, Helvetica, sans-serif; font-size:11px; line-height:1.4;">
+            Own Hosp: <b style="color:${theme.text};">${r.hospitalizingHits}</b> / ${r.hospitalBonusPoints.toFixed(2)} pts &nbsp;•&nbsp;
+            Enemy Hosp: <b style="color:${theme.text};">${r.enemyFactionHospitalizingHits}</b> / ${r.enemyFactionHospitalBonusPoints.toFixed(2)} pts &nbsp;•&nbsp;
+            Avg FF: <b style="color:${theme.text};">${r.avgFairFight.toFixed(2)}x</b> &nbsp;•&nbsp;
+            FF Bonus: <b style="color:${theme.text};">${r.fairFightBonusPoints.toFixed(2)}</b>
+          </td></tr>`
+        : "";
+      return `<tr>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.text}; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.35;"><b>${esc(r.name)}</b><br><span style="font-size:10px; color:${theme.muted};">${esc(r.id)}</span></td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.text}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">${r.warHits}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.text}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">${r.assists}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.text}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">${r.outsideHits}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.text}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">${r.retaliationHits}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.text}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">${r.payableEvents}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.accent}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold;">${metric.toFixed(2)}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:#86efac; text-align:right; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; white-space:nowrap;">${money(r.payout)}</td>
+        <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.muted}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px; white-space:nowrap;">${percent(r.payout, m.memberPayout)}</td>
+      </tr>${details}`;
+    }).join("");
+    const removedCell = !m.includeLeftFactionMembers
+      ? buildRwphNewsletterStatCell("Removed Left-Member Hits", String(m.removedLeftFactionHits), theme, theme.panelB, "50%")
+      : buildRwphNewsletterStatCell("Left Members", "Included", theme, theme.panelB, "50%");
+    const pointsSummary = m.pointsMode ? `
+          <tr>
+            ${buildRwphNewsletterStatCell("Own Hosp", `${m.totalOwnFactionHospitalizingHits} / ${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts`, theme, theme.panelA, "50%")}
+            ${buildRwphNewsletterStatCell("Enemy Hosp", `${m.totalEnemyFactionHospitalizingHits} / ${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} pts`, theme, theme.panelA, "50%")}
+          </tr>
+          <tr>
+            ${buildRwphNewsletterStatCell("Fair Bonus", m.totalFairFightBonusPoints.toFixed(2), theme, theme.panelB, "50%")}
+            ${buildRwphNewsletterStatCell("Pay Respect", m.totalPayRespect.toFixed(2), theme, theme.panelB, "50%")}
+          </tr>` : "";
+
+    return `<!-- TORN NEWSLETTER START -->
+<div style="margin:0; padding:0; background-color:${theme.bg}; color:${theme.text}; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.5;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:${theme.bg}; border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:18px 8px;">
+        <table width="620" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:620px; border-collapse:collapse; background-color:${theme.outer}; border:1px solid ${theme.line};">
+          <tr>
+            <td style="padding:22px 18px; background-color:${theme.header}; border-bottom:2px solid ${theme.strongLine}; text-align:center;">
+              <div style="font-size:26px; font-weight:bold; color:${theme.accent}; letter-spacing:1px; font-family:Arial, Helvetica, sans-serif; line-height:1.25;">${esc(theme.icon)} ${esc(theme.title)}</div>
+              <div style="font-size:13px; color:${theme.soft}; margin-top:6px; font-family:Arial, Helvetica, sans-serif; line-height:1.35;">Ranked War Payout Helper • ${m.pointsMode ? "Advanced Calculations" : "Basic Calculations"} • Payments</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px; color:${theme.text}; font-family:Arial, Helvetica, sans-serif;">
+              <div style="font-size:18px; font-weight:bold; color:#ffffff; margin-bottom:8px; font-family:Arial, Helvetica, sans-serif;">War Payout Results</div>
+              <div style="color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.5;">Final ranked-war payout results are below. Member Payout is the amount split across members. Total Payout is shown as the full payout record amount. Review all rows before sending funds.</div>
+            </td>
+          </tr>
+          <tr><td style="padding:0 18px;"><div style="border-top:1px solid ${theme.line}; height:1px; line-height:1px;">&nbsp;</div></td></tr>
+          <tr>
+            <td style="padding:18px;">
+              <div style="font-size:18px; font-weight:bold; color:${theme.accent}; margin-bottom:10px; font-family:Arial, Helvetica, sans-serif;">War Summary</div>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse;">
+                <tr>
+                  ${buildRwphNewsletterStatCell("Member Payout", money(m.memberPayout), theme, theme.panelA, "50%")}
+                  ${buildRwphNewsletterStatCell("Total Payout", money(m.overallTotalPayout), theme, theme.panelA, "50%")}
+                </tr>
+                <tr>
+                  ${buildRwphNewsletterStatCell(perUnitLabel, `${money(m.perUnitAmount)} ${perUnitSub}`, theme, theme.panelB, "50%")}
+                  ${buildRwphNewsletterStatCell("Members Paid", String(m.list.length), theme, theme.panelB, "50%")}
+                </tr>
+                <tr>
+                  ${buildRwphNewsletterStatCell("War Hits", String(m.totalHits), theme, theme.panelA, "50%")}
+                  ${buildRwphNewsletterStatCell("Assists / Outside", `${m.totalAssists} / ${m.totalOutsideHits}`, theme, theme.panelA, "50%")}
+                </tr>
+                <tr>
+                  ${buildRwphNewsletterStatCell("Retals / Tracked", `${m.totalRetaliationHits} / ${m.totalTrackedHits}`, theme, theme.panelB, "50%")}
+                  ${removedCell}
+                </tr>
+                <tr>
+                  ${buildRwphNewsletterStatCell(metricLabel, m.totalWeight.toFixed(2), theme, theme.panelA, "50%")}
+                  ${buildRwphNewsletterStatCell("Total Respect", m.totalRespect.toFixed(2), theme, theme.panelA, "50%")}
+                </tr>
+                ${pointsSummary}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 18px 18px 18px;">
+              <div style="font-size:18px; font-weight:bold; color:${theme.accent}; margin-bottom:10px; font-family:Arial, Helvetica, sans-serif;">Payout Ledger</div>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse;">
+                <tr>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Member</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">War</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Ast</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Out</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Ret</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Pay</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">${esc(metricLabel)}</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:right; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Payout</td>
+                  <td style="padding:8px; background-color:${theme.head}; border:1px solid ${theme.line}; color:${theme.accent}; font-weight:bold; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px;">Share</td>
+                </tr>
+                ${memberRows || `<tr><td colspan="9" style="padding:14px; background-color:${theme.panelB}; border:1px solid ${theme.line}; color:${theme.soft}; text-align:center; font-weight:bold; font-family:Arial, Helvetica, sans-serif;">No payout rows.</td></tr>`}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 18px 18px 18px;">
+              <div style="font-size:18px; font-weight:bold; color:${theme.accent}; margin-bottom:10px; font-family:Arial, Helvetica, sans-serif;">Important Notices</div>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse;">
+                <tr><td style="padding:10px; background-color:${theme.panelA}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• Payments should be reviewed before sending faction funds.</td></tr>
+                <tr><td style="padding:10px; background-color:${theme.panelB}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• ${m.includeLeftFactionMembers ? "Members who left the faction were included because the setting was ticked." : "Members who left the faction before calculation were excluded where detected."}</td></tr>
+                <tr><td style="padding:10px; background-color:${theme.panelA}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• Contact leadership if your payout looks wrong.</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 18px; background-color:${theme.bg}; border-top:1px solid ${theme.line}; text-align:center;">
+              <div style="font-size:12px; color:${theme.muted}; font-family:Arial, Helvetica, sans-serif;">Generated by Ranked War Payout Helper</div>
+              <div style="font-size:12px; color:${theme.soft}; margin-top:4px; font-family:Arial, Helvetica, sans-serif;">Stay active. Hit hard. Get paid.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
+<!-- TORN NEWSLETTER END -->`;
+  }
+
+
   function rwphCopyRenderedHtmlFallback(richHtml) {
     if (!richHtml || !document.body || !document.createRange) return false;
     const holder = document.createElement("div");
@@ -8964,6 +9291,44 @@
     .bar.weight{background:linear-gradient(90deg,#92400e,#f59e0b,#fef3c7)!important;box-shadow:0 0 16px rgba(245,158,11,.28)!important;}
     .key-dot.payout{background:#22c55e!important}.key-dot.weight{background:#f59e0b!important}`
     });
+  }
+
+  // v1.1.271: hard-route every newsletter path to the new Torn-compatible inline table HTML template.
+  function buildWarPayoutNewsletterHtml(rows, summary) {
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard");
+  }
+
+  function buildWarPayoutNewsletterCyberHtml(rows, summary) {
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "cyber");
+  }
+
+  function buildWarPayoutNewsletterLedgerHtml(rows, summary) {
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "ledger");
+  }
+
+  function buildWarPayoutNewsletterCrimsonHtml(rows, summary) {
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "crimson");
+  }
+
+  function buildWarPayoutNewsletterVictoryGoldHtml(rows, summary) {
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "gold");
+  }
+
+  function themedTornNewsletterHtml(rows, summary, options) {
+    const title = String(options?.title || "").toLowerCase();
+    const themeKey = title.includes("cyber") ? "cyber" : title.includes("ledger") ? "ledger" : title.includes("crimson") ? "crimson" : title.includes("gold") || title.includes("victory") ? "gold" : "standard";
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, themeKey);
+  }
+
+  function buildTornFactionNewsletterRichHtml(rows, summary, themeKey) {
+    return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildTornFactionNewsletterBundle(rows, summary, themeKey) {
+    return {
+      html: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, themeKey || "standard"),
+      text: buildTornFactionNewsletterText(rows || [], summary || {}, themeKey || "standard"),
+    };
   }
 
   function createHtmlNewsletter(rows, summary) {
@@ -10060,7 +10425,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Copy/Open Torn Newsletter, Copy/Open Cyber Neon Newsletter, Copy/Open War Ledger Newsletter, Copy/Open Crimson Raid Newsletter, and Copy/Open Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
+              <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each copy a HTML-code payout report theme.</li>
             </ul>
           </div>
 
@@ -10076,13 +10441,13 @@
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
-            <div class="rw-how-title">Using Torn-safe Newsletters in Torn</div>
+            <div class="rw-how-title">Using HTML-code Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Copy a newsletter:</b> click one of the Copy/Open newsletter links in the results tab.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the HTML Code newsletter buttons in the results tab.</li>
               <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
               <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
-              <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable Torn-safe text still remains.</li>
+              <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable HTML-code text still remains.</li>
             </ul>
           </div>
 
@@ -10217,7 +10582,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the Copy/Open newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the HTML Code newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
             </ul>
           </div>
 
@@ -10843,7 +11208,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Copy/Open Torn Newsletter, Copy/Open Cyber Neon Newsletter, Copy/Open War Ledger Newsletter, Copy/Open Crimson Raid Newsletter, and Copy/Open Victory Gold Newsletter each copy a Torn-safe payout report theme.</li>
+              <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each copy a HTML-code payout report theme.</li>
             </ul>
           </div>
 
@@ -10859,13 +11224,13 @@
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
-            <div class="rw-how-title">Using Torn-safe Newsletters in Torn</div>
+            <div class="rw-how-title">Using HTML-code Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Copy a newsletter:</b> click one of the Copy/Open newsletter links in the results tab.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the HTML Code newsletter buttons in the results tab.</li>
               <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
               <li><b>3. Do not paste raw HTML source:</b> Torn can show HTML/CSS code as text or strip backgrounds/styles.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
-              <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable Torn-safe text still remains.</li>
+              <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable HTML-code text still remains.</li>
             </ul>
           </div>
 
@@ -11000,7 +11365,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the Copy/Open newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the HTML Code newsletter panel into Torn's normal editor, not raw HTML/source mode. Torn may strip some rich styling, but the plain fallback stays readable.</li>
             </ul>
           </div>
 
@@ -11153,12 +11518,12 @@
           const bundle = buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard");
           const mode = await copyTornFactionNewsletterBundleToClipboard(bundle);
           if (mode === "rich" || mode === "rich-rendered") {
-            rwphToastPanelInfo(status, "Styled Torn-safe newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode. If Torn strips styling, open the fullscreen results tab and use Copy/Open for the visible text panel.", "info", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Styled HTML-code newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode. If Torn strips styling, open the fullscreen results tab and use HTML Code for the visible text panel.", "info", "RWPH Newsletter");
           } else if (mode === "plain") {
-            rwphToastPanelInfo(status, "Plain Torn-safe newsletter copied. Paste it into Torn's faction newsletter editor. For a visible manual panel, open the fullscreen results tab and use Copy/Open.", "warn", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Plain HTML-code newsletter copied. Paste it into Torn's faction newsletter editor. For a visible manual panel, open the fullscreen results tab and use HTML Code.", "warn", "RWPH Newsletter");
           } else {
             createHtmlNewsletter(lastRows, lastSummary || {});
-            rwphToastPanelInfo(status, "Clipboard was blocked, so an HTML preview/download was created. For the manual text panel, open the fullscreen results tab and use Copy/Open Torn Newsletter.", "warn", "RWPH Newsletter");
+            rwphToastPanelInfo(status, "Clipboard was blocked, so an HTML preview/download was created. For the manual text panel, open the fullscreen results tab and use HTML Code Torn Newsletter.", "warn", "RWPH Newsletter");
           }
         } catch (err) {
           try { createHtmlNewsletter(lastRows, lastSummary || {}); } catch (_) {}
