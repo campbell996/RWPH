@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.256**  
+Current package version: **1.1.257**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -602,6 +602,13 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.257
+
+- Member Payout is now explicitly sent to the backend as the calculation/payment pool.
+- Total Payout remains display-only record metadata for results tabs and newsletters, and no longer has any chance to be used as the member payment calculation amount.
+- Backend calculation and cache-open payload parsing now prefer `memberPayout` for payment splits while keeping old `totalPayout` compatibility.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.256
 

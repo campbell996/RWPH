@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.256
+// @version      1.1.257
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1656,7 +1656,7 @@
   // v1.1.233: Basic Calculations now uses a dropdown card matching the main panel theme.
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
-    // v1.1.256: Cached reports ignore changed payout fields when matching saved backend/database reports.
+    // v1.1.257: Cached reports ignore changed payout fields when matching saved backend/database reports.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
   // v1.1.244: Use Cached Report opens through a dedicated backend cache-open route for both Per Hit and Points System reports.
@@ -6972,6 +6972,7 @@
       userKey: document.getElementById("rw-key")?.value?.trim() || "",
       token: GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, ""),
       calculationMode: rwphNormalizeCalculationMode(calculationMode),
+      memberPayout: rwphGetTotalPayoutForMode(calculationMode),
       totalPayout: rwphGetTotalPayoutForMode(calculationMode),
       overallTotalPayout: rwphGetOverallTotalPayoutForMode(calculationMode),
       warHitWeight: rwphFixedPerHitWeight("rw-war-hit-weight", 1),
@@ -9523,8 +9524,8 @@
               <li><b>API Key:</b> required for Torn ID verification and ranked war data fetching. The key is saved locally only when you click Save Key.</li>
               <li><b>War start/end:</b> controls the exact time window used for attack and payout calculations.</li>
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
-              <li><b>Member Payout:</b> the money split across eligible members.</li>
-              <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
+              <li><b>Member Payout:</b> the money split across eligible members and the only payout amount used to calculate payments.</li>
+              <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records only; it does not calculate member payments.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
               <li><b>Basic Calculations:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
               <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
@@ -10083,7 +10084,7 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
             <summary class="rw-api-tos-title">Basic Calculations</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-per-hit-note">These settings control the normal per-hit report. Member Payout is the amount split across members. Total Payout is shown on the results/newsletters for your full payout record. Click Calculate here to run the per-hit report.</div>
+              <div class="rw-per-hit-note">These settings control the normal per-hit report. Member Payout is the amount split across members and used to calculate payments. Total Payout is shown on the results/newsletters for your full payout record only. Click Calculate here to run the per-hit report.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
                 <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Basic and Advanced finished-war caches when your API key and calculation settings are ready. Payout field changes do not stop a saved cached report from opening. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache live inside their matching dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
                 <div id="rw-cache-status-per-hit" class="rw-muted">Cache auto-check waits for your API key and valid calculation settings.</div>
@@ -10297,8 +10298,8 @@
               <li><b>API Key:</b> required for Torn ID verification and ranked war data fetching. The key is saved locally only when you click Save Key.</li>
               <li><b>War start/end:</b> controls the exact time window used for attack and payout calculations.</li>
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
-              <li><b>Member Payout:</b> the money split across eligible members.</li>
-              <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records.</li>
+              <li><b>Member Payout:</b> the money split across eligible members and the only payout amount used to calculate payments.</li>
+              <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records only; it does not calculate member payments.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
               <li><b>Basic Calculations:</b> War Hit, Outside Hit, Retaliation Hit, and Assist tick boxes control whether each type counts at a fixed 1 per hit in the normal per-hit report.</li>
               <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
@@ -10791,6 +10792,7 @@
           calculationMode: isPointsMode ? "points" : "standard",
           from,
           to,
+          memberPayout: totalPayout,
           totalPayout,
           overallTotalPayout,
           warHitWeight,
