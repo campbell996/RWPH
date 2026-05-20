@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.277**  
+Current package version: **1.1.279**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -601,12 +601,11 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.277
+### v1.1.279
 
-- Fixed result-tab newsletter buttons not opening the raw HTML newsletter panel.
-- Added direct inline button handlers plus a global newsletter panel opener so every Basic and Advanced newsletter button reliably opens the panel.
-- Added an emergency raw HTML fallback panel if the styled panel fails to render.
-- Made the newsletter HTML panel position explicit and centered before applying move/resize controls.
+- Removed `<!-- TORN NEWSLETTER START -->` and `<!-- TORN NEWSLETTER END -->` marker comments from all generated raw newsletter HTML code.
+- Fixed raw newsletter panel **Copy All** so it copies the full HTML source from the generated newsletter object and refreshes the textarea before copying.
+- Added stronger clipboard fallbacks, including `GM_setClipboard` where available and full-range textarea selection.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.275
@@ -615,13 +614,13 @@ When updating RWPH:
 - Added move support via the panel title bar.
 - Added resize support with corner handles.
 - Added size preset buttons: Small, Wide, Tall, and Full.
-- Kept Close, Copy All, Preview in New Tab, and live preview inside the results tab.
+- Kept Close, Copy All, and live preview inside the results tab.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.274
 
 - Newsletter buttons now open a raw HTML-code panel directly inside the results tab instead of downloading HTML files.
-- The panel includes the full raw HTML code, **Copy All**, **Preview in New Tab**, and a live inline preview.
+- The panel includes the full raw HTML code, **Copy All** and a live inline preview.
 - Applies to all 5 Basic and Advanced newsletter themes.
 - Removed the download-file workflow from result newsletter buttons.
 - Updated README, terms, server version, package version, and userscript version.
@@ -645,7 +644,7 @@ When updating RWPH:
 
 - Fixed Basic and Advanced result newsletter actions so they no longer depend on clipboard success.
 - Newsletter actions are now no-script-safe text links: if JavaScript or clipboard access is blocked, the link downloads a Torn-safe `.txt` newsletter.
-- When JavaScript runs, every newsletter action opens a visible copy panel with selectable text, Copy Text, Open Styled Preview, and Download HTML.
+- When JavaScript runs, every newsletter action opens a visible copy panel with selectable text, Copy Text and Download HTML.
 - Renamed result newsletter actions to **Copy/Open** to make the workflow clearer.
 - Updated README, terms, server version, package version, and userscript version.
 

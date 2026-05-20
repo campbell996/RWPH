@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.277
+// @version      1.1.279
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.279: removed Torn newsletter marker comments from raw HTML and fixed Copy All to copy the full raw code.
+  // v1.1.278: removed Preview in New Tab buttons from raw HTML newsletter panels.
   // v1.1.277: newsletter buttons open pre-rendered CSS-target raw HTML panels, so opening no longer depends on JS click handlers.
   // v1.1.275: newsletter raw HTML code panel now matches RWPH results panel styling and supports move, resize, size presets, and close.
   // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
@@ -5117,11 +5119,11 @@
       gold: buildTornFactionNewsletterBundle(rows || [], summary || {}, "gold"),
     };
     const rwphNewsletterHtmlCode = {
-      standard: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard"),
-      cyber: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "cyber"),
-      ledger: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "ledger"),
-      crimson: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "crimson"),
-      gold: buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "gold"),
+      standard: rwphStripNewsletterMarkerComments(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard")),
+      cyber: rwphStripNewsletterMarkerComments(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "cyber")),
+      ledger: rwphStripNewsletterMarkerComments(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "ledger")),
+      crimson: rwphStripNewsletterMarkerComments(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "crimson")),
+      gold: rwphStripNewsletterMarkerComments(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "gold")),
     };
     const rwphNewsletterHtmlCodeJson = JSON.stringify(rwphNewsletterHtmlCode).replaceAll("<", "\\u003c");
     const rwphNewsletterHtmlHrefs = {
@@ -5147,13 +5149,12 @@
     <div class="rwph-newsletter-code-head">
       <div>
         <div class="rwph-newsletter-code-title">${esc(label)} HTML Code</div>
-        <div class="rwph-newsletter-code-note">This panel is already in the results tab. Copy all HTML, paste it into Torn's faction newsletter HTML/source editor, or preview it in a new tab.</div>
+        <div class="rwph-newsletter-code-note">This panel is already in the results tab. Copy all HTML, then paste it into Torn's faction newsletter HTML/source editor.</div>
       </div>
       <a class="rwph-newsletter-code-close" href="#" title="Close newsletter code panel">×</a>
     </div>
     <div class="rwph-newsletter-code-actions">
       <button class="btn" type="button" data-rwph-copy-newsletter-panel="${key}">Copy All</button>
-      <a class="btn secondary" href="${esc(rwphNewsletterHtmlHrefs[key] || '#')}" target="_blank" rel="noopener" data-rwph-preview-newsletter-panel="${key}">Preview in New Tab</a>
       <a class="btn secondary" href="#" title="Close newsletter code panel">Close Panel</a>
     </div>
     <div class="rwph-newsletter-code-body">
@@ -6088,7 +6089,7 @@
       <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="#rwph-newsletter-code-panel-crimson">HTML Code Crimson Raid Newsletter</a>
       <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="#rwph-newsletter-code-panel-gold">HTML Code Victory Gold Newsletter</a>
       <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, press <b>Copy All</b>, then paste the HTML into Torn's HTML/source-capable faction newsletter editor. Use <b>Preview in New Tab</b> to inspect the layout before posting.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, press <b>Copy All</b>, then paste the HTML into Torn's HTML/source-capable faction newsletter editor. Use the live preview in the panel to inspect the layout before posting.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6196,22 +6197,57 @@
       });
     }
 
+    function rwphStripNewsletterMarkerCommentsRuntime(html) {
+      return String(html || "")
+        .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+START\s*-->\s*/gi, "")
+        .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+END\s*-->\s*/gi, "")
+        .trim();
+    }
+
     async function copyText(text) {
+      const value = String(text || "");
       try {
-        await navigator.clipboard.writeText(String(text || ""));
+        await navigator.clipboard.writeText(value);
         return true;
-      } catch (e) {
+      } catch (e) {}
+      try {
         const ta = document.createElement("textarea");
-        ta.value = String(text || "");
+        ta.value = value;
+        ta.setAttribute("readonly", "readonly");
         ta.style.position = "fixed";
-        ta.style.left = "-9999px";
+        ta.style.left = "0";
+        ta.style.top = "0";
+        ta.style.width = "1px";
+        ta.style.height = "1px";
+        ta.style.opacity = "0";
+        ta.style.zIndex = "2147483647";
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
+        try { ta.setSelectionRange(0, ta.value.length); } catch (_) {}
         const ok = document.execCommand("copy");
         ta.remove();
         return ok;
+      } catch (e) {
+        return false;
       }
+    }
+
+    async function copyFullNewsletterHtmlCode(key, textarea) {
+      const newsletterKey = key || "standard";
+      const fromObject = rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard);
+      const fromTextarea = textarea ? textarea.value : "";
+      const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || fromTextarea || "");
+      if (textarea && textarea.value !== html) textarea.value = html;
+      if (textarea) {
+        textarea.focus();
+        textarea.select();
+        try { textarea.setSelectionRange(0, textarea.value.length); } catch (_) {}
+      }
+      if (typeof GM_setClipboard === "function") {
+        try { GM_setClipboard(html, "text"); return true; } catch (_) {}
+      }
+      return await copyText(html);
     }
 
     document.addEventListener("click", async function(ev) {
@@ -6221,10 +6257,8 @@
       const key = copyBtn.getAttribute("data-rwph-copy-newsletter-panel") || "standard";
       const ta = document.querySelector('textarea[data-rwph-newsletter-code="' + key + '"]');
       if (!ta) { showToast("Newsletter code box was not found. Reopen the newsletter panel and try again.", "error"); return; }
-      ta.focus();
-      ta.select();
-      const ok = await copyText(ta.value);
-      showToast(ok ? "Newsletter HTML copied. Paste it into Torn's faction newsletter HTML/source editor." : "Copy blocked. Select the code and press Ctrl+C / long-press copy.", ok ? "info" : "warn");
+      const ok = await copyFullNewsletterHtmlCode(key, ta);
+      showToast(ok ? "Full newsletter HTML copied. Paste it into Torn's faction newsletter HTML/source editor." : "Copy blocked. Select the code and press Ctrl+C / long-press copy.", ok ? "info" : "warn");
     });
 
     function copyRenderedHtmlFallback(richHtml, plainText) {
@@ -6290,13 +6324,12 @@
       panel.style.cssText = "position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;background:linear-gradient(180deg,#0f172a,#020617);border:1px solid rgba(125,211,252,.45);border-radius:18px;padding:14px;box-shadow:0 24px 80px rgba(0,0,0,.72);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:left;";
       panel.innerHTML = [
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">',
-        '<div><b style="font-size:15px;">Torn Newsletter Copy Panel</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Use Copy Text, or select this HTML-code text manually. Open Styled Preview/Download HTML are optional backups.</div></div>',
+        '<div><b style="font-size:15px;">Torn Newsletter Copy Panel</b><div style="font-size:12px;color:#bfdbfe;margin-top:3px;">Use Copy Text, or select this HTML-code text manually. Download HTML is an optional backup.</div></div>',
         '<button type="button" data-close-manual-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:8px 10px;cursor:pointer;">×</button>',
         '</div>',
         '<textarea style="width:100%;min-height:280px;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;">' + escapeHtml(plainText) + '</textarea>',
         '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">',
         '<button type="button" data-manual-copy-newsletter style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy Text</button>',
-        '<button type="button" data-open-newsletter-preview style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Open Styled Preview</button>',
         '<button type="button" data-download-newsletter-html style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Download HTML</button>',
         '</div>'
       ].join('');
@@ -6445,7 +6478,6 @@
         '<textarea spellcheck="false" style="flex:1 1 auto;min-height:260px;width:100%;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;"></textarea>',
         '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">',
         '<button type="button" data-copy-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy All</button>',
-        '<button type="button" data-preview-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Preview in New Tab</button>',
         '</div>'
       ].join('');
       document.body.appendChild(panel);
@@ -6455,7 +6487,6 @@
       panel.addEventListener('click', async function(ev) {
         if (ev.target.closest('[data-close-fallback]')) { panel.remove(); return; }
         if (ev.target.closest('[data-copy-fallback]')) { ta.focus(); ta.select(); const ok = await copyText(ta.value); showToast(ok ? 'Newsletter HTML copied.' : 'Copy blocked. Select the code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn'); return; }
-        if (ev.target.closest('[data-preview-fallback]')) { openNewsletterPreview({ html: html, text: ta.value }); return; }
       });
     }
 
@@ -6489,13 +6520,11 @@
           '<b>How to use:</b>',
           '<ul>',
             '<li>Press <b>Copy All</b>, then paste into Torn\'s faction newsletter HTML/source editor.</li>',
-            '<li><b>Preview in New Tab</b> opens a temporary browser tab so you can inspect the layout first.</li>',
             '<li>This panel uses the same RWPH dark blue panel style, move/resize handles, and close controls as the main results tools.</li>',
           '</ul>',
         '</div>',
         '<div class="rwph-html-newsletter-actions" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 10px;flex:0 0 auto;">',
           '<button class="btn" type="button" data-copy-html-newsletter-code>Copy All</button>',
-          '<button class="btn secondary" type="button" data-open-html-newsletter-preview>Preview in New Tab</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="wide">Wide</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="small">Small</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="tall">Tall</button>',
@@ -6562,14 +6591,8 @@
         const sizeBtn = ev.target.closest('[data-html-newsletter-size]');
         if (sizeBtn) { applyNewsletterSize(sizeBtn.getAttribute('data-html-newsletter-size') || 'wide'); return; }
         if (ev.target.closest('[data-copy-html-newsletter-code]')) {
-          ta.focus();
-          ta.select();
-          const ok = await copyText(ta.value);
-          showToast(ok ? 'Newsletter HTML copied. Paste it into Torn HTML/source editor.' : 'Copy blocked. Select the code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn');
-          return;
-        }
-        if (ev.target.closest('[data-open-html-newsletter-preview]')) {
-          openNewsletterPreview({ html: html, text: ta.value });
+          const ok = await copyFullNewsletterHtmlCode(key, ta);
+          showToast(ok ? 'Full newsletter HTML copied. Paste it into Torn HTML/source editor.' : 'Copy blocked. Select the code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn');
           return;
         }
       });
@@ -6577,11 +6600,11 @@
 
     window.rwphOpenNewsletterHtmlPanel = function(key, sourceButton) {
       const newsletterKey = key || (sourceButton && sourceButton.getAttribute && sourceButton.getAttribute("data-open-html-newsletter")) || "standard";
-      const htmlCode = (rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "";
+      const htmlCode = rwphStripNewsletterMarkerCommentsRuntime((rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "");
       window.rwphLastNewsletterPanelOpenAt = Date.now();
       try {
         showRwphHtmlNewsletterPanel(htmlCode, newsletterKey);
-        showToast("Newsletter HTML code panel opened in this results tab. Use Copy All, or Preview in New Tab.", "info");
+        showToast("Newsletter HTML code panel opened in this results tab. Use Copy All and the live preview.", "info");
       } catch (err) {
         console.error("RWPH newsletter HTML panel failed", err);
         showRwphHtmlNewsletterEmergencyPanel(htmlCode, newsletterKey, err);
@@ -8604,6 +8627,13 @@
     </td>`;
   }
 
+  function rwphStripNewsletterMarkerComments(html) {
+    return String(html || "")
+      .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+START\s*-->\s*/gi, "")
+      .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+END\s*-->\s*/gi, "")
+      .trim();
+  }
+
   function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
@@ -8646,8 +8676,7 @@
             ${buildRwphNewsletterStatCell("Pay Respect", m.totalPayRespect.toFixed(2), theme, theme.panelB, "50%")}
           </tr>` : "";
 
-    return `<!-- TORN NEWSLETTER START -->
-<div style="margin:0; padding:0; background-color:${theme.bg}; color:${theme.text}; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.5;">
+    return `<div style="margin:0; padding:0; background-color:${theme.bg}; color:${theme.text}; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.5;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:${theme.bg}; border-collapse:collapse;">
     <tr>
       <td align="center" style="padding:18px 8px;">
@@ -8732,8 +8761,7 @@
       </td>
     </tr>
   </table>
-</div>
-<!-- TORN NEWSLETTER END -->`;
+</div>`;
   }
 
 
@@ -8807,7 +8835,7 @@
       <tr><td style="padding:10px;background-color:${theme.panelB};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• ${m.includeLeftFactionMembers ? "Members who left the faction were included because the setting was ticked." : "Members who left the faction before calculation were excluded where detected."}</td></tr>
       <tr><td style="padding:10px;background-color:${theme.panelA};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• Contact leadership if your payout looks wrong.</td></tr>
     </table>`;
-    const wrapper = (inner, max = 620) => `<!-- TORN NEWSLETTER START -->\n<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">\n<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;"><tr><td align="center" style="padding:18px 8px;">\n<table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};">${inner}</table>\n</td></tr></table>\n</div>\n<!-- TORN NEWSLETTER END -->`;
+    const wrapper = (inner, max = 620) => `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">\n<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;"><tr><td align="center" style="padding:18px 8px;">\n<table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};">${inner}</table>\n</td></tr></table>\n</div>`;
     const headerClassic = `<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;"><div style="font-size:26px;font-weight:bold;color:${theme.accent};letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;line-height:1.25;">${esc(theme.icon)} ${esc(m.newsletterTitle)}</div><div style="font-size:13px;color:${theme.soft};margin-top:6px;font-family:Arial,Helvetica,sans-serif;line-height:1.35;">Ranked War Payout Helper • ${esc(modeLabel)} • Payments</div></td></tr>`;
     const top3 = m.list.slice(0,3);
     const topCards = top3.map((r, idx) => {
@@ -10870,7 +10898,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the raw HTML panel and pasted the code into Torn's HTML/source-capable newsletter editor. Use Preview in New Tab before sending.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the raw HTML panel and pasted the code into Torn's HTML/source-capable newsletter editor. Use the live preview before sending.</li>
             </ul>
           </div>
 
@@ -11653,7 +11681,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the raw HTML panel and pasted the code into Torn's HTML/source-capable newsletter editor. Use Preview in New Tab before sending.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the raw HTML panel and pasted the code into Torn's HTML/source-capable newsletter editor. Use the live preview before sending.</li>
             </ul>
           </div>
 
