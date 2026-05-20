@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.282
+// @version      1.1.285
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,8 +18,9 @@
 (function () {
   "use strict";
 
-  // v1.1.282: raw newsletter code panels use selectable contenteditable code blocks so Torn PDA can highlight/copy the full HTML.
-  // v1.1.282: Copy All uses direct per-panel HTML source, visible editable textarea selection, async clipboard overwrite, execCommand fallback, and prompt fallback.
+  // v1.1.285: newsletter HTML-code output strips overflow/scrollbar CSS so pasted Torn newsletters do not show white scrollbars.
+  // v1.1.284: mobile-first newsletter HTML output uses compact tables and 3-column payout rows for phone/Torn PDA screens.
+  // v1.1.283: raw newsletter code panels use manual-copy instructions only; removed Copy All, Select All, Close, and auto select/copy logic.
   // v1.1.278: removed Preview in New Tab buttons from raw HTML newsletter panels.
   // v1.1.277: newsletter buttons open pre-rendered CSS-target raw HTML panels, so opening no longer depends on JS click handlers.
   // v1.1.275: newsletter raw HTML code panel now matches RWPH results panel styling and supports move, resize, size presets, and close.
@@ -5150,20 +5151,22 @@
     <div class="rwph-newsletter-code-head">
       <div>
         <div class="rwph-newsletter-code-title">${esc(label)} HTML Code</div>
-        <div class="rwph-newsletter-code-note">This panel is already in the results tab. Copy all HTML, then paste it into Torn's faction newsletter HTML/source editor.</div>
+        <div class="rwph-newsletter-code-note">Manual copy mode. RWPH does not auto-select or auto-copy this code.</div>
       </div>
-      <a class="rwph-newsletter-code-close" href="#" title="Close newsletter code panel">×</a>
     </div>
-    <div class="rwph-newsletter-code-actions">
-      <button class="btn" type="button" data-rwph-copy-newsletter-panel="${key}" onclick="return window.rwphCopyNewsletterHtmlCodePanel && window.rwphCopyNewsletterHtmlCodePanel('${key}', this);">Copy All</button>
-      <button class="btn secondary" type="button" onclick="return window.rwphSelectNewsletterHtmlCodePanel && window.rwphSelectNewsletterHtmlCodePanel('${key}', this);">Select All</button>
-      <a class="btn secondary" href="#" title="Close newsletter code panel">Close Panel</a>
+    <div class="rwph-newsletter-copy-help">
+      <b>How to copy this raw HTML:</b>
+      <ol>
+        <li><b>Computer:</b> right-click inside the raw HTML code box and choose <b>Select All</b>, then press <b>CTRL+C</b> on your keyboard to copy.</li>
+        <li><b>Phone/Torn PDA:</b> hold on the code box to open the text menu, choose <b>Select All</b>, then choose <b>Copy</b>.</li>
+        <li>Go to your Torn faction newsletter controls and paste it into the <b>Source code</b> tab/editor.</li>
+      </ol>
     </div>
     <div class="rwph-newsletter-code-body">
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Raw HTML Code</div>
-        <pre spellcheck="false" contenteditable="true" tabindex="0" id="rwph-newsletter-code-textarea-${key}" data-rwph-newsletter-code="${key}" data-rwph-code-source="${esc(htmlCode)}">${esc(htmlCode)}</pre>
-        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">Tip: if browser copy is blocked, press Select All then use Ctrl+C / long-press Copy.</div>
+        <textarea spellcheck="false" readonly tabindex="0" id="rwph-newsletter-code-textarea-${key}" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
+        <div class="rwph-newsletter-copy-status">Manual copy only: right-click/hold inside the code box, select all, then copy.</div>
       </div>
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Live Preview</div>
@@ -5430,11 +5433,11 @@
     .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
     .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
     .rwph-newsletter-code-label{text-align:center;color:#bfdbfe;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
-    .rwph-newsletter-code-box textarea,.rwph-newsletter-code-box pre[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;}
+    .rwph-newsletter-code-box textarea,.rwph-newsletter-code-box pre[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:hidden;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;}
     .rwph-newsletter-copy-status{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#bfdbfe;text-align:center;padding:5px 6px;border:1px solid rgba(125,211,252,.18);border-radius:10px;background:rgba(2,6,23,.48);}
-    .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(125,211,252,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+    .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(125,211,252,.22);border-radius:14px;padding:10px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(125,211,252,.3);border-left:4px solid rgba(56,189,248,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#eaf6ff!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
-    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
+    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:hidden}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
     .close-hint { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(125,211,252,.16); background:rgba(15,23,42,.58); color:#cbd5e1; font-size:11px; font-weight:800; line-height:1.35; text-align:center; }
     .results-action-zone { display:grid; gap:8px; margin:10px 0 0; padding-top:12px; border-top:1px solid rgba(125,211,252,.18); }
     .results-action-zone .btn { width:100%; }
@@ -6093,7 +6096,7 @@
       <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="#rwph-newsletter-code-panel-crimson">HTML Code Crimson Raid Newsletter</a>
       <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="#rwph-newsletter-code-panel-gold">HTML Code Victory Gold Newsletter</a>
       <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, press <b>Copy All</b>, then paste the HTML into Torn's HTML/source-capable faction newsletter editor. Use the live preview in the panel to inspect the layout before posting.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, then manually copy the raw HTML from the panel. On computer, right-click the code and choose Select All, then press CTRL+C. On phone/Torn PDA, hold the code, choose Select All, then Copy. Paste it into Torn faction newsletter controls in the Source code tab.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6205,6 +6208,11 @@
       return String(html || "")
         .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+START\s*-->\s*/gi, "")
         .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+END\s*-->\s*/gi, "")
+        .replace(/;?\s*overflow(?:-[xy])?\s*:\s*[^;"']+;?/gi, ";")
+        .replace(/;?\s*scrollbar-(?:width|color)\s*:\s*[^;"']+;?/gi, ";")
+        .replace(/;?\s*-ms-overflow-style\s*:\s*[^;"']+;?/gi, ";")
+        .replace(/;{2,}/g, ";")
+        .replace(/style="\s*;\s*/gi, 'style="')
         .trim();
     }
 
@@ -6237,161 +6245,7 @@
       }
     }
 
-    function rwphNewsletterTextareaForKey(key) {
-      const newsletterKey = key || "standard";
-      return document.getElementById("rwph-newsletter-code-textarea-" + newsletterKey)
-        || document.querySelector('[data-rwph-newsletter-code="' + newsletterKey + '"]');
-    }
-
-    function rwphNewsletterElementValue(el) {
-      if (!el) return "";
-      if (typeof el.value === "string") return String(el.value || "");
-      return String(el.textContent || el.getAttribute("data-rwph-code-source") || "");
-    }
-
-    function rwphSetNewsletterElementValue(el, html) {
-      if (!el) return;
-      if (typeof el.value === "string") el.value = String(html || "");
-      else {
-        el.textContent = String(html || "");
-        try { el.setAttribute("data-rwph-code-source", String(html || "")); } catch (_) {}
-      }
-    }
-
-    function rwphNewsletterStatusForKey(key) {
-      return document.querySelector('[data-rwph-newsletter-copy-status="' + (key || "standard") + '"]');
-    }
-
-    function rwphSetNewsletterCopyStatus(key, message, good) {
-      const status = rwphNewsletterStatusForKey(key);
-      if (status) {
-        status.textContent = message;
-        status.style.color = good ? "#bbf7d0" : "#fde68a";
-        status.style.borderColor = good ? "rgba(34,197,94,.45)" : "rgba(250,204,21,.45)";
-      }
-    }
-
-    function rwphSelectFullNewsletterTextarea(textarea) {
-      if (!textarea) return "";
-      const value = rwphNewsletterElementValue(textarea);
-      try {
-        textarea.removeAttribute("readonly");
-        textarea.readOnly = false;
-        textarea.style.pointerEvents = "auto";
-        textarea.style.webkitUserSelect = "text";
-        textarea.style.userSelect = "text";
-        textarea.focus({ preventScroll: true });
-      } catch (_) {
-        try { textarea.focus(); } catch (__) {}
-      }
-      if (typeof textarea.select === "function" && typeof textarea.value === "string") {
-        try { textarea.select(); } catch (_) {}
-        try { textarea.selectionStart = 0; textarea.selectionEnd = textarea.value.length; } catch (_) {}
-        try { textarea.setSelectionRange(0, textarea.value.length, "forward"); } catch (_) {}
-        return String(textarea.value || value || "");
-      }
-      try {
-        const range = document.createRange();
-        range.selectNodeContents(textarea);
-        const sel = window.getSelection && window.getSelection();
-        if (sel) {
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-      } catch (_) {}
-      return value;
-    }
-
-    function rwphPromptManualNewsletterCopy(html) {
-      try {
-        window.prompt("Clipboard copy is blocked here. Press Ctrl+C / long-press Copy, then paste into Torn.", html);
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-
-    function rwphCopyNewsletterHtmlCodePanelSync(key, trigger) {
-      const newsletterKey = key || "standard";
-      const textarea = rwphNewsletterTextareaForKey(newsletterKey);
-      const fromObject = rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard);
-      const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || (textarea ? rwphNewsletterElementValue(textarea) : "") || "");
-      if (!html) {
-        rwphSetNewsletterCopyStatus(newsletterKey, "No HTML code was found for this newsletter.", false);
-        return false;
-      }
-      if (textarea && rwphNewsletterElementValue(textarea) !== html) rwphSetNewsletterElementValue(textarea, html);
-      rwphSelectFullNewsletterTextarea(textarea);
-
-      let syncOk = false;
-      try { syncOk = !!(document.execCommand && document.execCommand("copy")); } catch (_) { syncOk = false; }
-
-      if (typeof GM_setClipboard === "function") {
-        try { GM_setClipboard(html, "text"); syncOk = true; } catch (_) {}
-      }
-
-      // Run async clipboard as an overwrite with the full source. Some webviews return
-      // true from execCommand but copy an incomplete selection; this fixes modern browsers.
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(html).then(function() {
-          rwphSetNewsletterCopyStatus(newsletterKey, "Copied full HTML code (" + html.length + " characters).", true);
-          try { showToast("Full newsletter HTML copied.", "info"); } catch (_) {}
-        }).catch(function() {
-          if (syncOk) {
-            rwphSetNewsletterCopyStatus(newsletterKey, "Copy attempted and full code selected (" + html.length + " characters). If paste is incomplete, use Select All then copy manually.", true);
-          } else {
-            rwphPromptManualNewsletterCopy(html);
-            rwphSetNewsletterCopyStatus(newsletterKey, "Clipboard blocked. Full code is highlighted and a manual copy prompt was opened. Use Ctrl+C / long-press Copy if needed.", false);
-          }
-        });
-      }
-
-      if (!syncOk && !(navigator.clipboard && navigator.clipboard.writeText)) {
-        rwphPromptManualNewsletterCopy(html);
-      }
-
-      rwphSetNewsletterCopyStatus(
-        newsletterKey,
-        syncOk
-          ? "Copy attempted and full code is selected (" + html.length + " characters). Paste now."
-          : "Clipboard blocked. Full code is selected (" + html.length + " characters); use Ctrl+C / long-press Copy.",
-        syncOk
-      );
-      try { if (trigger) { trigger.textContent = syncOk ? "Copied / Selected" : "Selected All"; setTimeout(function(){ trigger.textContent = "Copy All"; }, 1200); } } catch (_) {}
-      return false;
-    }
-
-    window.rwphCopyNewsletterHtmlCodePanel = function(key, trigger) {
-      rwphCopyNewsletterHtmlCodePanelSync(key || "standard", trigger || null);
-      return false;
-    };
-
-    window.rwphSelectNewsletterHtmlCodePanel = function(key, trigger) {
-      const newsletterKey = key || "standard";
-      const textarea = rwphNewsletterTextareaForKey(newsletterKey);
-      const fromObject = rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard);
-      const html = rwphStripNewsletterMarkerCommentsRuntime(fromObject || (textarea ? rwphNewsletterElementValue(textarea) : "") || "");
-      if (textarea && html && rwphNewsletterElementValue(textarea) !== html) rwphSetNewsletterElementValue(textarea, html);
-      rwphSelectFullNewsletterTextarea(textarea);
-      rwphSetNewsletterCopyStatus(newsletterKey, "Full HTML selected (" + String(textarea ? rwphNewsletterElementValue(textarea) : (html || "")).length + " characters). Use Ctrl+C / long-press Copy if Copy All is blocked.", false);
-      try { if (trigger) { trigger.textContent = "Selected"; setTimeout(function(){ trigger.textContent = "Select All"; }, 1000); } } catch (_) {}
-      return false;
-    };
-
-    async function copyFullNewsletterHtmlCode(key, textarea) {
-      rwphCopyNewsletterHtmlCodePanelSync(key || "standard", null);
-      return true;
-    }
-
-
-    document.addEventListener("click", function(ev) {
-      const copyBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-copy-newsletter-panel]") : null;
-      if (!copyBtn) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      const key = copyBtn.getAttribute("data-rwph-copy-newsletter-panel") || "standard";
-      window.rwphCopyNewsletterHtmlCodePanel(key, copyBtn);
-    });
+    // v1.1.283: newsletter raw HTML panels are manual-copy only; auto select/copy functions were removed for Torn PDA compatibility.
 
     function copyRenderedHtmlFallback(richHtml, plainText) {
       if (!richHtml || !document.body || !document.createRange) return false;
@@ -6602,24 +6456,13 @@
       panel.id = "rwphHtmlNewsletterPanelFallback";
       panel.style.cssText = "position:fixed;z-index:2147483647;left:12px;right:12px;top:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;border:1px solid rgba(125,211,252,.55);background:linear-gradient(180deg,#0f172a,#020617);box-shadow:0 24px 80px rgba(0,0,0,.74);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:center;";
       panel.innerHTML = [
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">',
         '<div style="font-weight:950;color:#e0f2fe;text-transform:uppercase;letter-spacing:.4px;">Newsletter HTML Code</div>',
-        '<button type="button" data-close-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:7px 10px;cursor:pointer;">×</button>',
-        '</div>',
-        '<div style="font-size:12px;color:#bfdbfe;font-weight:800;">The styled panel failed to open, so this fallback panel is showing the raw HTML. ' + (err ? 'Error: ' + escapeHtml(String(err && err.message || err)) : '') + '</div>',
-        '<textarea spellcheck="false" style="flex:1 1 auto;min-height:260px;width:100%;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;"></textarea>',
-        '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">',
-        '<button type="button" data-copy-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy All</button>',
-        '</div>'
+        '<div style="font-size:12px;color:#bfdbfe;font-weight:800;text-align:left;line-height:1.45;">The styled panel failed to open, so this fallback panel is showing the raw HTML. ' + (err ? 'Error: ' + escapeHtml(String(err && err.message || err)) : '') + '<br><br><b>Computer:</b> right-click inside the code box, choose <b>Select All</b>, then press <b>CTRL+C</b>.<br><b>Phone/Torn PDA:</b> hold on the code box, choose <b>Select All</b>, then <b>Copy</b>.<br>Paste it into Torn faction newsletter controls in the <b>Source code</b> tab/editor.</div>',
+        '<textarea spellcheck="false" readonly style="flex:1 1 auto;min-height:260px;width:100%;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre-wrap;overflow:hidden;"></textarea>'
       ].join('');
       document.body.appendChild(panel);
       const ta = panel.querySelector('textarea');
       ta.value = html;
-      setTimeout(function(){ ta.focus(); ta.select(); }, 30);
-      panel.addEventListener('click', async function(ev) {
-        if (ev.target.closest('[data-close-fallback]')) { panel.remove(); return; }
-        if (ev.target.closest('[data-copy-fallback]')) { ta.focus(); ta.select(); const ok = await copyText(ta.value); showToast(ok ? 'Newsletter HTML copied.' : 'Copy blocked. Select the code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn'); return; }
-      });
     }
 
     function showRwphHtmlNewsletterPanel(htmlCode, key) {
@@ -6645,33 +6488,31 @@
       panel.style.setProperty("overflow", "hidden", "important");
       panel.style.setProperty("text-align", "center", "important");
       panel.innerHTML = [
-        '<button class="btn secondary pay-all-close" type="button" data-close-html-newsletter title="Close">×</button>',
         '<h2 class="pay-all-head">Newsletter HTML Code</h2>',
-        '<p class="pay-all-note">Raw Torn newsletter HTML for this result. Drag this title bar to move the panel, use the corner handles to resize, or use the size buttons below.</p>',
+        '<p class="pay-all-note">Raw Torn newsletter HTML for this result. Manual copy mode: RWPH does not auto-select or auto-copy this code.</p>',
         '<div class="pay-all-info">',
-          '<b>How to use:</b>',
+          '<b>How to copy the raw code:</b>',
           '<ul>',
-            '<li>Press <b>Copy All</b>, then paste into Torn\'s faction newsletter HTML/source editor.</li>',
-            '<li>This panel uses the same RWPH dark blue panel style, move/resize handles, and close controls as the main results tools.</li>',
+            '<li><b>Computer:</b> right-click inside the raw HTML code box and choose <b>Select All</b>, then press <b>CTRL+C</b> on your keyboard to copy.</li>',
+            '<li><b>Phone/Torn PDA:</b> hold on the code box to open the text menu, choose <b>Select All</b>, then choose <b>Copy</b>.</li>',
+            '<li>Go to your Torn faction newsletter controls and paste it into the <b>Source code</b> tab/editor.</li>',
           '</ul>',
         '</div>',
-        '<div class="rwph-html-newsletter-actions" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 10px;flex:0 0 auto;">',
-          '<button class="btn" type="button" data-copy-html-newsletter-code>Copy All</button>',
-          '<button class="btn secondary" type="button" data-select-html-newsletter-code>Select All</button>',
+        '<div class="rwph-html-newsletter-actions" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:0 0 10px;flex:0 0 auto;">',
           '<button class="btn secondary" type="button" data-html-newsletter-size="wide">Wide</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="small">Small</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="tall">Tall</button>',
           '<button class="btn secondary" type="button" data-html-newsletter-size="full">Full</button>',
         '</div>',
-        '<div class="rwph-html-newsletter-body" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-height:0;overflow:auto;flex:1 1 auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(56,189,248,.86) rgba(15,23,42,.36);">',
+        '<div class="rwph-html-newsletter-body" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-height:0;overflow:hidden;flex:1 1 auto;padding-right:3px;">',
           '<div style="display:grid;gap:6px;text-align:left;min-height:0;">',
             '<div style="font-size:11px;color:#bfdbfe;font-weight:950;text-transform:uppercase;letter-spacing:.45px;text-align:center;">Raw HTML Code</div>',
-            '<pre contenteditable="true" tabindex="0" spellcheck="false" data-rwph-newsletter-code="' + (key || 'standard') + '" id="rwph-newsletter-code-textarea-' + (key || 'standard') + '-dynamic" style="width:100%;min-height:240px;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre-wrap;overflow:auto;resize:vertical;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;margin:0;text-align:left;"></pre>',
-            '<div data-rwph-newsletter-copy-status="' + (key || 'standard') + '" style="font-size:11px;color:#bfdbfe;text-align:center;padding:5px 6px;border:1px solid rgba(125,211,252,.18);border-radius:10px;background:rgba(2,6,23,.48);">Tip: if browser copy is blocked, press Select All then use Ctrl+C / long-press Copy.</div>',
+            '<textarea readonly tabindex="0" spellcheck="false" data-rwph-newsletter-code="' + (key || 'standard') + '" id="rwph-newsletter-code-textarea-' + (key || 'standard') + '-dynamic" style="width:100%;min-height:240px;border-radius:14px;border:1px solid rgba(125,211,252,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre-wrap;overflow:hidden;resize:vertical;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;margin:0;text-align:left;"></textarea>',
+            '<div style="font-size:11px;color:#bfdbfe;text-align:center;padding:5px 6px;border:1px solid rgba(125,211,252,.18);border-radius:10px;background:rgba(2,6,23,.48);">Manual copy only: right-click/hold inside the code box, select all, then copy.</div>',
           '</div>',
           '<div style="display:grid;gap:6px;text-align:left;min-height:0;">',
             '<div style="font-size:11px;color:#bfdbfe;font-weight:950;text-transform:uppercase;letter-spacing:.45px;text-align:center;">Live Preview</div>',
-            '<div data-html-newsletter-preview style="background:#111827;border:1px solid rgba(125,211,252,.22);border-radius:14px;padding:10px;overflow:auto;max-height:44vh;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);"></div>',
+            '<div data-html-newsletter-preview style="background:#111827;border:1px solid rgba(125,211,252,.22);border-radius:14px;padding:10px;overflow:hidden;max-height:44vh;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);"></div>',
           '</div>',
         '</div>',
         '<div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>',
@@ -6718,30 +6559,20 @@
 
       try { setupMoveResize(panel, ".pay-all-head"); } catch (setupErr) { console.warn("RWPH newsletter panel move/resize setup failed", setupErr); }
       try { applyNewsletterSize("wide"); } catch (_) {}
-      setTimeout(function(){ ta.focus(); ta.select(); }, 20);
-
-      panel.addEventListener('click', async function(ev) {
-        if (ev.target.closest('[data-close-html-newsletter]')) { panel.remove(); return; }
+      panel.addEventListener('click', function(ev) {
         const sizeBtn = ev.target.closest('[data-html-newsletter-size]');
         if (sizeBtn) { applyNewsletterSize(sizeBtn.getAttribute('data-html-newsletter-size') || 'wide'); return; }
-        if (ev.target.closest('[data-select-html-newsletter-code]')) {
-          window.rwphSelectNewsletterHtmlCodePanel(key, ev.target.closest('[data-select-html-newsletter-code]'));
-          return;
-        }
-        if (ev.target.closest('[data-copy-html-newsletter-code]')) {
-          window.rwphCopyNewsletterHtmlCodePanel(key, ev.target.closest('[data-copy-html-newsletter-code]'));
-          return;
-        }
       });
     }
 
+    
     window.rwphOpenNewsletterHtmlPanel = function(key, sourceButton) {
       const newsletterKey = key || (sourceButton && sourceButton.getAttribute && sourceButton.getAttribute("data-open-html-newsletter")) || "standard";
       const htmlCode = rwphStripNewsletterMarkerCommentsRuntime((rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "");
       window.rwphLastNewsletterPanelOpenAt = Date.now();
       try {
         showRwphHtmlNewsletterPanel(htmlCode, newsletterKey);
-        showToast("Newsletter HTML code panel opened in this results tab. Use Copy All and the live preview.", "info");
+        showToast("Newsletter HTML code panel opened. Manually copy the raw code using right-click/hold Select All, then paste into Torn source code.", "info");
       } catch (err) {
         console.error("RWPH newsletter HTML panel failed", err);
         showRwphHtmlNewsletterEmergencyPanel(htmlCode, newsletterKey, err);
@@ -8768,6 +8599,11 @@
     return String(html || "")
       .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+START\s*-->\s*/gi, "")
       .replace(/\s*<!--\s*TORN\s+NEWSLETTER\s+END\s*-->\s*/gi, "")
+      .replace(/;?\s*overflow(?:-[xy])?\s*:\s*[^;"']+;?/gi, ";")
+      .replace(/;?\s*scrollbar-(?:width|color)\s*:\s*[^;"']+;?/gi, ";")
+      .replace(/;?\s*-ms-overflow-style\s*:\s*[^;"']+;?/gi, ";")
+      .replace(/;{2,}/g, ";")
+      .replace(/style="\s*;\s*/gi, 'style="')
       .trim();
   }
 
@@ -9011,6 +8847,111 @@
     }
 
     return wrapper(`${headerClassic}<tr><td style="padding:18px;color:${theme.text};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:18px;font-weight:bold;color:#ffffff;margin-bottom:8px;">War Payout Results</div><div style="color:${theme.soft};line-height:1.5;">Final ranked-war payout results are below. Member Payout is the amount split across members. Total Payout is shown as the full payout record amount. Review all rows before sending funds.</div></td></tr><tr><td style="padding:0 18px;"><div style="border-top:1px solid ${theme.line};height:1px;line-height:1px;">&nbsp;</div></td></tr><tr><td style="padding:18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">War Summary</div>${summaryGrid}</td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">Important Notices</div>${noticeTable("left")}</td></tr><tr><td style="padding:16px 18px;background-color:${theme.bg};border-top:1px solid ${theme.line};text-align:center;"><div style="font-size:12px;color:${theme.muted};font-family:Arial,Helvetica,sans-serif;">Generated by Ranked War Payout Helper</div><div style="font-size:12px;color:${theme.soft};margin-top:4px;font-family:Arial,Helvetica,sans-serif;">Stay active. Hit hard. Get paid.</div></td></tr>`, 620);
+  }
+
+
+  // v1.1.284: mobile-first Torn faction newsletter HTML-code builder override.
+  // Keeps all 5 themes different, but prevents wide 9-column layouts from overflowing phone screens.
+  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const theme = rwphNewsletterHtmlTheme(themeKey);
+    const key = String(themeKey || "standard").toLowerCase();
+    const modeLabel = m.pointsMode ? "Advanced" : "Basic";
+    const metricLabel = m.pointsMode ? "Points" : "Weight";
+    const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
+    const removedLabel = m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits";
+    const removedValue = m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits || 0);
+    const rowBg = (i) => i % 2 ? theme.panelA : theme.panelB;
+    const maxPayout = Math.max(1, ...m.list.map((r) => Number(r.payout || 0)));
+    const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
+
+    const wrapper = (inner, max = 420) => `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;margin:0;padding:0;">
+    <tr>
+      <td align="center" style="padding:8px 4px;">
+        <table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;">
+          ${inner}
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>`;
+
+    const sectionTitle = (label) => `<tr><td style="padding:10px 10px 6px 10px;font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:16px;font-weight:bold;line-height:1.25;">${esc(label)}</td></tr>`;
+    const smallText = (text, bg = theme.panelA) => `<tr><td style="padding:9px 10px;background-color:${bg};border-top:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:12px;line-height:1.45;">${text}</td></tr>`;
+    const stat = (label, value, bg = theme.panelA, sub = "") => `<td width="50%" valign="top" style="width:50%;padding:6px;background-color:${bg};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
+      <div style="font-size:10px;line-height:1.2;color:${theme.muted};font-weight:bold;text-transform:uppercase;letter-spacing:.2px;">${esc(label)}</div>
+      <div style="font-size:15px;line-height:1.25;color:${theme.text};font-weight:bold;margin-top:2px;word-break:break-word;">${esc(value)}</div>
+      ${sub ? `<div style="font-size:10px;line-height:1.25;color:${theme.soft};margin-top:2px;">${esc(sub)}</div>` : ""}
+    </td>`;
+    const statRow = (a, b, bgA = theme.panelA, bgB = theme.panelB) => `<tr>${stat(a[0], a[1], bgA, a[2] || "")}${stat(b[0], b[1], bgB, b[2] || "")}</tr>`;
+    const summaryTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+      ${statRow(["Member Payout", money(m.memberPayout), `${m.list.length} paid`], ["Total Payout", money(m.overallTotalPayout), "record total"])}
+      ${statRow([perUnitLabel, money(m.perUnitAmount), m.pointsMode ? "per weighted point" : "per weighted hit"], [metricLabel, m.totalWeight.toFixed(2), modeLabel])}
+      ${statRow(["War / Assist", `${m.totalHits} / ${m.totalAssists}`], ["Outside / Retal", `${m.totalOutsideHits} / ${m.totalRetaliationHits}`])}
+      ${statRow(["Tracked / Payable", `${m.totalTrackedHits} / ${m.totalPayableEvents}`], [removedLabel, removedValue])}
+      ${statRow(["Total Respect", m.totalRespect.toFixed(2)], ["Pay Respect", m.totalPayRespect.toFixed(2)])}
+      ${m.pointsMode ? statRow(["Own Hosp", `${m.totalOwnFactionHospitalizingHits} / ${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts`], ["Enemy Hosp", `${m.totalEnemyFactionHospitalizingHits} / ${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} pts`]) : ""}
+      ${m.pointsMode ? statRow(["Fair Bonus", m.totalFairFightBonusPoints.toFixed(2)], ["Advanced", "Points mode"]) : ""}
+    </table>`;
+
+    const compactRows = m.list.map((r, idx) => {
+      const metric = m.pointsMode ? Number(r.points || 0) : Number(r.weight || 0);
+      const hitsLine = `W${r.warHits} A${r.assists} O${r.outsideHits} R${r.retaliationHits}`;
+      const advLine = m.pointsMode ? `<br><span style="font-size:10px;color:${theme.muted};">Hosp ${r.hospitalizingHits}/${r.enemyFactionHospitalizingHits} · FF ${r.avgFairFight.toFixed(2)}x · Bonus ${r.fairFightBonusPoints.toFixed(2)}</span>` : "";
+      return `<tr>
+        <td valign="top" style="padding:7px 6px;background-color:${rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};font-size:12px;line-height:1.3;word-break:break-word;"><b>${idx + 1}. ${esc(r.name)}</b><br><span style="font-size:10px;color:${theme.muted};">${esc(r.id)} · ${hitsLine}</span>${advLine}</td>
+        <td valign="top" align="center" style="width:64px;padding:7px 4px;background-color:${rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:12px;line-height:1.3;font-weight:bold;">${metric.toFixed(2)}<br><span style="font-size:10px;color:${theme.muted};font-weight:normal;">${esc(metricLabel)}</span></td>
+        <td valign="top" align="right" style="width:95px;padding:7px 5px;background-color:${rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:#86efac;font-size:11px;line-height:1.3;font-weight:bold;white-space:normal;word-break:break-word;">${money(r.payout)}<br><span style="font-size:10px;color:${theme.muted};font-weight:normal;">${percent(r.payout, m.memberPayout)}</span></td>
+      </tr>`;
+    }).join("");
+    const payoutTable = (label = "Payout Rows") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+      <tr><td colspan="3" style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:14px;font-weight:bold;">${esc(label)}</td></tr>
+      <tr>
+        <td style="padding:6px;background-color:${theme.header};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:11px;font-weight:bold;">Member</td>
+        <td align="center" style="width:64px;padding:6px;background-color:${theme.header};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:11px;font-weight:bold;">${esc(metricLabel)}</td>
+        <td align="right" style="width:95px;padding:6px;background-color:${theme.header};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:11px;font-weight:bold;">Payout</td>
+      </tr>
+      ${compactRows || `<tr><td colspan="3" style="padding:12px;background-color:${theme.panelB};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:12px;text-align:center;">No payout rows.</td></tr>`}
+    </table>`;
+
+    const topRows = m.list.slice(0, 3).map((r, idx) => `<tr><td style="padding:7px 8px;background-color:${idx === 0 ? theme.header : rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};font-size:12px;line-height:1.3;">
+      <b style="color:${theme.accent};">#${idx + 1}</b> ${esc(r.name)}<br><span style="font-size:10px;color:${theme.muted};">${money(r.payout)} · ${m.pointsMode ? r.points.toFixed(2) : r.weight.toFixed(2)} ${esc(metricLabel)}</span>
+    </td></tr>`).join("");
+    const topTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${topRows || `<tr><td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;font-size:12px;text-align:center;">No top payouts.</td></tr>`}</table>`;
+    const bars = [
+      ["Member Payout", money(m.memberPayout), 100],
+      ["Tracked Hits", String(m.totalTrackedHits), Math.min(100, Math.max(6, m.totalTrackedHits || 0))],
+      [removedLabel, removedValue, m.includeLeftFactionMembers ? 100 : Math.min(100, Math.max(6, m.removedLeftFactionHits || 0))],
+    ].map((item, i) => `<tr><td style="padding:7px 8px;background-color:${i % 2 ? theme.panelB : theme.panelA};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
+      <div style="font-size:11px;color:${theme.muted};font-weight:bold;line-height:1.2;">${esc(item[0])}<span style="float:right;color:${theme.text};">${esc(item[1])}</span></div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-top:4px;"><tr><td style="height:5px;background-color:${theme.header};"><div style="height:5px;width:${Math.max(4, Math.min(100, item[2]))}%;background-color:${theme.accent};line-height:5px;">&nbsp;</div></td></tr></table>
+    </td></tr>`).join("");
+    const barTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${bars}</table>`;
+    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:8px;background-color:${theme.panelA};border-left:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:12px;line-height:1.4;">• Review payouts before sending faction funds.</td></tr>
+      <tr><td style="padding:8px;background-color:${theme.panelB};border-left:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:12px;line-height:1.4;">• ${m.includeLeftFactionMembers ? "Members who left were included because the setting was ticked." : "Members who left before calculation were excluded where detected."}</td></tr>
+      <tr><td style="padding:8px;background-color:${theme.panelA};border-left:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:12px;line-height:1.4;">• Contact leadership if your payout looks wrong.</td></tr>
+    </table>`;
+    const header = (sub = "Ranked War Payout Helper") => `<tr><td style="padding:14px 10px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;">
+      <div style="font-size:20px;line-height:1.2;font-weight:bold;color:${theme.accent};letter-spacing:.4px;word-break:break-word;">${esc(theme.icon)} ${title}</div>
+      <div style="font-size:11px;line-height:1.35;color:${theme.soft};margin-top:4px;">${esc(sub)} • ${esc(modeLabel)} • Mobile Fit</div>
+    </td></tr>`;
+    const footer = `<tr><td style="padding:11px 10px;background-color:${theme.bg};border-top:1px solid ${theme.line};text-align:center;font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:11px;line-height:1.35;">Generated by Ranked War Payout Helper<br><span style="color:${theme.soft};">Stay active. Hit hard. Get paid.</span></td></tr>`;
+
+    if (key === "cyber") {
+      return wrapper(`${header("Neon dashboard")}${sectionTitle("Dashboard")}${smallText(barTable, theme.bg)}${sectionTitle("Payout Feed")}${smallText(payoutTable("Compact Payout Feed"), theme.bg)}${sectionTitle("Notices")}${smallText(notices, theme.bg)}${footer}`, 430);
+    }
+    if (key === "ledger") {
+      return wrapper(`${header("Ledger document")}${sectionTitle("Summary Ledger")}${smallText(summaryTable, theme.bg)}${sectionTitle("Signed Payout Rows")}${smallText(payoutTable("Signed Payout Ledger"), theme.bg)}${sectionTitle("Notices")}${smallText(notices, theme.bg)}${footer}`, 430);
+    }
+    if (key === "crimson") {
+      return wrapper(`${header("Raid command report")}${sectionTitle("Top Orders")}${smallText(topTable, theme.bg)}${sectionTitle("Raid Summary")}${smallText(summaryTable, theme.bg)}${sectionTitle("Payout Rows")}${smallText(payoutTable("Raid Payout Rows"), theme.bg)}${sectionTitle("Command Notes")}${smallText(notices, theme.bg)}${footer}`, 430);
+    }
+    if (key === "gold") {
+      return wrapper(`${header("Victory payout board")}${sectionTitle("Podium")}${smallText(topTable, theme.bg)}${sectionTitle("Victory Summary")}${smallText(summaryTable, theme.bg)}${sectionTitle("Full Payouts")}${smallText(payoutTable("Victory Payouts"), theme.bg)}${sectionTitle("Final Notes")}${smallText(notices, theme.bg)}${footer}`, 430);
+    }
+    return wrapper(`${header("Faction payout report")}${sectionTitle("War Summary")}${smallText(summaryTable, theme.bg)}${sectionTitle("Payout Rows")}${smallText(payoutTable("Payout Ledger"), theme.bg)}${sectionTitle("Important Notices")}${smallText(notices, theme.bg)}${footer}`, 420);
   }
 
   function rwphCopyRenderedHtmlFallback(richHtml) {
