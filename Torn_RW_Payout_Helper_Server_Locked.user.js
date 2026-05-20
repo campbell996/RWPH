@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.271
+// @version      1.1.272
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.271: replaced all Basic/Advanced newsletter builders with one Torn-compatible inline table HTML template based on the uploaded working faction newsletter layout.
+  // v1.1.272: Basic/Advanced newsletters now use five different Torn-compatible inline-table HTML layouts and themes based on the uploaded working faction newsletter style.
   // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
   // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
   // v1.1.268: newsletter buttons use rich clipboard, rendered-copy fallback, plain-text fallback, and manual-copy fallback.
@@ -8560,6 +8560,117 @@
   }
 
 
+
+  // v1.1.272: final newsletter HTML-code builder override. Each of the 5 newsletter buttons now uses a different Torn-safe table layout, not only a different colour palette.
+  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const theme = rwphNewsletterHtmlTheme(themeKey);
+    const key = String(themeKey || "standard").toLowerCase();
+    const modeLabel = m.pointsMode ? "Advanced Calculations" : "Basic Calculations";
+    const metricLabel = m.pointsMode ? "Points" : "Weight";
+    const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
+    const perUnitSub = m.pointsMode ? "per weighted point" : "per weighted hit";
+    const removedLabel = m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits";
+    const removedValue = m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits);
+    const bgStripe = (i) => i % 2 ? theme.panelA : theme.panelB;
+    const cell = (label, value, bg = theme.panelA, width = "50%", sub = "") => `<td style="width:${width};padding:8px;background-color:${bg};border:1px solid ${theme.line};vertical-align:top;font-family:Arial,Helvetica,sans-serif;">
+      <div style="font-size:11px;color:${theme.muted};font-weight:bold;line-height:1.25;text-transform:uppercase;letter-spacing:.3px;">${esc(label)}</div>
+      <div style="font-size:19px;color:${theme.text};font-weight:bold;line-height:1.25;margin-top:2px;">${esc(value)}</div>${sub ? `<div style="font-size:10px;color:${theme.soft};line-height:1.3;margin-top:2px;">${esc(sub)}</div>` : ""}
+    </td>`;
+    const barCell = (label, value, widthPct, bg = theme.panelB) => `<tr><td style="padding:7px 9px;background-color:${bg};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
+      <div style="font-size:11px;color:${theme.muted};font-weight:bold;line-height:1.2;">${esc(label)} <span style="float:right;color:${theme.text};">${esc(value)}</span></div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-top:4px;"><tr><td style="height:6px;background-color:${theme.header};"><div style="height:6px;width:${Math.max(4, Math.min(100, widthPct))}%;background-color:${theme.accent};line-height:6px;">&nbsp;</div></td></tr></table>
+    </td></tr>`;
+    const pointsExtra = m.pointsMode ? `
+      <tr>${cell("Own Hosp", `${m.totalOwnFactionHospitalizingHits} / ${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts`, theme.panelA, "50%")} ${cell("Enemy Hosp", `${m.totalEnemyFactionHospitalizingHits} / ${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} pts`, theme.panelA, "50%")}</tr>
+      <tr>${cell("Fair Bonus", m.totalFairFightBonusPoints.toFixed(2), theme.panelB, "50%")} ${cell("Pay Respect", m.totalPayRespect.toFixed(2), theme.panelB, "50%")}</tr>` : "";
+    const summaryGrid = `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+        <tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "50%")} ${cell("Total Payout", money(m.overallTotalPayout), theme.panelA, "50%")}</tr>
+        <tr>${cell(perUnitLabel, `${money(m.perUnitAmount)} ${perUnitSub}`, theme.panelB, "50%")} ${cell("Members Paid", String(m.list.length), theme.panelB, "50%")}</tr>
+        <tr>${cell("War Hits", String(m.totalHits), theme.panelA, "50%")} ${cell("Assists / Outside", `${m.totalAssists} / ${m.totalOutsideHits}`, theme.panelA, "50%")}</tr>
+        <tr>${cell("Retals / Tracked", `${m.totalRetaliationHits} / ${m.totalTrackedHits}`, theme.panelB, "50%")} ${cell(removedLabel, removedValue, theme.panelB, "50%")}</tr>
+        <tr>${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "50%")} ${cell("Total Respect", m.totalRespect.toFixed(2), theme.panelA, "50%")}</tr>
+        ${pointsExtra}
+      </table>`;
+    const memberRowsFull = m.list.map((r, idx) => {
+      const bg = bgStripe(idx);
+      const metric = m.pointsMode ? r.points : r.weight;
+      const adv = m.pointsMode ? `<tr><td colspan="9" style="padding:7px 8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.muted};font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;">Own Hosp <b style="color:${theme.text};">${r.hospitalizingHits}</b> / ${r.hospitalBonusPoints.toFixed(2)} pts &nbsp;•&nbsp; Enemy Hosp <b style="color:${theme.text};">${r.enemyFactionHospitalizingHits}</b> / ${r.enemyFactionHospitalBonusPoints.toFixed(2)} pts &nbsp;•&nbsp; Avg FF <b style="color:${theme.text};">${r.avgFairFight.toFixed(2)}x</b> &nbsp;•&nbsp; FF Bonus <b style="color:${theme.text};">${r.fairFightBonusPoints.toFixed(2)}</b></td></tr>` : "";
+      return `<tr>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.35;"><b>${esc(r.name)}</b><br><span style="font-size:10px;color:${theme.muted};">${esc(r.id)}</span></td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.text};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">${r.warHits}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.text};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">${r.assists}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.text};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">${r.outsideHits}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.text};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">${r.retaliationHits}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.text};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">${r.payableEvents}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.accent};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;">${metric.toFixed(2)}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:#86efac;text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;white-space:nowrap;">${money(r.payout)}</td>
+        <td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};color:${theme.muted};text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;white-space:nowrap;">${percent(r.payout, m.memberPayout)}</td>
+      </tr>${adv}`;
+    }).join("");
+    const fullLedgerTable = (title = "Payout Ledger") => `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+        <tr><td colspan="9" style="padding:10px;background-color:${theme.header};border:1px solid ${theme.line};color:${theme.accent};font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;">${esc(title)}</td></tr>
+        <tr>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Member</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">War</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Ast</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Out</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Ret</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Pay</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">${esc(metricLabel)}</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Payout</td>
+          <td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Share</td>
+        </tr>
+        ${memberRowsFull || `<tr><td colspan="9" style="padding:14px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};text-align:center;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">No payout rows.</td></tr>`}
+      </table>`;
+    const noticeTable = (style = "left") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:10px;background-color:${theme.panelA};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• Payments should be reviewed before sending faction funds.</td></tr>
+      <tr><td style="padding:10px;background-color:${theme.panelB};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• ${m.includeLeftFactionMembers ? "Members who left the faction were included because the setting was ticked." : "Members who left the faction before calculation were excluded where detected."}</td></tr>
+      <tr><td style="padding:10px;background-color:${theme.panelA};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• Contact leadership if your payout looks wrong.</td></tr>
+    </table>`;
+    const wrapper = (inner, max = 620) => `<!-- TORN NEWSLETTER START -->\n<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">\n<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;"><tr><td align="center" style="padding:18px 8px;">\n<table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};">${inner}</table>\n</td></tr></table>\n</div>\n<!-- TORN NEWSLETTER END -->`;
+    const headerClassic = `<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;"><div style="font-size:26px;font-weight:bold;color:${theme.accent};letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;line-height:1.25;">${esc(theme.icon)} ${esc(theme.title)}</div><div style="font-size:13px;color:${theme.soft};margin-top:6px;font-family:Arial,Helvetica,sans-serif;line-height:1.35;">Ranked War Payout Helper • ${esc(modeLabel)} • Payments</div></td></tr>`;
+    const top3 = m.list.slice(0,3);
+    const topCards = top3.map((r, idx) => {
+      const metric = m.pointsMode ? r.points : r.weight;
+      return `<td style="width:33.33%;padding:7px;vertical-align:top;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background-color:${idx === 0 ? theme.header : theme.panelA};border:1px solid ${theme.strongLine};"><tr><td style="padding:10px;text-align:center;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:11px;color:${theme.muted};font-weight:bold;">#${idx+1}</div><div style="font-size:14px;color:${theme.text};font-weight:bold;line-height:1.25;">${esc(r.name)}</div><div style="font-size:11px;color:${theme.muted};margin-top:2px;">${esc(r.id)}</div><div style="font-size:16px;color:#86efac;font-weight:bold;margin-top:6px;">${money(r.payout)}</div><div style="font-size:11px;color:${theme.accent};font-weight:bold;">${metric.toFixed(2)} ${esc(metricLabel)}</div></td></tr></table></td>`;
+    }).join("");
+    const miniRows = m.list.map((r, idx) => {
+      const bg = bgStripe(idx);
+      const metric = m.pointsMode ? r.points : r.weight;
+      return `<tr><td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};"><b>${idx+1}. ${esc(r.name)}</b><br><span style="color:${theme.muted};font-size:10px;">${esc(r.id)} • W${r.warHits} A${r.assists} O${r.outsideHits} R${r.retaliationHits}</span></td><td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-weight:bold;text-align:center;">${metric.toFixed(2)}</td><td style="padding:8px;background-color:${bg};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:#86efac;font-weight:bold;text-align:right;white-space:nowrap;">${money(r.payout)}</td></tr>`;
+    }).join("");
+    const miniTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;font-family:Arial,Helvetica,sans-serif;">Member</td><td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif;">${esc(metricLabel)}</td><td style="padding:8px;background-color:${theme.head};border:1px solid ${theme.line};color:${theme.accent};font-weight:bold;text-align:right;font-family:Arial,Helvetica,sans-serif;">Payout</td></tr>${miniRows || `<tr><td colspan="3" style="padding:14px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};text-align:center;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">No payout rows.</td></tr>`}</table>`;
+
+    if (key === "cyber") {
+      const maxPayout = Math.max(1, ...m.list.map(r => r.payout));
+      const bars = [
+        ["Member Payout", money(m.memberPayout), 100],
+        ["War Hits", String(m.totalHits), Math.min(100, m.totalHits || 4)],
+        ["Tracked Hits", String(m.totalTrackedHits), Math.min(100, m.totalTrackedHits || 4)],
+        [removedLabel, removedValue, m.includeLeftFactionMembers ? 100 : Math.min(100, Math.max(4, m.removedLeftFactionHits || 0))],
+      ].map((x,i)=>barCell(x[0],x[1],x[2], i%2?theme.panelB:theme.panelA)).join("");
+      const cyberRows = m.list.map((r, idx) => `<tr><td style="padding:7px;background-color:${bgStripe(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};"><b>${esc(r.name)}</b><br><span style="font-size:10px;color:${theme.muted};">${esc(r.id)} • W${r.warHits} / A${r.assists} / O${r.outsideHits} / R${r.retaliationHits}</span><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-top:5px;"><tr><td style="height:5px;background-color:${theme.header};"><div style="height:5px;width:${Math.max(4, Math.min(100, (r.payout/maxPayout)*100))}%;background-color:${theme.accent};line-height:5px;">&nbsp;</div></td></tr></table></td><td style="padding:7px;background-color:${bgStripe(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;text-align:right;color:#86efac;font-weight:bold;white-space:nowrap;">${money(r.payout)}</td></tr>`).join("");
+      return wrapper(`${headerClassic}<tr><td style="padding:14px 16px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="width:38%;vertical-align:top;padding-right:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${bars}</table></td><td style="width:62%;vertical-align:top;padding-left:8px;">${miniTable}</td></tr></table></td></tr><tr><td style="padding:0 16px 16px 16px;">${noticeTable("left")}</td></tr>`, 760);
+    }
+
+    if (key === "ledger") {
+      return wrapper(`<tr><td style="padding:18px;background-color:${theme.header};border-bottom:1px solid ${theme.strongLine};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="font-family:Georgia,'Times New Roman',serif;color:${theme.accent};font-size:25px;font-weight:bold;">${esc(theme.title)}</td><td style="font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:12px;text-align:right;">${esc(modeLabel)}<br>RWPH War Ledger</td></tr></table></td></tr><tr><td style="padding:14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "33.33%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelA, "33.33%", perUnitSub)} ${cell(removedLabel, removedValue, theme.panelA, "33.33%")}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Signed Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 720);
+    }
+
+    if (key === "crimson") {
+      return wrapper(`<tr><td style="padding:16px 18px;background-color:${theme.header};border-bottom:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:24px;color:${theme.accent};font-weight:bold;text-transform:uppercase;letter-spacing:1px;">${esc(theme.title)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;">Raid payout command report • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:12px 18px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("War Hits", String(m.totalHits), theme.panelA, "25%")} ${cell("Tracked", String(m.totalTrackedHits), theme.panelB, "25%")} ${cell(removedLabel, removedValue, theme.panelA, "25%")} ${cell("Members", String(m.list.length), theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 18px 14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No top payouts.</td>`}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${miniTable}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 700);
+    }
+
+    if (key === "gold") {
+      return wrapper(`<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:28px;color:${theme.accent};font-weight:bold;">${esc(theme.icon)} ${esc(theme.title)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;margin-top:4px;">Victory payout board • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:10px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No podium rows.</td>`}</tr></table></td></tr><tr><td style="padding:0 16px 14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "25%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelB, "25%", perUnitSub)} ${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "25%")} ${cell(removedLabel, removedValue, theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 16px 18px 16px;">${fullLedgerTable("Full Victory Payouts")}</td></tr><tr><td style="padding:0 16px 18px 16px;">${noticeTable("left")}</td></tr>`, 740);
+    }
+
+    return wrapper(`${headerClassic}<tr><td style="padding:18px;color:${theme.text};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:18px;font-weight:bold;color:#ffffff;margin-bottom:8px;">War Payout Results</div><div style="color:${theme.soft};line-height:1.5;">Final ranked-war payout results are below. Member Payout is the amount split across members. Total Payout is shown as the full payout record amount. Review all rows before sending funds.</div></td></tr><tr><td style="padding:0 18px;"><div style="border-top:1px solid ${theme.line};height:1px;line-height:1px;">&nbsp;</div></td></tr><tr><td style="padding:18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">War Summary</div>${summaryGrid}</td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">Important Notices</div>${noticeTable("left")}</td></tr><tr><td style="padding:16px 18px;background-color:${theme.bg};border-top:1px solid ${theme.line};text-align:center;"><div style="font-size:12px;color:${theme.muted};font-family:Arial,Helvetica,sans-serif;">Generated by Ranked War Payout Helper</div><div style="font-size:12px;color:${theme.soft};margin-top:4px;font-family:Arial,Helvetica,sans-serif;">Stay active. Hit hard. Get paid.</div></td></tr>`, 620);
+  }
+
   function rwphCopyRenderedHtmlFallback(richHtml) {
     if (!richHtml || !document.body || !document.createRange) return false;
     const holder = document.createElement("div");
@@ -9293,7 +9404,7 @@
     });
   }
 
-  // v1.1.271: hard-route every newsletter path to the new Torn-compatible inline table HTML template.
+  // v1.1.272: hard-route every newsletter path to the new Torn-compatible inline table HTML template.
   function buildWarPayoutNewsletterHtml(rows, summary) {
     return buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard");
   }
