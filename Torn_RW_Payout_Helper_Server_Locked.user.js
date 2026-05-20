@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.290
+// @version      1.1.292
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.292: added results-tab Test Newsletter raw HTML panel with 100 repeated members for mobile/long-newsletter testing.
+  // v1.1.291: generated newsletter HTML is fluid-width with no fixed table widths to prevent white mobile scrollbars.
   // v1.1.290: newsletter payout cards show rank badge plus name/payout, and All Result Stats is reduced to Member Payout, Per Hit/Point Amount, and Payable Hits.
   // v1.1.289: ultra-compacted mobile newsletter payout cards to roughly one-quarter size.
   // v1.1.287: compacted mobile newsletter payout cards and tightened phone layout.
@@ -5117,12 +5119,37 @@
     const ledgerNewsletterHtml = buildWarPayoutNewsletterLedgerHtml(rows || [], summary || {});
     const crimsonNewsletterHtml = buildWarPayoutNewsletterCrimsonHtml(rows || [], summary || {});
     const goldNewsletterHtml = buildWarPayoutNewsletterVictoryGoldHtml(rows || [], summary || {});
+    const rwphNewsletterSourceRows = Array.isArray(rows) && rows.length ? rows : [{
+      id: "0000000",
+      name: "Test Member",
+      warHits: 10,
+      assists: 2,
+      outsideHits: 1,
+      retaliationHits: 1,
+      totalTrackedHits: 14,
+      payableEvents: 14,
+      weight: 14,
+      points: 14,
+      payout: 1000000,
+      respect: 0,
+      totalRespect: 0,
+      avgFairFight: 1,
+    }];
+    const rwphNewsletterTestRows = Array.from({ length: 100 }, (_, idx) => ({
+      ...rwphNewsletterSourceRows[idx % rwphNewsletterSourceRows.length],
+    }));
+    const rwphNewsletterTestSummary = {
+      ...(summary || {}),
+      nameCount: 100,
+      testNewsletter: true,
+    };
     const tornNewsletterBundles = {
       standard: buildTornFactionNewsletterBundle(rows || [], summary || {}, "standard"),
       cyber: buildTornFactionNewsletterBundle(rows || [], summary || {}, "cyber"),
       ledger: buildTornFactionNewsletterBundle(rows || [], summary || {}, "ledger"),
       crimson: buildTornFactionNewsletterBundle(rows || [], summary || {}, "crimson"),
       gold: buildTornFactionNewsletterBundle(rows || [], summary || {}, "gold"),
+      test100: buildTornFactionNewsletterBundle(rwphNewsletterTestRows, rwphNewsletterTestSummary, "standard"),
     };
     const rwphNewsletterHtmlCode = {
       standard: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "standard")),
@@ -5130,6 +5157,7 @@
       ledger: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "ledger")),
       crimson: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "crimson")),
       gold: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rows || [], summary || {}, "gold")),
+      test100: rwphCleanNewsletterHtmlCode(buildRwphTornHtmlCodeNewsletter(rwphNewsletterTestRows, rwphNewsletterTestSummary, "standard")),
     };
     const rwphNewsletterHtmlCodeJson = JSON.stringify(rwphNewsletterHtmlCode).replaceAll("<", "\\u003c");
     const rwphNewsletterHtmlHrefs = {
@@ -5138,6 +5166,7 @@
       ledger: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.ledger || "")}`,
       crimson: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.crimson || "")}`,
       gold: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.gold || "")}`,
+      test100: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.test100 || "")}`,
     };
     const rwphNewsletterPanelLabels = {
       standard: "Torn Newsletter",
@@ -5145,8 +5174,9 @@
       ledger: "War Ledger Newsletter",
       crimson: "Crimson Raid Newsletter",
       gold: "Victory Gold Newsletter",
+      test100: "Test Newsletter - 100 Members",
     };
-    const rwphNewsletterPanelHtml = ["standard", "cyber", "ledger", "crimson", "gold"].map((key) => {
+    const rwphNewsletterPanelHtml = ["standard", "cyber", "ledger", "crimson", "gold", "test100"].map((key) => {
       const htmlCode = rwphCleanNewsletterHtmlCode(rwphNewsletterHtmlCode[key] || "");
       const label = rwphNewsletterPanelLabels[key] || "Newsletter";
       const targetId = `rwph-newsletter-code-panel-${key}`;
@@ -5178,6 +5208,7 @@
       ledger: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.ledger.text || "")}`,
       crimson: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.crimson.text || "")}`,
       gold: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.gold.text || "")}`,
+      test100: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.test100.text || "")}`,
     };
     const tornNewsletterBundlesJson = JSON.stringify(tornNewsletterBundles).replaceAll("<", "\\u003c");
     const newsletterJson = JSON.stringify(newsletterHtml).replaceAll("<", "\\u003c");
@@ -5485,7 +5516,8 @@
     #newsletterCyberBtn,
     #newsletterLedgerBtn,
     #newsletterCrimsonBtn,
-    #newsletterGoldBtn{
+    #newsletterGoldBtn,
+    #newsletterTest100Btn{
       background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.88))!important;
       border-color:rgba(125,211,252,.28)!important;
       box-shadow:0 10px 24px rgba(2,6,23,.42), inset 0 1px 0 rgba(255,255,255,.08)!important;
@@ -6092,7 +6124,8 @@
       <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="#rwph-newsletter-code-panel-ledger">HTML Code War Ledger Newsletter</a>
       <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="#rwph-newsletter-code-panel-crimson">HTML Code Crimson Raid Newsletter</a>
       <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="#rwph-newsletter-code-panel-gold">HTML Code Victory Gold Newsletter</a>
-      <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab.</p>
+      <a class="btn secondary newsletter-top-btn" id="newsletterTest100Btn" href="#rwph-newsletter-code-panel-test100">HTML Code Test Newsletter (100 Members)</a>
+      <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab. The test newsletter repeats the existing result rows until it has 100 members so you can test long mobile newsletters.</p>
       <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, then manually copy the raw HTML code. On computer, right-click the code box, choose Select All, then press CTRL+C. On phone/Torn PDA, hold the code box, choose Select All, then Copy. Paste it into Torn faction newsletter controls in the Source code tab.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
@@ -8261,6 +8294,11 @@
       .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*::-webkit-scrollbar(?:-[a-z]+)?\s*\{[\s\S]*?\}/gi, "")
       .replace(/\s*scrollbar-[a-z-]+\s*:\s*[^;\}"]+;?/gi, "")
+      .replace(/\swidth="(?!100%)[0-9]+"/gi, "")
+      .replace(/\s*(?:min-width)\s*:\s*[^;\}"]+;?/gi, "")
+      .replace(/\s*width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
+      .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
+      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:100%;")
       .replace(/\s{2,}/g, " ")
       .replace(/>\s+</g, "><")
       .trim();
@@ -8524,17 +8562,20 @@
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
     const rowBg = (i) => i % 2 ? theme.panelA : theme.panelB;
 
-    const wrapper = (inner, max = 330) => `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.18;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;margin:0;padding:0;">
+    const wrapper = (inner, max = 300) => {
+      const safeMax = Math.min(Math.max(Number(max) || 290, 240), 300);
+      return `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.18;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;margin:0;padding:0;table-layout:fixed;">
     <tr>
       <td align="center" style="padding:2px 1px;">
-        <table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;">
+        <table width="98%" cellpadding="0" cellspacing="0" border="0" style="width:98%;max-width:${safeMax}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;">
           ${inner}
         </table>
       </td>
     </tr>
   </table>
 </div>`;
+    };
 
     const header = (sub = "Ranked War Payout Helper") => `<tr><td style="padding:6px 4px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;">
       <div style="font-size:13px;line-height:1.08;font-weight:bold;color:${theme.accent};letter-spacing:.25px;word-break:break-word;">${esc(theme.icon)} ${title}</div>
@@ -8563,7 +8604,7 @@
     const barTable = statGrid;
 
     const statMini = (label, value, idx) => `<td width="25%" valign="top" style="width:25%;padding:1px 1px;background-color:${idx % 2 ? theme.panelB : theme.panelA};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
-      <div style="font-size:5.2px;color:${theme.muted};font-weight:bold;text-transform:uppercase;line-height:1;white-space:nowrap;">${esc(label)}</div><div style="font-size:7.2px;color:${theme.text};font-weight:bold;line-height:1.03;margin-top:0;word-break:break-word;">${esc(String(value))}</div>
+      <div style="font-size:5.2px;color:${theme.muted};font-weight:bold;text-transform:uppercase;line-height:1;">${esc(label)}</div><div style="font-size:7.2px;color:${theme.text};font-weight:bold;line-height:1.03;margin-top:0;word-break:break-word;">${esc(String(value))}</div>
     </td>`;
     const cardStatsTable = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
       ${items.reduce((out, item, idx) => idx % 4 === 0 ? out + `<tr>${statMini(item[0], item[1], idx)}${statMini((items[idx + 1] || ["", ""])[0], (items[idx + 1] || ["", ""])[1], idx + 1)}${statMini((items[idx + 2] || ["", ""])[0], (items[idx + 2] || ["", ""])[1], idx + 2)}${statMini((items[idx + 3] || ["", ""])[0], (items[idx + 3] || ["", ""])[1], idx + 3)}</tr>` : out, "")}
@@ -8572,9 +8613,9 @@
       return `<tr><td style="padding:3px 3px;background-color:${rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
           <tr>
-            <td width="26" valign="middle" align="center" style="width:26px;padding:0 3px 0 0;font-family:Arial,Helvetica,sans-serif;"><div style="display:block;border:1px solid ${theme.strongLine};background-color:${theme.header};color:${theme.accent};font-size:7px;line-height:14px;height:14px;font-weight:bold;text-align:center;">#${idx + 1}</div></td>
-            <td valign="middle" style="padding:0 3px 0 0;font-family:Arial,Helvetica,sans-serif;color:${theme.text};word-break:break-word;"><div style="font-size:9px;line-height:1.08;font-weight:bold;color:${theme.text};">${esc(r.name)}</div></td>
-            <td width="86" valign="middle" align="right" style="width:86px;padding:0;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:8.5px;line-height:1.08;color:#86efac;font-weight:bold;word-break:break-word;">${money(r.payout)}</div></td>
+            <td width="12%" valign="middle" align="center" style="width:12%;padding:0 2px 0 0;font-family:Arial,Helvetica,sans-serif;"><div style="display:block;border:1px solid ${theme.strongLine};background-color:${theme.header};color:${theme.accent};font-size:7px;line-height:14px;height:14px;font-weight:bold;text-align:center;">#${idx + 1}</div></td>
+            <td width="53%" valign="middle" style="width:53%;padding:0 2px 0 0;font-family:Arial,Helvetica,sans-serif;color:${theme.text};word-break:break-word;"><div style="font-size:9px;line-height:1.08;font-weight:bold;color:${theme.text};">${esc(r.name)}</div></td>
+            <td width="35%" valign="middle" align="right" style="width:35%;padding:0;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:8px;line-height:1.08;color:#86efac;font-weight:bold;word-break:break-word;">${money(r.payout)}</div></td>
           </tr>
         </table>
       </td></tr>`;
@@ -8582,7 +8623,7 @@
     const userCardTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${userCards || `<tr><td style="padding:7px;background-color:${theme.panelB};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:9px;text-align:center;">No payout rows.</td></tr>`}</table>`;
 
     const topCards = m.list.slice(0, 3).map((r, idx) => `<tr><td style="padding:4px;background-color:${idx === 0 ? theme.header : rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};font-size:9px;line-height:1.08;word-break:break-word;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr><td width="24" align="center" style="width:24px;padding-right:3px;"><span style="display:block;border:1px solid ${theme.strongLine};background-color:${theme.bg};color:${theme.accent};font-size:7px;line-height:14px;height:14px;font-weight:bold;">#${idx + 1}</span></td><td style="font-weight:bold;color:${theme.accent};padding-right:3px;">${esc(r.name)}</td><td width="86" align="right" style="width:86px;color:#86efac;font-weight:bold;white-space:nowrap;">${money(r.payout)}</td></tr></table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr><td width="12%" align="center" style="width:12%;padding-right:2px;"><span style="display:block;border:1px solid ${theme.strongLine};background-color:${theme.bg};color:${theme.accent};font-size:7px;line-height:14px;height:14px;font-weight:bold;">#${idx + 1}</span></td><td width="53%" style="width:53%;font-weight:bold;color:${theme.accent};padding-right:2px;word-break:break-word;">${esc(r.name)}</td><td width="35%" align="right" style="width:35%;color:#86efac;font-weight:bold;word-break:break-word;">${money(r.payout)}</td></tr></table>
     </td></tr>`).join("");
     const topTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${topCards || `<tr><td style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;font-size:9px;text-align:center;">No top payouts.</td></tr>`}</table>`;
     const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
@@ -8592,18 +8633,18 @@
     </table>`;
 
     if (key === "cyber") {
-      return wrapper(`${header("Neon dashboard")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Notices")}${sectionBody(notices)}${footer}`, 380);
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Neon dashboard")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Notices")}${sectionBody(notices)}${footer}`, 300));
     }
     if (key === "ledger") {
-      return wrapper(`${header("Ledger document")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Signed Payouts")}${sectionBody(userCardTable)}${sectionTitle("Notices")}${sectionBody(notices)}${footer}`, 380);
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Ledger document")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Signed Payouts")}${sectionBody(userCardTable)}${sectionTitle("Notices")}${sectionBody(notices)}${footer}`, 300));
     }
     if (key === "crimson") {
-      return wrapper(`${header("Raid command report")}${sectionTitle("Top Orders")}${sectionBody(topTable)}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Command Notes")}${sectionBody(notices)}${footer}`, 380);
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Raid command report")}${sectionTitle("Top Orders")}${sectionBody(topTable)}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Command Notes")}${sectionBody(notices)}${footer}`, 300));
     }
     if (key === "gold") {
-      return wrapper(`${header("Victory payout board")}${sectionTitle("Podium")}${sectionBody(topTable)}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Victory Payouts")}${sectionBody(userCardTable)}${sectionTitle("Final Notes")}${sectionBody(notices)}${footer}`, 380);
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Victory payout board")}${sectionTitle("Podium")}${sectionBody(topTable)}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Victory Payouts")}${sectionBody(userCardTable)}${sectionTitle("Final Notes")}${sectionBody(notices)}${footer}`, 300));
     }
-    return wrapper(`${header("Faction payout report")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Important Notices")}${sectionBody(notices)}${footer}`, 370);
+    return rwphCleanNewsletterHtmlCode(wrapper(`${header("Faction payout report")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Important Notices")}${sectionBody(notices)}${footer}`, 300));
   }
 
   function rwphCopyRenderedHtmlFallback(richHtml) {
