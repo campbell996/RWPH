@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.285**
+Version: **1.1.283**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -323,19 +323,22 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ## Recent Changelog
 
-### v1.1.285
-
-- Rebuilt newsletter HTML output to use compact phone/Torn PDA-friendly tables and 3-column payout rows.
-- Reduced newsletter width, padding, and font sizes while keeping all 5 newsletter themes different.
-- Updated README, terms, server version, package version, and userscript version.
-
 ### v1.1.283
 
-- Removed the raw HTML newsletter panel Copy All, Select All, and Close controls.
-- Removed newsletter-panel auto-copy and auto-select logic that was unreliable in Torn PDA/webviews.
-- Raw HTML panels now show manual copy instructions for computer and phone/Torn PDA users.
-- Instructions direct users to paste the raw HTML into Torn faction newsletter controls in the Source code tab/editor.
-- Kept the raw HTML code box and live preview.
+- Removed **Copy All** and **Select All** from the raw HTML newsletter panels.
+- Kept the top-right **X** close button.
+- Added manual copy instructions for computer and phone/Torn PDA copying, then pasting into Torn faction newsletter controls in the **Source code** tab.
+- Removed newsletter auto-copy / auto-select panel code.
+- Kept panel scrollbars, but stripped scrollbar/overflow CSS from the generated raw newsletter HTML code itself.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.282
+
+- Rebuilt the raw newsletter code area from a textarea into a selectable contenteditable code block.
+- **Select All** now uses DOM range selection so the full raw HTML visibly highlights in Torn PDA/webviews.
+- **Copy All** now copies from the stored full HTML source and keeps the full code highlighted if clipboard access is blocked.
+- Added a manual copy prompt fallback when both normal clipboard routes are blocked.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.275
 
