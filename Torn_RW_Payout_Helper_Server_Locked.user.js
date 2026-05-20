@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.275
+// @version      1.1.276
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.276: fixed result-tab newsletter buttons so they always call the raw HTML panel opener and show a fallback error panel if needed.
   // v1.1.275: newsletter raw HTML code panel now matches RWPH results panel styling and supports move, resize, size presets, and close.
   // v1.1.270: rebuilt newsletters from scratch as inline HTML-code templates with direct copy/source/preview panel for Torn faction newsletters.
   // v1.1.269: newsletter buttons are now no-script-safe text downloads and always open a visible Torn newsletter copy panel.
@@ -6030,11 +6031,11 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
       <h2 class="results-side-title">Newsletter Styles</h2>
-      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-open-html-newsletter="standard">HTML Code Torn Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-open-html-newsletter="cyber">HTML Code Cyber Neon Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-open-html-newsletter="ledger">HTML Code War Ledger Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-open-html-newsletter="crimson">HTML Code Crimson Raid Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-open-html-newsletter="gold">HTML Code Victory Gold Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-open-html-newsletter="standard" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('standard', this); return false;">HTML Code Torn Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-open-html-newsletter="cyber" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('cyber', this); return false;">HTML Code Cyber Neon Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-open-html-newsletter="ledger" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('ledger', this); return false;">HTML Code War Ledger Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-open-html-newsletter="crimson" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('crimson', this); return false;">HTML Code Crimson Raid Newsletter</button>
+      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-open-html-newsletter="gold" onclick="window.rwphOpenNewsletterHtmlPanel && window.rwphOpenNewsletterHtmlPanel('gold', this); return false;">HTML Code Victory Gold Newsletter</button>
       <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab.</p>
       <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, press <b>Copy All</b>, then paste the HTML into Torn's HTML/source-capable faction newsletter editor. Use <b>Preview in New Tab</b> to inspect the layout before posting.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
@@ -6362,6 +6363,36 @@
       return ok;
     }
 
+    function showRwphHtmlNewsletterEmergencyPanel(htmlCode, key, err) {
+      const old = document.getElementById("rwphHtmlNewsletterPanelFallback");
+      if (old) old.remove();
+      const html = String(htmlCode || "");
+      const panel = document.createElement("section");
+      panel.id = "rwphHtmlNewsletterPanelFallback";
+      panel.style.cssText = "position:fixed;z-index:2147483647;left:12px;right:12px;top:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;border:1px solid rgba(125,211,252,.55);background:linear-gradient(180deg,#0f172a,#020617);box-shadow:0 24px 80px rgba(0,0,0,.74);color:#e0f2fe;font-family:Arial,Helvetica,sans-serif;text-align:center;";
+      panel.innerHTML = [
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">',
+        '<div style="font-weight:950;color:#e0f2fe;text-transform:uppercase;letter-spacing:.4px;">Newsletter HTML Code</div>',
+        '<button type="button" data-close-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:7px 10px;cursor:pointer;">×</button>',
+        '</div>',
+        '<div style="font-size:12px;color:#bfdbfe;font-weight:800;">The styled panel failed to open, so this fallback panel is showing the raw HTML. ' + (err ? 'Error: ' + escapeHtml(String(err && err.message || err)) : '') + '</div>',
+        '<textarea spellcheck="false" style="flex:1 1 auto;min-height:260px;width:100%;border-radius:12px;border:1px solid rgba(125,211,252,.35);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;box-sizing:border-box;white-space:pre;overflow:auto;"></textarea>',
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">',
+        '<button type="button" data-copy-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:linear-gradient(135deg,#0284c7,#4f46e5);color:#fff;font-weight:900;padding:9px 12px;cursor:pointer;">Copy All</button>',
+        '<button type="button" data-preview-fallback style="border:1px solid rgba(125,211,252,.35);border-radius:10px;background:#111827;color:#e0f2fe;font-weight:900;padding:9px 12px;cursor:pointer;">Preview in New Tab</button>',
+        '</div>'
+      ].join('');
+      document.body.appendChild(panel);
+      const ta = panel.querySelector('textarea');
+      ta.value = html;
+      setTimeout(function(){ ta.focus(); ta.select(); }, 30);
+      panel.addEventListener('click', async function(ev) {
+        if (ev.target.closest('[data-close-fallback]')) { panel.remove(); return; }
+        if (ev.target.closest('[data-copy-fallback]')) { ta.focus(); ta.select(); const ok = await copyText(ta.value); showToast(ok ? 'Newsletter HTML copied.' : 'Copy blocked. Select the code and press Ctrl+C / long-press copy.', ok ? 'info' : 'warn'); return; }
+        if (ev.target.closest('[data-preview-fallback]')) { openNewsletterPreview({ html: html, text: ta.value }); return; }
+      });
+    }
+
     function showRwphHtmlNewsletterPanel(htmlCode, key) {
       const old = document.getElementById("rwphHtmlNewsletterPanel");
       if (old) old.remove();
@@ -6371,9 +6402,18 @@
       panel.className = "pay-all-panel rwph-html-code-panel";
       panel.dataset.layoutKey = "rwph_fullscreen_newsletter_html_layout";
       panel.setAttribute("aria-label", "RWPH newsletter raw HTML code panel");
+      panel.style.setProperty("position", "fixed", "important");
+      panel.style.setProperty("z-index", "2147483647", "important");
       panel.style.setProperty("display", "flex", "important");
+      panel.style.setProperty("left", "50%", "important");
+      panel.style.setProperty("top", "50%", "important");
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("bottom", "auto", "important");
+      panel.style.setProperty("transform", "translate(-50%, -50%)", "important");
       panel.style.setProperty("width", "min(780px, calc(100vw - 32px))", "important");
-      panel.style.setProperty("max-height", "calc(100vh - 96px)", "important");
+      panel.style.setProperty("height", "min(720px, calc(100vh - 32px))", "important");
+      panel.style.setProperty("max-height", "none", "important");
+      panel.style.setProperty("overflow", "hidden", "important");
       panel.style.setProperty("text-align", "center", "important");
       panel.innerHTML = [
         '<button class="btn secondary pay-all-close" type="button" data-close-html-newsletter title="Close">×</button>',
@@ -6436,6 +6476,7 @@
         const top = Math.max(8, Math.round((vh - next.height) / 2));
         panel.style.setProperty("left", left + "px", "important");
         panel.style.setProperty("top", top + "px", "important");
+        panel.style.setProperty("transform", "none", "important");
         panel.style.setProperty("right", "auto", "important");
         panel.style.setProperty("bottom", "auto", "important");
         panel.style.setProperty("inset", "auto auto auto auto", "important");
@@ -6446,7 +6487,8 @@
         saveNewsletterLayout();
       }
 
-      setupMoveResize(panel, ".pay-all-head");
+      try { setupMoveResize(panel, ".pay-all-head"); } catch (setupErr) { console.warn("RWPH newsletter panel move/resize setup failed", setupErr); }
+      try { applyNewsletterSize("wide"); } catch (_) {}
       setTimeout(function(){ ta.focus(); ta.select(); }, 20);
 
       panel.addEventListener('click', async function(ev) {
@@ -6467,15 +6509,28 @@
       });
     }
 
+    window.rwphOpenNewsletterHtmlPanel = function(key, sourceButton) {
+      const newsletterKey = key || (sourceButton && sourceButton.getAttribute && sourceButton.getAttribute("data-open-html-newsletter")) || "standard";
+      const htmlCode = (rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[newsletterKey] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "";
+      window.rwphLastNewsletterPanelOpenAt = Date.now();
+      try {
+        showRwphHtmlNewsletterPanel(htmlCode, newsletterKey);
+        showToast("Newsletter HTML code panel opened in this results tab. Use Copy All, or Preview in New Tab.", "info");
+      } catch (err) {
+        console.error("RWPH newsletter HTML panel failed", err);
+        showRwphHtmlNewsletterEmergencyPanel(htmlCode, newsletterKey, err);
+        try { showToast("Newsletter fallback panel opened because the styled panel failed.", "warn"); } catch (_) {}
+      }
+      return false;
+    };
+
     document.addEventListener("click", function(ev) {
       const btn = ev.target && ev.target.closest ? ev.target.closest("[data-open-html-newsletter]") : null;
       if (!btn) return;
+      if (Date.now() - Number(window.rwphLastNewsletterPanelOpenAt || 0) < 250) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const key = btn.getAttribute("data-open-html-newsletter") || "standard";
-      const htmlCode = (rwphNewsletterHtmlCode && (rwphNewsletterHtmlCode[key] || rwphNewsletterHtmlCode.standard)) || newsletterHtml || "";
-      showRwphHtmlNewsletterPanel(htmlCode, key);
-      showToast("Newsletter HTML code panel opened in this results tab. Use Copy All, or Preview in New Tab.", "info");
+      window.rwphOpenNewsletterHtmlPanel(btn.getAttribute("data-open-html-newsletter") || "standard", btn);
     });
 
     document.addEventListener("click", async function(ev) {
