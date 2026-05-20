@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.258
+// @version      1.1.259
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1657,6 +1657,7 @@
   // v1.1.249: Points System fair-fight checkbox now supports custom Avg FF step size and custom bonus-per-step per payable hit; disabled checkbox adds no FF bonus.
   // v1.1.249: cleaned up Per Hit and Points System fullscreen member cards without changing calculation, cache, or Payments logic.
     // v1.1.258: Payments Copy Panel rows now carry explicit payout amount aliases and the amount prefill detector is more reliable on Torn banking fields.
+    // v1.1.259: Payments Copy Panel amount prefill is scoped to the current selected member/payment form so the next payout does not land in the previous amount field.
     // v1.1.257: Cached reports ignore changed payout fields when matching saved backend/database reports.
 // v1.1.251: removed top hero payout cards from results tabs, added Points Per Point Amount summary/newsletter wording, and tightened newsletter fit styling.
   // v1.1.250: aligned result, CSV, and newsletter stats while applying visual-only layout polish to result/member cards and newsletter tables.
@@ -7479,6 +7480,45 @@
     document.head.appendChild(style);
   }
 
+  let rwphPayAllActiveScope = null;
+  let rwphPayAllLastMemberField = null;
+
+  function rwphPayAllFieldScope(el) {
+    if (!el || !el.closest) return null;
+    const selectors = [
+      "form",
+      "[role='dialog']",
+      "[aria-modal='true']",
+      "[class*='modal']",
+      "[class*='popup']",
+      "[class*='dialog']",
+      "[class*='money']",
+      "[class*='bank']",
+      "[class*='payment']",
+      "[class*='pay']",
+      "[class*='send']",
+      "[class*='give']",
+      "[class*='transfer']",
+      "section",
+      "article",
+      "main"
+    ].join(",");
+    const scope = el.closest(selectors);
+    return (scope && scope !== document.body && scope !== document.documentElement) ? scope : null;
+  }
+
+  function rwphPayAllFieldsInScope(scope) {
+    const root = scope && scope.querySelectorAll ? scope : document;
+    return Array.from(root.querySelectorAll("input, textarea, [contenteditable='true'], [role='textbox'], [role='spinbutton']"))
+      .filter(rwphSendHelperVisible)
+      .filter((el) => !el.disabled && !el.readOnly && el.getAttribute?.("aria-disabled") !== "true")
+      .filter((el) => !el.closest?.("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel"))
+      .filter((el) => {
+        const type = String(el.type || "").toLowerCase();
+        return !["hidden", "button", "submit", "reset", "checkbox", "radio", "file", "image", "password"].includes(type);
+      });
+  }
+
   function renderPayAllCopyPanelHtml(rows) {
     const safeRows = rows || [];
     return `
@@ -7529,15 +7569,8 @@
     return `${attrText} ${wrap}`.replace(/\s+/g, " ").toLowerCase();
   }
 
-  function rwphPayAllEditableFields() {
-    return Array.from(document.querySelectorAll("input, textarea, [contenteditable='true'], [role='textbox'], [role='spinbutton']"))
-      .filter(rwphSendHelperVisible)
-      .filter((el) => !el.disabled && !el.readOnly && el.getAttribute?.("aria-disabled") !== "true")
-      .filter((el) => !el.closest?.("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel"))
-      .filter((el) => {
-        const type = String(el.type || "").toLowerCase();
-        return !["hidden", "button", "submit", "reset", "checkbox", "radio", "file", "image", "password"].includes(type);
-      });
+  function rwphPayAllEditableFields(scope = null) {
+    return rwphPayAllFieldsInScope(scope || document);
   }
 
 
@@ -7559,8 +7592,9 @@
     }) || null;
   }
 
-  function rwphFindPayAllAmountField() {
-    const fields = rwphPayAllEditableFields();
+  function rwphFindPayAllAmountField(scope = null) {
+    const scopedFields = scope ? rwphPayAllEditableFields(scope) : [];
+    const fields = scopedFields.length ? scopedFields : rwphPayAllEditableFields();
     const amountRe = /\b(amount|money|cash|balance|dollar|payout|payment|pay|value|funds|give|transfer|deposit|send|add\s*money|add\s*to\s*balance)\b/;
     const hardNoRe = /\b(message|comment|reason|note|search|filter|api|key|code)\b/;
     const memberRe = /\b(user|player|member|recipient|username|profile|name|id|torn)\b/;
@@ -7577,6 +7611,8 @@
     };
 
     // Best case: Torn exposes useful field text, name, id, placeholder, type, role, or inputmode.
+    // When Name + ID was clicked first, prefer amount-like fields after that current member field.
+    const memberIndex = rwphPayAllLastMemberField ? fields.indexOf(rwphPayAllLastMemberField) : -1;
     const scored = fields.map((el, index) => {
       const meta = rwphPayAllFieldMeta(el);
       const hasAmountWords = amountRe.test(meta) || /[$]/.test(meta);
@@ -7588,7 +7624,13 @@
       // Only penalize member/search words when the field has no money/amount clues.
       if (memberRe.test(meta) && !hasAmountWords) score -= 18;
       if (hardNoRe.test(meta) && !hasAmountWords) score -= 20;
-      score += Math.min(index, 8) * 0.05;
+      if (memberIndex >= 0) {
+        if (index > memberIndex) score += 6;
+        else score -= 10;
+        score -= Math.min(Math.abs(index - memberIndex), 20) * 0.02;
+      } else {
+        score += Math.min(index, 8) * 0.05;
+      }
       return { el, score, meta, hasAmountWords };
     }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
 
@@ -7602,8 +7644,10 @@
     });
     if (numeric) return numeric;
 
-    // Last-resort Torn fallback: after the member field is visible, use the next editable field that is not clearly text/member/message/search.
-    const memberField = rwphFindPayAllMemberField();
+    // Last-resort Torn fallback: after the current member field is visible, use the next editable field in the same active payment form.
+    const memberField = rwphPayAllLastMemberField && rwphSendHelperVisible(rwphPayAllLastMemberField)
+      ? rwphPayAllLastMemberField
+      : rwphFindPayAllMemberField();
     const startIndex = memberField ? fields.indexOf(memberField) + 1 : 0;
     const afterMember = fields.slice(Math.max(0, startIndex)).find((el) => {
       const meta = rwphPayAllFieldMeta(el);
@@ -7706,21 +7750,35 @@
     const name = row?.name || `Unknown ${id}`;
     const value = `${name} [${id}]`;
     const field = rwphFindPayAllMemberField();
+    rwphPayAllLastMemberField = field || null;
+    rwphPayAllActiveScope = rwphPayAllFieldScope(field) || null;
     const filled = rwphSetPayAllFieldValue(field, value);
+    // Some Torn faction-control forms rebuild the amount input after a member is selected.
+    // Keep the active form context tied to the latest selected member before the Amount button runs.
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    if (field && rwphSendHelperVisible(field)) {
+      rwphPayAllLastMemberField = field;
+      rwphPayAllActiveScope = rwphPayAllFieldScope(field) || rwphPayAllActiveScope;
+    }
     await copyText(value).catch(() => false);
     return { filled, value };
   }
 
   async function rwphPrefillPayAllAmount(row) {
     const value = String(rwphPayAllRowAmount(row));
-    let field = rwphFindPayAllAmountField();
+    const scope = rwphPayAllActiveScope && rwphSendHelperVisible(rwphPayAllActiveScope) ? rwphPayAllActiveScope : null;
+    let field = rwphFindPayAllAmountField(scope);
     let filled = rwphSetPayAllFieldValue(field, value);
-    // Torn can render the amount field shortly after the member field/search selection changes.
-    // Keep the button action immediate, but briefly retry before falling back to copy-only.
+    // Torn can render/re-render the amount field shortly after the member field/search selection changes.
+    // Prefer the current member's active form/scope so the next payout does not land in an old amount box.
     for (let attempt = 0; !filled && attempt < 6; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 150));
-      field = rwphFindPayAllAmountField();
+      const retryScope = rwphPayAllActiveScope && rwphSendHelperVisible(rwphPayAllActiveScope) ? rwphPayAllActiveScope : null;
+      field = rwphFindPayAllAmountField(retryScope);
       filled = rwphSetPayAllFieldValue(field, value);
+    }
+    if (filled && field) {
+      try { field.dataset.rwphLastPayAllAmountAt = String(Date.now()); } catch (_) {}
     }
     await copyText(value).catch(() => false);
     return { filled, value };
