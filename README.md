@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.300**  
+Current package version: **1.1.302**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -411,16 +411,17 @@ The results page can export a CSV file for spreadsheet use. The CSV includes pay
 
 ### Torn Newsletter Generator
 
-RWPH now copies Torn-safe newsletter content from the results tab instead of asking you to paste raw HTML source into Torn.
+RWPH now creates PNG picture newsletters from the results tab instead of relying on Torn to render pasted HTML/CSS.
 
 General workflow:
 
 1. Calculate results.
-2. Click one of the **Copy** newsletter buttons.
-3. Paste directly into Torn's normal faction newsletter editor.
-4. Preview and review before sending.
+2. Click one of the **Picture Newsletter** buttons.
+3. Download the PNG picture.
+4. Upload/attach the picture, or host it somewhere safe and insert it with Torn's image option or image BBCode.
+5. Preview and review before sending.
 
-Do not paste raw HTML source/code into Torn. Torn can show HTML/CSS as text or strip the background/layout styling. RWPH copies rich HTML plus a readable plain-text fallback so faction newsletters stay usable even when Torn removes some styling.
+Because the newsletter is a picture, the layout should stay the same as the generated preview instead of showing raw HTML as text or losing background/theme styling.
 
 ### Payments Copy Panel
 
@@ -600,6 +601,19 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.302
+
+- Picture newsletters now include full All Result Stats again across all themes.
+- Payout user cards now include full stats again in compact multi-line cards instead of one long line.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.301
+
+- Changed newsletter actions to create/download PNG picture newsletters instead of exposing raw HTML-code panels.
+- Added picture newsletter generation for Standard, Cyber Neon, War Ledger, Crimson Raid, Victory Gold, and the 120-member Test Newsletter.
+- The picture newsletter kept payout user card data on one compact line per member.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.300
 
