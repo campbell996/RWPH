@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.304
+// @version      1.1.305
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,6 +20,7 @@
 
   // v1.1.302: picture newsletters restored full main stats and full payout user card stats with compact multi-line cards.
   // v1.1.301: newsletter buttons now generate downloadable/copyable PNG picture newsletters instead of raw HTML-code panels.
+  // v1.1.305: picture newsletter buttons open an immediate standalone PNG page and inline fallback, removing floating-panel dependency.
   // v1.1.304: split picture newsletters into smaller numbered PNG parts with per-part preview/download fallback for Torn PDA/mobile browser limits.
   // v1.1.303: fixed PNG picture newsletter creation/download fallback and wired summary picture buttons.
   // v1.1.300: removed Weight/Share/Respect/Total Respect/Tracked from Test Newsletter stats/cards.
@@ -6075,6 +6076,17 @@
     .stats span{display:block!important;min-height:20px!important;}
     .stats b{display:block!important;}
 
+
+    .rwph-newsletter-direct-box{margin-top:12px;padding:12px;border-radius:16px;border:1px solid rgba(125,211,252,.26);background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(2,6,23,.92));box-shadow:0 14px 34px rgba(0,0,0,.36);}
+    .rwph-newsletter-direct-head{font:900 14px/1.2 Arial,Helvetica,sans-serif;color:#eaf6ff;margin-bottom:6px;}
+    .rwph-newsletter-direct-note{font:800 11px/1.4 Arial,Helvetica,sans-serif;color:#aeb4c2;margin-bottom:8px;}
+    .rwph-newsletter-direct-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+    .rwph-newsletter-direct-list{display:grid;gap:10px;max-height:520px;overflow:auto;padding-right:4px;}
+    .rwph-newsletter-direct-card{border:1px solid rgba(125,211,252,.20);border-radius:12px;padding:8px;background:rgba(15,23,42,.55);}
+    .rwph-newsletter-direct-card-title{font:900 11px/1.3 Arial,Helvetica,sans-serif;color:#eaf6ff;margin:0 0 6px 0;word-break:break-word;}
+    .rwph-newsletter-direct-card img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:#020617;}
+    .rwph-newsletter-direct-card .rw-actions{margin-top:8px;gap:6px;}
+
     .rwph-newsletter-image-panel{
       position:fixed!important;
       z-index:2147483646!important;
@@ -6144,7 +6156,13 @@
       <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-create-newsletter-image="gold">Picture Victory Gold Newsletter</button>
       <button class="btn secondary newsletter-top-btn" id="newsletterTest100Btn" type="button" data-create-newsletter-image="test100">Picture Test Newsletter (120 Members)</button>
       <p class="newsletter-choice-note">Each newsletter now creates smaller numbered PNG picture parts instead of one oversized raw HTML-code block. The test picture repeats the existing result rows until it has 120 members for long-newsletter testing.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Picture Newsletter button, then download the PNG part(s). If Torn does not accept direct pasted images, upload the picture part(s) somewhere safe and insert them with Torn's image option or image BBCode.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Picture Newsletter button. RWPH now opens a standalone picture page straight away and also writes an inline fallback below these buttons. Download the PNG part(s), then upload/host and insert them in Torn.</p>
+      <div class="rwph-newsletter-direct-box" id="rwphNewsletterDirectBox" hidden>
+        <div class="rwph-newsletter-direct-head" id="rwphNewsletterDirectHead">Picture newsletter output</div>
+        <div class="rwph-newsletter-direct-note" id="rwphNewsletterDirectNote">Creating picture newsletter...</div>
+        <div class="rwph-newsletter-direct-actions" id="rwphNewsletterDirectActions"></div>
+        <div class="rwph-newsletter-direct-list" id="rwphNewsletterDirectList"></div>
+      </div>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
@@ -6590,11 +6608,11 @@
 
     function rwphCanvasPartToDownload(part) {
       return rwphCanvasBlob(part.canvas).then(function(blob){
-        let url = "", dataUrl = "";
+        let url = "";
+        const dataUrl = rwphCanvasDataUrl(part.canvas);
         if (blob) {
           try { url = URL.createObjectURL(blob); } catch (e) { url = ""; }
         }
-        if (!url) dataUrl = rwphCanvasDataUrl(part.canvas);
         return Object.assign({}, part, { blob: blob || (dataUrl ? rwphBlobFromDataUrl(dataUrl) : null), url: url, dataUrl: dataUrl });
       });
     }
@@ -6615,6 +6633,110 @@
         a.remove();
         return true;
       } catch (e) { return false; }
+    }
+
+
+    function rwphNewsletterPicturePageLabel(key) {
+      const map = {
+        standard: "Picture Torn Newsletter",
+        cyber: "Picture Cyber Neon Newsletter",
+        ledger: "Picture War Ledger Newsletter",
+        crimson: "Picture Crimson Raid Newsletter",
+        gold: "Picture Victory Gold Newsletter",
+        test100: "Picture Test Newsletter - 120 Members"
+      };
+      return map[String(key || "standard").toLowerCase()] || map.standard;
+    }
+
+    function rwphOpenPictureWindowShell(key) {
+      let win = null;
+      try { win = window.open("", "_blank"); } catch (e) { win = null; }
+      if (!win || !win.document) return null;
+      const label = rwphNewsletterPicturePageLabel(key);
+      try {
+        win.document.open();
+        win.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + escapeHtml(label) + "</title><style>body{margin:0;background:#020617;color:#e5f3ff;font:14px Arial,Helvetica,sans-serif;padding:16px;}h1{font-size:20px;margin:0 0 8px;color:#facc15}.note{color:#aeb4c2;line-height:1.45;margin:0 0 14px}.card{background:#0f172a;border:1px solid rgba(125,211,252,.25);border-radius:14px;padding:12px;margin:0 0 14px;box-shadow:0 16px 38px rgba(0,0,0,.35)}img{display:block;max-width:100%;height:auto;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#020617}.actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.btn{display:inline-block;padding:9px 12px;border-radius:10px;text-decoration:none;font-weight:900;background:#2563eb;color:white;border:1px solid rgba(255,255,255,.18)}.btn.secondary{background:#1f2937}.small{font-size:12px;color:#94a3b8;word-break:break-word}</style></head><body><h1>" + escapeHtml(label) + "</h1><p class=\"note\" id=\"status\">Creating PNG picture newsletter... Leave this page open.</p><div id=\"content\"></div></body></html>");
+        win.document.close();
+      } catch (e) { return null; }
+      return win;
+    }
+
+    function rwphHtmlAttr(value) {
+      return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[ch] || ch; });
+    }
+
+    function rwphWritePictureWindow(win, parts, key) {
+      if (!win || !win.document) return false;
+      try {
+        const label = rwphNewsletterPicturePageLabel(key);
+        const status = win.document.getElementById("status");
+        const content = win.document.getElementById("content");
+        if (!content) return false;
+        if (status) status.textContent = (parts.length > 1 ? "Created " + parts.length + " PNG parts." : "Created PNG picture newsletter.") + " Download each PNG, then upload/host and insert it into Torn.";
+        content.innerHTML = parts.map(function(part, idx){
+          const src = part.dataUrl || part.url || "";
+          const title = parts.length > 1 ? "PNG part " + (idx + 1) + " of " + parts.length : "PNG picture newsletter";
+          return "<div class=\"card\"><div class=\"small\"><b>" + rwphHtmlAttr(title) + "</b><br>" + rwphHtmlAttr(part.filename || "rwph-newsletter.png") + "</div><div class=\"actions\"><a class=\"btn\" download=\"" + rwphHtmlAttr(part.filename || "rwph-newsletter.png") + "\" href=\"" + rwphHtmlAttr(src) + "\">Download PNG</a><a class=\"btn secondary\" target=\"_blank\" rel=\"noopener\" href=\"" + rwphHtmlAttr(src) + "\">Open PNG only</a></div><img alt=\"" + rwphHtmlAttr(title) + "\" src=\"" + rwphHtmlAttr(src) + "\"></div>";
+        }).join("");
+        try { win.focus(); } catch (e) {}
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function rwphRenderNewsletterInlineParts(parts, key, stateMessage) {
+      const box = document.getElementById("rwphNewsletterDirectBox");
+      if (!box) return;
+      const head = document.getElementById("rwphNewsletterDirectHead");
+      const note = document.getElementById("rwphNewsletterDirectNote");
+      const actions = document.getElementById("rwphNewsletterDirectActions");
+      const list = document.getElementById("rwphNewsletterDirectList");
+      box.hidden = false;
+      if (head) head.textContent = rwphNewsletterPicturePageLabel(key);
+      if (note) note.textContent = stateMessage || (parts && parts.length ? (parts.length > 1 ? "Created " + parts.length + " PNG parts. Use the buttons below if the standalone page was blocked." : "Created one PNG. Use the buttons below if the standalone page was blocked.") : "Creating picture newsletter...");
+      if (!parts || !parts.length) {
+        if (actions) actions.innerHTML = "";
+        if (list) list.innerHTML = "";
+        return;
+      }
+      if (actions) {
+        actions.innerHTML = "";
+        const dlAll = document.createElement("button");
+        dlAll.className = "btn primary";
+        dlAll.type = "button";
+        dlAll.textContent = parts.length > 1 ? "Download All Parts" : "Download PNG";
+        dlAll.setAttribute("data-download-newsletter-pictures", "1");
+        actions.appendChild(dlAll);
+      }
+      if (list) {
+        list.innerHTML = "";
+        parts.forEach(function(part, idx){
+          const card = document.createElement("div");
+          card.className = "rwph-newsletter-direct-card";
+          const title = document.createElement("p");
+          title.className = "rwph-newsletter-direct-card-title";
+          title.textContent = (parts.length > 1 ? "PNG part " + (idx + 1) + " of " + parts.length + " — " : "") + (part.filename || "rwph-newsletter.png");
+          const img = document.createElement("img");
+          img.alt = "RWPH newsletter picture part " + (idx + 1);
+          img.src = part.dataUrl || part.url || rwphCanvasDataUrl(part.canvas) || "";
+          const row = document.createElement("div");
+          row.className = "rw-actions";
+          const dl = document.createElement("a");
+          dl.className = "btn primary";
+          dl.href = part.dataUrl || part.url || "#";
+          dl.download = part.filename || "rwph-newsletter.png";
+          dl.textContent = parts.length > 1 ? "Download Part " + (idx + 1) : "Download PNG";
+          dl.setAttribute("data-download-newsletter-part-index", String(idx));
+          const op = document.createElement("a");
+          op.className = "btn secondary";
+          op.href = part.dataUrl || part.url || "#";
+          op.target = "_blank";
+          op.rel = "noopener";
+          op.textContent = parts.length > 1 ? "Open Part " + (idx + 1) : "Open PNG";
+          row.appendChild(dl); row.appendChild(op);
+          card.appendChild(title); card.appendChild(img); card.appendChild(row);
+          list.appendChild(card);
+        });
+      }
     }
 
     function rwphRenderNewsletterPictureParts(parts) {
@@ -6678,16 +6800,20 @@
       if (panel) { panel.dataset.layoutKey = "rwph_newsletter_picture_panel_layout"; setupMoveResize(panel, ".rwph-newsletter-image-head"); panel.hidden = false; }
     }
 
-    async function rwphCreateNewsletterPicture(key) {
-      const spec = rwphPictureRowsForKey(key || "standard");
-      const rawParts = rwphBuildPictureCanvasParts(spec, key || "standard");
+    async function rwphCreateNewsletterPicture(key, targetWindow) {
+      const safeKey = key || "standard";
+      rwphRenderNewsletterInlineParts([], safeKey, "Creating PNG picture newsletter...");
+      const spec = rwphPictureRowsForKey(safeKey);
+      const rawParts = rwphBuildPictureCanvasParts(spec, safeKey);
       if (!rawParts.length) throw new Error("Could not create PNG image parts. Try the normal results tab again after refreshing Torn.");
       rwphClearNewsletterPictureParts();
       const parts = await Promise.all(rawParts.map(rwphCanvasPartToDownload));
       if (!parts.some(function(p){ return p.url || p.dataUrl; })) throw new Error("Could not create downloadable PNG image parts. Try a smaller result or refresh Torn.");
       rwphCurrentNewsletterPictureParts = parts;
-      rwphRenderNewsletterPictureParts(parts);
-      showToast(parts.length > 1 ? "Picture newsletter created as " + parts.length + " smaller PNG parts." : "Picture newsletter PNG created.", "info");
+      rwphRenderNewsletterInlineParts(parts, safeKey, null);
+      rwphWritePictureWindow(targetWindow, parts, safeKey);
+      try { rwphRenderNewsletterPictureParts(parts); } catch (panelErr) { try { console.warn("RWPH picture panel fallback failed", panelErr); } catch (_) {} }
+      showToast(parts.length > 1 ? "Picture newsletter created as " + parts.length + " PNG parts. A picture page and inline fallback were created." : "Picture newsletter PNG created. A picture page and inline fallback were created.", "info");
     }
 
     async function rwphCopyCurrentNewsletterPicture() {
@@ -6705,9 +6831,19 @@
         ev.preventDefault(); ev.stopPropagation();
         const key = imgBtn.getAttribute("data-create-newsletter-image") || "standard";
         const oldText = imgBtn.textContent;
+        const targetWindow = rwphOpenPictureWindowShell(key);
         imgBtn.disabled = true; imgBtn.textContent = "Creating picture...";
-        try { await rwphCreateNewsletterPicture(key); }
-        catch (err) { showToast((err && err.message) || "Picture newsletter failed.", "warn"); }
+        try { await rwphCreateNewsletterPicture(key, targetWindow); }
+        catch (err) {
+          rwphRenderNewsletterInlineParts([], key, (err && err.message) || "Picture newsletter failed.");
+          try {
+            if (targetWindow && targetWindow.document) {
+              const status = targetWindow.document.getElementById("status");
+              if (status) status.textContent = (err && err.message) || "Picture newsletter failed.";
+            }
+          } catch (e) {}
+          showToast((err && err.message) || "Picture newsletter failed.", "warn");
+        }
         finally { setTimeout(function(){ imgBtn.disabled = false; imgBtn.textContent = oldText; }, 250); }
         return;
       }
