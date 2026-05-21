@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.298
+// @version      1.1.300
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.300: removed Weight/Share/Respect/Total Respect/Tracked from Test Newsletter stats/cards.
   // v1.1.298: Test Newsletter repeat count changed from 150 to 120 members.
   // v1.1.297: test newsletter uses full All Result Stats and full payout user cards; normal newsletters stay compact.
   // v1.1.292: added results-tab Test Newsletter raw HTML panel with repeated members for mobile/long-newsletter testing.
@@ -8602,15 +8603,7 @@
       ["Total Payout", money(m.overallTotalPayout)],
       [perUnitLabel, money(m.perUnitAmount)],
       ["Payable Hits", String(m.totalPayableEvents || 0)],
-      ["War Hits", String(m.totalHits || 0)],
-      ["Assists", String(m.totalAssists || 0)],
-      ["Outside Hits", String(m.totalOutsideHits || 0)],
-      ["Retals", String(m.totalRetaliationHits || 0)],
-      ["Tracked Hits", String(m.totalTrackedHits || 0)],
-      [m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits", m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits || 0)],
       ["Total Respect", Number(m.totalRespect || 0).toFixed(2)],
-      ["Pay Respect", Number(m.totalPayRespect || 0).toFixed(2)],
-      ["Fetched Attacks", String(m.attacksFetched || 0)],
       ["Names Loaded", String(m.nameCount || 0)],
     ];
     if (m.pointsMode) {
@@ -8631,12 +8624,7 @@
         ["Ast", r.assists || 0],
         ["Out", r.outsideHits || 0],
         ["Ret", r.retaliationHits || 0],
-        ["Tracked", r.totalTrackedHits || 0],
         ["Payable", r.payableEvents || 0],
-        [metricLabel, metric.toFixed(2)],
-        ["Share", percent(r.payout, m.memberPayout)],
-        ["Respect", Number(r.respect || 0).toFixed(2)],
-        ["Total Respect", Number(r.totalRespect || 0).toFixed(2)],
       ];
       if (m.pointsMode) {
         stats.push(

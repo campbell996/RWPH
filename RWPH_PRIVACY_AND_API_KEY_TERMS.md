@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.298**
+Version: **1.1.300**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -322,6 +322,18 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.300
+
+- Updated Test Newsletter All Result Stats by removing War Hits, Assists, Outside Hits, Retals, Removed Left-Member Hits, and Fetched Attacks.
+- Added Total Respect back to Test Newsletter All Result Stats.
+- Normal Basic/Advanced newsletters are unchanged.
+
+### v1.1.300
+
+- Removed Weight/Points, Share, Respect, Total Respect, and Tracked from Test Newsletter payout user cards.
+- Removed Tracked Hits, Total Respect, and Pay Respect from Test Newsletter All Result Stats.
+- Normal Basic/Advanced newsletters are unchanged.
 
 ### v1.1.298
 
