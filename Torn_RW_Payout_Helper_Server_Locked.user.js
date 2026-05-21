@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.302
+// @version      1.1.303
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,6 +20,7 @@
 
   // v1.1.302: picture newsletters restored full main stats and full payout user card stats with compact multi-line cards.
   // v1.1.301: newsletter buttons now generate downloadable/copyable PNG picture newsletters instead of raw HTML-code panels.
+  // v1.1.303: fixed PNG picture newsletter creation/download fallback and wired summary picture buttons.
   // v1.1.300: removed Weight/Share/Respect/Total Respect/Tracked from Test Newsletter stats/cards.
   // v1.1.298: Test Newsletter repeat count changed from 150 to 120 members.
   // v1.1.297: test newsletter uses full All Result Stats and full payout user cards; normal newsletters stay compact.
@@ -6100,8 +6101,9 @@
     .rwph-newsletter-image-note{margin:0!important;padding:8px 10px!important;border:1px solid rgba(125,211,252,.16)!important;border-radius:12px!important;background:rgba(2,6,23,.46)!important;color:#dbeafe!important;font-size:11px!important;font-weight:800!important;line-height:1.35!important;}
     .rwph-newsletter-image-preview-wrap{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;border:1px solid rgba(125,211,252,.22)!important;border-radius:16px!important;background:#020617!important;padding:10px!important;text-align:center!important;}
     .rwph-newsletter-image-preview-wrap img{max-width:100%!important;height:auto!important;border-radius:12px!important;border:1px solid rgba(125,211,252,.18)!important;box-shadow:0 12px 32px rgba(0,0,0,.38)!important;}
-    .rwph-newsletter-image-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;}
+    .rwph-newsletter-image-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;}
     .rwph-newsletter-image-close{position:absolute!important;top:10px!important;right:12px!important;width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;display:grid!important;place-items:center!important;font:950 20px/1 Arial,Helvetica,sans-serif!important;}
+    @media (max-width:760px),(pointer:coarse){.rwph-newsletter-image-actions{grid-template-columns:1fr!important;}}
 
 
   </style>
@@ -6152,6 +6154,7 @@
       </div>
       <div class="rwph-newsletter-image-actions">
         <a class="btn primary" id="rwphNewsletterImageDownload" href="#" download="rwph-newsletter.png">Download PNG</a>
+        <a class="btn secondary" id="rwphNewsletterImageOpen" href="#" target="_blank" rel="noopener">Open PNG</a>
         <button class="btn secondary" type="button" data-copy-newsletter-picture>Copy Picture</button>
       </div>
       <div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>
@@ -6487,8 +6490,40 @@
     }
 
     function rwphCanvasBlob(canvas) { return new Promise(function(resolve){ try { canvas.toBlob(function(blob){ resolve(blob); }, "image/png", 0.95); } catch (e) { resolve(null); } }); }
+    function rwphCanvasDataUrl(canvas) { try { return canvas.toDataURL("image/png", 0.95); } catch (e) { return ""; } }
+    function rwphBlobFromDataUrl(dataUrl) {
+      try {
+        const parts = String(dataUrl || "").split(",");
+        if (parts.length < 2) return null;
+        const meta = parts[0] || "";
+        const mimeMatch = meta.match(/data:([^;]+)/i);
+        const mime = mimeMatch ? mimeMatch[1] : "image/png";
+        const bin = atob(parts.slice(1).join(","));
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new Blob([bytes], { type: mime });
+      } catch (e) { return null; }
+    }
+    function rwphDownloadDataUrl(filename, dataUrl) {
+      try {
+        if (!dataUrl) return false;
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = filename || "rwph-newsletter.png";
+        a.rel = "noopener";
+        a.style.position = "fixed";
+        a.style.left = "-9999px";
+        a.style.top = "0";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return true;
+      } catch (e) { return false; }
+    }
     let rwphCurrentNewsletterPictureBlob = null;
     let rwphCurrentNewsletterPictureUrl = "";
+    let rwphCurrentNewsletterPictureDataUrl = "";
+    let rwphCurrentNewsletterPictureFilename = "rwph-newsletter.png";
 
     function rwphPictureRowsForKey(key) {
       if (key !== "test100") return { rows: rows || [], summary: summary || {}, themeKey: key || "standard", testNewsletter: false };
@@ -6497,42 +6532,63 @@
       return { rows: repeated, summary: Object.assign({}, summary || {}, { nameCount:120, testNewsletter:true }), themeKey: "standard", testNewsletter: true };
     }
 
-    async function rwphCreateNewsletterPicture(key) {
+    function rwphCreateNewsletterPicture(key) {
       const spec = rwphPictureRowsForKey(key || "standard");
       const canvas = rwphBuildPictureCanvas(spec.rows, spec.summary, spec.themeKey, { testNewsletter: spec.testNewsletter });
-      const blob = await rwphCanvasBlob(canvas);
-      if (!blob) throw new Error("Could not create PNG image.");
-      if (rwphCurrentNewsletterPictureUrl) { try { URL.revokeObjectURL(rwphCurrentNewsletterPictureUrl); } catch (e) {} }
-      rwphCurrentNewsletterPictureBlob = blob;
-      rwphCurrentNewsletterPictureUrl = URL.createObjectURL(blob);
       const filename = "ranked-war-payout-newsletter-" + String(key || "standard").toLowerCase() + "-" + rwphPictureTimestamp() + ".png";
+      const dataUrl = rwphCanvasDataUrl(canvas);
+      if (!dataUrl) throw new Error("Could not create PNG image. Try the normal results tab again after refreshing Torn.");
+
+      if (rwphCurrentNewsletterPictureUrl) { try { URL.revokeObjectURL(rwphCurrentNewsletterPictureUrl); } catch (e) {} }
+      rwphCurrentNewsletterPictureDataUrl = dataUrl;
+      rwphCurrentNewsletterPictureFilename = filename;
+      rwphCurrentNewsletterPictureBlob = rwphBlobFromDataUrl(dataUrl);
+      rwphCurrentNewsletterPictureUrl = "";
+
       const panel = document.getElementById("rwphNewsletterImagePanel");
       const img = document.getElementById("rwphNewsletterImagePreview");
       const link = document.getElementById("rwphNewsletterImageDownload");
+      const openLink = document.getElementById("rwphNewsletterImageOpen");
       const note = document.getElementById("rwphNewsletterImageNote");
-      if (img) img.src = rwphCurrentNewsletterPictureUrl;
-      if (link) { link.href = rwphCurrentNewsletterPictureUrl; link.download = filename; }
-      if (note) note.textContent = "Created " + filename + ". The PNG download has started. Use the Download PNG button again if the browser blocked it.";
+      if (img) img.src = dataUrl;
+      if (link) { link.href = dataUrl; link.download = filename; }
+      if (openLink) { openLink.href = dataUrl; openLink.download = filename; }
+      if (note) note.textContent = "Created " + filename + ". If the browser blocks auto-download, press Download PNG or Open PNG, then save the image manually.";
       if (panel) { panel.dataset.layoutKey = "rwph_newsletter_picture_panel_layout"; setupMoveResize(panel, ".rwph-newsletter-image-head"); panel.hidden = false; }
-      if (link) setTimeout(function(){ try { link.click(); } catch (e) {} }, 50);
-      showToast("Picture newsletter PNG created/downloaded.", "info");
+
+      const downloaded = rwphDownloadDataUrl(filename, dataUrl);
+      rwphCanvasBlob(canvas).then(function(blob){
+        if (!blob) return;
+        rwphCurrentNewsletterPictureBlob = blob;
+        try {
+          if (rwphCurrentNewsletterPictureUrl) URL.revokeObjectURL(rwphCurrentNewsletterPictureUrl);
+          rwphCurrentNewsletterPictureUrl = URL.createObjectURL(blob);
+          if (link) { link.href = rwphCurrentNewsletterPictureUrl; link.download = filename; }
+          if (openLink) { openLink.href = rwphCurrentNewsletterPictureUrl; }
+          if (img) img.src = rwphCurrentNewsletterPictureUrl;
+        } catch (e) {}
+      });
+      showToast(downloaded ? "Picture newsletter PNG created/downloaded." : "Picture newsletter PNG created. Use Download PNG or Open PNG.", downloaded ? "info" : "warn");
     }
 
     async function rwphCopyCurrentNewsletterPicture() {
+      if (!rwphCurrentNewsletterPictureBlob && rwphCurrentNewsletterPictureDataUrl) rwphCurrentNewsletterPictureBlob = rwphBlobFromDataUrl(rwphCurrentNewsletterPictureDataUrl);
       if (!rwphCurrentNewsletterPictureBlob) { showToast("Create a picture newsletter first.", "warn"); return; }
-      if (!navigator.clipboard || !window.ClipboardItem) { showToast("Image clipboard is blocked in this browser. Use Download PNG instead.", "warn"); return; }
+      if (!navigator.clipboard || !window.ClipboardItem) { showToast("Image clipboard is blocked in this browser. Use Download PNG or Open PNG instead.", "warn"); return; }
       try { await navigator.clipboard.write([new ClipboardItem({ "image/png": rwphCurrentNewsletterPictureBlob })]); showToast("Picture newsletter copied as PNG.", "info"); }
-      catch (e) { showToast("Image clipboard was blocked. Use Download PNG instead.", "warn"); }
+      catch (e) { showToast("Image clipboard was blocked. Use Download PNG or Open PNG instead.", "warn"); }
     }
 
     document.addEventListener("click", function(ev) {
-      const imgBtn = ev.target && ev.target.closest ? ev.target.closest("[data-create-newsletter-image]") : null;
+      const imgBtn = ev.target && ev.target.closest ? ev.target.closest("[data-create-newsletter-image], [data-create-newsletter]") : null;
       if (imgBtn) {
         ev.preventDefault(); ev.stopPropagation();
         const key = imgBtn.getAttribute("data-create-newsletter-image") || "standard";
         const oldText = imgBtn.textContent;
         imgBtn.disabled = true; imgBtn.textContent = "Creating picture...";
-        rwphCreateNewsletterPicture(key).catch(function(err){ showToast((err && err.message) || "Picture newsletter failed.", "warn"); }).finally(function(){ setTimeout(function(){ imgBtn.disabled = false; imgBtn.textContent = oldText; }, 450); });
+        try { rwphCreateNewsletterPicture(key); }
+        catch (err) { showToast((err && err.message) || "Picture newsletter failed.", "warn"); }
+        finally { setTimeout(function(){ imgBtn.disabled = false; imgBtn.textContent = oldText; }, 450); }
         return;
       }
       const closePicture = ev.target && ev.target.closest ? ev.target.closest("[data-close-newsletter-image]") : null;
@@ -9949,8 +10005,46 @@
     });
   }
 
-  async function rwphCopyNewsletterPictureCanvas(canvas) {
-    const blob = await rwphCanvasToPngBlob(canvas);
+  function rwphCanvasToPngDataUrl(canvas) {
+    try { return canvas.toDataURL("image/png", 0.95); } catch (_) { return ""; }
+  }
+
+  function rwphDataUrlToBlob(dataUrl) {
+    try {
+      const parts = String(dataUrl || "").split(",");
+      if (parts.length < 2) return null;
+      const meta = parts[0] || "";
+      const mimeMatch = meta.match(/data:([^;]+)/i);
+      const mime = mimeMatch ? mimeMatch[1] : "image/png";
+      const bin = atob(parts.slice(1).join(","));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphDownloadNewsletterPictureDataUrl(dataUrl, filename) {
+    try {
+      if (!dataUrl) return false;
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = filename;
+      a.rel = "noopener";
+      a.style.position = "fixed";
+      a.style.left = "-9999px";
+      a.style.top = "0";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function rwphCopyNewsletterPictureBlob(blob) {
     if (!blob || !navigator.clipboard || !window.ClipboardItem) return false;
     try {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -9960,26 +10054,39 @@
     }
   }
 
-  async function rwphDownloadNewsletterPictureCanvas(canvas, filename) {
+  async function rwphDownloadNewsletterPictureCanvasBlob(canvas, filename) {
     const blob = await rwphCanvasToPngBlob(canvas);
     if (!blob) return false;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    return true;
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   async function createPictureNewsletter(rows, summary, themeKey = "standard", options = {}) {
     const canvas = rwphBuildNewsletterPictureCanvas(rows || [], summary || {}, themeKey || "standard", options || {});
     const filename = `ranked-war-payout-newsletter-${String(themeKey || "standard").toLowerCase()}-${rwphPictureNewsletterTimestamp()}.png`;
-    const copied = await rwphCopyNewsletterPictureCanvas(canvas);
-    const downloaded = await rwphDownloadNewsletterPictureCanvas(canvas, filename);
-    return { filename, copied, downloaded };
+    const dataUrl = rwphCanvasToPngDataUrl(canvas);
+    let downloaded = false;
+    let copied = false;
+
+    // Do the download immediately from a data URL before any awaited clipboard/blob work.
+    // This keeps the action inside the original user click for stricter Torn PDA/mobile browsers.
+    if (dataUrl) downloaded = rwphDownloadNewsletterPictureDataUrl(dataUrl, filename);
+
+    const dataBlob = dataUrl ? rwphDataUrlToBlob(dataUrl) : null;
+    copied = await rwphCopyNewsletterPictureBlob(dataBlob);
+    if (!downloaded) downloaded = await rwphDownloadNewsletterPictureCanvasBlob(canvas, filename);
+    return { filename, copied, downloaded, dataUrlCreated: !!dataUrl };
   }
 
   function createHtmlNewsletter(rows, summary) {
@@ -12167,7 +12274,7 @@
 
         try {
           const result = await createPictureNewsletter(lastRows, lastSummary || {}, "standard");
-          rwphToastPanelInfo(status, `${result.copied ? "Picture newsletter copied as PNG and downloaded" : "Picture newsletter PNG downloaded"}. To use it in Torn, upload/attach the picture or host it and insert it as an image in the faction newsletter.`, "info", "RWPH Newsletter Picture");
+          rwphToastPanelInfo(status, `${result.downloaded ? (result.copied ? "Picture newsletter copied as PNG and downloaded" : "Picture newsletter PNG downloaded") : "Picture newsletter PNG was created, but the browser blocked the automatic download"}. If needed, open the fullscreen results tab and use a Picture Newsletter button to preview, Download PNG, or Open PNG. To use it in Torn, upload/attach the picture or host it and insert it as an image in the faction newsletter.`, result.downloaded ? "info" : "warn", "RWPH Newsletter Picture");
         } catch (err) {
           rwphToastPanelError(status, "Picture newsletter failed. Open the fullscreen results tab and use a Picture Newsletter button there.", "RWPH Newsletter Picture");
         }
