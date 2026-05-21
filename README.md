@@ -603,24 +603,24 @@ When updating RWPH:
 
 ### v1.1.298
 
-- Shortened the **Test Newsletter** raw HTML code without removing the full All Result Stats or full-detail payout user card data.
-- Test Newsletter now uses shared compact class styles instead of repeating long inline styles inside every 150-member payout card.
-- Kept the Test Newsletter at 150 payout cards and retained all Basic/Advanced card stats.
-- Normal newsletters stay unchanged from v1.1.297.
+- Changed **Test Newsletter** from **150 members** to **120 members**.
+- The test newsletter still repeats existing result rows and keeps its full test layout/details.
+- Normal Basic/Advanced newsletters are unchanged and still use their real payout row count.
+- Updated README, terms, server version, package version, and userscript version.
 
-### v1.1.293
+### v1.1.297
 
-- Added a compact-code mode for long/test newsletters so the **Test Newsletter (100 Members)** raw HTML is much shorter for Torn newsletter/message limits.
-- Long newsletters now use tighter table markup with the same summary and all 100 payout rows, instead of repeating large inline style blocks on every member row.
+- Added a compact-code mode for long/test newsletters so the **Test Newsletter** raw HTML is much shorter for Torn newsletter/message limits.
+- Long newsletters now use tighter table markup with the same summary and all test payout rows, instead of repeating large inline style blocks on every member row.
 - Real newsletters with 80+ rows also switch to the compact-code layout automatically.
 - Kept the phone-friendly layout and no-scrollbar generated HTML cleanup.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.292
 
-- Added a **Test Newsletter (100 Members)** button to Basic and Advanced result tabs.
-- The test newsletter uses the same current newsletter HTML layout and repeats the existing result rows until it has 100 payout members.
-- This lets users test long faction newsletter layout, phone/Torn PDA spacing, and raw HTML panel behaviour without needing a 100-member result.
+- Added a **Test Newsletter** button to Basic and Advanced result tabs.
+- The test newsletter uses the same current newsletter HTML layout and repeats the existing result rows until it has the configured test payout member count.
+- This lets users test long faction newsletter layout, phone/Torn PDA spacing, and raw HTML panel behaviour without needing a large real result.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.290

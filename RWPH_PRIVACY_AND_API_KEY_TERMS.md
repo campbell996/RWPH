@@ -325,19 +325,19 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ### v1.1.298
 
-- Shortened the Test Newsletter raw HTML code while keeping all full stats and full-detail 150-member payout cards.
-- Test Newsletter now uses shared compact class styles to reduce repeated HTML.
+- Changed **Test Newsletter** from **150 members** to **120 members**.
+- Normal Basic/Advanced newsletters are unchanged and still use their real payout row count.
 
-### v1.1.293
+### v1.1.297
 
-- Added compact-code mode for long/test newsletters so the 100-member test newsletter produces much shorter raw HTML while keeping the summary and payout rows.
+- Added compact-code mode for long/test newsletters so the test newsletter produces much shorter raw HTML while keeping the summary and payout rows.
 - Real newsletters with 80+ rows also use compact long-newsletter output.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.292
 
 - Added a **Test Newsletter (100 Members)** button to Basic and Advanced result tabs.
-- The test newsletter repeats existing result rows to generate a 100-member newsletter for long-layout and phone/Torn PDA testing.
+- The test newsletter repeats existing result rows to generate a large test newsletter for long-layout and phone/Torn PDA testing.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.290
