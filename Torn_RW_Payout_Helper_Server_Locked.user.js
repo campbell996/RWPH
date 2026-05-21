@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.305
+// @version      1.1.300
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,12 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.302: picture newsletters restored full main stats and full payout user card stats with compact multi-line cards.
-  // v1.1.301: newsletter buttons now generate downloadable/copyable PNG picture newsletters instead of raw HTML-code panels.
-  // v1.1.305: picture newsletter buttons open an immediate standalone PNG page and inline fallback, removing floating-panel dependency.
-  // v1.1.304: split picture newsletters into smaller numbered PNG parts with per-part preview/download fallback for Torn PDA/mobile browser limits.
-  // v1.1.303: fixed PNG picture newsletter creation/download fallback and wired summary picture buttons.
-  // v1.1.300: removed Weight/Share/Respect/Total Respect/Tracked from Test Newsletter stats/cards.
+  // v1.1.300: trimmed Test Newsletter All Result Stats and restored Total Respect.
   // v1.1.298: Test Newsletter repeat count changed from 150 to 120 members.
   // v1.1.297: test newsletter uses full All Result Stats and full payout user cards; normal newsletters stay compact.
   // v1.1.292: added results-tab Test Newsletter raw HTML panel with repeated members for mobile/long-newsletter testing.
@@ -5184,8 +5179,32 @@
       gold: "Victory Gold Newsletter",
       test100: "Test Newsletter - 120 Members",
     };
-    // v1.1.301: picture newsletters replaced the visible raw HTML-code panels.
-    const rwphNewsletterPanelHtml = "";
+    const rwphNewsletterPanelHtml = ["standard", "cyber", "ledger", "crimson", "gold", "test100"].map((key) => {
+      const htmlCode = rwphCleanNewsletterHtmlCode(rwphNewsletterHtmlCode[key] || "");
+      const label = rwphNewsletterPanelLabels[key] || "Newsletter";
+      const targetId = `rwph-newsletter-code-panel-${key}`;
+      return `
+  <section class="rwph-newsletter-code-panel" id="${targetId}" aria-label="${esc(label)} raw HTML code panel">
+    <div class="rwph-newsletter-code-head">
+      <div>
+        <div class="rwph-newsletter-code-title">${esc(label)} HTML Code</div>
+        <div class="rwph-newsletter-code-note">This panel is already in the results tab. Manually copy the full raw HTML code, then paste it into Torn's faction newsletter Source code tab.</div>
+      </div>
+      <a class="rwph-newsletter-code-close" href="#" title="Close newsletter code panel">×</a>
+    </div>
+    <div class="rwph-newsletter-code-body">
+      <div class="rwph-newsletter-code-box">
+        <div class="rwph-newsletter-code-label">Raw HTML Code</div>
+        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">How to copy: on computer, right-click inside the raw HTML code box, choose Select All, then press CTRL+C. On phone/Torn PDA, hold on the code box, choose Select All, then Copy. Then go to your faction newsletter controls and paste it into the Source code tab. The panel scrollbars are only part of RWPH and are not part of the generated code.</div>
+        <textarea spellcheck="false" tabindex="0" id="rwph-newsletter-code-textarea-${key}" data-rwph-newsletter-code="${key}" data-rwph-code-source="${esc(htmlCode)}">${esc(htmlCode)}</textarea>
+      </div>
+      <div class="rwph-newsletter-code-box">
+        <div class="rwph-newsletter-code-label">Live Preview</div>
+        <div class="rwph-newsletter-code-preview">${htmlCode}</div>
+      </div>
+    </div>
+  </section>`;
+    }).join("\n");
     const tornNewsletterPlainHrefs = {
       standard: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.standard.text || "")}`,
       cyber: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.cyber.text || "")}`,
@@ -6076,52 +6095,6 @@
     .stats span{display:block!important;min-height:20px!important;}
     .stats b{display:block!important;}
 
-
-    .rwph-newsletter-direct-box{margin-top:12px;padding:12px;border-radius:16px;border:1px solid rgba(125,211,252,.26);background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(2,6,23,.92));box-shadow:0 14px 34px rgba(0,0,0,.36);}
-    .rwph-newsletter-direct-head{font:900 14px/1.2 Arial,Helvetica,sans-serif;color:#eaf6ff;margin-bottom:6px;}
-    .rwph-newsletter-direct-note{font:800 11px/1.4 Arial,Helvetica,sans-serif;color:#aeb4c2;margin-bottom:8px;}
-    .rwph-newsletter-direct-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-    .rwph-newsletter-direct-list{display:grid;gap:10px;max-height:520px;overflow:auto;padding-right:4px;}
-    .rwph-newsletter-direct-card{border:1px solid rgba(125,211,252,.20);border-radius:12px;padding:8px;background:rgba(15,23,42,.55);}
-    .rwph-newsletter-direct-card-title{font:900 11px/1.3 Arial,Helvetica,sans-serif;color:#eaf6ff;margin:0 0 6px 0;word-break:break-word;}
-    .rwph-newsletter-direct-card img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:#020617;}
-    .rwph-newsletter-direct-card .rw-actions{margin-top:8px;gap:6px;}
-
-    .rwph-newsletter-image-panel{
-      position:fixed!important;
-      z-index:2147483646!important;
-      left:50%!important;
-      top:50%!important;
-      transform:translate(-50%,-50%)!important;
-      width:min(860px,calc(100vw - 28px))!important;
-      height:min(820px,calc(100vh - 28px))!important;
-      max-height:calc(100vh - 28px)!important;
-      display:flex!important;
-      flex-direction:column!important;
-      gap:10px!important;
-      padding:14px!important;
-      overflow:hidden!important;
-      border:1px solid rgba(125,211,252,.34)!important;
-      border-left:4px solid rgba(56,189,248,.66)!important;
-      border-radius:22px!important;
-      background:radial-gradient(circle at 18% 0%, rgba(56,189,248,.20), transparent 34%), linear-gradient(180deg, rgba(15,23,42,.99), rgba(2,6,23,.98))!important;
-      box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 45px rgba(56,189,248,.16)!important;
-      color:#eaf6ff!important;
-      text-align:left!important;
-    }
-    .rwph-newsletter-image-panel[hidden]{display:none!important;}
-    .rwph-newsletter-image-head{margin:0!important;padding:10px 48px 4px 8px!important;font-size:18px!important;color:#fff!important;cursor:move!important;touch-action:none!important;}
-    .rwph-newsletter-image-note{margin:0!important;padding:8px 10px!important;border:1px solid rgba(125,211,252,.16)!important;border-radius:12px!important;background:rgba(2,6,23,.46)!important;color:#dbeafe!important;font-size:11px!important;font-weight:800!important;line-height:1.35!important;}
-    .rwph-newsletter-image-preview-wrap{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;border:1px solid rgba(125,211,252,.22)!important;border-radius:16px!important;background:#020617!important;padding:10px!important;text-align:center!important;}
-    .rwph-newsletter-image-preview-wrap img{max-width:100%!important;height:auto!important;border-radius:12px!important;border:1px solid rgba(125,211,252,.18)!important;box-shadow:0 12px 32px rgba(0,0,0,.38)!important;}
-    .rwph-newsletter-image-part{margin:0 0 14px!important;padding:10px!important;border:1px solid rgba(125,211,252,.18)!important;border-radius:14px!important;background:rgba(15,23,42,.58)!important;text-align:left!important;}
-    .rwph-newsletter-image-part-title{margin:0 0 8px!important;color:#eaf6ff!important;font:900 13px/1.3 Arial,Helvetica,sans-serif!important;}
-    .rwph-newsletter-image-part-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-top:8px!important;}
-    .rwph-newsletter-image-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;}
-    .rwph-newsletter-image-close{position:absolute!important;top:10px!important;right:12px!important;width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;display:grid!important;place-items:center!important;font:950 20px/1 Arial,Helvetica,sans-serif!important;}
-    @media (max-width:760px),(pointer:coarse){.rwph-newsletter-image-actions{grid-template-columns:1fr!important;}}
-
-
   </style>
 </head>
 <body>
@@ -6148,40 +6121,16 @@
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
-      <h2 class="results-side-title">Newsletter Pictures</h2>
-      <button class="btn primary newsletter-top-btn" id="newsletterBtn" type="button" data-create-newsletter-image="standard">Picture Torn Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCyberBtn" type="button" data-create-newsletter-image="cyber">Picture Cyber Neon Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" type="button" data-create-newsletter-image="ledger">Picture War Ledger Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" type="button" data-create-newsletter-image="crimson">Picture Crimson Raid Newsletter</button>
-      <button class="btn primary newsletter-top-btn" id="newsletterGoldBtn" type="button" data-create-newsletter-image="gold">Picture Victory Gold Newsletter</button>
-      <button class="btn secondary newsletter-top-btn" id="newsletterTest100Btn" type="button" data-create-newsletter-image="test100">Picture Test Newsletter (120 Members)</button>
-      <p class="newsletter-choice-note">Each newsletter now creates smaller numbered PNG picture parts instead of one oversized raw HTML-code block. The test picture repeats the existing result rows until it has 120 members for long-newsletter testing.</p>
-      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a Picture Newsletter button. RWPH now opens a standalone picture page straight away and also writes an inline fallback below these buttons. Download the PNG part(s), then upload/host and insert them in Torn.</p>
-      <div class="rwph-newsletter-direct-box" id="rwphNewsletterDirectBox" hidden>
-        <div class="rwph-newsletter-direct-head" id="rwphNewsletterDirectHead">Picture newsletter output</div>
-        <div class="rwph-newsletter-direct-note" id="rwphNewsletterDirectNote">Creating picture newsletter...</div>
-        <div class="rwph-newsletter-direct-actions" id="rwphNewsletterDirectActions"></div>
-        <div class="rwph-newsletter-direct-list" id="rwphNewsletterDirectList"></div>
-      </div>
+      <h2 class="results-side-title">Newsletter Styles</h2>
+      <a class="btn primary newsletter-top-btn" id="newsletterBtn" href="#rwph-newsletter-code-panel-standard">HTML Code Torn Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCyberBtn" href="#rwph-newsletter-code-panel-cyber">HTML Code Cyber Neon Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterLedgerBtn" href="#rwph-newsletter-code-panel-ledger">HTML Code War Ledger Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterCrimsonBtn" href="#rwph-newsletter-code-panel-crimson">HTML Code Crimson Raid Newsletter</a>
+      <a class="btn primary newsletter-top-btn" id="newsletterGoldBtn" href="#rwph-newsletter-code-panel-gold">HTML Code Victory Gold Newsletter</a>
+      <a class="btn secondary newsletter-top-btn" id="newsletterTest100Btn" href="#rwph-newsletter-code-panel-test100">HTML Code Test Newsletter (120 Members)</a>
+      <p class="newsletter-choice-note">Each newsletter opens a raw HTML-code panel directly in this results tab. The test newsletter repeats the existing result rows until it has 120 members so you can test long mobile newsletters.</p>
+      <p class="newsletter-use-note"><b>Using it in faction newsletters:</b> click a HTML Code newsletter button, then manually copy the raw HTML code. On computer, right-click the code box, choose Select All, then press CTRL+C. On phone/Torn PDA, hold the code box, choose Select All, then Copy. Paste it into Torn faction newsletter controls in the Source code tab.</p>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
-    </aside>
-
-
-    <aside class="rwph-newsletter-image-panel" id="rwphNewsletterImagePanel" hidden>
-      <button class="btn secondary rwph-newsletter-image-close" type="button" data-close-newsletter-image>×</button>
-      <h2 class="rwph-newsletter-image-head">Newsletter Picture</h2>
-      <p class="rwph-newsletter-image-note" id="rwphNewsletterImageNote">Your PNG picture newsletter will appear here after it is created.</p>
-      <div class="rwph-newsletter-image-preview-wrap" id="rwphNewsletterImagePreviewList">
-        <img id="rwphNewsletterImagePreview" alt="RWPH newsletter picture preview">
-      </div>
-      <div class="rwph-newsletter-image-actions">
-        <a class="btn primary" id="rwphNewsletterImageDownload" href="#" download="rwph-newsletter.png" data-download-newsletter-pictures="1">Download PNG</a>
-        <a class="btn secondary" id="rwphNewsletterImageOpen" href="#" target="_blank" rel="noopener">Open PNG</a>
-        <button class="btn secondary" type="button" data-copy-newsletter-picture>Copy Picture</button>
-      </div>
-      <div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>
-      <div class="resize-handle resize-handle-sw" data-resize-dir="sw" title="Resize from bottom-left"></div>
-      <div class="resize-handle resize-handle-se" data-resize-dir="se" title="Resize from bottom-right"></div>
     </aside>
 
     ${rwphNewsletterPanelHtml}
@@ -6324,552 +6273,6 @@
         return false;
       }
     }
-
-
-
-    function showToast(message, mode) {
-      try {
-        const old = document.getElementById("rwphFullscreenToast");
-        if (old) old.remove();
-        const el = document.createElement("div");
-        el.id = "rwphFullscreenToast";
-        el.textContent = String(message || "");
-        const border = mode === "warn" ? "rgba(250,204,21,.72)" : mode === "error" ? "rgba(248,113,113,.72)" : "rgba(125,211,252,.72)";
-        el.style.cssText = "position:fixed;z-index:2147483647;right:18px;bottom:18px;max-width:min(440px,calc(100vw - 36px));padding:12px 14px;border-radius:14px;border:1px solid rgba(125,211,252,.28);border-left:4px solid " + border + ";background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(2,6,23,.96));color:#eaf6ff;font:800 12px/1.35 Arial,Helvetica,sans-serif;box-shadow:0 18px 46px rgba(0,0,0,.46);text-align:left;";
-        document.body.appendChild(el);
-        setTimeout(function(){ try { el.remove(); } catch (e) {} }, 4200);
-      } catch (e) {
-        try { console.log("RWPH:", message); } catch (_) {}
-      }
-    }
-
-    function rwphPictureTheme(themeKey) {
-      const key = String(themeKey || "standard").toLowerCase();
-      const themes = {
-        standard: { title:"Ranked War Payout Newsletter", icon:"⚔️", bg:"#111217", outer:"#1a1c24", header:"#232737", panelA:"#242836", panelB:"#202331", head:"#2c3142", line:"#3a4050", strongLine:"#f2b84b", accent:"#f2b84b", text:"#f2f2f2", muted:"#aeb4c2", soft:"#d8d8d8" },
-        cyber: { title:"Cyber Neon Payout Newsletter", icon:"🟦", bg:"#06111d", outer:"#0c1726", header:"#10263a", panelA:"#102437", panelB:"#0c1d2e", head:"#11334a", line:"#155e75", strongLine:"#22d3ee", accent:"#22d3ee", text:"#ecfeff", muted:"#a5f3fc", soft:"#cffafe" },
-        ledger: { title:"War Ledger Payout Newsletter", icon:"📜", bg:"#12100c", outer:"#211b13", header:"#2b2418", panelA:"#2f271a", panelB:"#261f16", head:"#3a2f1f", line:"#5b4a31", strongLine:"#d6b36a", accent:"#d6b36a", text:"#fff7e6", muted:"#d6c4a4", soft:"#f4e3be" },
-        crimson: { title:"Crimson Raid Payout Newsletter", icon:"🟥", bg:"#160909", outer:"#241111", header:"#351717", panelA:"#351818", panelB:"#2b1111", head:"#421818", line:"#7f1d1d", strongLine:"#fb923c", accent:"#fb923c", text:"#fff7ed", muted:"#fecaca", soft:"#fed7aa" },
-        gold: { title:"Victory Gold Payout Newsletter", icon:"🏆", bg:"#171104", outer:"#241b08", header:"#35280b", panelA:"#3a2b0c", panelB:"#2b2208", head:"#46360e", line:"#854d0e", strongLine:"#facc15", accent:"#facc15", text:"#fffbe6", muted:"#fef3c7", soft:"#fde68a" }
-      };
-      return themes[key] || themes.standard;
-    }
-
-    function rwphNum(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
-    function rwphPictureTimestamp() { return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-"); }
-    function rwphRoundRectPath(ctx, x, y, w, h, r) { const radius = Math.max(0, Math.min(Number(r) || 0, Math.min(w, h) / 2)); ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + w - radius, y); ctx.quadraticCurveTo(x + w, y, x + w, y + radius); ctx.lineTo(x + w, y + h - radius); ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h); ctx.lineTo(x + radius, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - radius); ctx.lineTo(x, y + radius); ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath(); }
-    function rwphPanel(ctx, x, y, w, h, r, fill, stroke, lineWidth) { rwphRoundRectPath(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.lineWidth = lineWidth || 2; ctx.strokeStyle = stroke; ctx.stroke(); } }
-    function rwphTrim(ctx, text, maxWidth) { let value = String(text == null ? "" : text); if (!maxWidth || ctx.measureText(value).width <= maxWidth) return value; while (value.length > 3 && ctx.measureText(value + "…").width > maxWidth) value = value.slice(0, -1); return value + "…"; }
-    function rwphDrawText(ctx, text, x, y, maxWidth, font, color, align) { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || "left"; ctx.textBaseline = "top"; ctx.fillText(rwphTrim(ctx, text, maxWidth), x, y); }
-
-    function rwphBuildPictureModel(sourceRows, sourceSummary) {
-      const list = (Array.isArray(sourceRows) ? sourceRows : []).map(function(r, index) {
-        return {
-          rank: index + 1,
-          id: String(r.id || "unknown"),
-          name: r.name || ("Unknown " + (r.id || "unknown")),
-          warHits: rwphNum(r.warHits ?? r.attacks),
-          assists: rwphNum(r.assists),
-          outsideHits: rwphNum(r.outsideHits),
-          retaliationHits: rwphNum(r.retaliationHits),
-          payableEvents: rwphNum(r.payableEvents),
-          totalTrackedHits: rwphNum(r.totalTrackedHits),
-          respect: rwphNum(r.respect),
-          totalRespect: rwphNum(r.totalRespect ?? r.respect),
-          payout: rwphNum(r.payout),
-          weight: rwphNum(r.weight),
-          points: rwphNum(r.points ?? r.weight),
-          basePoints: rwphNum(r.basePoints),
-          hospitalizingHits: rwphNum(r.hospitalizingHits),
-          hospitalBonusPoints: rwphNum(r.hospitalBonusPoints),
-          enemyFactionHospitalizingHits: rwphNum(r.enemyFactionHospitalizingHits),
-          enemyFactionHospitalBonusPoints: rwphNum(r.enemyFactionHospitalBonusPoints),
-          avgFairFight: rwphNum(r.avgFairFight || 1),
-          fairFightBonusPoints: rwphNum(r.fairFightBonusPoints),
-          fairFightPerPayableHitBonus: rwphNum(r.fairFightPerPayableHitBonus),
-        };
-      });
-      const s = sourceSummary || {};
-      const pointsMode = !!(s.pointsMode || s.calculationMode === "points");
-      const memberPayout = rwphNum(s.memberPayout ?? s.totalPayout) || list.reduce(function(sum, r){ return sum + r.payout; }, 0);
-      const totalWeight = pointsMode ? (rwphNum(s.totalPoints ?? s.totalWeight) || list.reduce(function(sum, r){ return sum + r.points; }, 0)) : (rwphNum(s.totalWeight) || list.reduce(function(sum, r){ return sum + r.weight; }, 0));
-      const includeLeftFactionMembers = !!(s.includeLeftFactionMembers || (s.calcMeta && s.calcMeta.includeLeftFactionMembers) || (s.calcMeta && s.calcMeta.options && s.calcMeta.options.includeLeftFactionMembers) || (s.options && s.options.includeLeftFactionMembers));
-      return {
-        list: list,
-        pointsMode: pointsMode,
-        newsletterTitle: String(s.factionName || (s.faction && s.faction.name) || "Faction") + " Payout Newsletter",
-        memberPayout: memberPayout,
-        overallTotalPayout: rwphNum(s.overallTotalPayout ?? s.totalPayoutDisplay) || memberPayout,
-        perUnitAmount: rwphNum(pointsMode ? (s.perPointAmount ?? s.perHitAmount ?? s.perWeightedHitAmount) : (s.perHitAmount ?? s.perWeightedHitAmount)) || (totalWeight > 0 ? memberPayout / totalWeight : 0),
-        totalHits: rwphNum(s.totalWarHits ?? s.totalHits) || list.reduce(function(sum, r){ return sum + r.warHits; }, 0),
-        totalAssists: rwphNum(s.totalAssists) || list.reduce(function(sum, r){ return sum + r.assists; }, 0),
-        totalOutsideHits: rwphNum(s.totalOutsideHits) || list.reduce(function(sum, r){ return sum + r.outsideHits; }, 0),
-        totalRetaliationHits: rwphNum(s.totalRetaliationHits) || list.reduce(function(sum, r){ return sum + r.retaliationHits; }, 0),
-        totalTrackedHits: rwphNum(s.totalTrackedHits) || list.reduce(function(sum, r){ return sum + r.totalTrackedHits; }, 0),
-        totalPayableEvents: rwphNum(s.calcMeta && s.calcMeta.payableEvents) || list.reduce(function(sum, r){ return sum + r.payableEvents; }, 0),
-        totalRespect: rwphNum(s.totalRespect) || list.reduce(function(sum, r){ return sum + r.totalRespect; }, 0),
-        totalPayRespect: rwphNum(s.payoutRespect ?? s.respect) || list.reduce(function(sum, r){ return sum + r.respect; }, 0),
-        nameCount: rwphNum(s.nameCount) || list.length,
-        attacksFetched: rwphNum(s.attacksFetched ?? (s.calcMeta && s.calcMeta.attacksFetched) ?? s.fetchedAttacks ?? (s.calcMeta && s.calcMeta.fetchedAttacks)),
-        includeLeftFactionMembers: includeLeftFactionMembers,
-        removedLeftFactionHits: includeLeftFactionMembers ? 0 : rwphNum(s.removedLeftFactionHits ?? (s.calcMeta && s.calcMeta.removedLeftFactionHits)),
-        totalWeight: totalWeight,
-        totalOwnFactionHospitalizingHits: rwphNum(s.totalHospitalizingHits ?? s.totalOwnFactionHospitalizingHits) || list.reduce(function(sum, r){ return sum + r.hospitalizingHits; }, 0),
-        totalOwnFactionHospitalBonusPoints: rwphNum(s.totalHospitalBonusPoints ?? s.totalOwnFactionHospitalBonusPoints) || list.reduce(function(sum, r){ return sum + r.hospitalBonusPoints; }, 0),
-        totalEnemyFactionHospitalizingHits: rwphNum(s.totalEnemyFactionHospitalizingHits) || list.reduce(function(sum, r){ return sum + r.enemyFactionHospitalizingHits; }, 0),
-        totalEnemyFactionHospitalBonusPoints: rwphNum(s.totalEnemyFactionHospitalBonusPoints) || list.reduce(function(sum, r){ return sum + r.enemyFactionHospitalBonusPoints; }, 0),
-        totalFairFightBonusPoints: rwphNum(s.totalFairFightBonusPoints) || list.reduce(function(sum, r){ return sum + r.fairFightBonusPoints; }, 0),
-      };
-    }
-
-    function rwphBuildPictureCanvas(sourceRows, sourceSummary, themeKey, options) {
-      options = options || {};
-      const rowModel = rwphBuildPictureModel(sourceRows, sourceSummary);
-      const m = options.statsModel ? Object.assign({}, options.statsModel, { list: rowModel.list || [] }) : rowModel;
-      const theme = rwphPictureTheme(themeKey || "standard");
-      const key = String(themeKey || "standard").toLowerCase();
-      const list = m.list || [];
-      const width = 1100, pad = 34, gap = 12, contentW = width - pad * 2;
-      const modeLabel = m.pointsMode ? "Advanced" : "Basic";
-      const metricLabel = m.pointsMode ? "Points" : "Weight";
-      const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
-      const rowH = m.pointsMode ? 116 : 88;
-      const pageIndex = Math.max(0, Number(options.pageIndex || 0));
-      const totalPages = Math.max(1, Number(options.totalPages || 1));
-      const rowStartIndex = Math.max(0, Number(options.rowStartIndex || 0));
-      const paidMembers = Number(options.totalMembers || 0) || ((options && options.testNewsletter) ? 120 : (options.statsModel && options.statsModel.list ? options.statsModel.list.length : list.length));
-      const namesLoaded = Number(options.totalNames || 0) || ((options && options.testNewsletter) ? 120 : (m.nameCount || paidMembers || list.length || 0));
-      const stats = [
-        ["Member Payout", money(m.memberPayout)],
-        ["Total Payout", money(m.overallTotalPayout)],
-        [perUnitLabel, money(m.perUnitAmount)],
-        ["Paid Members", String(paidMembers)],
-        ["War Hits", String(m.totalHits || 0)],
-        ["Assists", String(m.totalAssists || 0)],
-        ["Outside Hits", String(m.totalOutsideHits || 0)],
-        ["Retals", String(m.totalRetaliationHits || 0)],
-        ["Payable Hits", String(m.totalPayableEvents || 0)],
-        ["Tracked Hits", String(m.totalTrackedHits || 0)],
-        [metricLabel, Number(m.totalWeight || 0).toFixed(2)],
-        ["Total Respect", Number(m.totalRespect || 0).toFixed(2)],
-        ["Pay Respect", Number(m.totalPayRespect || 0).toFixed(2)],
-        ["Fetched Attacks", String(m.attacksFetched || 0)],
-        ["Names Loaded", String(namesLoaded)],
-        [m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits", m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits || 0)],
-      ];
-      if (m.pointsMode) stats.push(
-        ["Own Hosp Hits", String(m.totalOwnFactionHospitalizingHits || 0)],
-        ["Own Hosp Bonus", Number(m.totalOwnFactionHospitalBonusPoints || 0).toFixed(2)],
-        ["Enemy Hosp Hits", String(m.totalEnemyFactionHospitalizingHits || 0)],
-        ["Enemy Hosp Bonus", Number(m.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)],
-        ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2)]
-      );
-      const statsCols = 4;
-      const statsRows = Math.ceil(stats.length / statsCols);
-      const statsBoxH = 68;
-      const height = Math.max(760, pad + 150 + 22 + statsRows * (statsBoxH + 10) + 54 + Math.max(1, list.length) * rowH + 64 + pad);
-      const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = theme.bg; ctx.fillRect(0, 0, width, height);
-      const glow = ctx.createRadialGradient(width * 0.5, 0, 10, width * 0.5, 0, width * 0.72);
-      glow.addColorStop(0, key === "crimson" ? "rgba(251,146,60,0.22)" : key === "gold" ? "rgba(250,204,21,0.22)" : key === "cyber" ? "rgba(34,211,238,0.24)" : "rgba(242,184,75,0.20)"); glow.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = glow; ctx.fillRect(0,0,width,360);
-      let y = pad;
-      rwphPanel(ctx, pad, y, contentW, 132, 24, theme.header, theme.strongLine, 3);
-      rwphDrawText(ctx, (theme.icon || "") + " " + (m.newsletterTitle || theme.title) + (totalPages > 1 ? " • Part " + (pageIndex + 1) + "/" + totalPages : ""), pad + 28, y + 22, contentW - 56, "bold 34px Arial", theme.accent);
-      rwphDrawText(ctx, "Ranked War Payout Helper • " + modeLabel + " • Picture Newsletter" + (totalPages > 1 ? " • Smaller mobile-safe PNG parts" : ""), pad + 28, y + 66, contentW - 56, "bold 18px Arial", theme.soft);
-      rwphDrawText(ctx, "Generated " + new Date().toLocaleString() + " • Review payouts before sending faction funds", pad + 28, y + 94, contentW - 56, "15px Arial", theme.muted);
-      y += 154;
-      rwphDrawText(ctx, "All Result Stats", pad, y, contentW, "bold 22px Arial", theme.accent); y += 34;
-      const colW = (contentW - gap * (statsCols - 1)) / statsCols;
-      stats.forEach(function(item, idx){
-        const col = idx % statsCols, row = Math.floor(idx / statsCols), x = pad + col * (colW + gap), sy = y + row * (statsBoxH + 10);
-        rwphPanel(ctx, x, sy, colW, statsBoxH, 14, idx % 2 ? theme.panelB : theme.panelA, theme.line, 2);
-        rwphDrawText(ctx, item[0], x + 12, sy + 10, colW - 24, "bold 12px Arial", theme.muted);
-        rwphDrawText(ctx, item[1], x + 12, sy + 32, colW - 24, "bold 18px Arial", theme.text);
-      });
-      y += statsRows * (statsBoxH + 10) + 8;
-      rwphDrawText(ctx, ((options && options.testNewsletter) ? "Payout User Cards - Test Picture Rows" : "Payout User Cards") + (totalPages > 1 ? " • Rows " + (rowStartIndex + 1) + "-" + (rowStartIndex + list.length) + " of " + paidMembers : ""), pad, y, contentW, "bold 22px Arial", theme.accent); y += 36;
-      if (!list.length) {
-        rwphPanel(ctx, pad, y, contentW, rowH, 12, theme.panelA, theme.line, 2);
-        rwphDrawText(ctx, "No payable members found.", pad + 18, y + 15, contentW - 36, "bold 17px Arial", theme.text);
-        y += rowH;
-      } else list.forEach(function(r, idx){
-        const bg = idx % 2 ? theme.panelB : theme.panelA;
-        rwphPanel(ctx, pad, y, contentW, rowH - 8, 14, bg, theme.line, 1.5);
-        const member = "#" + (rowStartIndex + idx + 1) + "  " + String(r.name || "Unknown") + " [" + String(r.id || "unknown") + "]";
-        const metric = m.pointsMode ? Number(r.points || r.weight || 0) : Number(r.weight || 0);
-        const share = m.memberPayout > 0 ? ((Number(r.payout || 0) / m.memberPayout) * 100).toFixed(2) + "%" : "0.00%";
-        const hitLine = "War " + Number(r.warHits || 0) + " • Ast " + Number(r.assists || 0) + " • Out " + Number(r.outsideHits || 0) + " • Ret " + Number(r.retaliationHits || 0) + " • Pay " + Number(r.payableEvents || 0) + " • Tracked " + Number(r.totalTrackedHits || 0);
-        rwphDrawText(ctx, member, pad + 18, y + 12, contentW - 250, "bold 16px Arial", theme.text);
-        rwphDrawText(ctx, money(r.payout || 0), pad + contentW - 18, y + 12, 220, "bold 18px Arial", "#86efac", "right");
-        if (m.pointsMode) {
-          rwphDrawText(ctx, "Points " + metric.toFixed(2) + " • Base " + Number(r.basePoints || 0).toFixed(2) + " • Weight " + Number(r.weight || 0).toFixed(2) + " • Share " + share, pad + 18, y + 36, contentW - 36, "bold 13px Arial", theme.soft);
-          rwphDrawText(ctx, hitLine + " • Respect " + Number(r.respect || 0).toFixed(2) + " • Total Respect " + Number(r.totalRespect || 0).toFixed(2), pad + 18, y + 58, contentW - 36, "bold 13px Arial", theme.muted);
-          rwphDrawText(ctx, "Own Hosp " + Number(r.hospitalizingHits || 0) + " / " + Number(r.hospitalBonusPoints || 0).toFixed(2) + " pts • Enemy Hosp " + Number(r.enemyFactionHospitalizingHits || 0) + " / " + Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2) + " pts • Avg FF " + Number(r.avgFairFight || 1).toFixed(2) + "x • FF Bonus " + Number(r.fairFightBonusPoints || 0).toFixed(2), pad + 18, y + 80, contentW - 36, "bold 13px Arial", theme.muted);
-        } else {
-          rwphDrawText(ctx, hitLine, pad + 18, y + 36, contentW - 36, "bold 13px Arial", theme.soft);
-          rwphDrawText(ctx, "Weight " + metric.toFixed(2) + " • Share " + share + " • Respect " + Number(r.respect || 0).toFixed(2) + " • Total Respect " + Number(r.totalRespect || 0).toFixed(2), pad + 18, y + 58, contentW - 36, "bold 13px Arial", theme.muted);
-        }
-        y += rowH;
-      });
-      y += 16; rwphPanel(ctx, pad, y, contentW, 48, 14, theme.outer, theme.line, 2); rwphDrawText(ctx, "Created with Ranked War Payout Helper. PNG picture newsletter" + (totalPages > 1 ? " part " + (pageIndex + 1) + " of " + totalPages : "") + "; upload/attach it or host it and insert it as an image in Torn.", pad + 18, y + 15, contentW - 36, "bold 15px Arial", theme.muted);
-      return canvas;
-    }
-
-    function rwphCanvasBlob(canvas) { return new Promise(function(resolve){ try { canvas.toBlob(function(blob){ resolve(blob); }, "image/png", 0.95); } catch (e) { resolve(null); } }); }
-    function rwphCanvasDataUrl(canvas) { try { return canvas.toDataURL("image/png", 0.95); } catch (e) { return ""; } }
-    function rwphBlobFromDataUrl(dataUrl) {
-      try {
-        const parts = String(dataUrl || "").split(",");
-        if (parts.length < 2) return null;
-        const meta = parts[0] || "";
-        const mimeMatch = meta.match(/data:([^;]+)/i);
-        const mime = mimeMatch ? mimeMatch[1] : "image/png";
-        const bin = atob(parts.slice(1).join(","));
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        return new Blob([bytes], { type: mime });
-      } catch (e) { return null; }
-    }
-    function rwphDownloadDataUrl(filename, dataUrl) {
-      try {
-        if (!dataUrl) return false;
-        const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = filename || "rwph-newsletter.png";
-        a.rel = "noopener";
-        a.style.position = "fixed";
-        a.style.left = "-9999px";
-        a.style.top = "0";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        return true;
-      } catch (e) { return false; }
-    }
-    let rwphCurrentNewsletterPictureBlob = null;
-    let rwphCurrentNewsletterPictureUrl = "";
-    let rwphCurrentNewsletterPictureDataUrl = "";
-    let rwphCurrentNewsletterPictureFilename = "rwph-newsletter.png";
-    let rwphCurrentNewsletterPictureParts = [];
-
-    function rwphPictureRowsForKey(key) {
-      if (key !== "test100") return { rows: rows || [], summary: summary || {}, themeKey: key || "standard", testNewsletter: false };
-      const source = (rows && rows.length) ? rows : [{ id:"0000000", name:"Test Member", warHits:10, assists:2, outsideHits:1, retaliationHits:1, payableEvents:14, totalTrackedHits:14, weight:14, points:14, payout:1000000, totalRespect:0 }];
-      const repeated = Array.from({ length: 120 }, function(_, idx){ return Object.assign({}, source[idx % source.length]); });
-      return { rows: repeated, summary: Object.assign({}, summary || {}, { nameCount:120, testNewsletter:true }), themeKey: "standard", testNewsletter: true };
-    }
-
-    function rwphClearNewsletterPictureParts() {
-      try { if (rwphCurrentNewsletterPictureUrl) URL.revokeObjectURL(rwphCurrentNewsletterPictureUrl); } catch (e) {}
-      (rwphCurrentNewsletterPictureParts || []).forEach(function(part){ try { if (part && part.url) URL.revokeObjectURL(part.url); } catch (e) {} });
-      rwphCurrentNewsletterPictureBlob = null;
-      rwphCurrentNewsletterPictureUrl = "";
-      rwphCurrentNewsletterPictureDataUrl = "";
-      rwphCurrentNewsletterPictureFilename = "rwph-newsletter.png";
-      rwphCurrentNewsletterPictureParts = [];
-    }
-
-    function rwphRowsPerPicturePage(statsModel) {
-      const totalRows = statsModel && statsModel.list ? statsModel.list.length : 0;
-      if (statsModel && statsModel.pointsMode) return totalRows > 70 ? 10 : 12;
-      return totalRows > 70 ? 16 : 18;
-    }
-
-    function rwphBuildPictureCanvasParts(spec, key) {
-      const allRows = Array.isArray(spec.rows) ? spec.rows : [];
-      const statsModel = rwphBuildPictureModel(allRows, spec.summary || {});
-      const rowsPerPage = rwphRowsPerPicturePage(statsModel);
-      const totalPages = Math.max(1, Math.ceil(Math.max(1, allRows.length) / rowsPerPage));
-      const baseKey = String(key || spec.themeKey || "standard").toLowerCase();
-      const timestamp = rwphPictureTimestamp();
-      const parts = [];
-      for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-        const start = pageIndex * rowsPerPage;
-        const pageRows = allRows.length ? allRows.slice(start, start + rowsPerPage) : [];
-        const canvas = rwphBuildPictureCanvas(pageRows, spec.summary || {}, spec.themeKey || "standard", {
-          testNewsletter: !!spec.testNewsletter,
-          statsModel: statsModel,
-          totalMembers: allRows.length || (spec.testNewsletter ? 120 : 0),
-          totalNames: spec.testNewsletter ? 120 : (statsModel.nameCount || allRows.length || 0),
-          pageIndex: pageIndex,
-          totalPages: totalPages,
-          rowStartIndex: start
-        });
-        parts.push({
-          canvas: canvas,
-          filename: "ranked-war-payout-newsletter-" + baseKey + (totalPages > 1 ? "-part-" + String(pageIndex + 1).padStart(2, "0") + "-of-" + String(totalPages).padStart(2, "0") : "") + "-" + timestamp + ".png",
-          pageIndex: pageIndex,
-          totalPages: totalPages
-        });
-      }
-      return parts;
-    }
-
-    function rwphCanvasPartToDownload(part) {
-      return rwphCanvasBlob(part.canvas).then(function(blob){
-        let url = "";
-        const dataUrl = rwphCanvasDataUrl(part.canvas);
-        if (blob) {
-          try { url = URL.createObjectURL(blob); } catch (e) { url = ""; }
-        }
-        return Object.assign({}, part, { blob: blob || (dataUrl ? rwphBlobFromDataUrl(dataUrl) : null), url: url, dataUrl: dataUrl });
-      });
-    }
-
-    function rwphDownloadNewsletterPart(part) {
-      try {
-        const href = part && (part.url || part.dataUrl);
-        if (!href) return false;
-        const a = document.createElement("a");
-        a.href = href;
-        a.download = part.filename || "rwph-newsletter.png";
-        a.rel = "noopener";
-        a.style.position = "fixed";
-        a.style.left = "-9999px";
-        a.style.top = "0";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        return true;
-      } catch (e) { return false; }
-    }
-
-
-    function rwphNewsletterPicturePageLabel(key) {
-      const map = {
-        standard: "Picture Torn Newsletter",
-        cyber: "Picture Cyber Neon Newsletter",
-        ledger: "Picture War Ledger Newsletter",
-        crimson: "Picture Crimson Raid Newsletter",
-        gold: "Picture Victory Gold Newsletter",
-        test100: "Picture Test Newsletter - 120 Members"
-      };
-      return map[String(key || "standard").toLowerCase()] || map.standard;
-    }
-
-    function rwphOpenPictureWindowShell(key) {
-      let win = null;
-      try { win = window.open("", "_blank"); } catch (e) { win = null; }
-      if (!win || !win.document) return null;
-      const label = rwphNewsletterPicturePageLabel(key);
-      try {
-        win.document.open();
-        win.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + escapeHtml(label) + "</title><style>body{margin:0;background:#020617;color:#e5f3ff;font:14px Arial,Helvetica,sans-serif;padding:16px;}h1{font-size:20px;margin:0 0 8px;color:#facc15}.note{color:#aeb4c2;line-height:1.45;margin:0 0 14px}.card{background:#0f172a;border:1px solid rgba(125,211,252,.25);border-radius:14px;padding:12px;margin:0 0 14px;box-shadow:0 16px 38px rgba(0,0,0,.35)}img{display:block;max-width:100%;height:auto;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#020617}.actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.btn{display:inline-block;padding:9px 12px;border-radius:10px;text-decoration:none;font-weight:900;background:#2563eb;color:white;border:1px solid rgba(255,255,255,.18)}.btn.secondary{background:#1f2937}.small{font-size:12px;color:#94a3b8;word-break:break-word}</style></head><body><h1>" + escapeHtml(label) + "</h1><p class=\"note\" id=\"status\">Creating PNG picture newsletter... Leave this page open.</p><div id=\"content\"></div></body></html>");
-        win.document.close();
-      } catch (e) { return null; }
-      return win;
-    }
-
-    function rwphHtmlAttr(value) {
-      return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[ch] || ch; });
-    }
-
-    function rwphWritePictureWindow(win, parts, key) {
-      if (!win || !win.document) return false;
-      try {
-        const label = rwphNewsletterPicturePageLabel(key);
-        const status = win.document.getElementById("status");
-        const content = win.document.getElementById("content");
-        if (!content) return false;
-        if (status) status.textContent = (parts.length > 1 ? "Created " + parts.length + " PNG parts." : "Created PNG picture newsletter.") + " Download each PNG, then upload/host and insert it into Torn.";
-        content.innerHTML = parts.map(function(part, idx){
-          const src = part.dataUrl || part.url || "";
-          const title = parts.length > 1 ? "PNG part " + (idx + 1) + " of " + parts.length : "PNG picture newsletter";
-          return "<div class=\"card\"><div class=\"small\"><b>" + rwphHtmlAttr(title) + "</b><br>" + rwphHtmlAttr(part.filename || "rwph-newsletter.png") + "</div><div class=\"actions\"><a class=\"btn\" download=\"" + rwphHtmlAttr(part.filename || "rwph-newsletter.png") + "\" href=\"" + rwphHtmlAttr(src) + "\">Download PNG</a><a class=\"btn secondary\" target=\"_blank\" rel=\"noopener\" href=\"" + rwphHtmlAttr(src) + "\">Open PNG only</a></div><img alt=\"" + rwphHtmlAttr(title) + "\" src=\"" + rwphHtmlAttr(src) + "\"></div>";
-        }).join("");
-        try { win.focus(); } catch (e) {}
-        return true;
-      } catch (e) { return false; }
-    }
-
-    function rwphRenderNewsletterInlineParts(parts, key, stateMessage) {
-      const box = document.getElementById("rwphNewsletterDirectBox");
-      if (!box) return;
-      const head = document.getElementById("rwphNewsletterDirectHead");
-      const note = document.getElementById("rwphNewsletterDirectNote");
-      const actions = document.getElementById("rwphNewsletterDirectActions");
-      const list = document.getElementById("rwphNewsletterDirectList");
-      box.hidden = false;
-      if (head) head.textContent = rwphNewsletterPicturePageLabel(key);
-      if (note) note.textContent = stateMessage || (parts && parts.length ? (parts.length > 1 ? "Created " + parts.length + " PNG parts. Use the buttons below if the standalone page was blocked." : "Created one PNG. Use the buttons below if the standalone page was blocked.") : "Creating picture newsletter...");
-      if (!parts || !parts.length) {
-        if (actions) actions.innerHTML = "";
-        if (list) list.innerHTML = "";
-        return;
-      }
-      if (actions) {
-        actions.innerHTML = "";
-        const dlAll = document.createElement("button");
-        dlAll.className = "btn primary";
-        dlAll.type = "button";
-        dlAll.textContent = parts.length > 1 ? "Download All Parts" : "Download PNG";
-        dlAll.setAttribute("data-download-newsletter-pictures", "1");
-        actions.appendChild(dlAll);
-      }
-      if (list) {
-        list.innerHTML = "";
-        parts.forEach(function(part, idx){
-          const card = document.createElement("div");
-          card.className = "rwph-newsletter-direct-card";
-          const title = document.createElement("p");
-          title.className = "rwph-newsletter-direct-card-title";
-          title.textContent = (parts.length > 1 ? "PNG part " + (idx + 1) + " of " + parts.length + " — " : "") + (part.filename || "rwph-newsletter.png");
-          const img = document.createElement("img");
-          img.alt = "RWPH newsletter picture part " + (idx + 1);
-          img.src = part.dataUrl || part.url || rwphCanvasDataUrl(part.canvas) || "";
-          const row = document.createElement("div");
-          row.className = "rw-actions";
-          const dl = document.createElement("a");
-          dl.className = "btn primary";
-          dl.href = part.dataUrl || part.url || "#";
-          dl.download = part.filename || "rwph-newsletter.png";
-          dl.textContent = parts.length > 1 ? "Download Part " + (idx + 1) : "Download PNG";
-          dl.setAttribute("data-download-newsletter-part-index", String(idx));
-          const op = document.createElement("a");
-          op.className = "btn secondary";
-          op.href = part.dataUrl || part.url || "#";
-          op.target = "_blank";
-          op.rel = "noopener";
-          op.textContent = parts.length > 1 ? "Open Part " + (idx + 1) : "Open PNG";
-          row.appendChild(dl); row.appendChild(op);
-          card.appendChild(title); card.appendChild(img); card.appendChild(row);
-          list.appendChild(card);
-        });
-      }
-    }
-
-    function rwphRenderNewsletterPictureParts(parts) {
-      const panel = document.getElementById("rwphNewsletterImagePanel");
-      const wrap = document.getElementById("rwphNewsletterImagePreviewList");
-      const link = document.getElementById("rwphNewsletterImageDownload");
-      const openLink = document.getElementById("rwphNewsletterImageOpen");
-      const note = document.getElementById("rwphNewsletterImageNote");
-      const count = parts.length;
-      if (wrap) {
-        wrap.innerHTML = "";
-        parts.forEach(function(part, idx){
-          const card = document.createElement("div");
-          card.className = "rwph-newsletter-image-part";
-          const title = document.createElement("p");
-          title.className = "rwph-newsletter-image-part-title";
-          title.textContent = count > 1 ? "PNG part " + (idx + 1) + " of " + count + " — " + part.filename : part.filename;
-          const img = document.createElement("img");
-          img.alt = "RWPH newsletter picture part " + (idx + 1);
-          img.src = part.url || part.dataUrl || rwphCanvasDataUrl(part.canvas) || "";
-          const actions = document.createElement("div");
-          actions.className = "rwph-newsletter-image-part-actions";
-          const dl = document.createElement("a");
-          dl.className = "btn primary";
-          dl.href = part.url || part.dataUrl || "#";
-          dl.download = part.filename;
-          dl.textContent = count > 1 ? "Download Part " + (idx + 1) : "Download PNG";
-          dl.setAttribute("data-download-newsletter-part-index", String(idx));
-          const op = document.createElement("a");
-          op.className = "btn secondary";
-          op.href = part.url || part.dataUrl || "#";
-          op.target = "_blank";
-          op.rel = "noopener";
-          op.textContent = count > 1 ? "Open Part " + (idx + 1) : "Open PNG";
-          actions.appendChild(dl);
-          actions.appendChild(op);
-          card.appendChild(title);
-          card.appendChild(img);
-          card.appendChild(actions);
-          wrap.appendChild(card);
-        });
-      }
-      const first = parts[0] || {};
-      rwphCurrentNewsletterPictureBlob = first.blob || null;
-      rwphCurrentNewsletterPictureUrl = first.url || "";
-      rwphCurrentNewsletterPictureDataUrl = first.dataUrl || "";
-      rwphCurrentNewsletterPictureFilename = first.filename || "rwph-newsletter.png";
-      if (link) {
-        link.href = first.url || first.dataUrl || "#";
-        link.download = first.filename || "rwph-newsletter.png";
-        link.textContent = count > 1 ? "Download All Parts" : "Download PNG";
-      }
-      if (openLink) {
-        openLink.href = first.url || first.dataUrl || "#";
-        openLink.download = first.filename || "rwph-newsletter.png";
-        openLink.textContent = count > 1 ? "Open First PNG" : "Open PNG";
-      }
-      if (note) note.textContent = count > 1
-        ? "Created " + count + " smaller PNG parts. This avoids Torn PDA/mobile browser limits that can break one giant image. Download each part, or try Download All Parts."
-        : "Created " + (first.filename || "PNG picture newsletter") + ". Press Download PNG or Open PNG, then save/upload the image manually.";
-      if (panel) { panel.dataset.layoutKey = "rwph_newsletter_picture_panel_layout"; setupMoveResize(panel, ".rwph-newsletter-image-head"); panel.hidden = false; }
-    }
-
-    async function rwphCreateNewsletterPicture(key, targetWindow) {
-      const safeKey = key || "standard";
-      rwphRenderNewsletterInlineParts([], safeKey, "Creating PNG picture newsletter...");
-      const spec = rwphPictureRowsForKey(safeKey);
-      const rawParts = rwphBuildPictureCanvasParts(spec, safeKey);
-      if (!rawParts.length) throw new Error("Could not create PNG image parts. Try the normal results tab again after refreshing Torn.");
-      rwphClearNewsletterPictureParts();
-      const parts = await Promise.all(rawParts.map(rwphCanvasPartToDownload));
-      if (!parts.some(function(p){ return p.url || p.dataUrl; })) throw new Error("Could not create downloadable PNG image parts. Try a smaller result or refresh Torn.");
-      rwphCurrentNewsletterPictureParts = parts;
-      rwphRenderNewsletterInlineParts(parts, safeKey, null);
-      rwphWritePictureWindow(targetWindow, parts, safeKey);
-      try { rwphRenderNewsletterPictureParts(parts); } catch (panelErr) { try { console.warn("RWPH picture panel fallback failed", panelErr); } catch (_) {} }
-      showToast(parts.length > 1 ? "Picture newsletter created as " + parts.length + " PNG parts. A picture page and inline fallback were created." : "Picture newsletter PNG created. A picture page and inline fallback were created.", "info");
-    }
-
-    async function rwphCopyCurrentNewsletterPicture() {
-      const parts = rwphCurrentNewsletterPictureParts || [];
-      if (!rwphCurrentNewsletterPictureBlob && rwphCurrentNewsletterPictureDataUrl) rwphCurrentNewsletterPictureBlob = rwphBlobFromDataUrl(rwphCurrentNewsletterPictureDataUrl);
-      if (!rwphCurrentNewsletterPictureBlob) { showToast("Create a picture newsletter first.", "warn"); return; }
-      if (!navigator.clipboard || !window.ClipboardItem) { showToast("Image clipboard is blocked in this browser. Use the Download buttons instead.", "warn"); return; }
-      try { await navigator.clipboard.write([new ClipboardItem({ "image/png": rwphCurrentNewsletterPictureBlob })]); showToast(parts.length > 1 ? "Copied the first PNG part. Download the remaining parts separately." : "Picture newsletter copied as PNG.", "info"); }
-      catch (e) { showToast("Image clipboard was blocked. Use the Download buttons instead.", "warn"); }
-    }
-
-    document.addEventListener("click", async function(ev) {
-      const imgBtn = ev.target && ev.target.closest ? ev.target.closest("[data-create-newsletter-image], [data-create-newsletter]") : null;
-      if (imgBtn) {
-        ev.preventDefault(); ev.stopPropagation();
-        const key = imgBtn.getAttribute("data-create-newsletter-image") || "standard";
-        const oldText = imgBtn.textContent;
-        const targetWindow = rwphOpenPictureWindowShell(key);
-        imgBtn.disabled = true; imgBtn.textContent = "Creating picture...";
-        try { await rwphCreateNewsletterPicture(key, targetWindow); }
-        catch (err) {
-          rwphRenderNewsletterInlineParts([], key, (err && err.message) || "Picture newsletter failed.");
-          try {
-            if (targetWindow && targetWindow.document) {
-              const status = targetWindow.document.getElementById("status");
-              if (status) status.textContent = (err && err.message) || "Picture newsletter failed.";
-            }
-          } catch (e) {}
-          showToast((err && err.message) || "Picture newsletter failed.", "warn");
-        }
-        finally { setTimeout(function(){ imgBtn.disabled = false; imgBtn.textContent = oldText; }, 250); }
-        return;
-      }
-      const dlAll = ev.target && ev.target.closest ? ev.target.closest("[data-download-newsletter-pictures]") : null;
-      if (dlAll) {
-        ev.preventDefault(); ev.stopPropagation();
-        const parts = rwphCurrentNewsletterPictureParts || [];
-        if (!parts.length) { showToast("Create a picture newsletter first.", "warn"); return; }
-        parts.forEach(function(part, idx){ setTimeout(function(){ rwphDownloadNewsletterPart(part); }, idx * 220); });
-        showToast(parts.length > 1 ? "Starting downloads for " + parts.length + " PNG parts. If the browser blocks multiple downloads, use each part's Download button." : "Starting PNG download.", parts.length > 1 ? "warn" : "info");
-        return;
-      }
-      const partDownload = ev.target && ev.target.closest ? ev.target.closest("[data-download-newsletter-part-index]") : null;
-      if (partDownload) {
-        ev.preventDefault(); ev.stopPropagation();
-        const idx = Number(partDownload.getAttribute("data-download-newsletter-part-index"));
-        const part = (rwphCurrentNewsletterPictureParts || [])[idx];
-        if (!part) { showToast("That PNG part is no longer available. Create the picture newsletter again.", "warn"); return; }
-        rwphDownloadNewsletterPart(part);
-        return;
-      }
-      const closePicture = ev.target && ev.target.closest ? ev.target.closest("[data-close-newsletter-image]") : null;
-      if (closePicture) { ev.preventDefault(); const panel = document.getElementById("rwphNewsletterImagePanel"); if (panel) panel.hidden = true; return; }
-      const copyPicture = ev.target && ev.target.closest ? ev.target.closest("[data-copy-newsletter-picture]") : null;
-      if (copyPicture) { ev.preventDefault(); rwphCopyCurrentNewsletterPicture(); return; }
-    });
 
     document.addEventListener("click", async function(ev) {
       const btn = ev.target && ev.target.closest ? ev.target.closest("[data-copy-torn-newsletter]") : null;
@@ -8050,7 +7453,7 @@
         <b>Skipped failed:</b> ${Number(summary?.calcMeta?.skippedFailed || 0)}<br>
         ${(summary?.warnings || []).length ? `<div class="rw-code">${(summary.warnings || []).map(esc).join("<br>")}</div>` : ""}
         <div class="rw-actions rw-newsletter-actions">
-          <button class="secondary" data-create-newsletter="1">Create Picture Newsletter</button>
+          <button class="secondary" data-create-newsletter="1">Copy Torn Newsletter</button>
         </div>
         <div class="rw-actions">
           <button class="secondary" data-export-csv="1">Export CSV</button>
@@ -10114,255 +9517,6 @@
     };
   }
 
-
-  function rwphPictureNewsletterTimestamp() {
-    return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-  }
-
-  function rwphCanvasRoundRect(ctx, x, y, w, h, r) {
-    const radius = Math.max(0, Math.min(Number(r) || 0, Math.min(w, h) / 2));
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + w - radius, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-    ctx.lineTo(x + w, y + h - radius);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-    ctx.lineTo(x + radius, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-  }
-
-  function rwphCanvasPanel(ctx, x, y, w, h, radius, fill, stroke, lineWidth = 2) {
-    rwphCanvasRoundRect(ctx, x, y, w, h, radius);
-    ctx.fillStyle = fill;
-    ctx.fill();
-    if (stroke) {
-      ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = stroke;
-      ctx.stroke();
-    }
-  }
-
-  function rwphCanvasTrimText(ctx, text, maxWidth) {
-    let value = String(text == null ? "" : text);
-    if (!maxWidth || ctx.measureText(value).width <= maxWidth) return value;
-    while (value.length > 3 && ctx.measureText(value + "…").width > maxWidth) value = value.slice(0, -1);
-    return value + "…";
-  }
-
-  function rwphCanvasText(ctx, text, x, y, maxWidth, font, color, align = "left") {
-    ctx.font = font;
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
-    ctx.textBaseline = "top";
-    ctx.fillText(rwphCanvasTrimText(ctx, text, maxWidth), x, y);
-  }
-
-  function rwphBuildNewsletterPictureCanvas(rows, summary, themeKey = "standard", options = {}) {
-    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
-    const theme = rwphNewsletterHtmlTheme(themeKey || "standard");
-    const key = String(themeKey || "standard").toLowerCase();
-    const list = Array.isArray(m.list) ? m.list : [];
-    const width = 1100;
-    const pad = 34;
-    const gap = 12;
-    const contentW = width - pad * 2;
-    const modeLabel = m.pointsMode ? "Advanced" : "Basic";
-    const metricLabel = m.pointsMode ? "Points" : "Weight";
-    const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
-    const rowH = m.pointsMode ? 116 : 88;
-    const paidMembers = options.testNewsletter ? 120 : list.length;
-    const namesLoaded = options.testNewsletter ? 120 : (m.nameCount || list.length || 0);
-    const stats = [
-      ["Member Payout", money(m.memberPayout)],
-      ["Total Payout", money(m.overallTotalPayout)],
-      [perUnitLabel, money(m.perUnitAmount)],
-      ["Paid Members", String(paidMembers)],
-      ["War Hits", String(m.totalHits || 0)],
-      ["Assists", String(m.totalAssists || 0)],
-      ["Outside Hits", String(m.totalOutsideHits || 0)],
-      ["Retals", String(m.totalRetaliationHits || 0)],
-      ["Payable Hits", String(m.totalPayableEvents || 0)],
-      ["Tracked Hits", String(m.totalTrackedHits || 0)],
-      [metricLabel, Number(m.totalWeight || 0).toFixed(2)],
-      ["Total Respect", Number(m.totalRespect || 0).toFixed(2)],
-      ["Pay Respect", Number(m.totalPayRespect || 0).toFixed(2)],
-      ["Fetched Attacks", String(m.attacksFetched || 0)],
-      ["Names Loaded", String(namesLoaded)],
-      [m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits", m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits || 0)],
-    ];
-    if (m.pointsMode) {
-      stats.push(
-        ["Own Hosp Hits", String(m.totalOwnFactionHospitalizingHits || 0)],
-        ["Own Hosp Bonus", Number(m.totalOwnFactionHospitalBonusPoints || 0).toFixed(2)],
-        ["Enemy Hosp Hits", String(m.totalEnemyFactionHospitalizingHits || 0)],
-        ["Enemy Hosp Bonus", Number(m.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)],
-        ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2)]
-      );
-    }
-    const statsCols = 4;
-    const statsBoxH = 68;
-    const statsRows = Math.ceil(stats.length / statsCols);
-    const height = Math.max(760, pad + 150 + 22 + statsRows * (statsBoxH + 10) + 54 + Math.max(1, list.length) * rowH + 64 + pad);
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = theme.bg || "#111217";
-    ctx.fillRect(0, 0, width, height);
-    const glow = ctx.createRadialGradient(width * 0.5, 0, 10, width * 0.5, 0, width * 0.72);
-    glow.addColorStop(0, key === "crimson" ? "rgba(251,146,60,0.22)" : key === "gold" ? "rgba(250,204,21,0.22)" : key === "cyber" ? "rgba(34,211,238,0.24)" : "rgba(242,184,75,0.20)");
-    glow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, width, 360);
-
-    let y = pad;
-    rwphCanvasPanel(ctx, pad, y, contentW, 132, 24, theme.header || theme.outer, theme.strongLine || theme.accent, 3);
-    rwphCanvasText(ctx, (theme.icon || "") + " " + (m.newsletterTitle || theme.title || "Faction Payout Newsletter"), pad + 28, y + 22, contentW - 56, "bold 34px Arial", theme.accent || "#f2b84b");
-    rwphCanvasText(ctx, "Ranked War Payout Helper • " + modeLabel + " • Picture Newsletter", pad + 28, y + 66, contentW - 56, "bold 18px Arial", theme.soft || "#d8d8d8");
-    rwphCanvasText(ctx, "Generated " + new Date().toLocaleString() + " • Review payouts before sending faction funds", pad + 28, y + 94, contentW - 56, "15px Arial", theme.muted || "#aeb4c2");
-    y += 154;
-
-    rwphCanvasText(ctx, "All Result Stats", pad, y, contentW, "bold 22px Arial", theme.accent || "#f2b84b");
-    y += 34;
-    const colW = (contentW - gap * (statsCols - 1)) / statsCols;
-    stats.forEach((item, idx) => {
-      const col = idx % statsCols;
-      const row = Math.floor(idx / statsCols);
-      const x = pad + col * (colW + gap);
-      const sy = y + row * (statsBoxH + 10);
-      rwphCanvasPanel(ctx, x, sy, colW, statsBoxH, 14, idx % 2 ? theme.panelB : theme.panelA, theme.line, 2);
-      rwphCanvasText(ctx, item[0], x + 12, sy + 10, colW - 24, "bold 12px Arial", theme.muted || "#aeb4c2");
-      rwphCanvasText(ctx, item[1], x + 12, sy + 32, colW - 24, "bold 18px Arial", theme.text || "#f2f2f2");
-    });
-    y += statsRows * (statsBoxH + 10) + 8;
-
-    rwphCanvasText(ctx, options.testNewsletter ? "Payout User Cards - Test Picture Rows" : "Payout User Cards", pad, y, contentW, "bold 22px Arial", theme.accent || "#f2b84b");
-    y += 36;
-
-    if (!list.length) {
-      rwphCanvasPanel(ctx, pad, y, contentW, rowH, 12, theme.panelA, theme.line, 2);
-      rwphCanvasText(ctx, "No payable members found.", pad + 18, y + 15, contentW - 36, "bold 17px Arial", theme.text || "#f2f2f2");
-      y += rowH;
-    } else {
-      list.forEach((r, idx) => {
-        const bg = idx % 2 ? theme.panelB : theme.panelA;
-        rwphCanvasPanel(ctx, pad, y, contentW, rowH - 8, 14, bg, theme.line, 1.5);
-        const member = "#" + (rowStartIndex + idx + 1) + "  " + String(r.name || "Unknown") + " [" + String(r.id || "unknown") + "]";
-        const metric = m.pointsMode ? Number(r.points || r.weight || 0) : Number(r.weight || 0);
-        const share = percent(r.payout || 0, m.memberPayout || 0);
-        const hitLine = "War " + Number(r.warHits || 0) + " • Ast " + Number(r.assists || 0) + " • Out " + Number(r.outsideHits || 0) + " • Ret " + Number(r.retaliationHits || 0) + " • Pay " + Number(r.payableEvents || 0) + " • Tracked " + Number(r.totalTrackedHits || 0);
-        rwphCanvasText(ctx, member, pad + 18, y + 12, contentW - 250, "bold 16px Arial", theme.text || "#f2f2f2");
-        rwphCanvasText(ctx, money(r.payout || 0), pad + contentW - 18, y + 12, 220, "bold 18px Arial", "#86efac", "right");
-        if (m.pointsMode) {
-          rwphCanvasText(ctx, "Points " + metric.toFixed(2) + " • Base " + Number(r.basePoints || 0).toFixed(2) + " • Weight " + Number(r.weight || 0).toFixed(2) + " • Share " + share, pad + 18, y + 36, contentW - 36, "bold 13px Arial", theme.soft || "#d8d8d8");
-          rwphCanvasText(ctx, hitLine + " • Respect " + Number(r.respect || 0).toFixed(2) + " • Total Respect " + Number(r.totalRespect || 0).toFixed(2), pad + 18, y + 58, contentW - 36, "bold 13px Arial", theme.muted || "#aeb4c2");
-          rwphCanvasText(ctx, "Own Hosp " + Number(r.hospitalizingHits || 0) + " / " + Number(r.hospitalBonusPoints || 0).toFixed(2) + " pts • Enemy Hosp " + Number(r.enemyFactionHospitalizingHits || 0) + " / " + Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2) + " pts • Avg FF " + Number(r.avgFairFight || 1).toFixed(2) + "x • FF Bonus " + Number(r.fairFightBonusPoints || 0).toFixed(2), pad + 18, y + 80, contentW - 36, "bold 13px Arial", theme.muted || "#aeb4c2");
-        } else {
-          rwphCanvasText(ctx, hitLine, pad + 18, y + 36, contentW - 36, "bold 13px Arial", theme.soft || "#d8d8d8");
-          rwphCanvasText(ctx, "Weight " + metric.toFixed(2) + " • Share " + share + " • Respect " + Number(r.respect || 0).toFixed(2) + " • Total Respect " + Number(r.totalRespect || 0).toFixed(2), pad + 18, y + 58, contentW - 36, "bold 13px Arial", theme.muted || "#aeb4c2");
-        }
-        y += rowH;
-      });
-    }
-    y += 16;
-    rwphCanvasPanel(ctx, pad, y, contentW, 48, 14, theme.outer || theme.panelB, theme.line, 2);
-    rwphCanvasText(ctx, "Created with Ranked War Payout Helper. This is a PNG picture newsletter; upload/attach it or host it and insert it as an image in Torn.", pad + 18, y + 15, contentW - 36, "bold 15px Arial", theme.muted || "#aeb4c2");
-    return canvas;
-  }
-
-  function rwphCanvasToPngBlob(canvas) {
-    return new Promise((resolve) => {
-      try { canvas.toBlob((blob) => resolve(blob), "image/png", 0.95); } catch (_) { resolve(null); }
-    });
-  }
-
-  function rwphCanvasToPngDataUrl(canvas) {
-    try { return canvas.toDataURL("image/png", 0.95); } catch (_) { return ""; }
-  }
-
-  function rwphDataUrlToBlob(dataUrl) {
-    try {
-      const parts = String(dataUrl || "").split(",");
-      if (parts.length < 2) return null;
-      const meta = parts[0] || "";
-      const mimeMatch = meta.match(/data:([^;]+)/i);
-      const mime = mimeMatch ? mimeMatch[1] : "image/png";
-      const bin = atob(parts.slice(1).join(","));
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      return new Blob([bytes], { type: mime });
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function rwphDownloadNewsletterPictureDataUrl(dataUrl, filename) {
-    try {
-      if (!dataUrl) return false;
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = filename;
-      a.rel = "noopener";
-      a.style.position = "fixed";
-      a.style.left = "-9999px";
-      a.style.top = "0";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  async function rwphCopyNewsletterPictureBlob(blob) {
-    if (!blob || !navigator.clipboard || !window.ClipboardItem) return false;
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  async function rwphDownloadNewsletterPictureCanvasBlob(canvas, filename) {
-    const blob = await rwphCanvasToPngBlob(canvas);
-    if (!blob) return false;
-    try {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  async function createPictureNewsletter(rows, summary, themeKey = "standard", options = {}) {
-    const canvas = rwphBuildNewsletterPictureCanvas(rows || [], summary || {}, themeKey || "standard", options || {});
-    const filename = `ranked-war-payout-newsletter-${String(themeKey || "standard").toLowerCase()}-${rwphPictureNewsletterTimestamp()}.png`;
-    const dataUrl = rwphCanvasToPngDataUrl(canvas);
-    let downloaded = false;
-    let copied = false;
-
-    // Do the download immediately from a data URL before any awaited clipboard/blob work.
-    // This keeps the action inside the original user click for stricter Torn PDA/mobile browsers.
-    if (dataUrl) downloaded = rwphDownloadNewsletterPictureDataUrl(dataUrl, filename);
-
-    const dataBlob = dataUrl ? rwphDataUrlToBlob(dataUrl) : null;
-    copied = await rwphCopyNewsletterPictureBlob(dataBlob);
-    if (!downloaded) downloaded = await rwphDownloadNewsletterPictureCanvasBlob(canvas, filename);
-    return { filename, copied, downloaded, dataUrlCreated: !!dataUrl };
-  }
-
   function createHtmlNewsletter(rows, summary) {
     const html = buildWarPayoutNewsletterHtml(rows, summary || {});
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
@@ -11367,7 +10521,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">RWPH Help - Current Features</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, open database cached reports, create payout picture newsletters, export records, and prepare manual payment helpers.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, open database cached reports, create payout newsletters, export records, and prepare manual payment helpers.
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
@@ -11457,7 +10611,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Picture Torn Newsletter, Picture Cyber Neon Newsletter, Picture War Ledger Newsletter, Picture Crimson Raid Newsletter, and Picture Victory Gold Newsletter create/download PNG picture newsletters from the results tab.</li>
+              <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each open a raw HTML-code panel inside the results tab.</li>
             </ul>
           </div>
 
@@ -11475,9 +10629,9 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using HTML-code Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Create a newsletter picture:</b> click one of the Picture Newsletter buttons in the results tab to create/download a PNG.</li>
-              <li><b>2. Add it to Torn:</b> upload/attach the picture, or host it somewhere safe and insert it with Torn's image option or image BBCode.</li>
-              <li><b>3. No raw HTML needed:</b> the newsletter is now a picture, so Torn should not show raw HTML code as text.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the HTML Code newsletter buttons in the results tab to open the raw HTML panel, then manually copy the code from the code box.</li>
+              <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
+              <li><b>3. Do not paste raw HTML source:</b> Paste the copied HTML into the Torn faction newsletter Source code tab/editor so Torn renders the layout instead of showing the code as text.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
               <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable HTML-code text still remains.</li>
             </ul>
@@ -11614,7 +10768,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> use the Picture Newsletter buttons. They generate a PNG, so the layout stays the same instead of relying on Torn HTML support.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the raw HTML panel and pasted the code into Torn's HTML/source-capable newsletter editor. Use the live preview before sending.</li>
             </ul>
           </div>
 
@@ -12150,7 +11304,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">RWPH Help - Current Features</div>
             <p class="rw-how-intro">
-              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, open database cached reports, create payout picture newsletters, export records, and prepare manual payment helpers.
+              Ranked War Payout Helper is a server-side locked Torn ranked war payout tool. It helps you unlock a licence, fetch ranked war data, calculate member payouts, open database cached reports, create payout newsletters, export records, and prepare manual payment helpers.
             </p>
             <p class="rw-how-intro">
               The userscript is the panel you see in Torn or Torn PDA. Your backend server handles licence checks, trials, payment codes, payment detection, licence extensions, admin tools, and protected payout calculation routes.
@@ -12240,7 +11394,7 @@
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
-              <li><b>Newsletter buttons:</b> Picture Torn Newsletter, Picture Cyber Neon Newsletter, Picture War Ledger Newsletter, Picture Crimson Raid Newsletter, and Picture Victory Gold Newsletter create/download PNG picture newsletters from the results tab.</li>
+              <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each open a raw HTML-code panel inside the results tab.</li>
             </ul>
           </div>
 
@@ -12258,9 +11412,9 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Using HTML-code Newsletters in Torn</div>
             <ul class="rw-how-list">
-              <li><b>1. Create a newsletter picture:</b> click one of the Picture Newsletter buttons in the results tab to create/download a PNG.</li>
-              <li><b>2. Add it to Torn:</b> upload/attach the picture, or host it somewhere safe and insert it with Torn's image option or image BBCode.</li>
-              <li><b>3. No raw HTML needed:</b> the newsletter is now a picture, so Torn should not show raw HTML code as text.</li>
+              <li><b>1. Copy a newsletter:</b> click one of the HTML Code newsletter buttons in the results tab to open the raw HTML panel, then manually copy the code from the code box.</li>
+              <li><b>2. Paste into Torn:</b> go to your faction newsletter editor and paste directly into the normal editor.</li>
+              <li><b>3. Do not paste raw HTML source:</b> Paste the copied HTML into the Torn faction newsletter Source code tab/editor so Torn renders the layout instead of showing the code as text.</li>
               <li><b>4. Preview before sending:</b> check spacing, member names, payout values, and any Torn formatting before publishing.</li>
               <li><b>Tip:</b> RWPH copies rich HTML plus a plain-text fallback. If Torn removes styling, the readable HTML-code text still remains.</li>
             </ul>
@@ -12397,7 +11551,7 @@
               <li><b>Too many requests:</b> Torn is rate-limiting API calls. Wait, then try again. Avoid running several calculations at once.</li>
               <li><b>Results tab seems stuck:</b> give large wars more time, check the elapsed loading timer, and check the server console for Torn API errors.</li>
               <li><b>Buttons or panels missing:</b> refresh the Torn page, reopen RWPH, and make sure you installed the newest userscript version.</li>
-              <li><b>Newsletter formatting looks wrong in Torn:</b> use the Picture Newsletter buttons. They generate a PNG, so the layout stays the same instead of relying on Torn HTML support.</li>
+              <li><b>Newsletter formatting looks wrong in Torn:</b> make sure you used the raw HTML panel and pasted the code into Torn's HTML/source-capable newsletter editor. Use the live preview before sending.</li>
             </ul>
           </div>
 
@@ -12547,10 +11701,19 @@
         if (!lastRows.length) return alert("Calculate results first.");
 
         try {
-          const result = await createPictureNewsletter(lastRows, lastSummary || {}, "standard");
-          rwphToastPanelInfo(status, `${result.downloaded ? (result.copied ? "Picture newsletter copied as PNG and downloaded" : "Picture newsletter PNG downloaded") : "Picture newsletter PNG was created, but the browser blocked the automatic download"}. If needed, open the fullscreen results tab and use a Picture Newsletter button to preview, Download PNG, or Open PNG. To use it in Torn, upload/attach the picture or host it and insert it as an image in the faction newsletter.`, result.downloaded ? "info" : "warn", "RWPH Newsletter Picture");
+          const bundle = buildTornFactionNewsletterBundle(lastRows, lastSummary || {}, "standard");
+          const mode = await copyTornFactionNewsletterBundleToClipboard(bundle);
+          if (mode === "rich" || mode === "rich-rendered") {
+            rwphToastPanelInfo(status, "Styled HTML-code newsletter copied. Paste it into Torn's normal faction newsletter editor, not raw HTML/source mode. If Torn strips styling, open the fullscreen results tab and use HTML Code for the visible text panel.", "info", "RWPH Newsletter");
+          } else if (mode === "plain") {
+            rwphToastPanelInfo(status, "Plain HTML-code newsletter copied. Paste it into Torn's faction newsletter editor. For a visible manual panel, open the fullscreen results tab and use HTML Code.", "warn", "RWPH Newsletter");
+          } else {
+            createHtmlNewsletter(lastRows, lastSummary || {});
+            rwphToastPanelInfo(status, "Clipboard was blocked. Open the fullscreen results tab and use an HTML Code newsletter button to open the raw HTML panel.", "warn", "RWPH Newsletter");
+          }
         } catch (err) {
-          rwphToastPanelError(status, "Picture newsletter failed. Open the fullscreen results tab and use a Picture Newsletter button there.", "RWPH Newsletter Picture");
+          try { createHtmlNewsletter(lastRows, lastSummary || {}); } catch (_) {}
+          rwphToastPanelError(status, "Newsletter clipboard failed. Open the fullscreen results tab and use an HTML Code newsletter button to open the raw HTML panel.", "RWPH Newsletter");
         }
         return;
       }
