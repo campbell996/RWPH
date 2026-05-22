@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.305**  
+Current package version: **1.1.308**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -600,6 +600,26 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.308
+
+- Active licences now unlock straight into the main payout panel after a saved-key licence check, without needing to press Unlock Panel again.
+- Compacted both **Basic Calculations** and **Advanced Calculations** dropdowns with shorter notes, tighter cache text, compact checkbox grids, and smaller spacing.
+- Kept all calculation fields, button IDs, payout maths, cache behaviour, and licence checks unchanged.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.307
+
+- Compacted the visible **API Key Notice** under the API key box on both the locked **Unlock** panel and unlocked main **Payout** panel.
+- Replaced the larger multi-card notice with one tighter summary line while keeping the important points: purpose, data read, local storage, backend use, no Torn password, and no automatic money/Xanax sending.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.306
+
+- Removed the **Full API ToS / Key Usage Details** dropdown from the locked **Unlock** panel.
+- Kept the compact visible **API Key Usage Notice** under the locked API key box.
+- Detailed API ToS / Usage Table remains available in the **Help** tab.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.305
 

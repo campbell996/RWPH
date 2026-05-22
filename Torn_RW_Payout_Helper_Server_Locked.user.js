@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.305
+// @version      1.1.308
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,9 @@
 (function () {
   "use strict";
 
+  // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
+  // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
+  // v1.1.306: removed the Full API ToS / Key Usage Details dropdown from the locked Unlock panel while keeping the compact visible API notice.
   // v1.1.305: safely removed clearly unused script/server code and excluded the old .bak userscript copy from the package.
   // v1.1.304: newsletters remove Removed Left-Member Hits from All Result Stats and keep Total Respect.
   // v1.1.303: removed the Full API ToS / Key Usage Details dropdown from the unlocked main Payout panel while keeping the compact visible API notice.
@@ -1831,7 +1834,7 @@
     const panel = document.getElementById("rw-payout-helper");
     if (!panel) return;
 
-    showPaywallScreen(panel);
+    showPaywallScreen(panel, { skipAutoUnlock: true });
     setTimeout(() => {
       const status = document.getElementById("rw-paywall-status");
       if (status) status.textContent = message;
@@ -1879,6 +1882,53 @@
     if (info.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, info.token);
     if (info.expiresAt) rwphScheduleLicenseLockback(info.expiresAt);
     return { valid: true, info, message: "Licence active." };
+  }
+
+  async function rwphUnlockMainPanelIfActive(statusEl, reason = "auto") {
+    const panel = document.getElementById("rw-payout-helper");
+    const keyInput = document.getElementById("rw-paywall-key");
+    if (!panel || !keyInput || document.getElementById("rw-key")) return false;
+    if (window.__rwphAutoUnlockInFlight) return false;
+
+    const key = keyInput.value.trim();
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!key && !token) return false;
+
+    window.__rwphAutoUnlockInFlight = true;
+    try {
+      if (key) GM_setValue(STORAGE_KEY, key);
+      if (statusEl) {
+        statusEl.textContent = reason === "save"
+          ? "API key saved. Checking active licence..."
+          : "Checking active licence...";
+      }
+
+      const info = await getSavedLicenseInfo();
+      if (!panel.isConnected || document.getElementById("rw-key")) return false;
+
+      if (!info.valid) {
+        if (statusEl && reason !== "silent") {
+          statusEl.textContent = "No active licence found yet. Buy Licence, Extend Licence, or use Unlock Panel after payment is complete.";
+        }
+        return false;
+      }
+
+      if (info.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, info.token);
+      if (info.expiresAt) rwphScheduleLicenseLockback(info.expiresAt);
+      clearPendingPayment();
+      showMainScreen(panel);
+
+      const mainStatus = document.getElementById("rw-status");
+      if (mainStatus) {
+        mainStatus.textContent = `Licence active for ${info.name || "this user"}. Main panel unlocked automatically.`;
+      }
+      return true;
+    } catch (e) {
+      if (statusEl && reason !== "silent") statusEl.textContent = "Auto-unlock check failed: " + (e.message || e);
+      return false;
+    } finally {
+      window.__rwphAutoUnlockInFlight = false;
+    }
   }
 
   function panelBaseCss() {
@@ -2407,15 +2457,13 @@
         border-bottom: 0;
       }
       #rw-payout-helper .rw-api-visible-card {
-        margin: 8px 0 10px !important;
-        padding: 10px !important;
-        border-radius: 13px !important;
-        border: 1px solid rgba(250,204,21,.42) !important;
-        border-left: 5px solid rgba(250,204,21,.88) !important;
-        background:
-          radial-gradient(circle at 8% 0%, rgba(250,204,21,.18), transparent 36%),
-          linear-gradient(180deg, rgba(88,57,12,.68), rgba(15,23,42,.76)) !important;
-        box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 12px 26px rgba(0,0,0,.26), 0 0 20px rgba(250,204,21,.08) !important;
+        margin: 6px 0 8px !important;
+        padding: 7px 8px !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(250,204,21,.34) !important;
+        border-left: 4px solid rgba(250,204,21,.82) !important;
+        background: linear-gradient(180deg, rgba(88,57,12,.56), rgba(15,23,42,.70)) !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 8px 18px rgba(0,0,0,.20) !important;
         color: #fff8db !important;
         box-sizing: border-box !important;
       }
@@ -2423,53 +2471,49 @@
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: 8px !important;
-        margin-bottom: 7px !important;
+        gap: 6px !important;
+        margin-bottom: 4px !important;
         color: #fffbe6 !important;
-        font-size: 12px !important;
-        line-height: 1.2 !important;
+        font-size: 11px !important;
+        line-height: 1.1 !important;
         font-weight: 950 !important;
         text-transform: uppercase !important;
-        letter-spacing: .32px !important;
-        text-shadow: 0 1px 0 rgba(0,0,0,.55), 0 0 12px rgba(250,204,21,.18) !important;
+        letter-spacing: .24px !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.50) !important;
       }
       #rw-payout-helper .rw-api-visible-badge {
         flex: 0 0 auto !important;
-        padding: 4px 7px !important;
+        padding: 3px 6px !important;
         border-radius: 999px !important;
-        border: 1px solid rgba(250,204,21,.40) !important;
-        background: rgba(2,6,23,.44) !important;
+        border: 1px solid rgba(250,204,21,.34) !important;
+        background: rgba(2,6,23,.40) !important;
         color: #fde68a !important;
-        font-size: 9px !important;
+        font-size: 8px !important;
         line-height: 1 !important;
         font-weight: 950 !important;
         white-space: nowrap !important;
       }
-      #rw-payout-helper .rw-api-visible-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 5px !important;
-      }
-      #rw-payout-helper .rw-api-visible-item {
-        min-width: 0 !important;
-        padding: 6px 7px !important;
-        border-radius: 9px !important;
-        border: 1px solid rgba(250,204,21,.18) !important;
-        background: rgba(2,6,23,.34) !important;
+      #rw-payout-helper .rw-api-visible-summary {
         color: #fef3c7 !important;
         font-size: 10px !important;
-        line-height: 1.35 !important;
+        line-height: 1.32 !important;
         font-weight: 800 !important;
         overflow-wrap: anywhere !important;
         word-break: break-word !important;
       }
-      #rw-payout-helper .rw-api-visible-item b {
+      #rw-payout-helper .rw-api-visible-summary b {
         color: #ffffff !important;
         font-weight: 950 !important;
       }
+      #rw-payout-helper .rw-api-visible-dot {
+        color: #fde68a !important;
+        font-weight: 950 !important;
+        padding: 0 3px !important;
+      }
       @media (max-width: 560px), (pointer: coarse) {
-        #rw-payout-helper .rw-api-visible-grid { grid-template-columns: 1fr !important; }
-        #rw-payout-helper .rw-api-visible-head { align-items: flex-start !important; flex-direction: column !important; }
+        #rw-payout-helper .rw-api-visible-card { padding: 6px 7px !important; }
+        #rw-payout-helper .rw-api-visible-head { gap: 5px !important; }
+        #rw-payout-helper .rw-api-visible-summary { font-size: 9.5px !important; line-height: 1.28 !important; }
       }
       #rw-payout-helper .rw-manual-warning {
         margin: 8px 0 0;
@@ -2797,6 +2841,98 @@
       }
       #rw-payout-helper .rw-settings-calc-actions button {
         width: 100% !important;
+      }
+
+      #rw-payout-helper details.rw-settings-dropdown {
+        margin: 6px 0 7px !important;
+        border-radius: 10px !important;
+      }
+      #rw-payout-helper details.rw-settings-dropdown > summary.rw-api-tos-title {
+        padding: 7px 9px !important;
+        min-height: 28px !important;
+        font-size: 11px !important;
+        line-height: 1.15 !important;
+      }
+      #rw-payout-helper details.rw-settings-dropdown > .rw-api-tos-content {
+        padding: 7px !important;
+      }
+      #rw-payout-helper details.rw-settings-dropdown .rw-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        margin-top: 4px !important;
+      }
+      #rw-payout-helper details.rw-settings-dropdown label {
+        margin-top: 4px !important;
+        font-size: 9.5px !important;
+        line-height: 1.18 !important;
+      }
+      #rw-payout-helper details.rw-settings-dropdown input {
+        margin-top: 2px !important;
+        padding: 4px 5px !important;
+        min-height: 24px !important;
+        font-size: 10px !important;
+      }
+      #rw-payout-helper .rw-calc-brief {
+        margin: 4px 0 !important;
+        padding: 5px 6px !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(125,211,252,.16) !important;
+        background: rgba(15,23,42,.48) !important;
+        color: #cbd5e1 !important;
+        font-size: 9.5px !important;
+        line-height: 1.25 !important;
+        font-weight: 800 !important;
+        overflow-wrap: anywhere !important;
+      }
+      #rw-payout-helper .rw-calc-mini-note {
+        opacity: .92 !important;
+        font-size: 9px !important;
+      }
+      #rw-payout-helper .rw-mode-cache-tools {
+        margin: 5px 0 !important;
+        padding: 0 !important;
+      }
+      #rw-payout-helper .rw-compact-cache-status {
+        margin-top: 4px !important;
+        padding: 4px 5px !important;
+        border-radius: 7px !important;
+        font-size: 9px !important;
+        line-height: 1.2 !important;
+      }
+      #rw-payout-helper .rw-compact-check-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 4px !important;
+        margin-top: 5px !important;
+      }
+      #rw-payout-helper .rw-compact-check-grid-single {
+        grid-template-columns: minmax(0, 1fr) !important;
+      }
+      #rw-payout-helper .rw-compact-check-grid label {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 5px !important;
+        margin: 0 !important;
+        padding: 5px 6px !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(125,211,252,.14) !important;
+        background: rgba(15,23,42,.44) !important;
+        color: #e0f7ff !important;
+        font-size: 9px !important;
+        line-height: 1.12 !important;
+        text-align: left !important;
+      }
+      #rw-payout-helper .rw-compact-check-grid input[type="checkbox"] {
+        width: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        flex: 0 0 auto !important;
+      }
+      @media (max-width: 760px), (pointer: coarse) {
+        #rw-payout-helper .rw-compact-check-grid { grid-template-columns: minmax(0, 1fr) !important; }
+        #rw-payout-helper details.rw-settings-dropdown .rw-row { grid-template-columns: minmax(0, 1fr) !important; }
       }
       #rw-payout-helper .rw-payment-card {
         background:
@@ -10264,7 +10400,7 @@
     }
   }
 
-  function showPaywallScreen(panel) {
+  function showPaywallScreen(panel, options = {}) {
     const savedKey = GM_getValue(STORAGE_KEY, "");
     const savedAdminKey = GM_getValue(ADMIN_KEY_STORAGE_KEY, "");
 
@@ -10295,33 +10431,15 @@
             <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
           </label>
           <div class="rw-api-visible-card" role="note" aria-label="API key usage notice">
-            <div class="rw-api-visible-head"><span>API Key Usage Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
-            <div class="rw-api-visible-grid">
-              <div class="rw-api-visible-item"><b>Used for:</b> Torn ID/faction checks, licence checks, and ranked-war payout calculations.</div>
-              <div class="rw-api-visible-item"><b>Reads:</b> faction/member names and IDs, ranked war timing, and attack records in the war window.</div>
-              <div class="rw-api-visible-item"><b>Saved:</b> only in this browser/Torn PDA storage after you click Save Key.</div>
-              <div class="rw-api-visible-item"><b>Sent to backend:</b> only for unlock/payment checks or when creating payout results.</div>
-              <div class="rw-api-visible-item"><b>Never needed:</b> your Torn password.</div>
-              <div class="rw-api-visible-item"><b>Manual only:</b> RWPH does not automatically send money or Xanax.</div>
+            <div class="rw-api-visible-head"><span>API Key Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
+            <div class="rw-api-visible-summary">
+              <b>Used for:</b> licence checks + ranked-war payouts <span class="rw-api-visible-dot">•</span>
+              <b>Reads:</b> faction/member/war/attack data <span class="rw-api-visible-dot">•</span>
+              <b>Saved:</b> local browser/PDA storage <span class="rw-api-visible-dot">•</span>
+              <b>Sent:</b> only to your RWPH backend for checks/calculations <span class="rw-api-visible-dot">•</span>
+              <b>Never:</b> Torn password or auto money/Xanax sends
             </div>
           </div>
-          <details class="rw-api-tos-card rw-api-tos-dropdown" open>
-            <summary class="rw-api-tos-title">Full API ToS / Key Usage Details</summary>
-            <div class="rw-api-tos-content">
-              <div class="rw-api-tos-table-wrap">
-                <table class="rw-api-tos-table">
-                  <tbody>
-                    <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
-                    <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
-                    <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
-                    <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
-                    <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
-            </div>
-          </details>
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock Panel</button>
             <button id="rw-start-payment">Buy Licence</button>
@@ -10674,12 +10792,13 @@
 
     const lockedSaveKeyBtn = document.getElementById("rw-paywall-save-key");
     if (lockedSaveKeyBtn) {
-      lockedSaveKeyBtn.addEventListener("click", () => {
+      lockedSaveKeyBtn.addEventListener("click", async () => {
         const key = document.getElementById("rw-paywall-key").value.trim();
         GM_setValue(STORAGE_KEY, key);
         const msg = key ? "API key saved locally." : "Saved blank API key locally.";
         const status = document.getElementById("rw-paywall-status");
         rwphToastPanelInfo(status, msg, "info", "RWPH Info");
+        if (key) await rwphUnlockMainPanelIfActive(status, "save");
       });
     }
 
@@ -10700,8 +10819,9 @@
         if (info.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, info.token);
         rwphToastPanelInfo(status, "Licence active. Unlocking RWPH...", "info", "RWPH Licence");
         clearPendingPayment();
-        closePanel();
-        createPanel();
+        showMainScreen(panel);
+        const mainStatus = document.getElementById("rw-status");
+        if (mainStatus) mainStatus.textContent = "Licence active. Main panel unlocked.";
       });
     }
 
@@ -10766,6 +10886,9 @@
     updatePendingPaymentUi();
     restorePendingPaymentFromDatabase(document.getElementById("rw-paywall-key")?.value.trim(), "unlock");
     setInterval(updatePendingPaymentUi, 30000);
+    if (!options.skipAutoUnlock) {
+      setTimeout(() => rwphUnlockMainPanelIfActive(document.getElementById("rw-paywall-status"), "silent"), 250);
+    }
 
     document.getElementById("rw-check-license-days").addEventListener("click", async (event) => {
       const status = document.getElementById("rw-paywall-status");
@@ -10959,14 +11082,13 @@
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
           <div class="rw-api-visible-card" role="note" aria-label="API key usage notice">
-            <div class="rw-api-visible-head"><span>API Key Usage Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
-            <div class="rw-api-visible-grid">
-              <div class="rw-api-visible-item"><b>Used for:</b> Torn ID/faction checks, licence checks, and ranked-war payout calculations.</div>
-              <div class="rw-api-visible-item"><b>Reads:</b> faction/member names and IDs, ranked war timing, and attack records in the war window.</div>
-              <div class="rw-api-visible-item"><b>Saved:</b> only in this browser/Torn PDA storage after you click Save Key.</div>
-              <div class="rw-api-visible-item"><b>Sent to backend:</b> only for unlock/payment checks or when creating payout results.</div>
-              <div class="rw-api-visible-item"><b>Never needed:</b> your Torn password.</div>
-              <div class="rw-api-visible-item"><b>Manual only:</b> RWPH does not automatically send money or Xanax.</div>
+            <div class="rw-api-visible-head"><span>API Key Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
+            <div class="rw-api-visible-summary">
+              <b>Used for:</b> licence checks + ranked-war payouts <span class="rw-api-visible-dot">•</span>
+              <b>Reads:</b> faction/member/war/attack data <span class="rw-api-visible-dot">•</span>
+              <b>Saved:</b> local browser/PDA storage <span class="rw-api-visible-dot">•</span>
+              <b>Sent:</b> only to your RWPH backend for checks/calculations <span class="rw-api-visible-dot">•</span>
+              <b>Never:</b> Torn password or auto money/Xanax sends
             </div>
           </div>
           <div class="rw-actions rw-licence-control-grid">
@@ -10990,10 +11112,10 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
             <summary class="rw-api-tos-title">Basic Calculations</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-per-hit-note">These settings control the normal per-hit report. Member Payout is the amount split across members and used to calculate payments. Total Payout is shown on the results/newsletters for your full payout record only. Click Calculate here to run the per-hit report.</div>
+              <div class="rw-calc-brief"><b>Basic:</b> flat per counted hit. Member Payout splits between members; Total Payout is record/newsletter only.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
-                <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Basic and Advanced finished-war caches when your API key and calculation settings are ready. Payout field changes do not stop a saved cached report from opening. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache live inside their matching dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
-                <div id="rw-cache-status-per-hit" class="rw-muted">Cache auto-check waits for your API key and valid calculation settings.</div>
+                <div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
+                <div id="rw-cache-status-per-hit" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
               </div>
               <div class="rw-row">
                 <label>Member Payout
@@ -11003,27 +11125,15 @@
                   <input id="rw-total-overall" type="number" value="100000000" min="0">
                 </label>
               </div>
-              <div class="rw-small">Per Hit values are fixed at <b>1 per counted hit</b>. Use the tick boxes to include or exclude each hit type.</div>
-              <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                <input id="rw-include-left-members" type="checkbox" style="width:auto;margin:0;"> Include members who left the faction
-              </label>
-              <div class="rw-small">Off by default: members no longer in your faction are removed and their removed hit count is shown in the results.</div>
-              <div class="rw-row">
-                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                  <input id="rw-war-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> War hits — 1 per hit
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                  <input id="rw-outside-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> Outside hits — 1 per hit
-                </label>
+              <div class="rw-calc-brief">Tick hit types to include. Each checked type counts as <b>1</b>.</div>
+              <div class="rw-compact-check-grid">
+                <label><input id="rw-include-left-members" type="checkbox"> Include left members</label>
+                <label><input id="rw-war-hit-weight" type="checkbox" checked> War hits</label>
+                <label><input id="rw-outside-hit-weight" type="checkbox" checked> Outside hits</label>
+                <label><input id="rw-retaliation-hit-weight" type="checkbox" checked> Retals</label>
+                <label><input id="rw-assist-weight" type="checkbox"> Assists</label>
               </div>
-              <div class="rw-row">
-                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                  <input id="rw-retaliation-hit-weight" type="checkbox" checked style="width:auto;margin:0;"> Retaliation hits — 1 per hit
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                  <input id="rw-assist-weight" type="checkbox" style="width:auto;margin:0;"> Assists — 1 per assist
-                </label>
-              </div>
+              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by default and removed-hit totals remain in the results page.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-run" type="button">Calculate</button>
                 <button id="rw-use-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -11034,10 +11144,10 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title">Advanced Calculations</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-small"><b>Advanced Calculate</b> opens a separate results tab and splits the Member Payout by contribution score instead of flat per-hit pay. War hits score the most. War-faction retals count as War Hits and add the configurable retal bonus, while non-war-faction retals count as Outside Hits. Assists, outside/chain hits, own-faction hospital bonuses, enemy war-faction hospital bonuses, and the Avg FF per-payable-hit bonus are also included. The enemy war-faction hospital bonus can be set to a negative value to subtract points. Hospital bonus points only apply when the hospitalized target is verified as one of your own faction members or the selected enemy ranked-war faction.</div>
+              <div class="rw-calc-brief"><b>Advanced:</b> splits Member Payout by points from war/assist/outside/retal/hospital and Avg FF settings.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
-                <div class="rw-small"><b>Public performance mode:</b> RWPH auto-checks both Basic and Advanced finished-war caches when your API key and calculation settings are ready. Payout field changes do not stop a saved cached report from opening. Each result type has its own backend/database cached report and can reopen its own Payments Copy Panel. Use Cached Report and Delete Cache live inside their matching dropdown. Deletes are limited to one successful cached report every 10 minutes.</div>
-                <div id="rw-cache-status-points" class="rw-muted">Cache auto-check waits for your API key and valid calculation settings.</div>
+                <div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
+                <div id="rw-cache-status-points" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
               </div>
               <div class="rw-row">
                 <label>Member Payout
@@ -11047,10 +11157,10 @@
                   <input id="rw-points-total-overall" type="number" value="100000000" min="0">
                 </label>
               </div>
-              <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                <input id="rw-points-include-left-members" type="checkbox" style="width:auto;margin:0;"> Include members who left the faction
-              </label>
-              <div class="rw-small">Off by default: members no longer in your faction are removed and their removed hit count is shown in the results.</div>
+              <div class="rw-compact-check-grid rw-compact-check-grid-single">
+                <label><input id="rw-points-include-left-members" type="checkbox"> Include left members</label>
+              </div>
+              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by default and removed-hit totals remain in the results page.</div>
               <div class="rw-row">
                 <label>War hit points
                   <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
@@ -11075,10 +11185,8 @@
                   <input id="rw-point-enemy-hospital" type="number" value="-1" step="0.1">
                 </label>
               </div>
-              <div class="rw-row">
-                <label style="display:flex;align-items:center;gap:6px;margin-top:6px;">
-                  <input id="rw-point-fair-fight" type="checkbox" checked style="width:auto;margin:0;"> Use fair-fight modifier
-                </label>
+              <div class="rw-compact-check-grid rw-compact-check-grid-single">
+                <label><input id="rw-point-fair-fight" type="checkbox" checked> Use fair-fight modifier</label>
               </div>
               <div class="rw-row">
                 <label>Avg FF required per bonus step
@@ -11088,7 +11196,7 @@
                   <input id="rw-point-fair-fight-bonus-step" type="number" value="0.01" step="0.01" min="0">
                 </label>
               </div>
-              <div class="rw-small">When Use fair-fight modifier is ticked, Avg FF 1.00 gives no bonus. Every configured Avg FF step over 1.00 adds the configured point bonus to each payable hit. Avg FF is capped at 3.00. If the tickbox is off, no fair-fight bonus points are added.</div>
+              <div class="rw-calc-brief rw-calc-mini-note">Avg FF over 1.00 adds the configured bonus per payable hit. Capped at 3.00; untick for no FF bonus.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-points-run" class="secondary" type="button">Calculate</button>
                 <button id="rw-use-points-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -11602,7 +11710,7 @@
 
     document.getElementById("rw-lock").addEventListener("click", () => {
       const panel = document.getElementById("rw-payout-helper");
-      if (panel) showPaywallScreen(panel);
+      if (panel) showPaywallScreen(panel, { skipAutoUnlock: true });
     });
 
     startLicenseExpiryMonitor();
@@ -11976,7 +12084,7 @@
     const licenseState = await rwphCheckLicenseOnPanelOpen();
     if (!document.body.contains(panel)) return;
     if (!licenseState.valid) {
-      showPaywallScreen(panel);
+      showPaywallScreen(panel, { skipAutoUnlock: true });
       setTimeout(() => {
         const status = document.getElementById("rw-paywall-status");
         if (status) status.textContent = licenseState.message || "Licence check failed. Unlock Panel when your licence is active.";

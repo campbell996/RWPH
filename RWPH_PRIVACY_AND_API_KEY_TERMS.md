@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.305**
+Version: **1.1.308**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -322,6 +322,26 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.308
+
+- Active licences now unlock straight into the main payout panel after a saved-key licence check, without needing to press Unlock Panel again.
+- Compacted both **Basic Calculations** and **Advanced Calculations** dropdowns with shorter notes, tighter cache text, compact checkbox grids, and smaller spacing.
+- Kept all calculation fields, button IDs, payout maths, cache behaviour, and licence checks unchanged.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.307
+
+- Compacted the visible **API Key Notice** under the API key box on both the locked **Unlock** panel and unlocked main **Payout** panel.
+- Replaced the larger multi-card notice with one tighter summary line while keeping the important points: purpose, data read, local storage, backend use, no Torn password, and no automatic money/Xanax sending.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.306
+
+- Removed the **Full API ToS / Key Usage Details** dropdown from the locked **Unlock** panel.
+- Kept the compact visible **API Key Usage Notice** under the locked API key box.
+- Detailed API ToS / Usage Table remains available in the **Help** tab.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.305
 
