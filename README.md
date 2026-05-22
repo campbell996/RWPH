@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.302**  
+Current package version: **1.1.305**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -600,6 +600,26 @@ When updating RWPH:
 ---
 
 ## Recent Changelog
+
+### v1.1.305
+
+- Safely removed clearly unused userscript and server helper code after repeated reference checks.
+- Removed the old `Torn_RW_Payout_Helper_Server_Locked.user.js.bak` backup file from the release zip because the running script never uses it.
+- Left generated-results-page helper code alone where removal could affect the fullscreen report/payment page.
+- No payout maths, licence checks, Torn API requests, newsletter output, or payment-copy behaviour was intentionally changed.
+
+### v1.1.304
+
+- Removed **Removed Left-Member Hits** from the **All Result Stats** section in all newsletter outputs.
+- Added/kept **Total Respect** in the newsletter **All Result Stats** section.
+- Kept the existing HTML newsletter system and no-horizontal-scroll newsletter layout.
+
+### v1.1.303
+- Removed the **Full API ToS / Key Usage Details** dropdown from the unlocked main **Payout** panel.
+- Kept the compact visible **API Key Usage Notice** directly under the main API key box.
+- Kept the locked Unlock tab API details and the Help tab API ToS / Usage Table available for review.
+- Kept the HTML newsletter system and safer no-horizontal-scroll newsletter layout.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.302
 - Added a permanent visible API Key Usage Notice directly under both API key fields in the locked Unlock tab and unlocked Payout tab.

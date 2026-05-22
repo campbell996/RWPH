@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.302
+// @version      1.1.305
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,9 @@
 (function () {
   "use strict";
 
+  // v1.1.305: safely removed clearly unused script/server code and excluded the old .bak userscript copy from the package.
+  // v1.1.304: newsletters remove Removed Left-Member Hits from All Result Stats and keep Total Respect.
+  // v1.1.303: removed the Full API ToS / Key Usage Details dropdown from the unlocked main Payout panel while keeping the compact visible API notice.
   // v1.1.302: API key terms are now shown as a permanent visible notice directly under API key fields.
   // v1.1.301: main HTML newsletters use a safer narrow/wrapping layout to avoid Torn horizontal scrollbars.
   // v1.1.300: removed Weight/Share/Respect/Total Respect/Tracked from Test Newsletter stats/cards.
@@ -60,7 +63,6 @@
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
-  const LAST_RESULTS_TTL_MS = 24 * 60 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
     const PAYMENT_ITEM_ID = "206";
   const PAYMENT_ITEM_NAME = "Xanax";
@@ -234,64 +236,6 @@
       }
     `;
     document.head.appendChild(style);
-  }
-
-  function rwphSafeAnchorId(panel) {
-    if (!panel) return "fallback";
-    if (!panel.id) panel.dataset.rwphPopupAnchorId = panel.dataset.rwphPopupAnchorId || `anon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    return String(panel.id || panel.dataset.rwphPopupAnchorId).replace(/[^a-zA-Z0-9_-]/g, "_");
-  }
-
-  function rwphPositionInfoPopupStack(stack, panel) {
-    const margin = 8;
-    if (!panel) {
-      stack.style.setProperty("right", "18px", "important");
-      stack.style.setProperty("bottom", "18px", "important");
-      stack.style.setProperty("left", "auto", "important");
-      stack.style.setProperty("top", "auto", "important");
-      stack.style.setProperty("width", "min(380px, calc(100vw - 28px))", "important");
-      return;
-    }
-
-    const rect = panel.getBoundingClientRect();
-    const width = Math.min(Math.max(260, rect.width), Math.min(430, window.innerWidth - (margin * 2)));
-    const left = rwphPopupClamp(rect.left, margin, Math.max(margin, window.innerWidth - width - margin));
-    const topWanted = rect.bottom + margin;
-    const top = rwphPopupClamp(topWanted, margin, Math.max(margin, window.innerHeight - 120));
-
-    stack.style.setProperty("left", `${Math.round(left)}px`, "important");
-    stack.style.setProperty("top", `${Math.round(top)}px`, "important");
-    stack.style.setProperty("right", "auto", "important");
-    stack.style.setProperty("bottom", "auto", "important");
-    stack.style.setProperty("width", `${Math.round(width)}px`, "important");
-  }
-
-  function rwphEnsureInfoPopupStack(anchorEl) {
-    rwphEnsureInfoPopupStyle();
-    const panel = rwphFindCurrentPopupAnchor(anchorEl);
-    const anchorId = rwphSafeAnchorId(panel);
-    const stackId = `rwph-info-popup-stack-${anchorId}`;
-    let stack = document.getElementById(stackId);
-    if (!stack) {
-      stack = document.createElement("div");
-      stack.id = stackId;
-      stack.className = "rwph-info-popup-stack";
-      document.body.appendChild(stack);
-    }
-    stack.__rwphAnchorPanel = panel || null;
-    rwphPositionInfoPopupStack(stack, panel);
-    if (!stack.dataset.rwphRepositionReady) {
-      stack.dataset.rwphRepositionReady = "1";
-      const reposition = () => {
-        if (!document.body.contains(stack)) return;
-        const livePanel = stack.__rwphAnchorPanel && document.body.contains(stack.__rwphAnchorPanel) ? stack.__rwphAnchorPanel : null;
-        rwphPositionInfoPopupStack(stack, livePanel);
-      };
-      window.addEventListener("resize", reposition, { passive: true });
-      window.addEventListener("scroll", reposition, { passive: true });
-      setInterval(reposition, 1500);
-    }
-    return stack;
   }
 
   function rwphShowToast(message, mode = "info", ttlMs = 30000, title = "RWPH Info", anchorEl = null) {
@@ -1914,11 +1858,6 @@
 
     // Licence is already verified when the panel opens. Keep the monitor slow so it does not consume the manual Your Expiration 2/minute allowance.
     window.__rwphLicenseMonitor = setInterval(checkLicenseNow, 10 * 60 * 1000);
-  }
-
-  async function verifySavedLicense() {
-    const info = await getSavedLicenseInfo();
-    return !!info.valid;
   }
 
   async function rwphCheckLicenseOnPanelOpen() {
@@ -5185,10 +5124,6 @@
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
     const newsletterHtml = buildWarPayoutNewsletterHtml(rows || [], summary || {});
-    const cyberNewsletterHtml = buildWarPayoutNewsletterCyberHtml(rows || [], summary || {});
-    const ledgerNewsletterHtml = buildWarPayoutNewsletterLedgerHtml(rows || [], summary || {});
-    const crimsonNewsletterHtml = buildWarPayoutNewsletterCrimsonHtml(rows || [], summary || {});
-    const goldNewsletterHtml = buildWarPayoutNewsletterVictoryGoldHtml(rows || [], summary || {});
     const rwphNewsletterSourceRows = Array.isArray(rows) && rows.length ? rows : [{
       id: "0000000",
       name: "Test Member",
@@ -5230,14 +5165,6 @@
       test100: rwphCleanNewsletterHtmlCode(buildRwphTornTestFullCodeNewsletter(rwphNewsletterTestRows, rwphNewsletterTestSummary, "standard")),
     };
     const rwphNewsletterHtmlCodeJson = JSON.stringify(rwphNewsletterHtmlCode).replaceAll("<", "\\u003c");
-    const rwphNewsletterHtmlHrefs = {
-      standard: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.standard || "")}`,
-      cyber: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.cyber || "")}`,
-      ledger: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.ledger || "")}`,
-      crimson: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.crimson || "")}`,
-      gold: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.gold || "")}`,
-      test100: `data:text/html;charset=utf-8,${encodeURIComponent(rwphNewsletterHtmlCode.test100 || "")}`,
-    };
     const rwphNewsletterPanelLabels = {
       standard: "Torn Newsletter",
       cyber: "Cyber Neon Newsletter",
@@ -5272,23 +5199,10 @@
     </div>
   </section>`;
     }).join("\n");
-    const tornNewsletterPlainHrefs = {
-      standard: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.standard.text || "")}`,
-      cyber: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.cyber.text || "")}`,
-      ledger: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.ledger.text || "")}`,
-      crimson: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.crimson.text || "")}`,
-      gold: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.gold.text || "")}`,
-      test100: `data:text/plain;charset=utf-8,${encodeURIComponent(tornNewsletterBundles.test100.text || "")}`,
-    };
     const tornNewsletterBundlesJson = JSON.stringify(tornNewsletterBundles).replaceAll("<", "\\u003c");
     const newsletterJson = JSON.stringify(newsletterHtml).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list, summary || {});
     const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvText)}`;
-    const newsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(newsletterHtml)}`;
-    const cyberNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(cyberNewsletterHtml)}`;
-    const ledgerNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(ledgerNewsletterHtml)}`;
-    const crimsonNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(crimsonNewsletterHtml)}`;
-    const goldNewsletterHref = `data:text/html;charset=utf-8,${encodeURIComponent(goldNewsletterHtml)}`;
     const payAllHref = rwphFactionControlsPayAllUrl();
 
     const cards = list.map((r) => {
@@ -7021,13 +6935,6 @@
     GM_setValue(LAST_RESULTS_STORAGE_KEY, "");
   }
 
-  function rwphGetStoredLastResults() {
-    // v1.1.219: do not use browser storage as a cached report source.
-    // The Use Cached Report button must only open reports returned by the backend/database cache.
-    rwphClearLastResults();
-    return null;
-  }
-
   function rwphUpdateLastResultsButton() {
     const actions = document.getElementById("rw-last-results-actions");
     const runBtn = document.getElementById("rw-run");
@@ -7049,13 +6956,6 @@
     // Reports can only be reopened through the backend/database cache.
     rwphClearLastResults();
     rwphUpdateLastResultsButton();
-  }
-
-  function rwphReopenLastResultsTab() {
-    const status = document.getElementById("rw-status");
-    rwphClearLastResults();
-    rwphUpdateLastResultsButton();
-    rwphToastPanelError(status, "Browser-saved reports are disabled. Use the Per Hit or Points cache buttons only when RWPH finds a matching backend/database cached report.", "RWPH Results");
   }
 
 
@@ -8066,17 +7966,6 @@
     return true;
   }
 
-  function buildPayoutText(rows) {
-    return (rows || [])
-      .map((r, index) => {
-        const payout = rwphPayAllRowAmount(r);
-        const id = String(r.id || "unknown");
-        const name = r.name || `Unknown ${id}`;
-        return `${index + 1}. ${name} [${id}] — ${money(payout)} — RW payout`;
-      })
-      .join("\n");
-  }
-
   function safeNumber(value) {
     const n = Number(value || 0);
     return Number.isFinite(n) ? n : 0;
@@ -8178,7 +8067,6 @@
     lines.push(`${perUnitLabel}: ${money(m.perUnitAmount)} ${perUnitSub}`);
     lines.push(`${metricLabel}: ${m.totalWeight.toFixed(2)} · Paid Members: ${m.list.length}`);
     lines.push(`War Hits: ${m.totalHits} · Assists: ${m.totalAssists} · Outside: ${m.totalOutsideHits} · Retals: ${m.totalRetaliationHits}`);
-    if (!m.includeLeftFactionMembers) lines.push(`Removed Left-Member Hits: ${m.removedLeftFactionHits}`);
     if (m.pointsMode) {
       lines.push(`Own Hosp: ${m.totalOwnFactionHospitalizingHits} (${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts) · Enemy Hosp: ${m.totalEnemyFactionHospitalizingHits} (${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} pts)`);
       lines.push(`Fair Bonus: ${m.totalFairFightBonusPoints.toFixed(2)} pts`);
@@ -8230,7 +8118,7 @@
       <table style="width:100%;border-collapse:separate;border-spacing:6px;margin-bottom:10px;"><tbody>
         <tr>${card("Member Payout", money(m.memberPayout), `${m.list.length} members paid`)}${card("Total Payout", money(m.overallTotalPayout), "full payout record")}${card(perUnitLabel, money(m.perUnitAmount), perUnitSub)}${card(metricLabel, m.totalWeight.toFixed(2), m.pointsMode ? "total points" : "total weight")}</tr>
         <tr>${card("War Hits", String(m.totalHits), `${m.totalAssists} assists`)}${card("Outside Hits", String(m.totalOutsideHits), `${m.totalRetaliationHits} retals`)}${card("Tracked", String(m.totalTrackedHits), `${m.totalPayableEvents} payable`)}${card("Total Respect", m.totalRespect.toFixed(2), "ranked war report")}</tr>
-        ${!m.includeLeftFactionMembers ? `<tr>${card("Removed Left-Member Hits", String(m.removedLeftFactionHits), "excluded former-member hits")}${card("Paid Members", String(m.list.length), "current faction results")}${card("Fetched Attacks", String(m.attacksFetched), "server calculation")}${card("Names Loaded", String(m.nameCount), "member matches")}</tr>` : ""}
+        <tr>${card("Paid Members", String(m.list.length), "current faction results")}${card("Fetched Attacks", String(m.attacksFetched), "server calculation")}${card("Names Loaded", String(m.nameCount), "member matches")}${card("Pay Respect", m.totalPayRespect.toFixed(2), "payable respect")}</tr>
         ${m.pointsMode ? `<tr>${card("Own Hosp", String(m.totalOwnFactionHospitalizingHits), `${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Enemy Hosp", String(m.totalEnemyFactionHospitalizingHits), `${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Fair Bonus", m.totalFairFightBonusPoints.toFixed(2), "Avg FF bonus")}${card("Pay Respect", m.totalPayRespect.toFixed(2), "payable respect")}</tr>` : ""}
       </tbody></table>
       <div style="overflow-x:auto;border:1px solid ${t.line};border-radius:12px;background:${t.panel};">
@@ -8406,9 +8294,6 @@
         <td style="padding:8px; background-color:${bg}; border:1px solid ${theme.line}; color:${theme.muted}; text-align:center; font-family:Arial, Helvetica, sans-serif; font-size:12px; white-space:nowrap;">${percent(r.payout, m.memberPayout)}</td>
       </tr>${details}`;
     }).join("");
-    const removedCell = !m.includeLeftFactionMembers
-      ? buildRwphNewsletterStatCell("Removed Left-Member Hits", String(m.removedLeftFactionHits), theme, theme.panelB, "50%")
-      : buildRwphNewsletterStatCell("Left Members", "Included", theme, theme.panelB, "50%");
     const pointsSummary = m.pointsMode ? `
           <tr>
             ${buildRwphNewsletterStatCell("Own Hosp", `${m.totalOwnFactionHospitalizingHits} / ${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} pts`, theme, theme.panelA, "50%")}
@@ -8455,7 +8340,7 @@
                 </tr>
                 <tr>
                   ${buildRwphNewsletterStatCell("Retals / Tracked", `${m.totalRetaliationHits} / ${m.totalTrackedHits}`, theme, theme.panelB, "50%")}
-                  ${removedCell}
+                  ${buildRwphNewsletterStatCell("Fetched Attacks", String(m.attacksFetched || 0), theme, theme.panelB, "50%")}
                 </tr>
                 <tr>
                   ${buildRwphNewsletterStatCell(metricLabel, m.totalWeight.toFixed(2), theme, theme.panelA, "50%")}
@@ -8518,8 +8403,7 @@
     const metricLabel = m.pointsMode ? "Points" : "Weight";
     const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
     const perUnitSub = m.pointsMode ? "per weighted point" : "per weighted hit";
-    const removedLabel = m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits";
-    const removedValue = m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits);
+    const fetchedAttacksValue = String(m.attacksFetched || 0);
     const bgStripe = (i) => i % 2 ? theme.panelA : theme.panelB;
     const cell = (label, value, bg = theme.panelA, width = "50%", sub = "") => `<td style="width:${width};padding:8px;background-color:${bg};border:1px solid ${theme.line};vertical-align:top;font-family:Arial,Helvetica,sans-serif;">
       <div style="font-size:8px;color:${theme.muted};font-weight:bold;line-height:1.25;text-transform:uppercase;letter-spacing:.3px;">${esc(label)}</div>
@@ -8537,8 +8421,8 @@
         <tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "50%")} ${cell("Total Payout", money(m.overallTotalPayout), theme.panelA, "50%")}</tr>
         <tr>${cell(perUnitLabel, `${money(m.perUnitAmount)} ${perUnitSub}`, theme.panelB, "50%")} ${cell("Members Paid", String(m.list.length), theme.panelB, "50%")}</tr>
         <tr>${cell("War Hits", String(m.totalHits), theme.panelA, "50%")} ${cell("Assists / Outside", `${m.totalAssists} / ${m.totalOutsideHits}`, theme.panelA, "50%")}</tr>
-        <tr>${cell("Retals / Tracked", `${m.totalRetaliationHits} / ${m.totalTrackedHits}`, theme.panelB, "50%")} ${cell(removedLabel, removedValue, theme.panelB, "50%")}</tr>
-        <tr>${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "50%")} ${cell("Total Respect", m.totalRespect.toFixed(2), theme.panelA, "50%")}</tr>
+        <tr>${cell("Retals / Tracked", `${m.totalRetaliationHits} / ${m.totalTrackedHits}`, theme.panelB, "50%")} ${cell("Total Respect", m.totalRespect.toFixed(2), theme.panelB, "50%")}</tr>
+        <tr>${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "50%")} ${cell("Fetched Attacks", fetchedAttacksValue, theme.panelA, "50%")}</tr>
         ${pointsExtra}
       </table>`;
     const memberRowsFull = m.list.map((r, idx) => {
@@ -8598,22 +8482,21 @@
         ["Member Payout", money(m.memberPayout), 100],
         ["War Hits", String(m.totalHits), Math.min(100, m.totalHits || 4)],
         ["Tracked Hits", String(m.totalTrackedHits), Math.min(100, m.totalTrackedHits || 4)],
-        [removedLabel, removedValue, m.includeLeftFactionMembers ? 100 : Math.min(100, Math.max(4, m.removedLeftFactionHits || 0))],
+        ["Total Respect", m.totalRespect.toFixed(2), 100],
       ].map((x,i)=>barCell(x[0],x[1],x[2], i%2?theme.panelB:theme.panelA)).join("");
-      const cyberRows = m.list.map((r, idx) => `<tr><td style="padding:7px;background-color:${bgStripe(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};"><b>${esc(r.name)}</b><br><span style="font-size:10px;color:${theme.muted};">${esc(r.id)} • W${r.warHits} / A${r.assists} / O${r.outsideHits} / R${r.retaliationHits}</span><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-top:5px;"><tr><td style="height:3px;background-color:${theme.header};"><div style="height:3px;width:${Math.max(4, Math.min(100, (r.payout/maxPayout)*100))}%;background-color:${theme.accent};line-height:3px;">&nbsp;</div></td></tr></table></td><td style="padding:7px;background-color:${bgStripe(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;text-align:right;color:#86efac;font-weight:bold;white-space:nowrap;">${money(r.payout)}</td></tr>`).join("");
       return wrapper(`${headerClassic}<tr><td style="padding:14px 16px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="width:38%;vertical-align:top;padding-right:8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${bars}</table></td><td style="width:62%;vertical-align:top;padding-left:8px;">${miniTable}</td></tr></table></td></tr><tr><td style="padding:0 16px 16px 16px;">${noticeTable("left")}</td></tr>`, 760);
     }
 
     if (key === "ledger") {
-      return wrapper(`<tr><td style="padding:18px;background-color:${theme.header};border-bottom:1px solid ${theme.strongLine};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="font-family:Georgia,'Times New Roman',serif;color:${theme.accent};font-size:25px;font-weight:bold;">${esc(m.newsletterTitle)}</td><td style="font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:12px;text-align:right;">${esc(modeLabel)}<br>RWPH War Ledger</td></tr></table></td></tr><tr><td style="padding:14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "33.33%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelA, "33.33%", perUnitSub)} ${cell(removedLabel, removedValue, theme.panelA, "33.33%")}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Signed Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 720);
+      return wrapper(`<tr><td style="padding:18px;background-color:${theme.header};border-bottom:1px solid ${theme.strongLine};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="font-family:Georgia,'Times New Roman',serif;color:${theme.accent};font-size:25px;font-weight:bold;">${esc(m.newsletterTitle)}</td><td style="font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:12px;text-align:right;">${esc(modeLabel)}<br>RWPH War Ledger</td></tr></table></td></tr><tr><td style="padding:14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "33.33%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelA, "33.33%", perUnitSub)} ${cell("Total Respect", m.totalRespect.toFixed(2), theme.panelA, "33.33%")}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Signed Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 720);
     }
 
     if (key === "crimson") {
-      return wrapper(`<tr><td style="padding:16px 18px;background-color:${theme.header};border-bottom:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:24px;color:${theme.accent};font-weight:bold;text-transform:uppercase;letter-spacing:1px;">${esc(m.newsletterTitle)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;">Raid payout command report • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:12px 18px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("War Hits", String(m.totalHits), theme.panelA, "25%")} ${cell("Tracked", String(m.totalTrackedHits), theme.panelB, "25%")} ${cell(removedLabel, removedValue, theme.panelA, "25%")} ${cell("Members", String(m.list.length), theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 18px 14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No top payouts.</td>`}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${miniTable}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 700);
+      return wrapper(`<tr><td style="padding:16px 18px;background-color:${theme.header};border-bottom:4px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:24px;color:${theme.accent};font-weight:bold;text-transform:uppercase;letter-spacing:1px;">${esc(m.newsletterTitle)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;">Raid payout command report • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:12px 18px;background-color:${theme.bg};"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("War Hits", String(m.totalHits), theme.panelA, "25%")} ${cell("Tracked", String(m.totalTrackedHits), theme.panelB, "25%")} ${cell("Total Respect", m.totalRespect.toFixed(2), theme.panelA, "25%")} ${cell("Members", String(m.list.length), theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 18px 14px 18px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No top payouts.</td>`}</tr></table></td></tr><tr><td style="padding:0 18px 18px 18px;">${miniTable}</td></tr><tr><td style="padding:0 18px 18px 18px;">${noticeTable("left")}</td></tr>`, 700);
     }
 
     if (key === "gold") {
-      return wrapper(`<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:28px;color:${theme.accent};font-weight:bold;">${esc(theme.icon)} ${esc(m.newsletterTitle)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;margin-top:1px;">Victory payout board • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No podium rows.</td>`}</tr></table></td></tr><tr><td style="padding:0 16px 14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "25%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelB, "25%", perUnitSub)} ${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "25%")} ${cell(removedLabel, removedValue, theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 16px 18px 16px;">${fullLedgerTable("Full Victory Payouts")}</td></tr><tr><td style="padding:0 16px 18px 16px;">${noticeTable("left")}</td></tr>`, 740);
+      return wrapper(`<tr><td style="padding:22px 18px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;"><div style="font-size:28px;color:${theme.accent};font-weight:bold;">${esc(theme.icon)} ${esc(m.newsletterTitle)}</div><div style="font-size:12px;color:${theme.soft};font-weight:bold;margin-top:1px;">Victory payout board • ${esc(modeLabel)}</div></td></tr><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${topCards || `<td style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;text-align:center;">No podium rows.</td>`}</tr></table></td></tr><tr><td style="padding:0 16px 14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>${cell("Member Payout", money(m.memberPayout), theme.panelA, "25%")} ${cell(perUnitLabel, money(m.perUnitAmount), theme.panelB, "25%", perUnitSub)} ${cell(metricLabel, m.totalWeight.toFixed(2), theme.panelA, "25%")} ${cell("Total Respect", m.totalRespect.toFixed(2), theme.panelB, "25%")}</tr></table></td></tr><tr><td style="padding:0 16px 18px 16px;">${fullLedgerTable("Full Victory Payouts")}</td></tr><tr><td style="padding:0 16px 18px 16px;">${noticeTable("left")}</td></tr>`, 740);
     }
 
     return wrapper(`${headerClassic}<tr><td style="padding:18px;color:${theme.text};font-family:Arial,Helvetica,sans-serif;"><div style="font-size:18px;font-weight:bold;color:#ffffff;margin-bottom:8px;">War Payout Results</div><div style="color:${theme.soft};line-height:1.5;">Final ranked-war payout results are below. Member Payout is the amount split across members. Total Payout is shown as the full payout record amount. Review all rows before sending funds.</div></td></tr><tr><td style="padding:0 18px;"><div style="border-top:1px solid ${theme.line};height:1px;line-height:1px;">&nbsp;</div></td></tr><tr><td style="padding:18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">War Summary</div>${summaryGrid}</td></tr><tr><td style="padding:0 18px 18px 18px;">${fullLedgerTable("Payout Ledger")}</td></tr><tr><td style="padding:0 18px 18px 18px;"><div style="font-size:18px;font-weight:bold;color:${theme.accent};margin-bottom:10px;font-family:Arial,Helvetica,sans-serif;">Important Notices</div>${noticeTable("left")}</td></tr><tr><td style="padding:16px 18px;background-color:${theme.bg};border-top:1px solid ${theme.line};text-align:center;"><div style="font-size:12px;color:${theme.muted};font-family:Arial,Helvetica,sans-serif;">Generated by Ranked War Payout Helper</div><div style="font-size:12px;color:${theme.soft};margin-top:1px;font-family:Arial,Helvetica,sans-serif;">Stay active. Hit hard. Get paid.</div></td></tr>`, 620);
@@ -8639,7 +8522,7 @@
     const summaryRows = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">`+
       `<tr>${stat("Member Payout", money(m.memberPayout))}${stat(perUnitLabel, money(m.perUnitAmount))}</tr>`+
       `<tr>${stat("Payable Hits", String(m.totalPayableEvents || 0))}${stat("Members", String(m.list.length))}</tr>`+
-      `${m.includeLeftFactionMembers ? "" : `<tr>${stat("Removed Left-Member Hits", String(m.removedLeftFactionHits || 0))}${stat("Mode", modeLabel)}</tr>`}`+
+      `<tr>${stat("Total Respect", Number(m.totalRespect || 0).toFixed(2))}${stat("Mode", modeLabel)}</tr>`+
       `</table>`;
     const payoutRows = m.list.map((r, idx) => {
       const bg = idx % 2 ? bg1 : bg2;
@@ -8724,9 +8607,6 @@
     const metricLabel = m.pointsMode ? "Points" : "Weight";
     const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
     const perUnitSub = m.pointsMode ? "per weighted point" : "per weighted hit";
-    const removedLabel = m.includeLeftFactionMembers ? "Left Members" : "Removed Left-Member Hits";
-    const removedValue = m.includeLeftFactionMembers ? "Included" : String(m.removedLeftFactionHits || 0);
-    const avgMemberFf = m.list.length ? (m.list.reduce((sum, r) => sum + Number(r.avgFairFight || 1), 0) / m.list.length) : 1;
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
     const rowBg = (i) => i % 2 ? theme.panelA : theme.panelB;
 
@@ -8766,17 +8646,10 @@
       ["Member Payout", money(m.memberPayout), `${m.list.length} paid members`],
       [perUnitLabel, money(m.perUnitAmount), perUnitSub],
       ["Payable Hits", String(m.totalPayableEvents || 0), modeLabel],
+      ["Total Respect", Number(m.totalRespect || 0).toFixed(2), "ranked war report"],
     ];
 
     const statGrid = statTable(newsletterStats);
-    const barTable = statGrid;
-
-    const statMini = (label, value, idx) => `<td width="25%" valign="top" style="width:25%;padding:1px 1px;background-color:${idx % 2 ? theme.panelB : theme.panelA};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
-      <div style="font-size:5.2px;color:${theme.muted};font-weight:bold;text-transform:uppercase;line-height:1;">${esc(label)}</div><div style="font-size:7.2px;color:${theme.text};font-weight:bold;line-height:1.03;margin-top:0;word-break:break-word;">${esc(String(value))}</div>
-    </td>`;
-    const cardStatsTable = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
-      ${items.reduce((out, item, idx) => idx % 4 === 0 ? out + `<tr>${statMini(item[0], item[1], idx)}${statMini((items[idx + 1] || ["", ""])[0], (items[idx + 1] || ["", ""])[1], idx + 1)}${statMini((items[idx + 2] || ["", ""])[0], (items[idx + 2] || ["", ""])[1], idx + 2)}${statMini((items[idx + 3] || ["", ""])[0], (items[idx + 3] || ["", ""])[1], idx + 3)}</tr>` : out, "")}
-    </table>`;
     const userCards = m.list.map((r, idx) => {
       return `<tr><td style="padding:3px 3px;background-color:${rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
@@ -9293,7 +9166,6 @@
         ${statCard("War Hits", String(totalHits), `${totalAssists} assists`)}
         ${statCard("Outside Hits", String(totalOutsideHits), `${totalRetaliationHits} retals`)}
         ${statCard("Tracked", String(totalTrackedHits), `${totalPayableEvents} payable events`)}
-        ${!includeLeftFactionMembers ? statCard("Removed Left-Member Hits", String(removedLeftFactionHits), "excluded former-member hits") : ""}
         ${pointsMode ? statCard("Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), `${totalEnemyFactionHospitalBonusPoints.toFixed(2)} enemy bonus points`) : ""}
         ${pointsMode ? statCard("Own Hospital Hits", String(totalOwnFactionHospitalizingHits), `${totalOwnFactionHospitalBonusPoints.toFixed(2)} own bonus points`) : ""}
         ${pointsMode ? statCard("Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit") : ""}
@@ -9413,7 +9285,6 @@
       ["War Hits", String(totalHits), totalAssists + " assists"],
       ["Outside Hits", String(totalOutsideHits), totalRetaliationHits + " retals"],
       ["Tracked", String(totalTrackedHits), totalPayableEvents + " payable events"],
-      ...(!includeLeftFactionMembers ? [["Removed Left-Member Hits", String(removedLeftFactionHits), "excluded former-member hits"]] : []),
       ...(pointsMode ? [["Own Hospital Hits", String(totalOwnFactionHospitalizingHits), totalOwnFactionHospitalBonusPoints.toFixed(2) + " own bonus points"], ["Enemy War Hospital Hits", String(totalEnemyFactionHospitalizingHits), totalEnemyFactionHospitalBonusPoints.toFixed(2) + " enemy bonus points"], ["Avg FF Bonus", totalFairFightBonusPoints.toFixed(2), "custom Avg FF step bonus per payable hit"]] : []),
       [pointsMode ? "Total Points" : "Total Weight", totalWeight.toFixed(2), pointsMode ? "contribution score" : "weighted contribution"],
       ["Total Respect", totalRespect.toFixed(2), "ranked-war report"],
@@ -9758,29 +9629,6 @@
     rwphEnablePanelMoveResize(box, "#rwph-payment-helper-title");
   }
 
-  function rwphNodeMeta(el) {
-    if (!el) return "";
-    const attrs = ["id", "class", "name", "placeholder", "aria-label", "title", "data-item", "data-itemid", "data-id", "href", "src", "alt", "value"];
-    return attrs.map((a) => String(el.getAttribute?.(a) || "")).join(" ").toLowerCase();
-  }
-
-  function rwphLooksLikeXanax(el) {
-    if (!el) return false;
-    const txt = rwphSendHelperText(el);
-    const meta = rwphNodeMeta(el);
-    return txt.includes("xanax") || meta.includes("xanax") || meta.includes(`item${PAYMENT_ITEM_ID}`) || meta.includes(`item_id=${PAYMENT_ITEM_ID}`) || meta.includes(`itemid=${PAYMENT_ITEM_ID}`) || meta.includes(`item=${PAYMENT_ITEM_ID}`) || meta.includes(`id=${PAYMENT_ITEM_ID}`);
-  }
-
-  function rwphBestContainer(el) {
-    if (!el) return null;
-    return el.closest?.("li, tr, [class*='item'], [class*='row'], [class*='wrap'], [class*='cont'], [class*='drug'], [class*='inventory'], [data-item], [data-itemid]") || el;
-  }
-
-  function rwphAllClickable(scope = document) {
-    return Array.from(scope.querySelectorAll("button, a, input[type='button'], input[type='submit'], [role='button'], [onclick], [class*='button'], [class*='btn']"))
-      .filter(rwphSendHelperVisible);
-  }
-
   function rwphFindLikelySendPanel() {
     const selectors = [
       "form",
@@ -9816,56 +9664,11 @@
     return scored[0]?.panel || null;
   }
 
-  function rwphFindXanaxContainer() {
-    const exactNodes = Array.from(document.querySelectorAll("*"))
-      .filter(rwphSendHelperVisible)
-      .filter(rwphLooksLikeXanax);
-
-    const containers = [];
-    for (const node of exactNodes) {
-      const c = rwphBestContainer(node);
-      if (c && !containers.includes(c)) containers.push(c);
-    }
-
-    containers.sort((a, b) => {
-      const at = rwphSendHelperText(a).length;
-      const bt = rwphSendHelperText(b).length;
-      return at - bt;
-    });
-
-    return containers[0] || exactNodes[0] || null;
-  }
-
-  function rwphFindXanaxSendOpenControl() {
-    // Manual-only safety mode: do not search for or auto-open Torn's "Send this item" controls.
-    return null;
-  }
-
-  function rwphFindXanaxClickable() {
-    // Manual-only safety mode: users must click their Xanax item themselves.
-    return null;
-  }
-
-  function rwphFindItemSearchField() {
-    const fields = Array.from(document.querySelectorAll("input[type='text'], input[type='search'], input:not([type])"))
-      .filter(rwphSendHelperVisible)
-      .filter((el) => {
-        const meta = `${el.placeholder || ""} ${el.name || ""} ${el.id || ""} ${el.className || ""} ${el.getAttribute("aria-label") || ""}`.toLowerCase();
-        return meta.includes("search") || meta.includes("filter") || meta.includes("item");
-      });
-    return fields[0] || null;
-  }
-
   function rwphPressEnter(el) {
     if (!el) return;
     ["keydown", "keypress", "keyup"].forEach((type) => {
       el.dispatchEvent(new KeyboardEvent(type, { bubbles: true, cancelable: true, key: "Enter", code: "Enter", which: 13, keyCode: 13 }));
     });
-  }
-
-  async function rwphSearchForXanaxIfPossible() {
-    // Manual-only safety mode: do not search/filter/click Torn inventory automatically.
-    return false;
   }
 
   function rwphFindUserField(panel) {
@@ -9927,32 +9730,6 @@
       try { document.activeElement?.blur?.(); } catch (_) {}
     }
     return true;
-  }
-
-  async function rwphOpenMessageBox(panel) {
-    // Manual-only safety mode: users must click "Add Message" themselves.
-    return !!rwphFindMessageField(panel || document);
-  }
-
-  async function rwphClickOpenXanaxSendPanel() {
-    // Manual-only safety mode: do not auto-click Xanax or "Send this item".
-    return rwphFindLikelySendPanel();
-  }
-
-  async function rwphFillXanaxSendForm(paymentCode) {
-    // Manual-only safety mode: never auto-open the send form. Prefill only happens after the user clicks helper buttons.
-    await copyText(paymentCode).catch(() => false);
-    return {
-      ok: false,
-      error: "Manual prefill mode is enabled. Manually open Xanax > Send this item > Add Message, then use Copy Receiver and Copy Code."
-    };
-  }
-
-
-  async function rwphFillVisiblePaymentFields(paymentCode) {
-    // Manual-only safety mode: do not bulk-fill fields.
-    await copyText(paymentCode).catch(() => false);
-    return { ok: false, filledUser: false, filledMessage: false };
   }
 
   async function rwphPasteReceiverIntoOpenForm() {
@@ -11192,23 +10969,6 @@
               <div class="rw-api-visible-item"><b>Manual only:</b> RWPH does not automatically send money or Xanax.</div>
             </div>
           </div>
-          <details class="rw-api-tos-card rw-api-tos-dropdown" open>
-            <summary class="rw-api-tos-title">Full API ToS / Key Usage Details</summary>
-            <div class="rw-api-tos-content">
-              <div class="rw-api-tos-table-wrap">
-                <table class="rw-api-tos-table">
-                  <tbody>
-                    <tr><td>Why the key is needed</td><td>Verifies your Torn ID/faction access, checks licence access, and fetches ranked war data needed for payout calculations.</td></tr>
-                    <tr><td>What is read</td><td>Faction/member names and IDs, ranked war timing where available, and attack records inside the selected war window.</td></tr>
-                    <tr><td>Where it is saved</td><td>Only in your browser/Torn PDA userscript storage when you click Save Key.</td></tr>
-                    <tr><td>How it is sent</td><td>Sent to your RWPH backend only when verifying licence/payment access or calculating results.</td></tr>
-                    <tr><td>What RWPH does not do</td><td>RWPH does not need your Torn password, does not log into your account, and does not automatically send money or Xanax.</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="rw-manual-warning">Manual confirmation required: all Torn money payments and Xanax item sends must be reviewed and confirmed by you inside Torn. RWPH only helps prepare, copy, or prefill details.</div>
-            </div>
-          </details>
           <div class="rw-actions rw-licence-control-grid">
             <button id="rw-extend-licence">Extend Licence</button>
             <button id="rw-save" class="secondary">Save Key</button>
