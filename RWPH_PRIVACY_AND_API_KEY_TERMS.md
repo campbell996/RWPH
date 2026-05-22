@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.308**
+Version: **1.1.309**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -322,6 +322,14 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 ## Recent Changelog
+
+### v1.1.309
+
+- Replaced the launcher logo with the new transparent neon RWPH logo.
+- Replaced all panel/result/newsletter logo image references that use the RWPH launcher logo data URI.
+- Added a transparent `rwph_launcher_logo_256.png` asset so the logo has no black background around it.
+- Kept payout maths, licence checks, API handling, panel controls, and newsletter logic unchanged.
+- Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.308
 
