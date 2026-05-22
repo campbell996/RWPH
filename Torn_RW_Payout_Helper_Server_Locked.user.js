@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.300
+// @version      1.1.302
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,9 @@
 (function () {
   "use strict";
 
-  // v1.1.300: trimmed Test Newsletter All Result Stats and restored Total Respect.
+  // v1.1.302: API key terms are now shown as a permanent visible notice directly under API key fields.
+  // v1.1.301: main HTML newsletters use a safer narrow/wrapping layout to avoid Torn horizontal scrollbars.
+  // v1.1.300: removed Weight/Share/Respect/Total Respect/Tracked from Test Newsletter stats/cards.
   // v1.1.298: Test Newsletter repeat count changed from 150 to 120 members.
   // v1.1.297: test newsletter uses full All Result Stats and full payout user cards; normal newsletters stay compact.
   // v1.1.292: added results-tab Test Newsletter raw HTML panel with repeated members for mobile/long-newsletter testing.
@@ -2464,6 +2466,71 @@
       }
       #rw-payout-helper .rw-api-tos-table tr:last-child td {
         border-bottom: 0;
+      }
+      #rw-payout-helper .rw-api-visible-card {
+        margin: 8px 0 10px !important;
+        padding: 10px !important;
+        border-radius: 13px !important;
+        border: 1px solid rgba(250,204,21,.42) !important;
+        border-left: 5px solid rgba(250,204,21,.88) !important;
+        background:
+          radial-gradient(circle at 8% 0%, rgba(250,204,21,.18), transparent 36%),
+          linear-gradient(180deg, rgba(88,57,12,.68), rgba(15,23,42,.76)) !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 12px 26px rgba(0,0,0,.26), 0 0 20px rgba(250,204,21,.08) !important;
+        color: #fff8db !important;
+        box-sizing: border-box !important;
+      }
+      #rw-payout-helper .rw-api-visible-head {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        margin-bottom: 7px !important;
+        color: #fffbe6 !important;
+        font-size: 12px !important;
+        line-height: 1.2 !important;
+        font-weight: 950 !important;
+        text-transform: uppercase !important;
+        letter-spacing: .32px !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,.55), 0 0 12px rgba(250,204,21,.18) !important;
+      }
+      #rw-payout-helper .rw-api-visible-badge {
+        flex: 0 0 auto !important;
+        padding: 4px 7px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(250,204,21,.40) !important;
+        background: rgba(2,6,23,.44) !important;
+        color: #fde68a !important;
+        font-size: 9px !important;
+        line-height: 1 !important;
+        font-weight: 950 !important;
+        white-space: nowrap !important;
+      }
+      #rw-payout-helper .rw-api-visible-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+      }
+      #rw-payout-helper .rw-api-visible-item {
+        min-width: 0 !important;
+        padding: 6px 7px !important;
+        border-radius: 9px !important;
+        border: 1px solid rgba(250,204,21,.18) !important;
+        background: rgba(2,6,23,.34) !important;
+        color: #fef3c7 !important;
+        font-size: 10px !important;
+        line-height: 1.35 !important;
+        font-weight: 800 !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+      }
+      #rw-payout-helper .rw-api-visible-item b {
+        color: #ffffff !important;
+        font-weight: 950 !important;
+      }
+      @media (max-width: 560px), (pointer: coarse) {
+        #rw-payout-helper .rw-api-visible-grid { grid-template-columns: 1fr !important; }
+        #rw-payout-helper .rw-api-visible-head { align-items: flex-start !important; flex-direction: column !important; }
       }
       #rw-payout-helper .rw-manual-warning {
         margin: 8px 0 0;
@@ -8297,11 +8364,13 @@
       .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*::-webkit-scrollbar(?:-[a-z]+)?\s*\{[\s\S]*?\}/gi, "")
       .replace(/\s*scrollbar-[a-z-]+\s*:\s*[^;\}"]+;?/gi, "")
-      .replace(/\swidth="(?!100%)[0-9]+"/gi, "")
+      .replace(/\swidth="(?!9[0-8]%|100%)[0-9]+"/gi, "")
       .replace(/\s*(?:min-width)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
       .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
-      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:100%;")
+      .replace(/width\s*:\s*100%\s*;/gi, "width:96%;")
+      .replace(/width="100%"/gi, 'width="96%"')
+      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:96%;")
       .replace(/\s{2,}/g, " ")
       .replace(/>\s+</g, "><")
       .trim();
@@ -8667,7 +8736,7 @@
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;margin:0;padding:0;table-layout:fixed;">
     <tr>
       <td align="center" style="padding:2px 1px;">
-        <table width="98%" cellpadding="0" cellspacing="0" border="0" style="width:98%;max-width:${safeMax}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;">
+        <table width="96%" cellpadding="0" cellspacing="0" border="0" style="width:96%;max-width:${safeMax}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;overflow-wrap:anywhere;word-break:break-word;">
           ${inner}
         </table>
       </td>
@@ -10448,8 +10517,19 @@
           <label>Your Torn API Key -Limited Access-
             <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
           </label>
-          <details class="rw-api-tos-card rw-api-tos-dropdown">
-            <summary class="rw-api-tos-title">API ToS / Key Usage Notice</summary>
+          <div class="rw-api-visible-card" role="note" aria-label="API key usage notice">
+            <div class="rw-api-visible-head"><span>API Key Usage Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
+            <div class="rw-api-visible-grid">
+              <div class="rw-api-visible-item"><b>Used for:</b> Torn ID/faction checks, licence checks, and ranked-war payout calculations.</div>
+              <div class="rw-api-visible-item"><b>Reads:</b> faction/member names and IDs, ranked war timing, and attack records in the war window.</div>
+              <div class="rw-api-visible-item"><b>Saved:</b> only in this browser/Torn PDA storage after you click Save Key.</div>
+              <div class="rw-api-visible-item"><b>Sent to backend:</b> only for unlock/payment checks or when creating payout results.</div>
+              <div class="rw-api-visible-item"><b>Never needed:</b> your Torn password.</div>
+              <div class="rw-api-visible-item"><b>Manual only:</b> RWPH does not automatically send money or Xanax.</div>
+            </div>
+          </div>
+          <details class="rw-api-tos-card rw-api-tos-dropdown" open>
+            <summary class="rw-api-tos-title">Full API ToS / Key Usage Details</summary>
             <div class="rw-api-tos-content">
               <div class="rw-api-tos-table-wrap">
                 <table class="rw-api-tos-table">
@@ -11101,8 +11181,19 @@
           <label>API Key
             <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
           </label>
-          <details class="rw-api-tos-card rw-api-tos-dropdown">
-            <summary class="rw-api-tos-title">API ToS / Key Usage Notice</summary>
+          <div class="rw-api-visible-card" role="note" aria-label="API key usage notice">
+            <div class="rw-api-visible-head"><span>API Key Usage Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
+            <div class="rw-api-visible-grid">
+              <div class="rw-api-visible-item"><b>Used for:</b> Torn ID/faction checks, licence checks, and ranked-war payout calculations.</div>
+              <div class="rw-api-visible-item"><b>Reads:</b> faction/member names and IDs, ranked war timing, and attack records in the war window.</div>
+              <div class="rw-api-visible-item"><b>Saved:</b> only in this browser/Torn PDA storage after you click Save Key.</div>
+              <div class="rw-api-visible-item"><b>Sent to backend:</b> only for unlock/payment checks or when creating payout results.</div>
+              <div class="rw-api-visible-item"><b>Never needed:</b> your Torn password.</div>
+              <div class="rw-api-visible-item"><b>Manual only:</b> RWPH does not automatically send money or Xanax.</div>
+            </div>
+          </div>
+          <details class="rw-api-tos-card rw-api-tos-dropdown" open>
+            <summary class="rw-api-tos-title">Full API ToS / Key Usage Details</summary>
             <div class="rw-api-tos-content">
               <div class="rw-api-tos-table-wrap">
                 <table class="rw-api-tos-table">

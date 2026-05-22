@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.300**  
+Current package version: **1.1.302**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -601,15 +601,26 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.300
-
-- Updated **Test Newsletter → All Result Stats**.
-- Removed **War Hits**, **Assists**, **Outside Hits**, **Retals**, **Removed Left-Member Hits**, and **Fetched Attacks** from the Test Newsletter All Result Stats section.
-- Added **Total Respect** back to the Test Newsletter All Result Stats section.
-- Normal Basic/Advanced newsletters are unchanged.
+### v1.1.302
+- Added a permanent visible API Key Usage Notice directly under both API key fields in the locked Unlock tab and unlocked Payout tab.
+- The notice now clearly explains why the key is needed, what data is read, where the key is saved, when it is sent to the backend, and what RWPH does not do.
+- Full API ToS / Key Usage Details now opens by default below the visible notice.
+- Kept the HTML newsletter system and the safer no-horizontal-scroll newsletter layout from v1.1.301.
 - Updated README, terms, server version, package version, and userscript version.
 
-### v1.1.299
+### v1.1.301
+- Main HTML newsletters use safer narrow/wrapping table layouts to reduce Torn faction-newsletter side-to-side scrollbars.
+- Kept the HTML newsletter system and did not include PNG/picture newsletter changes.
+- Updated README, terms, server version, package version, and userscript version.
+
+### v1.1.300
+
+- Updated **Test Newsletter → All Result Stats** only.
+- Removed War Hits, Assists, Outside Hits, Retals, Removed Left-Member Hits, and Fetched Attacks from the Test Newsletter All Result Stats.
+- Added **Total Respect** back to the Test Newsletter All Result Stats.
+- Normal Basic/Advanced newsletters are unchanged.
+
+### v1.1.300
 
 - Removed **Weight/Points**, **Share**, **Respect**, **Total Respect**, and **Tracked** from the **Test Newsletter** payout user cards.
 - Removed **Tracked Hits**, **Total Respect**, and **Pay Respect** from the **Test Newsletter** All Result Stats section.
