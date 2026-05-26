@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.314
+// @version      1.1.315
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,7 +19,8 @@
 (function () {
   "use strict";
 
-  // v1.1.314: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
+  // v1.1.315: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
+  // v1.1.315: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
@@ -1498,33 +1499,83 @@
   }
 
 
+  function rwphCleanResponsePreview(text, maxLen = 260) {
+    return String(text || "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, maxLen);
+  }
+
+  function rwphParseAdminJsonResponse(res) {
+    const raw = String(res?.responseText ?? res?.response ?? "");
+    const trimmed = raw.trim();
+
+    if (!trimmed) {
+      throw new Error(`Admin server returned an empty response. Status ${res?.status || 0}. Make sure the backend/admin route is running.`);
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch (_) {}
+
+    // Some mobile/PDA/tunnel wrappers can return text around the JSON. Try to salvage the JSON object before failing.
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      const possibleJson = trimmed.slice(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(possibleJson);
+      } catch (_) {}
+    }
+
+    const preview = rwphCleanResponsePreview(trimmed);
+    const looksHtml = /<\s*!doctype|<\s*html|ngrok|browser warning|tunnel/i.test(trimmed);
+    if (looksHtml) {
+      throw new Error(`Admin server returned HTML instead of JSON. Status ${res?.status || 0}. Check the backend URL/tunnel is pointing to the RWPH server and restart the server if needed. Response: ${preview || "HTML page"}`);
+    }
+
+    throw new Error(`Could not parse admin server response. Status ${res?.status || 0}. Response: ${preview || "No readable response text"}`);
+  }
+
   function adminRequest(method, path, adminKey, body = {}) {
     return new Promise((resolve, reject) => {
       const isGet = String(method).toUpperCase() === "GET";
+      const sep = path.includes("?") ? "&" : "?";
       const url = isGet
-        ? `${PAYWALL_API_BASE}${path}?adminKey=${encodeURIComponent(adminKey)}`
+        ? `${PAYWALL_API_BASE}${path}${sep}adminKey=${encodeURIComponent(adminKey)}&_rwph=${Date.now()}`
         : `${PAYWALL_API_BASE}${path}`;
 
       GM_xmlhttpRequest({
         method,
         url,
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        data: isGet ? undefined : JSON.stringify({ ...(body || {}), adminKey }),
+        responseType: "text",
+        headers: {
+          "Accept": "application/json, text/plain, */*",
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+          "ngrok-skip-browser-warning": "true",
+          "Cache-Control": "no-cache",
+        },
+        data: isGet ? undefined : JSON.stringify({ ...(body || {}), adminKey, _rwph: Date.now() }),
         timeout: 120000,
         onload: (res) => {
           try {
-            const json = JSON.parse(res.responseText || "{}");
-
+            const json = rwphParseAdminJsonResponse(res);
             if (!json.ok) {
-              reject(new Error(json.error || `Admin server error ${res.status}`));
+              const err = new Error(json.error || `Admin server error ${res.status}`);
+              err.status = Number(res.status || 0);
+              reject(err);
             } else {
               resolve(json);
             }
           } catch (e) {
-            reject(new Error(`Could not parse admin server response. Status ${res.status}.`));
+            reject(e);
           }
         },
-        onerror: () => reject(new Error("Failed to reach admin server.")),
+        onerror: () => reject(new Error("Failed to reach admin server. Check the backend/tunnel URL and @connect domain.")),
         ontimeout: () => reject(new Error("Admin server request timed out.")),
       });
     });
@@ -1932,7 +1983,7 @@
     GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
     if (status) status.textContent = "Loading licences from server...";
     if (results) results.innerHTML = "";
-    const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
+    const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
     if (results) results.innerHTML = renderAdminLicenses(result.licenses || []);
     rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
     return result;
@@ -1944,7 +1995,7 @@
     const adminKey = rwphGetAdminKeyFromPanel(root);
     GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
     if (status) status.textContent = "Loading server status...";
-    const result = await adminRequest("GET", "/api/admin/status", adminKey);
+    const result = await adminRequest("POST", "/api/admin/status", adminKey);
     if (box) box.innerHTML = rwphRenderAdminStatusSummary(result);
     rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     return result;
@@ -11219,7 +11270,7 @@
       const adminKey = getAdminKeyFromInput();
       GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
       status.textContent = "Loading server status...";
-      const result = await adminRequest("GET", "/api/admin/status", adminKey);
+      const result = await adminRequest("POST", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
       rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     }
@@ -11233,7 +11284,7 @@
       status.textContent = "Loading licences from server...";
       results.innerHTML = "";
 
-      const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
+      const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
       results.innerHTML = renderAdminLicenses(result.licenses || []);
       rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
 
@@ -12262,7 +12313,7 @@
       const adminKey = getAdminKeyFromInput();
       GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
       status.textContent = "Loading server status...";
-      const result = await adminRequest("GET", "/api/admin/status", adminKey);
+      const result = await adminRequest("POST", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
       rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     }
@@ -12276,7 +12327,7 @@
       status.textContent = "Loading licences from server...";
       results.innerHTML = "";
 
-      const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
+      const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
       results.innerHTML = renderAdminLicenses(result.licenses || []);
       rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
 
