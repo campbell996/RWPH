@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.311
+// @version      1.1.312
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -14,11 +14,13 @@
 // @connect      api.torn.com
 // @connect      gooey-eagle-rentable.ngrok-free.dev
 // ==/UserScript==
-  // v1.1.311: replaced launcher and panel logos with transparent neon RWPH logo asset.
+  // v1.1.310: replaced launcher and panel logos with the ranked-war payout logo asset.
 
 (function () {
   "use strict";
 
+  // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
+  // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
   // v1.1.306: removed the Full API ToS / Key Usage Details dropdown from the locked Unlock panel while keeping the compact visible API notice.
@@ -1443,12 +1445,14 @@
 
   function apiPost(path, body) {
     return new Promise((resolve, reject) => {
+      const safePath = String(path || "");
+      const requestTimeout = safePath.includes("/api/calc/") ? 300000 : 120000;
       GM_xmlhttpRequest({
         method: "POST",
         url: `${PAYWALL_API_BASE}${path}`,
         headers: { "Content-Type": "application/json" },
         data: JSON.stringify(body || {}),
-        timeout: 120000,
+        timeout: requestTimeout,
         onload: (res) => {
           try {
             const json = JSON.parse(res.responseText || "{}");
@@ -1466,7 +1470,7 @@
           }
         },
         onerror: () => reject(new Error("Failed to reach paywall server.")),
-        ontimeout: () => reject(new Error("Paywall server request timed out.")),
+        ontimeout: () => reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")),
       });
     });
   }
@@ -3109,6 +3113,19 @@
         line-height:1.45;
         margin: 0 22px 10px;
       }
+      #rw-payout-helper .rw-pay-all-balance-warning {
+        margin:0 4px 10px !important;
+        padding:11px 10px !important;
+        border-radius:14px !important;
+        border:2px solid rgba(250,204,21,.76) !important;
+        border-left:6px solid rgba(249,115,22,.92) !important;
+        background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)) !important;
+        color:#fff7ed !important;
+        font:950 12px/1.35 Arial,Helvetica,sans-serif !important;
+        text-align:center !important;
+        box-shadow:0 0 22px rgba(245,158,11,.20), inset 0 1px 0 rgba(255,255,255,.07) !important;
+      }
+      #rw-payout-helper .rw-pay-all-balance-warning b { color:#fef3c7 !important; }
       #rw-payout-helper .rw-pay-all-list {
         display:grid;
         gap:8px;
@@ -5326,8 +5343,8 @@
     <div class="rwph-newsletter-code-body">
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Raw HTML Code</div>
-        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">How to copy: on computer, right-click inside the raw HTML code box, choose Select All, then press CTRL+C. On phone/Torn PDA, hold on the code box, choose Select All, then Copy. Then go to your faction newsletter controls and paste it into the Source code tab. The panel scrollbars are only part of RWPH and are not part of the generated code.</div>
-        <textarea spellcheck="false" tabindex="0" id="rwph-newsletter-code-textarea-${key}" data-rwph-newsletter-code="${key}" data-rwph-code-source="${esc(htmlCode)}">${esc(htmlCode)}</textarea>
+        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">How to copy: this raw HTML box is no-keyboard text, not a typing box. On phone/Torn PDA, hold the code, choose Select All, then Copy. On computer, right-click the code, Select All, then CTRL+C. Paste it into Torn's faction newsletter Source code tab. The panel scrollbars are only part of RWPH.</div>
+        <pre spellcheck="false" tabindex="0" role="textbox" aria-readonly="true" id="rwph-newsletter-code-text-${key}" data-rwph-newsletter-code="${key}" data-rwph-code-source="${esc(htmlCode)}">${esc(htmlCode)}</pre>
       </div>
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Live Preview</div>
@@ -5582,7 +5599,7 @@
     .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
     .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
     .rwph-newsletter-code-label{text-align:center;color:#fde68a;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
-    .rwph-newsletter-code-box textarea,.rwph-newsletter-code-box pre[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;}
+    .rwph-newsletter-code-box pre[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
     .rwph-newsletter-copy-status{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;text-align:center;padding:5px 6px;border:1px solid rgba(251,191,36,.18);border-radius:10px;background:rgba(2,6,23,.48);}
     .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
@@ -6802,7 +6819,7 @@
         <li data-rwph-load-step="3">Applies your weights and splits the Member Payout across members.</li>
         <li data-rwph-load-step="4">Builds the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
       </ul>
-      <div class="wait-note"><b>Public performance mode:</b> RWPH starts the selected calculation directly, reuses matching completed-war database cache, and retries Torn API rate limits automatically. Small wars often load quickly; bigger wars or Torn/API delays can take longer.</div>
+      <div class="wait-note"><b>Public performance mode:</b> RWPH starts the selected calculation directly, reuses matching completed-war database cache, and retries Torn API rate limits automatically. Small wars often load quickly; bigger wars or Torn/API delays can take 1-5 minutes on phone/PDA. The timer now changes to minutes after 59 seconds.</div>
     </section>
   </main>
   <script>
@@ -6814,7 +6831,11 @@
       var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
       var highestDoneStep = -1;
       function formatElapsed(total){
-        return total + " " + (total === 1 ? "sec" : "secs");
+        total = Math.max(0, Math.floor(Number(total) || 0));
+        var mins = Math.floor(total / 60);
+        var secs = total % 60;
+        if (mins <= 0) return total + " " + (total === 1 ? "sec" : "secs");
+        return mins + "m " + String(secs).padStart(2, "0") + "s";
       }
       function updateStepDots(total){
         // Dots are completed by live server progress, not by elapsed time.
@@ -6860,6 +6881,11 @@
       }
       tick();
       window.rwphLoadingTimer = setInterval(tick, 1000);
+      setTimeout(tick, 250);
+      setTimeout(tick, 61000);
+      document.addEventListener("visibilitychange", tick);
+      window.addEventListener("pageshow", tick);
+      window.addEventListener("focus", tick);
       pollProgressFromLoadingTab();
       window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 650);
     })();
@@ -6871,7 +6897,10 @@
 
   function rwphFormatResultsLoadingElapsed(startedAt) {
     const total = Math.max(0, Math.floor((Date.now() - Number(startedAt || Date.now())) / 1000));
-    return `${total} ${total === 1 ? "sec" : "secs"}`;
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    if (mins <= 0) return `${total} ${total === 1 ? "sec" : "secs"}`;
+    return `${mins}m ${String(secs).padStart(2, "0")}s`;
   }
 
   function rwphStartResultsLoadingCounter(tab, startedAt) {
@@ -6900,6 +6929,7 @@
     timer = setInterval(tick, 1000);
     setTimeout(tick, 120);
     setTimeout(tick, 1100);
+    setTimeout(tick, 61000);
   }
 
   function rwphPostResultsLoadingStep(tab, stepIndex) {
@@ -7633,6 +7663,8 @@
       .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:center; align-items:center; padding: 0 28px 8px; position:sticky; top:0; z-index:5; flex:0 0 auto; }
       .rw-pay-all-title { font-weight:950; color:#fff2dd; font-size:13px; }
       .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 7px; }
+      .rw-pay-all-balance-warning { margin:0 2px 8px; padding:9px 8px; border-radius:13px; border:2px solid rgba(250,204,21,.76); border-left:6px solid rgba(249,115,22,.92); background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)); color:#fff7ed; font:950 11px/1.32 Arial,Helvetica,sans-serif; text-align:center; box-shadow:0 0 20px rgba(245,158,11,.18), inset 0 1px 0 rgba(255,255,255,.07); }
+      .rw-pay-all-balance-warning b { color:#fef3c7; }
       .rw-pay-all-info { margin:0 8px 8px; padding:8px 9px; border-radius:12px; border:1px solid rgba(251,191,36,.16); background:rgba(15,23,42,.62); color:#fff2dd; font-size:9.5px; line-height:1.35; text-align:left; }
       .rw-pay-all-info b { color:#fff2dd; }
       .rw-pay-all-info ul { margin:5px 0 0 13px; padding:0; }
@@ -7733,6 +7765,7 @@
           <div class="rw-pay-all-title">Payments Copy Panel</div>
         </div>
         <div class="rw-pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</div>
+        <div class="rw-pay-all-balance-warning"><b>BIG WARNING:</b> In Torn faction controls, change the payment type from <b>Give money</b> to <b>Add To Balance</b> before paying members. Check this before every payout.</div>
         <div class="rw-pay-all-info">
           <b>How to use:</b>
           <ul>
@@ -10595,7 +10628,7 @@
             <div class="rw-how-title">Payments Copy Panel</div>
             <ul class="rw-how-list">
               <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with a matching cached-report button.</li>
-              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you.</li>
+              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you. In faction controls, change payment type from Give money to Add To Balance before paying members.</li>
               <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
               <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
               <li><b>Review first:</b> always check the member name, amount, and Torn page before manually sending any payment.</li>
@@ -11362,7 +11395,7 @@
             <div class="rw-how-title">Payments Copy Panel</div>
             <ul class="rw-how-list">
               <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with a matching cached-report button.</li>
-              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you.</li>
+              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you. In faction controls, change payment type from Give money to Add To Balance before paying members.</li>
               <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
               <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
               <li><b>Review first:</b> always check the member name, amount, and Torn page before manually sending any payment.</li>

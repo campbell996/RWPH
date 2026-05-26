@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.311**
+Version: **1.1.312**
 
 These terms explain how Ranked War Payout Helper, also called **RWPH**, uses Torn API keys, licence data, payment data, and ranked-war calculation data. RWPH is a manual payout calculator and copy/prefill helper. It is not an official Torn product.
 
@@ -323,13 +323,13 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ## Recent Changelog
 
-### v1.1.311
+### v1.1.312
 
-- Replaced the launcher logo with the new transparent neon RWPH logo.
-- Replaced all panel/result/newsletter logo image references that use the RWPH launcher logo data URI.
-- Added a transparent `rwph_launcher_logo_256.png` asset so the logo has no black background around it.
-- Kept payout maths, licence checks, API handling, panel controls, and newsletter logic unchanged.
-- Updated README, terms, server version, package version, and userscript version.
+- Phone/Torn PDA results loading timer now changes from seconds to minutes/seconds after 59 seconds.
+- Calculation API requests now allow a longer mobile-safe timeout for slow large-war/Torn API runs.
+- Raw HTML newsletter panels now use selectable no-keyboard code blocks instead of editable textareas, so long-press copy should not open the phone keypad.
+- Payments Copy Panel now shows a large warning to change Torn faction payments from **Give money** to **Add To Balance** before paying members.
+- Payout maths, licence checks, API key handling, and newsletter generated HTML are unchanged.
 
 ### v1.1.308
 
@@ -570,4 +570,4 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 
-v1.1.311 note: Updated the visible RWPH branding/logo only. No API-key handling, licence, or payout calculation behaviour changed.
+v1.1.312 note: Updated mobile loading display, longer calculation request timeout, raw newsletter code selection behaviour, and the Payments Copy Panel Add To Balance warning. No API-key handling, licence, or payout calculation behaviour changed.
