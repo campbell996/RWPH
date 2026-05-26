@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.325
+// @version      1.1.327
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,9 +19,9 @@
 (function () {
   "use strict";
 
-  // v1.1.325: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
-  // v1.1.325: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
-  // v1.1.325: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.327: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
+  // v1.1.327: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
+  // v1.1.327: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
@@ -1394,7 +1394,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-include-left-members", "rw-points-include-left-members"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1426,7 +1426,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-include-left-members", "rw-points-include-left-members"];
+    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -3080,11 +3080,18 @@
         font-size: 9.5px !important;
         line-height: 1.18 !important;
       }
-      #rw-payout-helper details.rw-settings-dropdown input {
+      #rw-payout-helper details.rw-settings-dropdown input,
+      #rw-payout-helper details.rw-settings-dropdown textarea {
         margin-top: 2px !important;
         padding: 4px 5px !important;
         min-height: 24px !important;
         font-size: 10px !important;
+      }
+      #rw-payout-helper details.rw-settings-dropdown textarea {
+        width: 100% !important;
+        min-height: 38px !important;
+        resize: vertical !important;
+        line-height: 1.25 !important;
       }
       #rw-payout-helper .rw-calc-brief {
         margin: 4px 0 !important;
@@ -5521,8 +5528,8 @@
     const overallTotalPayout = rwphSummaryOverallTotalPayout(summary, list);
     const perHitAmount = rwphSummaryPerHitAmount(summary, list);
     const perPointAmount = pointsMode ? rwphSummaryPerHitAmount(summary, list) : 0;
-    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
-    const removedLeftFactionHits = Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0);
+    const includeLeftFactionMembers = false;
+    const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
     const totalPayout = memberPayout;
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
@@ -6534,7 +6541,7 @@
       ${pointsMode ? `<div class="summary-card"><span>Enemy War Hospital Hits</span><b>${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}</b></div>` : ""}
       ${pointsMode ? `<div class="summary-card"><span>Enemy Hospital Bonus</span><b>${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)}</b></div>` : ""}
       <div class="summary-card"><span>${pointsMode ? "Fair Bonus" : "Payable"}</span><b>${pointsMode ? Number(summary?.totalFairFightBonusPoints || 0).toFixed(2) : Number(summary?.calcMeta?.payableEvents || 0)}</b></div>
-      ${includeLeftFactionMembers ? "" : `<div class="summary-card"><span>Removed Left-Member Hits</span><b>${removedLeftFactionHits}</b></div>`}
+      <div class="summary-card"><span>Removed Member Hits</span><b>${removedLeftFactionHits}</b></div>
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
 
@@ -7448,6 +7455,22 @@
     return Number(document.getElementById("rw-point-fair-fight-bonus-step")?.value || 0.01);
   }
 
+  function rwphExcludedMembersInputId(mode = "standard") {
+    return rwphNormalizeCalculationMode(mode) === "points" ? "rw-points-excluded-members" : "rw-excluded-members";
+  }
+
+  function rwphGetExcludedMembersTextForMode(mode = "standard") {
+    const el = document.getElementById(rwphExcludedMembersInputId(mode));
+    return String(el?.value || "").trim();
+  }
+
+  function rwphExcludedMembersSignature(mode = "standard") {
+    return rwphGetExcludedMembersTextForMode(mode)
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
     rwphCachedReports ||= {};
@@ -7470,7 +7493,8 @@
         rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
         rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
         rwphFixedPerHitWeight("rw-assist-weight", 0),
-        document.getElementById("rw-include-left-members")?.checked ? "include-left-members" : "current-members-only",
+        "manual-exclude-members-only-v1",
+        `exclude:${rwphExcludedMembersSignature("standard")}`,
       );
     }
 
@@ -7488,7 +7512,8 @@
         rwphPointFairFightBonusStepValue(),
         "avg-ff-custom-step-per-payable-hit-v2",
         "war-faction-retals-war-hit-plus-bonus-v1",
-        document.getElementById("rw-points-include-left-members")?.checked ? "include-left-members" : "current-members-only",
+        "manual-exclude-members-only-v1",
+        `exclude:${rwphExcludedMembersSignature("points")}`,
       );
     }
 
@@ -7518,9 +7543,8 @@
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
       pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
       pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
-      includeLeftFactionMembers: rwphNormalizeCalculationMode(calculationMode) === "points"
-        ? !!document.getElementById("rw-points-include-left-members")?.checked
-        : !!document.getElementById("rw-include-left-members")?.checked,
+      includeLeftFactionMembers: false,
+      excludedMembersText: rwphGetExcludedMembersTextForMode(calculationMode),
     };
   }
 
@@ -7818,8 +7842,8 @@
   function renderRows(rows, summary) {
     if (!rows || !rows.length) return `<div class="rw-muted">No payable or tracked attacks found.</div>`;
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
-    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
-    const removedLeftFactionHits = Number(summary?.removedLeftFactionHits || summary?.calcMeta?.removedLeftFactionHits || 0);
+    const includeLeftFactionMembers = false;
+    const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
 
     return `
       <div class="rw-summary">
@@ -7834,8 +7858,8 @@
         <b>Assists:</b> ${Number(summary?.totalAssists || 0)}<br>
         <b>Outside hits:</b> ${Number(summary?.totalOutsideHits || 0)} |
         <b>Retaliation hits:</b> ${Number(summary?.totalRetaliationHits || 0)}<br>
-        <b>Tracked hits:</b> ${Number(summary?.totalTrackedHits || 0)}${includeLeftFactionMembers ? "" : ` |
-        <b>Removed left-member hits:</b> ${removedLeftFactionHits}`}<br>
+        <b>Tracked hits:</b> ${Number(summary?.totalTrackedHits || 0)} |
+        <b>Removed member hits:</b> ${removedLeftFactionHits}<br>
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)}<br>
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
         <b>Skipped failed:</b> ${Number(summary?.calcMeta?.skippedFailed || 0)}<br>
@@ -8508,8 +8532,8 @@
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
-    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
-    const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
+    const includeLeftFactionMembers = false;
+    const removedLeftFactionHits = safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits);
     const factionName = String(summary?.factionName || summary?.faction?.name || "Faction");
     const newsletterTitle = `${factionName} Payout Newsletter`;
     return {
@@ -8858,7 +8882,7 @@
               <div style="font-size:18px; font-weight:bold; color:${theme.accent}; margin-bottom:10px; font-family:Arial, Helvetica, sans-serif;">Important Notices</div>
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse;">
                 <tr><td style="padding:10px; background-color:${theme.panelA}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• Payments should be reviewed before sending faction funds.</td></tr>
-                <tr><td style="padding:10px; background-color:${theme.panelB}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• ${m.includeLeftFactionMembers ? "Members who left the faction were included because the setting was ticked." : "Members who left the faction before calculation were excluded where detected."}</td></tr>
+                <tr><td style="padding:10px; background-color:${theme.panelB}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• ${m.includeLeftFactionMembers ? "Manual member exclusions are controlled by the Exclude member box." : "Only members typed in the Exclude member box are removed from the result."}</td></tr>
                 <tr><td style="padding:10px; background-color:${theme.panelA}; border-left:4px solid ${theme.strongLine}; color:${theme.soft}; font-family:Arial, Helvetica, sans-serif; line-height:1.45;">• Contact leadership if your payout looks wrong.</td></tr>
               </table>
             </td>
@@ -8943,7 +8967,7 @@
       </table>`;
     const noticeTable = (style = "left") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
       <tr><td style="padding:10px;background-color:${theme.panelA};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• Payments should be reviewed before sending faction funds.</td></tr>
-      <tr><td style="padding:6px;background-color:${theme.panelB};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• ${m.includeLeftFactionMembers ? "Members who left the faction were included because the setting was ticked." : "Members who left the faction before calculation were excluded where detected."}</td></tr>
+      <tr><td style="padding:6px;background-color:${theme.panelB};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• ${m.includeLeftFactionMembers ? "Manual member exclusions are controlled by the Exclude member box." : "Only members typed in the Exclude member box are removed from the result."}</td></tr>
       <tr><td style="padding:10px;background-color:${theme.panelA};border-${style}:4px solid ${theme.strongLine};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;line-height:1.45;">• Contact leadership if your payout looks wrong.</td></tr>
     </table>`;
     const wrapper = (inner, max = 620) => `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;">\n<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;"><tr><td align="center" style="padding:18px 8px;">\n<table width="${max}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${max}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};">${inner}</table>\n</td></tr></table>\n</div>`;
@@ -9013,7 +9037,7 @@
       return `<tr bgcolor="${bg}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#${idx + 1}</b></td><td style="padding:3px;border:1px solid ${line};color:${text};font:10px Arial">${esc(r.name)}</td><td style="padding:3px;border:1px solid ${line};color:#86efac;font:10px Arial;text-align:right"><b>${money(r.payout)}</b></td></tr>`;
     }).join("");
     const payouts = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr bgcolor="${head}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial"><b>Player</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:right"><b>Payout</b></td></tr>${payoutRows}</table>`;
-    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:9px Arial">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Members who left were included." : "Members who left were excluded where detected."}</td></tr></table>`;
+    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:9px Arial">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Manual exclusions only." : "Only manually excluded members were removed."}</td></tr></table>`;
     return rwphCleanNewsletterHtmlCode(`<div style="background:${theme.bg};color:${text};font:10px Arial;padding:4px"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};border:1px solid ${line}"><tr><td style="padding:7px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center"><div style="font:700 14px Arial;color:${accent}">${esc(theme.icon || "")} ${title}</div><div style="font:9px Arial;color:${soft}">${modeLabel} • compact long newsletter</div></td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">All Result Stats</div>${summaryRows}</td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">Payouts</div>${payouts}</td></tr><tr><td style="padding:4px">${notices}</td></tr></table></div>`);
   }
 
@@ -9153,7 +9177,7 @@
     const topTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">${topCards || `<tr><td style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;font-size:9px;text-align:center;">No top payouts.</td></tr>`}</table>`;
     const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
       <tr><td style="padding:4px;background-color:${theme.panelA};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;">• Review payouts before sending faction funds.</td></tr>
-      <tr><td style="padding:4px;background-color:${theme.panelB};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;">• ${m.includeLeftFactionMembers ? "Members who left were included because the setting was ticked." : "Members who left before calculation were excluded where detected."}</td></tr>
+      <tr><td style="padding:4px;background-color:${theme.panelB};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;">• ${m.includeLeftFactionMembers ? "Manual member exclusions are controlled by the Exclude member box." : "Only manually excluded members were removed."}</td></tr>
       <tr><td style="padding:4px;background-color:${theme.panelA};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;">• Contact leadership if your payout looks wrong.</td></tr>
     </table>`;
 
@@ -9286,8 +9310,8 @@
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
     const totalPayRespect = safeNumber(summary?.payoutRespect ?? summary?.respect) || list.reduce((sum, r) => sum + r.respect, 0);
-    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
-    const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
+    const includeLeftFactionMembers = false;
+    const removedLeftFactionHits = safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits);
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
     const maxWeight = Math.max(1, ...list.map((r) => r.weight));
     const generatedAt = new Date().toLocaleString();
@@ -9749,8 +9773,8 @@
     const totalOwnFactionHospitalBonusPoints = safeNumber(summary?.totalHospitalBonusPoints ?? summary?.totalOwnFactionHospitalBonusPoints) || list.reduce((sum, r) => sum + r.hospitalBonusPoints, 0);
     const totalFairFightBonusPoints = safeNumber(summary?.totalFairFightBonusPoints) || list.reduce((sum, r) => sum + r.fairFightBonusPoints, 0);
     const totalRespect = safeNumber(summary?.totalRespect) || list.reduce((sum, r) => sum + r.totalRespect, 0);
-    const includeLeftFactionMembers = !!(summary?.includeLeftFactionMembers || summary?.calcMeta?.includeLeftFactionMembers || summary?.calcMeta?.options?.includeLeftFactionMembers || summary?.options?.includeLeftFactionMembers);
-    const removedLeftFactionHits = includeLeftFactionMembers ? 0 : safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits);
+    const includeLeftFactionMembers = false;
+    const removedLeftFactionHits = safeNumber(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits);
     const generatedAt = new Date().toLocaleString();
     const topRows = [...list].sort((a, b) => b.payout - a.payout).slice(0, 8);
     const maxPayout = Math.max(1, ...list.map((r) => r.payout));
@@ -10901,6 +10925,7 @@
               <li><b>API Key:</b> required for Torn ID verification and ranked war data fetching. The key is saved locally only when you click Save Key.</li>
               <li><b>War start/end:</b> controls the exact time window used for attack and payout calculations.</li>
               <li><b>Auto-fill Last Finished War:</b> fills the latest completed ranked-war times and reports the result in a popup panel.</li>
+              <li><b>Exclude member from results:</b> paste a Torn name or ID in the Basic or Advanced box to remove that member and their stats before payouts are recalculated. This replaces the old left-member auto-removal system.</li>
               <li><b>Member Payout:</b> the money split across eligible members and the only payout amount used to calculate payments.</li>
               <li><b>Total Payout:</b> the full payout amount shown in results tabs and newsletters for your records only; it does not calculate member payments.</li>
               <li><b>Per Hit Amount:</b> shown on Per Hit result tabs and newsletters as Member Payout divided by total weighted hit contribution.</li>
@@ -11477,13 +11502,15 @@
               </div>
               <div class="rw-calc-brief">Tick hit types to include. Each checked type counts as <b>1</b>.</div>
               <div class="rw-compact-check-grid">
-                <label><input id="rw-include-left-members" type="checkbox"> Include left members</label>
                 <label><input id="rw-war-hit-weight" type="checkbox" checked> War hits</label>
                 <label><input id="rw-outside-hit-weight" type="checkbox" checked> Outside hits</label>
                 <label><input id="rw-retaliation-hit-weight" type="checkbox" checked> Retals</label>
                 <label><input id="rw-assist-weight" type="checkbox"> Assists</label>
               </div>
-              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by trusted Torn player ID only; removed-hit totals remain in the results page.</div>
+              <label>Exclude member from results
+                <textarea id="rw-excluded-members" rows="2" placeholder="Paste Torn name or ID. One per line for multiple." spellcheck="false"></textarea>
+              </label>
+              <div class="rw-calc-brief rw-calc-mini-note">Members entered here are removed from the final rows before payouts are recalculated. The Results Removed Member Hits stat now counts these manual exclusions only.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-run" type="button">Calculate</button>
                 <button id="rw-use-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -11507,10 +11534,10 @@
                   <input id="rw-points-total-overall" type="number" value="100000000" min="0">
                 </label>
               </div>
-              <div class="rw-compact-check-grid rw-compact-check-grid-single">
-                <label><input id="rw-points-include-left-members" type="checkbox"> Include left members</label>
-              </div>
-              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by trusted Torn player ID only; removed-hit totals remain in the results page.</div>
+              <label>Exclude member from results
+                <textarea id="rw-points-excluded-members" rows="2" placeholder="Paste Torn name or ID. One per line for multiple." spellcheck="false"></textarea>
+              </label>
+              <div class="rw-calc-brief rw-calc-mini-note">Members entered here are removed from the final rows before points payouts are recalculated. The Results Removed Member Hits stat now counts these manual exclusions only.</div>
               <div class="rw-row">
                 <label>War hit points
                   <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
@@ -11920,7 +11947,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-include-left-members", "rw-points-include-left-members"].forEach((id) => {
+    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -12131,7 +12158,7 @@
       const forceRefresh = !!document.getElementById("rw-admin-force-refresh")?.checked;
       const adminKeyForRefresh = forceRefresh ? (GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || document.getElementById("rw-admin-key")?.value?.trim() || "") : "";
 
-      // v1.1.325: Do not run an awaited cache pre-check before opening the results tab.
+      // v1.1.327: Do not run an awaited cache pre-check before opening the results tab.
       // Mobile/Torn PDA treats window.open after an awaited request as non-user-initiated,
       // which can make Calculate look like it never starts. The backend still checks the
       // matching report cache and returns cacheExists when needed.
@@ -12153,9 +12180,8 @@
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
       const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
       const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
-      const includeLeftFactionMembers = isPointsMode
-        ? !!document.getElementById("rw-points-include-left-members")?.checked
-        : !!document.getElementById("rw-include-left-members")?.checked;
+      const includeLeftFactionMembers = false;
+      const excludedMembersText = rwphGetExcludedMembersTextForMode(mode);
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
@@ -12204,6 +12230,7 @@
           pointFairFightAvgStep,
           pointFairFightBonusPerStep,
           includeLeftFactionMembers,
+          excludedMembersText,
           useCacheOnly,
           forceRefresh,
           adminKey: adminKeyForRefresh,
