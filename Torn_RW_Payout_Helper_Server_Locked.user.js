@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.317
+// @version      1.1.319
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,8 +19,8 @@
 (function () {
   "use strict";
 
-  // v1.1.317: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
-  // v1.1.317: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
+  // v1.1.319: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
+  // v1.1.319: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
@@ -8739,9 +8739,11 @@
       .replace(/\s*(?:min-width)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
       .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
-      .replace(/width\s*:\s*100%\s*;/gi, "width:96%;")
-      .replace(/width="100%"/gi, 'width="96%"')
-      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:96%;")
+      .replace(/width\s*:\s*100%\s*;/gi, "width:92%;")
+      .replace(/width="100%"/gi, 'width="92%"')
+      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:92%;")
+      .replace(/\s*display\s*:\s*table\s*;?/gi, "")
+      .replace(/\s*display\s*:\s*block\s*;?\s*display\s*:\s*block\s*;?/gi, "display:block;")
       .replace(/\s{2,}/g, " ")
       .replace(/>\s+</g, "><")
       .trim();
@@ -8990,9 +8992,9 @@
   function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
-    const metricLabel = m.pointsMode ? "Points" : "Weight";
-    const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
+    const key = String(themeKey || "standard").toLowerCase();
     const modeLabel = m.pointsMode ? "Advanced" : "Basic";
+    const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
     const bg1 = theme.panelA || theme.outer || theme.bg;
     const bg2 = theme.panelB || theme.header || theme.bg;
     const head = theme.header || bg2;
@@ -9001,19 +9003,51 @@
     const text = theme.text || "#f2f2f2";
     const soft = theme.soft || theme.muted || "#c9c9c9";
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const stat = (label, value) => `<td style="padding:3px;border:1px solid ${line};background:${bg1};color:${text};font:10px Arial"><b style="color:${soft};font-size:8px">${esc(label)}</b><br>${esc(String(value))}</td>`;
-    const summaryRows = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">`+
-      `<tr>${stat("Member Payout", money(m.memberPayout))}${stat(perUnitLabel, money(m.perUnitAmount))}</tr>`+
-      `<tr>${stat("Payable Hits", String(m.totalPayableEvents || 0))}${stat("Members", String(m.list.length))}</tr>`+
-      `<tr>${stat("Total Respect", Number(m.totalRespect || 0).toFixed(2))}${stat("Mode", modeLabel)}</tr>`+
-      `</table>`;
+    const baseFit = "box-sizing:border-box;max-width:100%;overflow-wrap:anywhere;word-break:break-word;white-space:normal;";
+    const stat = (label, value, idx = 0) => `<div style="${baseFit}display:block;margin:0 0 2px 0;padding:3px 4px;border:1px solid ${line};background:${idx % 2 ? bg2 : bg1};color:${text};font:9px Arial,Helvetica,sans-serif;line-height:1.12;"><b style="color:${soft};font-size:7px;line-height:1;text-transform:uppercase;">${esc(label)}</b><br><span style="${baseFit}font-weight:bold;color:${text};">${esc(String(value))}</span></div>`;
+    const summaryRows = [
+      ["Member Payout", money(m.memberPayout)],
+      [perUnitLabel, money(m.perUnitAmount)],
+      ["Payable Hits", String(m.totalPayableEvents || 0)],
+      ["Members", String(m.list.length)],
+      ["Total Respect", Number(m.totalRespect || 0).toFixed(2)],
+      ["Mode", modeLabel],
+    ].map((item, idx) => stat(item[0], item[1], idx)).join("");
     const payoutRows = m.list.map((r, idx) => {
       const bg = idx % 2 ? bg1 : bg2;
-      return `<tr bgcolor="${bg}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#${idx + 1}</b></td><td style="padding:3px;border:1px solid ${line};color:${text};font:10px Arial">${esc(r.name)}</td><td style="padding:3px;border:1px solid ${line};color:#86efac;font:10px Arial;text-align:right"><b>${money(r.payout)}</b></td></tr>`;
+      return `<div style="${baseFit}display:block;margin:0 0 2px 0;padding:3px;border:1px solid ${line};background:${bg};font-family:Arial,Helvetica,sans-serif;line-height:1.08;">
+        <div style="${baseFit}display:inline-block;vertical-align:top;width:14%;color:${accent};font:bold 9px Arial,Helvetica,sans-serif;text-align:center;">#${idx + 1}</div>
+        <div style="${baseFit}display:inline-block;vertical-align:top;width:50%;color:${text};font:bold 9px Arial,Helvetica,sans-serif;">${esc(r.name)}</div>
+        <div style="${baseFit}display:inline-block;vertical-align:top;width:34%;color:#86efac;font:bold 8px Arial,Helvetica,sans-serif;text-align:right;">${money(r.payout)}</div>
+      </div>`;
     }).join("");
-    const payouts = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr bgcolor="${head}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial"><b>Player</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:right"><b>Payout</b></td></tr>${payoutRows}</table>`;
-    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:9px Arial">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Members who left were included." : "Members who left were excluded where detected."}</td></tr></table>`;
-    return rwphCleanNewsletterHtmlCode(`<div style="background:${theme.bg};color:${text};font:10px Arial;padding:4px"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};border:1px solid ${line}"><tr><td style="padding:7px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center"><div style="font:700 14px Arial;color:${accent}">${esc(theme.icon || "")} ${title}</div><div style="font:9px Arial;color:${soft}">${modeLabel} • compact long newsletter</div></td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">All Result Stats</div>${summaryRows}</td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">Payouts</div>${payouts}</td></tr><tr><td style="padding:4px">${notices}</td></tr></table></div>`);
+    const topRows = m.list.slice(0, 3).map((r, idx) => {
+      const bg = idx === 0 ? head : (idx % 2 ? bg1 : bg2);
+      return `<div style="${baseFit}display:block;margin:0 0 2px 0;padding:4px;border:1px solid ${line};background:${bg};font-family:Arial,Helvetica,sans-serif;line-height:1.08;">
+        <span style="${baseFit}display:inline-block;width:14%;color:${accent};font:bold 8px Arial,Helvetica,sans-serif;text-align:center;">#${idx + 1}</span>
+        <span style="${baseFit}display:inline-block;width:50%;color:${accent};font:bold 9px Arial,Helvetica,sans-serif;">${esc(r.name)}</span>
+        <span style="${baseFit}display:inline-block;width:34%;color:#86efac;font:bold 8px Arial,Helvetica,sans-serif;text-align:right;">${money(r.payout)}</span>
+      </div>`;
+    }).join("");
+    const notices = `<div style="${baseFit}display:block;margin:0 0 2px 0;padding:4px;border-left:2px solid ${theme.strongLine || accent};background:${bg1};color:${soft};font:8px Arial,Helvetica,sans-serif;line-height:1.12;">• Review payouts before sending faction funds.</div>
+      <div style="${baseFit}display:block;margin:0 0 2px 0;padding:4px;border-left:2px solid ${theme.strongLine || accent};background:${bg2};color:${soft};font:8px Arial,Helvetica,sans-serif;line-height:1.12;">• ${m.includeLeftFactionMembers ? "Members who left were included because the setting was ticked." : "Members who left before calculation were excluded where detected."}</div>
+      <div style="${baseFit}display:block;margin:0;padding:4px;border-left:2px solid ${theme.strongLine || accent};background:${bg1};color:${soft};font:8px Arial,Helvetica,sans-serif;line-height:1.12;">• Contact leadership if your payout looks wrong.</div>`;
+    const section = (label, html) => `<div style="${baseFit}display:block;margin:5px 0 0 0;padding:0 4px;"><div style="${baseFit}display:block;margin:0 0 2px 0;color:${accent};font:bold 9px Arial,Helvetica,sans-serif;line-height:1.05;">${esc(label)}</div><div style="${baseFit}display:block;margin:0;padding:0;color:${soft};font:8px Arial,Helvetica,sans-serif;line-height:1.1;">${html}</div></div>`;
+    const headerSub = key === "cyber" ? "Neon dashboard" : key === "ledger" ? "Ledger document" : key === "crimson" ? "Raid command report" : key === "gold" ? "Victory payout board" : "Faction payout report";
+    const topSection = (key === "crimson" || key === "gold") ? section(key === "gold" ? "Podium" : "Top Orders", topRows || `<div style="${baseFit}padding:5px;background:${bg2};border:1px solid ${line};color:${soft};font:8px Arial,Helvetica,sans-serif;text-align:center;">No top payouts.</div>`) : "";
+    return rwphCleanNewsletterHtmlCode(`<div style="${baseFit}display:block;width:92%;max-width:300px;margin:0 auto;padding:3px;background:${theme.bg};color:${text};font:9px Arial,Helvetica,sans-serif;line-height:1.12;">
+      <div style="${baseFit}display:block;width:100%;margin:0 auto;padding:0;background:${theme.outer};border:1px solid ${line};">
+        <div style="${baseFit}display:block;padding:6px 4px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <div style="${baseFit}font-size:12px;line-height:1.08;font-weight:bold;color:${accent};letter-spacing:.2px;">${esc(theme.icon || "")} ${title}</div>
+          <div style="${baseFit}font-size:7px;line-height:1.1;color:${soft};margin-top:1px;">${esc(headerSub)} • ${esc(modeLabel)} • No side-scroll layout</div>
+        </div>
+        ${topSection}
+        ${section("All Result Stats", summaryRows)}
+        ${section(key === "ledger" ? "Signed Payouts" : key === "gold" ? "Victory Payouts" : "Payouts", payoutRows || `<div style="${baseFit}padding:6px;background:${bg2};border:1px solid ${line};color:${soft};font:8px Arial,Helvetica,sans-serif;text-align:center;">No payout rows.</div>`)}
+        ${section(key === "crimson" ? "Command Notes" : key === "gold" ? "Final Notes" : key === "standard" ? "Important Notices" : "Notices", notices)}
+        <div style="${baseFit}display:block;padding:5px 4px;background:${theme.bg};border-top:1px solid ${line};text-align:center;color:${theme.muted};font:7px Arial,Helvetica,sans-serif;line-height:1.1;">Generated by Ranked War Payout Helper<br><span style="color:${soft};">Review payouts before sending faction funds.</span></div>
+      </div>
+    </div>`);
   }
 
 
@@ -9031,8 +9065,8 @@
     const bg2 = theme.panelB || theme.header || theme.bg;
     const head = theme.header || bg2;
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const statCell = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:9px Arial;vertical-align:top"><b style="color:${soft};font-size:7px">${esc(label)}</b><br>${esc(String(value))}</td>`;
-    const statRows = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed">${items.reduce((html, item, idx) => idx % 2 === 0 ? html + `<tr>${statCell(item[0], item[1], idx % 4 ? bg2 : bg1)}${statCell((items[idx+1]||["",""])[0], (items[idx+1]||["",""])[1], idx % 4 ? bg1 : bg2)}</tr>` : html, "")}</table>`;
+    const fit = "box-sizing:border-box;max-width:100%;overflow-wrap:anywhere;word-break:break-word;white-space:normal;";
+    const statBlock = (label, value, idx = 0) => `<div style="${fit}display:block;margin:0 0 2px 0;padding:3px;border:1px solid ${line};background:${idx % 2 ? bg2 : bg1};color:${text};font:8px Arial,Helvetica,sans-serif;line-height:1.08;"><b style="color:${soft};font-size:6px;text-transform:uppercase;">${esc(label)}</b><br><span style="${fit}font-weight:bold;">${esc(String(value))}</span></div>`;
     const allStats = [
       ["Member Payout", money(m.memberPayout)],
       ["Total Payout", money(m.overallTotalPayout)],
@@ -9050,8 +9084,8 @@
         ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2)],
       );
     }
-    const miniStat = (label, value, i) => `<td width="20%" style="width:20%;padding:1px;border:1px solid ${line};background:${i % 2 ? bg1 : bg2};font:6px Arial;color:${text};vertical-align:top;line-height:1.12"><b style="color:${soft};font-size:5px">${esc(label)}</b><br>${esc(String(value))}</td>`;
-    const cardStatTable = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed">${items.reduce((html, item, idx) => idx % 5 === 0 ? html + `<tr>${miniStat(item[0], item[1], idx)}${miniStat((items[idx+1]||["",""])[0], (items[idx+1]||["",""])[1], idx+1)}${miniStat((items[idx+2]||["",""])[0], (items[idx+2]||["",""])[1], idx+2)}${miniStat((items[idx+3]||["",""])[0], (items[idx+3]||["",""])[1], idx+3)}${miniStat((items[idx+4]||["",""])[0], (items[idx+4]||["",""])[1], idx+4)}</tr>` : html, "")}</table>`;
+    const allStatsHtml = allStats.map((item, idx) => statBlock(item[0], item[1], idx)).join("");
+    const miniStat = (label, value, idx) => `<span style="${fit}display:inline-block;width:31%;vertical-align:top;margin:0 1% 2px 0;padding:1px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font:5.5px Arial,Helvetica,sans-serif;color:${text};line-height:1.05;"><b style="color:${soft};font-size:5px;">${esc(label)}</b><br>${esc(String(value))}</span>`;
     const payoutCards = m.list.map((r, idx) => {
       const metric = m.pointsMode ? Number(r.points || r.weight || 0) : Number(r.weight || 0);
       const stats = [
@@ -9059,7 +9093,11 @@
         ["Ast", r.assists || 0],
         ["Out", r.outsideHits || 0],
         ["Ret", r.retaliationHits || 0],
-        ["Payable", r.payableEvents || 0],
+        ["Pay", r.payableEvents || 0],
+        [metricLabel, metric.toFixed(2)],
+        ["Share", percent(r.payout, m.memberPayout)],
+        ["Respect", Number(r.respect || 0).toFixed(2)],
+        ["Total Respect", Number(r.totalRespect || 0).toFixed(2)],
       ];
       if (m.pointsMode) {
         stats.push(
@@ -9067,18 +9105,36 @@
           ["Enemy Hosp", r.enemyFactionHospitalizingHits || 0],
           ["Base", Number(r.basePoints || 0).toFixed(2)],
           ["Fair Bonus", Number(r.fairFightBonusPoints || 0).toFixed(2)],
-          ["FF / Hit", Number(r.fairFightPerPayableHitBonus || 0).toFixed(2)],
+          ["FF/Hit", Number(r.fairFightPerPayableHitBonus || 0).toFixed(2)],
           ["Own Bonus", Number(r.hospitalBonusPoints || 0).toFixed(2)],
           ["Enemy Bonus", Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2)],
           ["Avg FF", Number(r.avgFairFight || 1).toFixed(2)],
         );
       }
-      return `<tr><td style="padding:1px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font-family:Arial;color:${text}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed"><tr><td width="10%" style="width:10%;padding:0 1px 1px 0;text-align:center"><div style="border:1px solid ${theme.strongLine || accent};background:${head};color:${accent};font:bold 7px Arial;line-height:11px">#${idx + 1}</div></td><td width="52%" style="width:52%;padding:0 1px 1px 0;color:${text};font:bold 7px Arial;word-break:break-word;line-height:1.05">${esc(r.name)}</td><td width="38%" style="width:38%;padding:0 0 1px 0;color:#86efac;font:bold 7px Arial;text-align:right;word-break:break-word;line-height:1.05">${money(r.payout)}</td></tr><tr><td colspan="3">${cardStatTable(stats)}</td></tr></table></td></tr>`;
+      return `<div style="${fit}display:block;margin:0 0 2px 0;padding:2px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font-family:Arial,Helvetica,sans-serif;color:${text};line-height:1.04;">
+        <div style="${fit}display:block;margin:0 0 2px 0;">
+          <span style="${fit}display:inline-block;width:13%;color:${accent};font:bold 6.5px Arial,Helvetica,sans-serif;text-align:center;">#${idx + 1}</span>
+          <span style="${fit}display:inline-block;width:49%;color:${text};font:bold 6.5px Arial,Helvetica,sans-serif;">${esc(r.name)}</span>
+          <span style="${fit}display:inline-block;width:36%;color:#86efac;font:bold 6.5px Arial,Helvetica,sans-serif;text-align:right;">${money(r.payout)}</span>
+        </div>
+        <div style="${fit}display:block;margin:0;padding:0;">${stats.map((item, statIdx) => miniStat(item[0], item[1], statIdx)).join("")}</div>
+      </div>`;
     }).join("");
-    const payoutTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse">${payoutCards}</table>`;
-    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:8px Arial">Test Newsletter: 120 repeated rows. Review real payouts before sending faction funds.</td></tr></table>`;
-    return rwphCleanNewsletterHtmlCode(`<div style="background:${theme.bg};color:${text};font:8px Arial;padding:2px"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};border:1px solid ${line};table-layout:fixed"><tr><td style="padding:4px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center"><div style="font:bold 12px Arial;color:${accent}">${esc(theme.icon || "")} ${title}</div><div style="font:7px Arial;color:${soft}">${modeLabel} • Test Newsletter • Full stats/cards compact</div></td></tr><tr><td style="padding:2px"><div style="font:bold 8px Arial;color:${accent};margin-bottom:1px">All Result Stats</div>${statRows(allStats)}</td></tr><tr><td style="padding:2px"><div style="font:bold 8px Arial;color:${accent};margin-bottom:1px">Payout User Cards</div>${payoutTable}</td></tr><tr><td style="padding:2px">${notices}</td></tr></table></div>`);
+    const section = (label, html) => `<div style="${fit}display:block;margin:5px 0 0 0;padding:0 3px;"><div style="${fit}display:block;margin:0 0 2px 0;color:${accent};font:bold 7.5px Arial,Helvetica,sans-serif;line-height:1.05;">${esc(label)}</div>${html}</div>`;
+    const notices = `<div style="${fit}display:block;margin:0;padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:7px Arial,Helvetica,sans-serif;line-height:1.1;">Test Newsletter: 120 repeated rows. Review real payouts before sending faction funds.</div>`;
+    return rwphCleanNewsletterHtmlCode(`<div style="${fit}display:block;width:92%;max-width:300px;margin:0 auto;padding:2px;background:${theme.bg};color:${text};font:7px Arial,Helvetica,sans-serif;line-height:1.08;">
+      <div style="${fit}display:block;width:100%;margin:0 auto;background:${theme.outer};border:1px solid ${line};">
+        <div style="${fit}display:block;padding:4px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center;">
+          <div style="${fit}font:bold 10px Arial,Helvetica,sans-serif;color:${accent};line-height:1.08;">${esc(theme.icon || "")} ${title}</div>
+          <div style="${fit}font:6px Arial,Helvetica,sans-serif;color:${soft};line-height:1.08;">${modeLabel} • Test Newsletter • Full stats/cards • No side-scroll layout</div>
+        </div>
+        ${section("All Result Stats", allStatsHtml)}
+        ${section("Payout User Cards", payoutCards || `<div style="${fit}padding:5px;border:1px solid ${line};background:${bg2};color:${soft};font:7px Arial,Helvetica,sans-serif;text-align:center;">No payout rows.</div>`)}
+        ${section("Notice", notices)}
+      </div>
+    </div>`);
   }
+
 
   // v1.1.286: full-results-stat mobile newsletter builder override.
   // Shows every result-tab stat and formats payout rows like the result user cards.
@@ -12130,14 +12186,10 @@
       const forceRefresh = !!document.getElementById("rw-admin-force-refresh")?.checked;
       const adminKeyForRefresh = forceRefresh ? (GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || document.getElementById("rw-admin-key")?.value?.trim() || "") : "";
 
-      if (!useCacheOnly && !forceRefresh) {
-        await rwphAutoCheckCompletedWarCache(false);
-        const matchingCache = rwphEnsureCacheState(mode);
-        if (matchingCache.available) {
-          rwphToastPanelInfo(status, `There is already a cached ${rwphModeLabel(mode)} report for this selected war/time window and calculation settings. Open its settings dropdown and click Use Cached Report, or ask an admin to use Force Refresh if the cached result needs rebuilding.`, "warn", "RWPH Cached Report");
-          return;
-        }
-      }
+      // v1.1.319: Do not run an awaited cache pre-check before opening the results tab.
+      // Mobile/Torn PDA treats window.open after an awaited request as non-user-initiated,
+      // which can make Calculate look like it never starts. The backend still checks the
+      // matching report cache and returns cacheExists when needed.
 
       const from = dateTimeLocalToUnix(document.getElementById("rw-from").value);
       const to = dateTimeLocalToUnix(document.getElementById("rw-to").value);
