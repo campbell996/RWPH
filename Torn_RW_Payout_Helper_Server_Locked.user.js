@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.316
+// @version      1.1.317
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,8 +19,8 @@
 (function () {
   "use strict";
 
-  // v1.1.316: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
-  // v1.1.316: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
+  // v1.1.317: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
+  // v1.1.317: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
@@ -7457,7 +7457,10 @@
   function rwphGetPayoutCacheSignature(calculationMode = null) {
     const userKey = document.getElementById("rw-key")?.value?.trim() || "";
     const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const signatureParts = [userKey ? "key" : "no-key", "ignore-payout-settings-v1"];
+    const from = dateTimeLocalToUnix(document.getElementById("rw-from")?.value || "");
+    const to = dateTimeLocalToUnix(document.getElementById("rw-to")?.value || "");
+    const timeSignature = from && to && to > from ? `manual-time:${from}-${to}` : "auto-last-finished-war";
+    const signatureParts = [userKey ? "key" : "no-key", timeSignature, "ignore-payout-settings-v1"];
 
     if (!mode || mode === "standard") {
       signatureParts.push(
@@ -7495,6 +7498,8 @@
     return {
       userKey: document.getElementById("rw-key")?.value?.trim() || "",
       token: GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, ""),
+      from: dateTimeLocalToUnix(document.getElementById("rw-from")?.value || ""),
+      to: dateTimeLocalToUnix(document.getElementById("rw-to")?.value || ""),
       calculationMode: rwphNormalizeCalculationMode(calculationMode),
       memberPayout: rwphGetTotalPayoutForMode(calculationMode),
       totalPayout: rwphGetTotalPayoutForMode(calculationMode),
@@ -7582,7 +7587,7 @@
         useBtn.hidden = false;
         useBtn.disabled = !state.available;
         useBtn.textContent = "Use Cached Report";
-        useBtn.title = state.available ? `Open the matching backend/database cached ${label} report for the latest finished ranked war.` : `RWPH auto-checks the backend/database for a matching ${label} cached report when your key and calculation settings are ready. Payout fields do not block cache matching.`;
+        useBtn.title = state.available ? `Open the matching backend/database cached ${label} report for the selected war/time window.` : `RWPH auto-checks the backend/database for a matching ${label} cached report when your key and calculation settings are ready. Payout fields do not block cache matching.`;
       }
       if (deleteBtn) {
         deleteBtn.hidden = false;
@@ -11412,7 +11417,7 @@
           Server-side locked version. Your backend verifies the license and calculates payouts.
         </div>
         <div class="rw-small">
-          Completed-war mode: Basic Calculations and Advanced Calculations only report the latest finished ranked war. If a matching cached report exists, RWPH shows a popup and asks you to open the matching cached report instead of creating a duplicate report.
+          Completed-war mode: Basic Calculations and Advanced Calculations only report the selected war/time window. If a matching cached report exists, RWPH shows a popup and asks you to open the matching cached report instead of creating a duplicate report.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Main panel tabs">
@@ -12129,7 +12134,7 @@
         await rwphAutoCheckCompletedWarCache(false);
         const matchingCache = rwphEnsureCacheState(mode);
         if (matchingCache.available) {
-          rwphToastPanelInfo(status, `There is already a cached ${rwphModeLabel(mode)} report for this finished war and calculation settings. Open its settings dropdown and click Use Cached Report, or ask an admin to use Force Refresh if the cached result needs rebuilding.`, "warn", "RWPH Cached Report");
+          rwphToastPanelInfo(status, `There is already a cached ${rwphModeLabel(mode)} report for this selected war/time window and calculation settings. Open its settings dropdown and click Use Cached Report, or ask an admin to use Force Refresh if the cached result needs rebuilding.`, "warn", "RWPH Cached Report");
           return;
         }
       }
@@ -12172,8 +12177,8 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, finding the last finished ranked war, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
-            : "Server is verifying licence, checking the report cache, finding the last finished ranked war, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
+            ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
         rwphSetResultsLoadingStepDone(preOpenedResultsTab, 0);

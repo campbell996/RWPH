@@ -10,10 +10,17 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.316**  
+Current package version: **1.1.317**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
+
+
+### v1.1.317 manual time/faction-member fixes
+
+- Manual War start/end inputs now control the calculation window instead of being overridden by the latest finished war lookup.
+- Cached-report lookup/open/delete also uses the selected manual time window when dates are entered.
+- Current faction member filtering now refreshes the live member list for calculations/cache-open, reducing false left-member removals from stale cached member data.
 
 ---
 
@@ -601,7 +608,7 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.316
+### v1.1.317
 
 - Fixed Admin panel button handling with a panel-scoped delegated click handler, so Save Admin Key, List Licences, Server Status, Grant, Extend, Remove, and Fill buttons keep working after panel rebuilds/tab switches.
 - Fixed the Payments Copy Panel **Accept Warning** button so it unlocks prefill buttons without replacing/wiping the panel contents.
