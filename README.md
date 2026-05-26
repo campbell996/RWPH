@@ -10,19 +10,19 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.322**  
+Current package version: **1.1.323**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
 
 
-### v1.1.322 manual time/faction-member fixes
+### v1.1.323 manual time/faction-member fixes
 
 - Manual War start/end inputs now control the calculation window instead of being overridden by the latest finished war lookup.
 - Cached-report lookup/open/delete also uses the selected manual time window when dates are entered.
 - Current faction member filtering now refreshes the live member list for calculations/cache-open, reducing false left-member removals from stale cached member data.
 
-### v1.1.322
+### v1.1.323
 
 - Manual war start/end windows now try to match a faction ranked-war record inside that window.
 - When a ranked-war report is matched, War Hits, members, Respect, and Total Respect come from Torn's rankedwarreport instead of attack-log estimates.
@@ -615,13 +615,13 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.322
+### v1.1.323
 
 - Restored the v1.1.318 result/stat display code after the v1.1.319 newsletter no-scroll rewrite caused incorrect stat display.
 - Reverted the risky newsletter stat/card builder rewrite; payout maths and backend calculation logic are unchanged from the known-good v1.1.318 base.
 
 
-### v1.1.322
+### v1.1.323
 
 - Fixed Admin panel button handling with a panel-scoped delegated click handler, so Save Admin Key, List Licences, Server Status, Grant, Extend, Remove, and Fill buttons keep working after panel rebuilds/tab switches.
 - Fixed the Payments Copy Panel **Accept Warning** button so it unlocks prefill buttons without replacing/wiping the panel contents.
