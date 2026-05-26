@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.324
+// @version      1.1.325
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,9 +19,9 @@
 (function () {
   "use strict";
 
-  // v1.1.324: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
-  // v1.1.324: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
-  // v1.1.324: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.325: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
+  // v1.1.325: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
+  // v1.1.325: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
@@ -10908,7 +10908,7 @@
               <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
-              <li><b>Include members who left the faction:</b> off by default in both Basic and Advanced Calculations. When off, RWPH removes members who are no longer in your faction and shows how many hits were removed in the results.</li>
+              <li><b>Include members who left the faction:</b> off by default in both Basic and Advanced Calculations. When off, RWPH removes members only when their trusted Torn player ID is missing from your fresh current faction member ID list, then shows how many hits were removed in the results.</li>
               <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
               <li><b>Delete Cache:</b> inside Basic Calculations or Advanced Calculations deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
@@ -11483,7 +11483,7 @@
                 <label><input id="rw-retaliation-hit-weight" type="checkbox" checked> Retals</label>
                 <label><input id="rw-assist-weight" type="checkbox"> Assists</label>
               </div>
-              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by default and removed-hit totals remain in the results page.</div>
+              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by trusted Torn player ID only; removed-hit totals remain in the results page.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-run" type="button">Calculate</button>
                 <button id="rw-use-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -11510,7 +11510,7 @@
               <div class="rw-compact-check-grid rw-compact-check-grid-single">
                 <label><input id="rw-points-include-left-members" type="checkbox"> Include left members</label>
               </div>
-              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by default and removed-hit totals remain in the results page.</div>
+              <div class="rw-calc-brief rw-calc-mini-note">Left members are excluded by trusted Torn player ID only; removed-hit totals remain in the results page.</div>
               <div class="rw-row">
                 <label>War hit points
                   <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
@@ -11677,7 +11677,7 @@
               <li><b>Advanced Calculations:</b> War hits, assists, outside hits, war-faction retal bonus points, own-faction hospital bonuses, enemy war faction hospital bonuses, and custom Avg FF per-payable-hit bonus controls the contribution score used by the Advanced Calculate button. The enemy war faction hospital bonus can be positive or negative.</li>
               <li><b>Basic Calculations Calculate:</b> sends the normal weighted payout request to the backend for the last finished ranked war and opens the results loading tab.</li>
               <li><b>Advanced Calculations Calculate:</b> sends the points-mode request to the backend and opens a new fullscreen results tab where payout is based on final points score.</li>
-              <li><b>Include members who left the faction:</b> off by default in both Basic and Advanced Calculations. When off, RWPH removes members who are no longer in your faction and shows how many hits were removed in the results.</li>
+              <li><b>Include members who left the faction:</b> off by default in both Basic and Advanced Calculations. When off, RWPH removes members only when their trusted Torn player ID is missing from your fresh current faction member ID list, then shows how many hits were removed in the results.</li>
               <li><b>Use Cached Report:</b> inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when one exists. Browser-saved report fallback is disabled.</li>
               <li><b>Delete Cache:</b> inside Basic Calculations or Advanced Calculations deletes the matching database cached report for the current finished war/settings. Successful deletes are limited to one every 10 minutes per user.</li>
               <li><b>Launcher Movement:</b> moves the RWPH launcher between bottom right, bottom left, top left, and top right.</li>
@@ -12131,7 +12131,7 @@
       const forceRefresh = !!document.getElementById("rw-admin-force-refresh")?.checked;
       const adminKeyForRefresh = forceRefresh ? (GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || document.getElementById("rw-admin-key")?.value?.trim() || "") : "";
 
-      // v1.1.324: Do not run an awaited cache pre-check before opening the results tab.
+      // v1.1.325: Do not run an awaited cache pre-check before opening the results tab.
       // Mobile/Torn PDA treats window.open after an awaited request as non-user-initiated,
       // which can make Calculate look like it never starts. The backend still checks the
       // matching report cache and returns cacheExists when needed.
