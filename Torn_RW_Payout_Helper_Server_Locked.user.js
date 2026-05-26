@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.312
+// @version      1.1.313
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
 (function () {
   "use strict";
 
+  // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
@@ -3126,6 +3127,37 @@
         box-shadow:0 0 22px rgba(245,158,11,.20), inset 0 1px 0 rgba(255,255,255,.07) !important;
       }
       #rw-payout-helper .rw-pay-all-balance-warning b { color:#fef3c7 !important; }
+      #rw-payout-helper .rw-pay-all-accept-warning {
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        width:100% !important;
+        margin:8px 0 5px !important;
+        padding:8px 10px !important;
+        min-height:32px !important;
+        border-radius:11px !important;
+        border:2px solid rgba(254,243,199,.78) !important;
+        background:linear-gradient(135deg, rgba(250,204,21,.96), rgba(249,115,22,.94)) !important;
+        color:#1b1208 !important;
+        font:950 12px/1.15 Arial,Helvetica,sans-serif !important;
+        letter-spacing:.35px !important;
+        text-transform:uppercase !important;
+        cursor:pointer !important;
+        box-shadow:0 0 18px rgba(245,158,11,.30), inset 0 1px 0 rgba(255,255,255,.25) !important;
+      }
+      #rw-payout-helper .rw-pay-all-accept-warning.rw-pay-all-warning-accepted,
+      #rw-payout-helper .rw-pay-all-accept-warning:disabled {
+        border-color:rgba(34,197,94,.56) !important;
+        background:linear-gradient(135deg, rgba(34,197,94,.88), rgba(21,128,61,.88)) !important;
+        color:#ecfdf5 !important;
+        cursor:default !important;
+      }
+      #rw-payout-helper .rw-pay-all-warning-state {
+        color:#fef3c7 !important;
+        font:900 9.5px/1.25 Arial,Helvetica,sans-serif !important;
+        opacity:.98 !important;
+      }
+      #rw-payout-helper .rw-pay-all-panel[data-pay-warning-accepted="1"] .rw-pay-all-warning-state { color:#bbf7d0 !important; }
       #rw-payout-helper .rw-pay-all-list {
         display:grid;
         gap:8px;
@@ -3161,6 +3193,15 @@
         min-height: 26px !important;
         font-size: 10px !important;
         white-space:nowrap;
+      }
+      #rw-payout-helper .rw-pay-all-copy[disabled],
+      #rw-payout-helper .rw-pay-all-copy[aria-disabled="true"],
+      #rw-payout-helper .rw-pay-all-copy[data-pay-prefill-locked="1"] {
+        opacity:.42 !important;
+        cursor:not-allowed !important;
+        filter:grayscale(.55) !important;
+        box-shadow:none !important;
+        pointer-events:none !important;
       }
       @media (max-width: 760px), (pointer: coarse) {
         #rw-payout-helper .rw-pay-all-panel {
@@ -7665,6 +7706,10 @@
       .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 7px; }
       .rw-pay-all-balance-warning { margin:0 2px 8px; padding:9px 8px; border-radius:13px; border:2px solid rgba(250,204,21,.76); border-left:6px solid rgba(249,115,22,.92); background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)); color:#fff7ed; font:950 11px/1.32 Arial,Helvetica,sans-serif; text-align:center; box-shadow:0 0 20px rgba(245,158,11,.18), inset 0 1px 0 rgba(255,255,255,.07); }
       .rw-pay-all-balance-warning b { color:#fef3c7; }
+      .rw-pay-all-accept-warning { display:inline-flex !important; align-items:center !important; justify-content:center !important; width:100% !important; margin:8px 0 5px !important; padding:8px 10px !important; min-height:32px !important; border-radius:11px !important; border:2px solid rgba(254,243,199,.78) !important; background:linear-gradient(135deg, rgba(250,204,21,.96), rgba(249,115,22,.94)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; letter-spacing:.35px !important; text-transform:uppercase !important; cursor:pointer !important; box-shadow:0 0 18px rgba(245,158,11,.30), inset 0 1px 0 rgba(255,255,255,.25) !important; }
+      .rw-pay-all-accept-warning.rw-pay-all-warning-accepted, .rw-pay-all-accept-warning:disabled { border-color:rgba(34,197,94,.56) !important; background:linear-gradient(135deg, rgba(34,197,94,.88), rgba(21,128,61,.88)) !important; color:#ecfdf5 !important; cursor:default !important; }
+      .rw-pay-all-warning-state { color:#fef3c7; font:900 9.5px/1.25 Arial,Helvetica,sans-serif; opacity:.98; }
+      .rw-pay-all-panel[data-pay-warning-accepted="1"] .rw-pay-all-warning-state { color:#bbf7d0; }
       .rw-pay-all-info { margin:0 8px 8px; padding:8px 9px; border-radius:12px; border:1px solid rgba(251,191,36,.16); background:rgba(15,23,42,.62); color:#fff2dd; font-size:9.5px; line-height:1.35; text-align:left; }
       .rw-pay-all-info b { color:#fff2dd; }
       .rw-pay-all-info ul { margin:5px 0 0 13px; padding:0; }
@@ -7679,6 +7724,7 @@
       .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:900; color:#f8fafc; }
       .rw-pay-all-payout { display:block; margin-top:1px; color:#86efac; font-size:10px; font-weight:950; }
       .rw-pay-all-copy { display:inline-flex !important; align-items:center; justify-content:center; width:auto !important; max-width:none !important; padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(251,191,36,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#fff7ed; font-size:10px; font-weight:950; cursor:pointer; white-space:nowrap; }
+      .rw-pay-all-copy[disabled], .rw-pay-all-copy[aria-disabled="true"], .rw-pay-all-copy[data-pay-prefill-locked="1"] { opacity:.42 !important; cursor:not-allowed !important; filter:grayscale(.55) !important; box-shadow:none !important; pointer-events:none !important; }
       .rw-pay-all-copy.rwph-pay-button-hidden { display:none !important; visibility:hidden !important; pointer-events:none !important; }
       .rw-resize-handle { position:absolute; width:18px; height:18px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
       .rw-resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(251,191,36,.80); border-bottom:2px solid rgba(251,191,36,.80); border-radius:0 0 8px 0; }
@@ -7765,7 +7811,11 @@
           <div class="rw-pay-all-title">Payments Copy Panel</div>
         </div>
         <div class="rw-pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</div>
-        <div class="rw-pay-all-balance-warning"><b>BIG WARNING:</b> In Torn faction controls, change the payment type from <b>Give money</b> to <b>Add To Balance</b> before paying members. Check this before every payout.</div>
+        <div class="rw-pay-all-balance-warning" data-pay-warning-box="1">
+          <div><b>BIG WARNING:</b> In Torn faction controls, change the payment type from <b>Give money</b> to <b>Add To Balance</b> before paying members. Check this before every payout.</div>
+          <button type="button" class="rw-pay-all-accept-warning" data-pay-warning-accept="1">Accept Warning</button>
+          <div class="rw-pay-all-warning-state" data-pay-warning-state="1">Prefill buttons are locked until you accept this warning.</div>
+        </div>
         <div class="rw-pay-all-info">
           <b>How to use:</b>
           <ul>
@@ -7786,12 +7836,53 @@
             return `
               <div class="rw-pay-all-row">
                 <div class="rw-pay-all-member">${index + 1}. ${esc(name)} [${esc(id)}]<span class="rw-pay-all-payout">${money(payout)}</span></div>
-                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-name="${index}">Name + ID</button>
-                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-amount="${index}">Amount</button>
+                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-name="${index}" data-pay-prefill-locked="1" aria-disabled="true" disabled>Name + ID</button>
+                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-amount="${index}" data-pay-prefill-locked="1" aria-disabled="true" disabled>Amount</button>
               </div>`;
           }).join("") || `<div class="rw-pay-all-row"><div class="rw-pay-all-member">No payable members found.</div></div>`}
         </div>
       </div>`;
+  }
+
+  function rwphSetPayAllWarningAccepted(panel, accepted) {
+    if (!panel) return;
+    const isAccepted = !!accepted;
+    panel.dataset.payWarningAccepted = isAccepted ? "1" : "0";
+    for (const btn of Array.from(panel.querySelectorAll(".rw-pay-all-copy"))) {
+      const alreadyHidden = btn.hidden || btn.classList?.contains("rwph-pay-button-hidden") || btn.getAttribute("aria-hidden") === "true";
+      if (alreadyHidden) continue;
+      btn.disabled = !isAccepted;
+      if (isAccepted) {
+        btn.removeAttribute("aria-disabled");
+        btn.removeAttribute("data-pay-prefill-locked");
+      } else {
+        btn.setAttribute("aria-disabled", "true");
+        btn.setAttribute("data-pay-prefill-locked", "1");
+      }
+    }
+    const acceptBtn = panel.querySelector("[data-pay-warning-accept]");
+    if (acceptBtn) {
+      acceptBtn.disabled = isAccepted;
+      acceptBtn.classList.toggle("rw-pay-all-warning-accepted", isAccepted);
+      acceptBtn.textContent = isAccepted ? "Warning Accepted" : "Accept Warning";
+      acceptBtn.setAttribute("aria-pressed", isAccepted ? "true" : "false");
+    }
+    const state = panel.querySelector("[data-pay-warning-state]");
+    if (state) {
+      state.textContent = isAccepted
+        ? "Unlocked. Still manually check Add To Balance before every payout."
+        : "Prefill buttons are locked until you accept this warning.";
+    }
+  }
+
+  function rwphIsPayAllWarningAccepted(panel) {
+    return !!(panel && panel.dataset?.payWarningAccepted === "1");
+  }
+
+  function rwphRequirePayAllWarningAccepted(panel, statusEl = null) {
+    if (rwphIsPayAllWarningAccepted(panel)) return true;
+    rwphToastPanelInfo(statusEl || panel || document.body, "Click Accept Warning first, then confirm Torn is set to Add To Balance before using prefill buttons.", "warn", "RWPH Payments");
+    return false;
   }
 
   function closePayAllCopyPanel() {
@@ -8080,6 +8171,7 @@
     const panel = wrap.firstElementChild;
     document.body.appendChild(panel);
     panel.hidden = false;
+    rwphSetPayAllWarningAccepted(panel, false);
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
     rwphConsumeCrossTabPopup("payments", panel, 550);
     const payAllUndoStack = [];
@@ -8091,6 +8183,13 @@
         return;
       }
 
+      const acceptWarningBtn = e.target.closest?.("[data-pay-warning-accept]");
+      if (acceptWarningBtn) {
+        rwphSetPayAllWarningAccepted(panel, true);
+        rwphToastPanelInfo(panel, "Payment prefill buttons unlocked. Still manually confirm Add To Balance before paying.", "info", "RWPH Payments");
+        return;
+      }
+
       const undoBtn = e.target.closest?.("[data-pay-all-undo]");
       if (undoBtn) {
         rwphUndoLastPayAllDisappear(payAllUndoStack);
@@ -8099,6 +8198,7 @@
 
       const nameBtn = e.target.closest?.("[data-pay-copy-name]");
       if (nameBtn) {
+        if (!rwphRequirePayAllWarningAccepted(panel, panel)) return;
         rwphDismissPayAllCopyPopupsSilently();
         const row = safeRows[Number(nameBtn.dataset.payCopyName)] || {};
         const res = await rwphPrefillPayAllMember(row);
@@ -8109,6 +8209,7 @@
 
       const amountBtn = e.target.closest?.("[data-pay-copy-amount]");
       if (amountBtn) {
+        if (!rwphRequirePayAllWarningAccepted(panel, panel)) return;
         rwphDismissPayAllCopyPopupsSilently();
         const row = safeRows[Number(amountBtn.dataset.payCopyAmount)] || {};
         const res = await rwphPrefillPayAllAmount(row);
@@ -10628,7 +10729,7 @@
             <div class="rw-how-title">Payments Copy Panel</div>
             <ul class="rw-how-list">
               <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with a matching cached-report button.</li>
-              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you. In faction controls, change payment type from Give money to Add To Balance before paying members.</li>
+              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you. In faction controls, change payment type from Give money to Add To Balance before paying members. The prefill buttons stay locked until you click Accept Warning.</li>
               <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
               <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
               <li><b>Review first:</b> always check the member name, amount, and Torn page before manually sending any payment.</li>
@@ -11395,7 +11496,7 @@
             <div class="rw-how-title">Payments Copy Panel</div>
             <ul class="rw-how-list">
               <li><b>Report source:</b> the Payments Copy Panel can open from the current results page or from a backend/database cached report opened with a matching cached-report button.</li>
-              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you. In faction controls, change payment type from Give money to Add To Balance before paying members.</li>
+              <li><b>Manual payments only:</b> RWPH helps copy or prepare payment details. It does not send money, confirm payments, or click Torn payment buttons for you. In faction controls, change payment type from Give money to Add To Balance before paying members. The prefill buttons stay locked until you click Accept Warning.</li>
               <li><b>Button hiding:</b> after you click a member payment button, that button disappears so you can track who has already been handled.</li>
               <li><b>Bring Back Disappeared Button:</b> restores only the most recently hidden payment button, not every hidden button.</li>
               <li><b>Review first:</b> always check the member name, amount, and Torn page before manually sending any payment.</li>
@@ -11662,6 +11763,14 @@
         return;
       }
 
+      const payAllAcceptWarningBtn = e.target.closest("[data-pay-warning-accept]");
+      if (payAllAcceptWarningBtn) {
+        const payPanel = payAllAcceptWarningBtn.closest("#rw-pay-all-panel, .rw-pay-all-panel") || document.getElementById("rw-pay-all-panel");
+        rwphSetPayAllWarningAccepted(payPanel, true);
+        rwphToastPanelInfo(status, "Payment prefill buttons unlocked. Still manually confirm Add To Balance before paying.", "info", "RWPH Payments");
+        return;
+      }
+
       const payAllUndoBtn = e.target.closest("[data-pay-all-undo]");
       if (payAllUndoBtn) {
         rwphUndoLastPayAllDisappear(rwphPayAllInlineUndoStack);
@@ -11670,6 +11779,8 @@
 
       const payNameBtn = e.target.closest("[data-pay-copy-name]");
       if (payNameBtn) {
+        const payPanel = payNameBtn.closest("#rw-pay-all-panel, .rw-pay-all-panel") || document.getElementById("rw-pay-all-panel");
+        if (!rwphRequirePayAllWarningAccepted(payPanel, status)) return;
         rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
         const res = await rwphPrefillPayAllMember(row);
@@ -11680,6 +11791,8 @@
 
       const payAmountBtn = e.target.closest("[data-pay-copy-amount]");
       if (payAmountBtn) {
+        const payPanel = payAmountBtn.closest("#rw-pay-all-panel, .rw-pay-all-panel") || document.getElementById("rw-pay-all-panel");
+        if (!rwphRequirePayAllWarningAccepted(payPanel, status)) return;
         rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
         const res = await rwphPrefillPayAllAmount(row);

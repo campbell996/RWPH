@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.312**  
+Current package version: **1.1.313**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -601,7 +601,7 @@ When updating RWPH:
 
 ## Recent Changelog
 
-### v1.1.312
+### v1.1.313
 
 - Phone/Torn PDA results loading timer now changes from seconds to minutes/seconds after 59 seconds.
 - Calculation API requests now allow a longer mobile-safe timeout for slow large-war/Torn API runs.
@@ -1166,3 +1166,8 @@ RWPH is built to make ranked-war payout work faster and cleaner, but the faction
 - If a pending code already exists, RWPH opens the already-created Xanax Payment Helper panel for that code.
 - The Xanax Payment Helper now retries opening on the item page after tab load, focus, visibility changes, and Torn URL changes to make the helper panel more reliable.
 - Payment status still remains live-only: licence days are only added after the backend/Torn API confirms the payment.
+
+
+### v1.1.313
+- Payments Copy Panel now requires clicking **Accept Warning** before **Name + ID** and **Amount** prefill buttons unlock.
+- The warning reminds users to switch Torn faction controls from **Give money** to **Add To Balance** before paying members.
