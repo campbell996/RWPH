@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.313
+// @version      1.1.314
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
 (function () {
   "use strict";
 
+  // v1.1.314: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
@@ -419,14 +420,34 @@
     }
   }
 
+  function rwphCanWriteStatusText(statusEl) {
+    if (!statusEl || !statusEl.isConnected) return false;
+    try {
+      if (statusEl === document.body || statusEl === document.documentElement) return false;
+      if (statusEl.matches?.("button, input, textarea, select, option, summary")) return false;
+      if (statusEl.matches?.("#rw-payout-helper, #rw-pay-all-panel, .rw-pay-all-panel, .rw-results-panel, .rw-pay-all-row, .rw-pay-all-list, .rw-admin-box, .rw-how-box")) return false;
+      const id = String(statusEl.id || "").toLowerCase();
+      const cls = String(statusEl.className || "").toLowerCase();
+      if (/status|message|feedback|cache|code|summary/.test(id)) return true;
+      if (/rw-muted|status|message|feedback|cache/.test(cls)) return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphSetStatusReadyText(statusEl, readyText = "Ready.") {
+    if (rwphCanWriteStatusText(statusEl)) statusEl.textContent = readyText;
+  }
+
   function rwphToastPanelInfo(statusEl, message, mode = "info", title = "RWPH Info", readyText = "Ready.") {
     rwphShowToast(message, mode, 30000, title, statusEl);
-    if (statusEl) statusEl.textContent = readyText;
+    rwphSetStatusReadyText(statusEl, readyText);
   }
 
   function rwphToastPanelError(statusEl, message, title = "RWPH Error", readyText = "Ready.") {
     rwphShowToast(message, "error", 30000, title, statusEl);
-    if (statusEl) statusEl.textContent = readyText;
+    rwphSetStatusReadyText(statusEl, readyText);
   }
 
   function rwphQueueCrossTabPopup(context, message, mode = "info", title = "RWPH Info") {
@@ -1869,6 +1890,141 @@
     window.__rwphLicenseMonitor = setInterval(checkLicenseNow, 10 * 60 * 1000);
   }
 
+
+
+  function rwphFindAdminRoot(node) {
+    return node?.closest?.("#rw-payout-helper") || document;
+  }
+
+  function rwphAdminQuery(root, selector) {
+    return (root && root.querySelector ? root : document).querySelector(selector) || document.querySelector(selector);
+  }
+
+  function rwphAdminInputValue(root, selector) {
+    return String(rwphAdminQuery(root, selector)?.value || "").trim();
+  }
+
+  function rwphRenderAdminStatusSummary(result) {
+    const calculations = result.calculations || {};
+    const cache = result.cache || {};
+    const stats = result.stats || {};
+    return `
+      <div class="rw-admin-status-grid">
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Calculations</div><div class="rw-admin-status-value">${Number(calculations.active || 0)} active / direct start</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Report cache</div><div class="rw-admin-status-value">${Number(cache.reportCacheEntries || 0)} saved</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Torn cache</div><div class="rw-admin-status-value">${Number(cache.tornMemoryEntries || 0)} live</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Storage</div><div class="rw-admin-status-value">${esc(result.storage?.mode || "json")}</div></div>
+      </div>`;
+  }
+
+  function rwphGetAdminKeyFromPanel(root) {
+    const adminKey = rwphAdminInputValue(root, "#rw-admin-key");
+    if (!adminKey) throw new Error("Enter your admin key first.");
+    return adminKey;
+  }
+
+  async function rwphRefreshAdminLicensesFromPanel(root) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const results = rwphAdminQuery(root, "#rw-admin-results");
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    if (status) status.textContent = "Loading licences from server...";
+    if (results) results.innerHTML = "";
+    const result = await adminRequest("GET", "/api/admin/licenses", adminKey);
+    if (results) results.innerHTML = renderAdminLicenses(result.licenses || []);
+    rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
+    return result;
+  }
+
+  async function rwphLoadAdminServerStatusFromPanel(root) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const box = rwphAdminQuery(root, "#rw-admin-status-summary");
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    if (status) status.textContent = "Loading server status...";
+    const result = await adminRequest("GET", "/api/admin/status", adminKey);
+    if (box) box.innerHTML = rwphRenderAdminStatusSummary(result);
+    rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
+    return result;
+  }
+
+  function rwphBindAdminControls(root) {
+    const panelRoot = root && root.addEventListener ? root : document;
+    if (panelRoot.__rwphAdminDelegatedBound) return;
+    panelRoot.__rwphAdminDelegatedBound = true;
+    panelRoot.addEventListener("click", async (event) => {
+      const target = event.target;
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
+      if (!adminAction || !panelRoot.contains?.(adminAction)) return;
+      const rootScope = rwphFindAdminRoot(adminAction);
+      const status = rwphAdminQuery(rootScope, "#rw-admin-status");
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      try {
+        if (adminAction.classList?.contains("rw-admin-fill-revoke")) {
+          const filledId = adminAction.dataset.tornId || "";
+          const filledName = adminAction.dataset.name || (filledId ? `User ${filledId}` : "");
+          const idInput = rwphAdminQuery(rootScope, "#rw-admin-torn-id");
+          const nameInput = rwphAdminQuery(rootScope, "#rw-admin-name");
+          if (idInput) idInput.value = filledId;
+          if (nameInput) nameInput.value = filledName;
+          rwphToastPanelInfo(status, filledName ? `Filled ${filledName} (${filledId}) into the admin form.` : `Filled Torn ID ${filledId} into the admin form.`, "info", "RWPH Admin");
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-status-load") {
+          await rwphLoadAdminServerStatusFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-list") {
+          await rwphRefreshAdminLicensesFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-save-key") {
+          const adminKey = rwphGetAdminKeyFromPanel(rootScope);
+          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+          if (status) status.textContent = "Admin key saved. Granting owner 10,000 day licence...";
+          await grantOwnerLicenseFromAdminKey(adminKey, status);
+          await rwphRefreshAdminLicensesFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-grant") {
+          const adminKey = rwphGetAdminKeyFromPanel(rootScope);
+          const tornId = rwphAdminInputValue(rootScope, "#rw-admin-torn-id");
+          const name = rwphAdminInputValue(rootScope, "#rw-admin-name") || `User ${tornId}`;
+          const days = Number(rwphAdminQuery(rootScope, "#rw-admin-days")?.value || 30);
+          if (!tornId) return alert("Enter the player's Torn ID.");
+          if (!days || days <= 0) return alert("Enter valid licence days.");
+          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+          if (status) status.textContent = `Granting ${days} day licence to ${name} (${tornId})...`;
+          const result = await adminRequest("POST", "/api/admin/grant", adminKey, { tornId, name, days });
+          rwphToastPanelInfo(status, `Granted licence to ${result.name || name} (${result.tornId || tornId}) until ${formatUnixDate(result.expiresAt)}.`, "info", "RWPH Admin");
+          await rwphRefreshAdminLicensesFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-extend") {
+          const result = await extendAdminLicenseFromCurrentForm(status);
+          if (result) await rwphRefreshAdminLicensesFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-revoke") {
+          const result = await removeAdminLicenseDaysFromCurrentForm(status);
+          if (result) await rwphRefreshAdminLicensesFromPanel(rootScope);
+        }
+      } catch (e) {
+        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
+        rwphToastPanelError(status, `${actionName} error: ${e.message}`, "RWPH Admin");
+      }
+    }, true);
+  }
   async function rwphCheckLicenseOnPanelOpen() {
     const info = await getSavedLicenseInfo();
 
@@ -7881,7 +8037,7 @@
 
   function rwphRequirePayAllWarningAccepted(panel, statusEl = null) {
     if (rwphIsPayAllWarningAccepted(panel)) return true;
-    rwphToastPanelInfo(statusEl || panel || document.body, "Click Accept Warning first, then confirm Torn is set to Add To Balance before using prefill buttons.", "warn", "RWPH Payments");
+    rwphToastPanelInfo(statusEl && rwphCanWriteStatusText(statusEl) ? statusEl : null, "Click Accept Warning first, then confirm Torn is set to Add To Balance before using prefill buttons.", "warn", "RWPH Payments");
     return false;
   }
 
@@ -8186,7 +8342,7 @@
       const acceptWarningBtn = e.target.closest?.("[data-pay-warning-accept]");
       if (acceptWarningBtn) {
         rwphSetPayAllWarningAccepted(panel, true);
-        rwphToastPanelInfo(panel, "Payment prefill buttons unlocked. Still manually confirm Add To Balance before paying.", "info", "RWPH Payments");
+        rwphToastPanelInfo(null, "Payment prefill buttons unlocked. Still manually confirm Add To Balance before paying.", "info", "RWPH Payments");
         return;
       }
 
@@ -10899,6 +11055,8 @@
     const lockedResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(lockedResultsPanel);
     attachMoveLauncherButton();
+    rwphBindAdminControls(panel);
+
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
     const payTabBtn = document.getElementById("rw-paywall-tab-pay");
@@ -11692,6 +11850,8 @@
     rwphRestorePayoutFormState();
     rwphAttachPayoutFormPersistence();
     switchTab(rwphGetActiveTab("main", "payout"));
+
+    rwphBindAdminControls(panel);
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
