@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.330
+// @version      1.1.331
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.330: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.331: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7167,7 +7167,24 @@
       function updateStepDots(total){
         // Dots are completed by live server progress, not by elapsed time.
       }
-      window.rwphSetLoadingStepDone = function(stepIndex){
+      function progressFromStep(stepIndex){
+        var doneIndex = Math.max(0, Math.min(4, Math.floor(Number(stepIndex) || 0)));
+        return [12, 28, 62, 82, 96][doneIndex] || 8;
+      }
+      function setProgressBar(percent){
+        if (!barEl) barEl = document.getElementById("rwph-progress-bar");
+        if (!barEl) return;
+        var safe = Number(percent);
+        if (!isFinite(safe)) safe = 8;
+        safe = Math.max(3, Math.min(100, safe));
+        barEl.style.width = safe + "%";
+      }
+      window.rwphSetLoadingProgress = function(percent, label, stepIndex){
+        if (isFinite(Number(stepIndex))) window.rwphSetLoadingStepDone(stepIndex, false);
+        setProgressBar(percent);
+        if (statusEl && label) statusEl.textContent = String(label);
+      };
+      window.rwphSetLoadingStepDone = function(stepIndex, updateBar){
         var doneIndex = Number(stepIndex);
         if (!isFinite(doneIndex)) return;
         doneIndex = Math.max(0, Math.min(4, Math.floor(doneIndex)));
@@ -7181,12 +7198,13 @@
             step.classList.toggle("rwph-load-step-active", index === highestDoneStep + 1);
           }
         });
-        if (barEl) barEl.style.width = Math.max(8, Math.min(100, ((highestDoneStep + 1) / 5) * 100)) + "%";
+        if (updateBar !== false) setProgressBar(progressFromStep(highestDoneStep));
       };
       window.addEventListener("message", function(event){
         var data = event && event.data;
         if (!data || data.rwphType !== "rwph-calc-progress") return;
-        window.rwphSetLoadingStepDone(data.step);
+        if (isFinite(Number(data.percent))) window.rwphSetLoadingProgress(Number(data.percent), data.label || "", data.step);
+        else window.rwphSetLoadingStepDone(data.step);
       });
       function pollProgressFromLoadingTab(){
         if (!rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
@@ -7199,7 +7217,8 @@
         }).then(function(res){ return res && res.json ? res.json() : null; })
           .then(function(json){
             if (json && json.ok) {
-              if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
+              if (Number(json.percent) >= 0) window.rwphSetLoadingProgress(Number(json.percent), json.label || "", Number(json.step));
+              else if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
               if (statusEl && json.label) statusEl.textContent = json.label;
               if (statusEl && json.cancelled) statusEl.textContent = json.label || "Calculation cancelled because this loading tab was closed.";
             }
@@ -7259,7 +7278,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.330: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.331: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7289,25 +7308,32 @@
     return () => clearInterval(timer);
   }
 
-  function rwphPostResultsLoadingStep(tab, stepIndex) {
+  function rwphLoadingPercentFromStep(stepIndex) {
     const doneIndex = Math.max(0, Math.min(4, Number(stepIndex || 0)));
+    return [12, 28, 62, 82, 96][doneIndex] || 8;
+  }
+
+  function rwphPostResultsLoadingStep(tab, stepIndex, percent = null, label = "") {
+    const doneIndex = Math.max(0, Math.min(4, Number(stepIndex || 0)));
+    const safePercent = Number.isFinite(Number(percent)) ? Math.max(3, Math.min(100, Number(percent))) : rwphLoadingPercentFromStep(doneIndex);
     try {
       if (tab && !tab.closed && typeof tab.postMessage === "function") {
-        tab.postMessage({ rwphType: "rwph-calc-progress", step: doneIndex }, "*");
+        tab.postMessage({ rwphType: "rwph-calc-progress", step: doneIndex, percent: safePercent, label: String(label || "") }, "*");
       }
     } catch (_) {}
     try {
       if (tab && tab.window && typeof tab.window.postMessage === "function") {
-        tab.window.postMessage({ rwphType: "rwph-calc-progress", step: doneIndex }, "*");
+        tab.window.postMessage({ rwphType: "rwph-calc-progress", step: doneIndex, percent: safePercent, label: String(label || "") }, "*");
       }
     } catch (_) {}
   }
 
-  function rwphSetResultsLoadingStepDone(tab, stepIndex) {
+  function rwphSetResultsLoadingStepDone(tab, stepIndex, percent = null, label = "") {
     const doneIndex = Math.max(0, Math.min(4, Number(stepIndex || 0)));
+    const safePercent = Number.isFinite(Number(percent)) ? Math.max(3, Math.min(100, Number(percent))) : rwphLoadingPercentFromStep(doneIndex);
     try {
       if (!tab || tab.closed) return;
-      rwphPostResultsLoadingStep(tab, doneIndex);
+      rwphPostResultsLoadingStep(tab, doneIndex, safePercent, label);
       // Direct DOM update helps Torn PDA/phone; postMessage helps PC/desktop popups.
       const doc = tab.document;
       const steps = doc && doc.querySelectorAll ? Array.prototype.slice.call(doc.querySelectorAll("[data-rwph-load-step]")) : [];
@@ -7321,15 +7347,23 @@
             step.classList.toggle("rwph-load-step-active", index === doneIndex + 1);
           }
         });
+        const bar = doc.getElementById && doc.getElementById("rwph-progress-bar");
+        if (bar) bar.style.width = safePercent + "%";
+        const status = doc.getElementById && doc.getElementById("rwph-live-status");
+        if (status && label) status.textContent = String(label);
         return;
       }
-      if (tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
+      if (tab.window && typeof tab.window.rwphSetLoadingProgress === "function") {
+        tab.window.rwphSetLoadingProgress(safePercent, label, doneIndex);
+      } else if (tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
         tab.window.rwphSetLoadingStepDone(doneIndex);
       }
     } catch (_) {
       try {
-        rwphPostResultsLoadingStep(tab, doneIndex);
-        if (tab && tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
+        rwphPostResultsLoadingStep(tab, doneIndex, safePercent, label);
+        if (tab && tab.window && typeof tab.window.rwphSetLoadingProgress === "function") {
+          tab.window.rwphSetLoadingProgress(safePercent, label, doneIndex);
+        } else if (tab && tab.window && typeof tab.window.rwphSetLoadingStepDone === "function") {
           tab.window.rwphSetLoadingStepDone(doneIndex);
         }
       } catch (__) {}
@@ -7368,7 +7402,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.330: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.331: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7399,7 +7433,7 @@
           try {
             const json = JSON.parse(res.responseText || "{}");
             if (json && json.ok && Number(json.step) >= 0) {
-              rwphSetResultsLoadingStepDone(tab, Number(json.step));
+              rwphSetResultsLoadingStepDone(tab, Number(json.step), Number(json.percent), json.label || "");
             }
           } catch (_) {}
         },
@@ -7441,7 +7475,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.330: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.331: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7469,7 +7503,7 @@
       let loadingBlobUrl = "";
       let tab = null;
 
-      // v1.1.330: open a real reloadable loading document instead of writing to about:blank.
+      // v1.1.331: open a real reloadable loading document instead of writing to about:blank.
       // Refreshing a document.write() about:blank tab reloads to an empty page on phone/PDA.
       // A blob URL keeps the loading page HTML, progress id, and start time available after refresh.
       try {
