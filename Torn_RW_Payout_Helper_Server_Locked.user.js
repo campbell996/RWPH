@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.332
+// @version      1.1.333
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.332: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.333: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -1395,7 +1395,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1429,7 +1429,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -7288,7 +7288,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.332: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.333: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7426,7 +7426,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.332: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.333: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7499,7 +7499,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.332: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.333: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7527,7 +7527,7 @@
       let loadingBlobUrl = "";
       let tab = null;
 
-      // v1.1.332: open a real reloadable loading document instead of writing to about:blank.
+      // v1.1.333: open a real reloadable loading document instead of writing to about:blank.
       // Refreshing a document.write() about:blank tab reloads to an empty page on phone/PDA.
       // A blob URL keeps the loading page HTML, progress id, and start time available after refresh.
       try {
@@ -7742,6 +7742,10 @@
       .trim();
   }
 
+  function rwphBasicFastModeEnabled() {
+    return document.getElementById("rw-basic-fast-mode")?.checked === true;
+  }
+
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
     rwphCachedReports ||= {};
@@ -7765,6 +7769,7 @@
         rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
         rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
         rwphFixedPerHitWeight("rw-assist-weight", 0),
+        rwphBasicFastModeEnabled() ? "basic-fast-report-only-v1" : "basic-normal-hybrid-v1",
         "manual-exclude-members-only-v1",
         `exclude:${rwphExcludedMembersSignature("standard")}`,
       );
@@ -7806,6 +7811,7 @@
       outsideHitWeight: rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
       retaliationHitWeight: rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
       assistWeight: rwphFixedPerHitWeight("rw-assist-weight", 0),
+      basicFastMode: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasicFastModeEnabled(),
       pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
       pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
       pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
@@ -11780,6 +11786,10 @@
                 <label><input id="rw-retaliation-hit-weight" type="checkbox" checked> Retals</label>
                 <label><input id="rw-assist-weight" type="checkbox"> Assists</label>
               </div>
+              <div class="rw-compact-check-grid rw-compact-check-grid-single">
+                <label><input id="rw-basic-fast-mode" type="checkbox"> Fast Mode — ranked-war report only</label>
+              </div>
+              <div class="rw-calc-brief rw-calc-mini-note">Fast Mode is much quicker. It uses Torn rankedwarreport for War Hits, members, Respect and Total Respect, but skips attack-log extras like assists, outside hits and retals.</div>
               <label>Exclude member from results
                 <textarea id="rw-excluded-members" rows="2" placeholder="Paste Torn name or ID. One per line for multiple." spellcheck="false"></textarea>
               </label>
@@ -12231,7 +12241,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
+    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -12460,6 +12470,7 @@
       const outsideHitWeight = rwphFixedPerHitWeight("rw-outside-hit-weight", 1);
       const retaliationHitWeight = rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1);
       const assistWeight = rwphFixedPerHitWeight("rw-assist-weight", 0);
+      const basicFastMode = !isPointsMode && rwphBasicFastModeEnabled();
       const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
       const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
       const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
@@ -12494,7 +12505,9 @@
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
             ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
-            : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
+            : (basicFastMode
+              ? "Server is verifying licence, checking the report cache, then using Torn rankedwarreport only for a much faster Basic result. Attack-log extras are skipped in Fast Mode..."
+              : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."));
         preOpenedResultsTab = openBlankResultsTab(progressId);
         const cancelBecauseTabClosed = () => {
           if (calculationFinished || calculationCancelledByClosedTab) return;
@@ -12521,6 +12534,7 @@
           outsideHitWeight,
           retaliationHitWeight,
           assistWeight,
+          basicFastMode,
           pointWarHitValue,
           pointAssistValue,
           pointOutsideHitValue,
