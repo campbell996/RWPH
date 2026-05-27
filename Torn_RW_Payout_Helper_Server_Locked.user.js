@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.327
+// @version      1.1.329
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,11 +19,12 @@
 (function () {
   "use strict";
 
-  // v1.1.327: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
-  // v1.1.327: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
-  // v1.1.327: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
+  // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
+  // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
+  // v1.1.329: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -1394,7 +1395,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1413,6 +1414,8 @@
     if (state["rw-total"] && !state["rw-points-total"]) state["rw-points-total"] = state["rw-total"];
     if (state["rw-total"] && !state["rw-total-overall"]) state["rw-total-overall"] = state["rw-total"];
     if (state["rw-points-total"] && !state["rw-points-total-overall"]) state["rw-points-total-overall"] = state["rw-points-total"];
+    if (state["rw-from"] && !state["rw-points-from"]) state["rw-points-from"] = state["rw-from"];
+    if (state["rw-to"] && !state["rw-points-to"]) state["rw-points-to"] = state["rw-to"];
     if (GM_getValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "") !== "retal-bonus-v255") {
       if (String(state["rw-point-retal"] ?? "").trim() === "4") state["rw-point-retal"] = "0.2";
       GM_setValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "retal-bonus-v255");
@@ -1426,7 +1429,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -1499,6 +1502,67 @@
     });
   }
 
+
+  function apiPostCancelable(path, body, options = {}) {
+    let request = null;
+    let settled = false;
+    const promise = new Promise((resolve, reject) => {
+      const safePath = String(path || "");
+      const requestTimeout = Number(options.timeout || 0) > 0 ? Number(options.timeout) : (safePath.includes("/api/calc/") ? 600000 : 120000);
+      request = GM_xmlhttpRequest({
+        method: "POST",
+        url: `${PAYWALL_API_BASE}${path}`,
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify(body || {}),
+        timeout: requestTimeout,
+        onload: (res) => {
+          settled = true;
+          try {
+            const json = JSON.parse(res.responseText || "{}");
+            if (!json.ok) {
+              const err = new Error(json.error || `Server error ${res.status}`);
+              err.retryAfterSeconds = Number(json.retryAfterSeconds || 0);
+              err.cooldownEndsAtMs = Number(json.cooldownEndsAtMs || 0);
+              err.status = Number(res.status || 0);
+              err.cancelled = !!json.cancelled;
+              reject(err);
+            } else {
+              resolve(json);
+            }
+          } catch (e) {
+            reject(new Error(`Could not parse server response. Status ${res.status}.`));
+          }
+        },
+        onerror: () => { settled = true; reject(new Error("Failed to reach paywall server.")); },
+        ontimeout: () => { settled = true; reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")); },
+        onabort: () => { settled = true; const err = new Error("Calculation cancelled because the results loading tab was closed."); err.cancelled = true; reject(err); },
+      });
+    });
+    return {
+      promise,
+      abort: () => {
+        if (settled) return;
+        try { if (request && typeof request.abort === "function") request.abort(); } catch (_) {}
+      },
+    };
+  }
+
+  function rwphSendCalcCancel(progressId, reason = "Results loading tab closed before calculation finished.") {
+    const id = String(progressId || "").trim();
+    if (!id) return;
+    try {
+      GM_xmlhttpRequest({
+        method: "POST",
+        url: `${PAYWALL_API_BASE}/api/calc/cancel`,
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify({ progressId: id, reason }),
+        timeout: 10000,
+        onload: () => {},
+        onerror: () => {},
+        ontimeout: () => {},
+      });
+    } catch (_) {}
+  }
 
   function rwphCleanResponsePreview(text, maxLen = 260) {
     return String(text || "")
@@ -7018,6 +7082,9 @@
       white-space:nowrap;
     }
     .loading-dot { width:8px; height:8px; border-radius:999px; background:#f59e0b; box-shadow:0 0 12px rgba(245,158,11,.85); animation:rwphLoadPulse 1.2s ease-in-out infinite; }
+    .rwph-progress-wrap{height:9px;border-radius:999px;overflow:hidden;border:1px solid rgba(251,191,36,.28);background:rgba(2,6,23,.64);box-shadow:inset 0 1px 4px rgba(0,0,0,.45);}
+    .rwph-progress-bar{height:100%;width:8%;border-radius:999px;background:linear-gradient(90deg,#f59e0b,#f97316,#fde68a);box-shadow:0 0 14px rgba(245,158,11,.38);transition:width .35s ease;}
+    .rwph-live-status{font-size:12px;font-weight:900;color:#fff2dd;line-height:1.35;padding:9px 10px;border:1px solid rgba(251,191,36,.18);border-radius:14px;background:rgba(2,6,23,.35);}
     .rwph-loading-body { padding:14px; display:grid; gap:12px; }
     .rwph-info-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
     .rwph-info-card,
@@ -7068,6 +7135,8 @@
         <div class="rwph-info-card"><div class="rwph-info-title">Database cache only</div><div class="rwph-info-text">Cached reports come from the backend/database, not old browser-saved results.</div></div>
         <div class="rwph-info-card"><div class="rwph-info-title">24 hour cache</div><div class="rwph-info-text">Matching Per Hit and Points System cached reports can be opened separately and are deleted after 24 hours.</div></div>
       </div>
+      <div class="rwph-progress-wrap" aria-label="Calculation progress"><div id="rwph-progress-bar" class="rwph-progress-bar"></div></div>
+      <div id="rwph-live-status" class="rwph-live-status">Starting calculation. This page can be left in another tab; RWPH will keep checking progress.</div>
       <ul class="loading-list" aria-label="What RWPH is loading">
         <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence and confirms server access.</li>
         <li data-rwph-load-step="1">Checks the backend/database report cache for this finished war and payout setup.</li>
@@ -7082,6 +7151,8 @@
     (function(){
       var started = Date.now();
       var el = document.getElementById("rwph-load-seconds");
+      var statusEl = document.getElementById("rwph-live-status");
+      var barEl = document.getElementById("rwph-progress-bar");
       var steps = Array.prototype.slice.call(document.querySelectorAll("[data-rwph-load-step]"));
       var rwphProgressId = ${JSON.stringify(String(progressId || ""))};
       var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
@@ -7110,6 +7181,7 @@
             step.classList.toggle("rwph-load-step-active", index === highestDoneStep + 1);
           }
         });
+        if (barEl) barEl.style.width = Math.max(8, Math.min(100, ((highestDoneStep + 1) / 5) * 100)) + "%";
       };
       window.addEventListener("message", function(event){
         var data = event && event.data;
@@ -7126,7 +7198,11 @@
           body: JSON.stringify({ progressId: rwphProgressId })
         }).then(function(res){ return res && res.json ? res.json() : null; })
           .then(function(json){
-            if (json && json.ok && Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
+            if (json && json.ok) {
+              if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
+              if (statusEl && json.label) statusEl.textContent = json.label;
+              if (statusEl && json.cancelled) statusEl.textContent = json.label || "Calculation cancelled because this loading tab was closed.";
+            }
           }).catch(function(){});
       }
       function tick(){
@@ -7252,8 +7328,9 @@
     } catch (_) {}
   }
 
-  function rwphStartResultsProgressPolling(tab, progressId) {
+  function rwphStartResultsProgressPolling(tab, progressId, onClosed = null) {
     const id = String(progressId || "").trim();
+    const hasResultsTab = !!tab;
     if (!id) return () => {};
     let stopped = false;
     let pending = false;
@@ -7262,9 +7339,10 @@
     const poll = () => {
       if (stopped || pending) return;
       try {
-        if (!tab || tab.closed) {
+        if (hasResultsTab && tab.closed) {
           stopped = true;
           if (timer) clearInterval(timer);
+          try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
           return;
         }
       } catch (_) {}
@@ -7291,6 +7369,28 @@
 
     timer = setInterval(poll, 650);
     setTimeout(poll, 80);
+    return () => {
+      stopped = true;
+      if (timer) clearInterval(timer);
+    };
+  }
+
+  function rwphStartResultsTabCloseWatcher(tab, progressId, onClosed = null) {
+    if (!tab) return () => {};
+    const id = String(progressId || "").trim();
+    let stopped = false;
+    let cancelled = false;
+    let timer = null;
+    const cancelOnce = () => {
+      if (stopped || cancelled) return;
+      try { if (tab && !tab.closed) return; } catch (_) {}
+      cancelled = true;
+      if (timer) clearInterval(timer);
+      rwphSendCalcCancel(id, "Results loading tab was closed before RWPH finished calculating.");
+      try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
+    };
+    timer = setInterval(cancelOnce, 750);
+    setTimeout(cancelOnce, 900);
     return () => {
       stopped = true;
       if (timer) clearInterval(timer);
@@ -7390,6 +7490,30 @@
     return rwphNormalizeCalculationMode(mode) === "points" ? "Points System" : "Per Hit";
   }
 
+  function rwphTimeInputIds(mode = "standard") {
+    return rwphNormalizeCalculationMode(mode) === "points"
+      ? { from: "rw-points-from", to: "rw-points-to" }
+      : { from: "rw-from", to: "rw-to" };
+  }
+
+  function rwphGetTimeWindowForMode(mode = "standard") {
+    const ids = rwphTimeInputIds(mode);
+    const fromEl = document.getElementById(ids.from);
+    const toEl = document.getElementById(ids.to);
+    return {
+      from: dateTimeLocalToUnix(fromEl?.value || ""),
+      to: dateTimeLocalToUnix(toEl?.value || ""),
+    };
+  }
+
+  function rwphSetTimeWindowForMode(mode = "standard", from = 0, to = 0) {
+    const ids = rwphTimeInputIds(mode);
+    const fromEl = document.getElementById(ids.from);
+    const toEl = document.getElementById(ids.to);
+    if (fromEl) fromEl.value = toDateTimeLocalValue(from);
+    if (toEl) toEl.value = toDateTimeLocalValue(to);
+  }
+
   function rwphTotalPayoutInputId(mode) {
     return rwphNormalizeCalculationMode(mode) === "points" ? "rw-points-total" : "rw-total";
   }
@@ -7481,10 +7605,11 @@
   function rwphGetPayoutCacheSignature(calculationMode = null) {
     const userKey = document.getElementById("rw-key")?.value?.trim() || "";
     const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const from = dateTimeLocalToUnix(document.getElementById("rw-from")?.value || "");
-    const to = dateTimeLocalToUnix(document.getElementById("rw-to")?.value || "");
-    const timeSignature = from && to && to > from ? `manual-time:${from}-${to}` : "auto-last-finished-war";
-    const signatureParts = [userKey ? "key" : "no-key", timeSignature, "ignore-payout-settings-v1"];
+    const standardTime = rwphGetTimeWindowForMode("standard");
+    const pointsTime = rwphGetTimeWindowForMode("points");
+    const timeSignatureFor = (time) => time.from && time.to && time.to > time.from ? `manual-time:${time.from}-${time.to}` : "auto-last-finished-war";
+    const selectedTimeSignature = mode === "points" ? timeSignatureFor(pointsTime) : mode === "standard" ? timeSignatureFor(standardTime) : `standard:${timeSignatureFor(standardTime)}|points:${timeSignatureFor(pointsTime)}`;
+    const signatureParts = [userKey ? "key" : "no-key", selectedTimeSignature, "ignore-payout-settings-v1"];
 
     if (!mode || mode === "standard") {
       signatureParts.push(
@@ -7524,8 +7649,8 @@
     return {
       userKey: document.getElementById("rw-key")?.value?.trim() || "",
       token: GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, ""),
-      from: dateTimeLocalToUnix(document.getElementById("rw-from")?.value || ""),
-      to: dateTimeLocalToUnix(document.getElementById("rw-to")?.value || ""),
+      from: rwphGetTimeWindowForMode(calculationMode).from,
+      to: rwphGetTimeWindowForMode(calculationMode).to,
       calculationMode: rwphNormalizeCalculationMode(calculationMode),
       memberPayout: rwphGetTotalPayoutForMode(calculationMode),
       totalPayout: rwphGetTotalPayoutForMode(calculationMode),
@@ -7688,8 +7813,9 @@
             btn.title = e.message || `${label} cache auto-check failed.`;
           }
         }
-        rwphSetCacheStatusText(`${label} cache auto-check failed: ${e.message}`, mode);
-        if (!silent) rwphToastPanelError(status, `${label} cache auto-check error: ${e.message}`, "RWPH Cache");
+        const transientTorn = /temporary backend error|Backend error occurred|Torn is still busy|tornCode.?17|Torn returned a temporary backend error/i.test(String(e.message || ""));
+        rwphSetCacheStatusText(transientTorn ? `${label} cache auto-check skipped: Torn is temporarily busy. Calculate can be tried again in 30-60 seconds.` : `${label} cache auto-check failed: ${e.message}`, mode);
+        if (!silent) rwphToastPanelError(status, transientTorn ? `${label} cache auto-check skipped because Torn is temporarily busy. Wait 30-60 seconds, then try again.` : `${label} cache auto-check error: ${e.message}`, "RWPH Cache");
       }
     }
 
@@ -11472,17 +11598,6 @@
             <button id="rw-license-days" class="secondary">Your Expiration</button>
             <button id="rw-lock" class="secondary">Lock Panel</button>
           </div>
-          <div class="rw-row">
-            <label>War start date/time
-              <input id="rw-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
-            </label>
-            <label>War end date/time
-              <input id="rw-to" type="datetime-local" value="${toDateTimeLocalValue(current)}">
-            </label>
-          </div>
-          <div class="rw-actions">
-            <button id="rw-autofill" class="secondary">Auto-fill Last Finished War</button>
-          </div>
           <div class="rw-small">RWPH only creates payout reports for the latest completed ranked war. Active/current wars cannot be calculated until they finish. If a matching backend/database cached report exists, RWPH shows a popup and the matching cached-report button opens the backend/database cached result.</div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
             <summary class="rw-api-tos-title">Basic Calculations</summary>
@@ -11491,6 +11606,17 @@
               <div class="rw-cache-tools rw-mode-cache-tools">
                 <div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
                 <div id="rw-cache-status-per-hit" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
+              </div>
+              <div class="rw-row">
+                <label>War start date/time
+                  <input id="rw-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
+                </label>
+                <label>War end date/time
+                  <input id="rw-to" type="datetime-local" value="${toDateTimeLocalValue(current)}">
+                </label>
+              </div>
+              <div class="rw-actions rw-settings-time-actions">
+                <button id="rw-autofill" class="secondary" type="button" data-rwph-autofill-mode="standard">Auto-fill Last Finished War</button>
               </div>
               <div class="rw-row">
                 <label>Member Payout
@@ -11525,6 +11651,17 @@
               <div class="rw-cache-tools rw-mode-cache-tools">
                 <div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
                 <div id="rw-cache-status-points" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
+              </div>
+              <div class="rw-row">
+                <label>War start date/time
+                  <input id="rw-points-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
+                </label>
+                <label>War end date/time
+                  <input id="rw-points-to" type="datetime-local" value="${toDateTimeLocalValue(current)}">
+                </label>
+              </div>
+              <div class="rw-actions rw-settings-time-actions">
+                <button id="rw-points-autofill" class="secondary" type="button" data-rwph-autofill-mode="points">Auto-fill Last Finished War</button>
               </div>
               <div class="rw-row">
                 <label>Member Payout
@@ -11947,7 +12084,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
+    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -12108,7 +12245,7 @@
     updatePendingPaymentUi();
     restorePendingPaymentFromDatabase(document.getElementById("rw-key")?.value.trim(), "extend");
 
-    document.getElementById("rw-autofill").addEventListener("click", async () => {
+    async function rwphAutoFillWarTimesForMode(mode = "standard") {
       const status = document.getElementById("rw-status");
       const userKey = document.getElementById("rw-key").value.trim();
       const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
@@ -12116,17 +12253,21 @@
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
-        status.textContent = "Asking server for the last finished ranked war...";
+        if (status) status.textContent = `Asking server for the last finished ranked war for ${rwphModeLabel(mode)}...`;
         const result = await apiPost("/api/calc/war-times", { userKey, token });
         const war = result.war;
-        document.getElementById("rw-from").value = toDateTimeLocalValue(war.start);
-        document.getElementById("rw-to").value = toDateTimeLocalValue(war.end);
-        const msg = `Auto-filled last finished ranked war: ${readableTime(war.start)} to ${readableTime(war.end)}.`;
+        rwphSetTimeWindowForMode(mode, war.start, war.end);
+        rwphSavePayoutFormState();
+        rwphScheduleAutoCacheCheck(250);
+        const msg = `${rwphModeLabel(mode)} times auto-filled: ${readableTime(war.start)} to ${readableTime(war.end)}.`;
         rwphToastPanelInfo(status, msg, "info", "RWPH Info");
       } catch (e) {
         rwphToastPanelError(status, "Auto-fill error: " + e.message, "RWPH War Times");
       }
-    });
+    }
+
+    document.getElementById("rw-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("standard"));
+    document.getElementById("rw-points-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("points"));
 
     document.getElementById("rw-use-cache")?.addEventListener("click", async () => {
       await rwphOpenCachedReport("standard");
@@ -12158,13 +12299,14 @@
       const forceRefresh = !!document.getElementById("rw-admin-force-refresh")?.checked;
       const adminKeyForRefresh = forceRefresh ? (GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || document.getElementById("rw-admin-key")?.value?.trim() || "") : "";
 
-      // v1.1.327: Do not run an awaited cache pre-check before opening the results tab.
+      // v1.1.328: Do not run an awaited cache pre-check before opening the results tab.
       // Mobile/Torn PDA treats window.open after an awaited request as non-user-initiated,
       // which can make Calculate look like it never starts. The backend still checks the
       // matching report cache and returns cacheExists when needed.
 
-      const from = dateTimeLocalToUnix(document.getElementById("rw-from").value);
-      const to = dateTimeLocalToUnix(document.getElementById("rw-to").value);
+      const selectedTimeWindow = rwphGetTimeWindowForMode(mode);
+      const from = selectedTimeWindow.from;
+      const to = selectedTimeWindow.to;
       const totalPayout = rwphGetTotalPayoutForMode(mode);
       const overallTotalPayout = rwphGetOverallTotalPayoutForMode(mode);
       const warHitWeight = rwphFixedPerHitWeight("rw-war-hit-weight", 1);
@@ -12192,6 +12334,10 @@
 
       let preOpenedResultsTab = null;
       let stopProgressPolling = null;
+      let stopTabCloseWatcher = null;
+      let calcRequest = null;
+      let calculationFinished = false;
+      let calculationCancelledByClosedTab = false;
       const progressId = `rwph-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
       try {
@@ -12203,10 +12349,18 @@
             ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
             : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
-        stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
+        const cancelBecauseTabClosed = () => {
+          if (calculationFinished || calculationCancelledByClosedTab) return;
+          calculationCancelledByClosedTab = true;
+          rwphSendCalcCancel(progressId, "Results loading tab was closed before RWPH finished calculating.");
+          try { if (calcRequest && typeof calcRequest.abort === "function") calcRequest.abort(); } catch (_) {}
+          if (status) status.textContent = "Calculation cancelled because the results loading tab was closed.";
+        };
+        stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId, cancelBecauseTabClosed);
+        stopTabCloseWatcher = rwphStartResultsTabCloseWatcher(preOpenedResultsTab, progressId, cancelBecauseTabClosed);
         rwphSetResultsLoadingStepDone(preOpenedResultsTab, 0);
 
-        const result = await apiPost("/api/calc/rw-payout", {
+        calcRequest = apiPostCancelable("/api/calc/rw-payout", {
           userKey,
           token,
           progressId,
@@ -12234,7 +12388,13 @@
           useCacheOnly,
           forceRefresh,
           adminKey: adminKeyForRefresh,
-        });
+        }, { timeout: 600000 });
+        const result = await calcRequest.promise;
+        calculationFinished = true;
+        if (stopTabCloseWatcher) {
+          stopTabCloseWatcher();
+          stopTabCloseWatcher = null;
+        }
 
         if (result.cacheExists) {
           if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
@@ -12283,6 +12443,14 @@
         if (stopProgressPolling) {
           stopProgressPolling();
           stopProgressPolling = null;
+        }
+        if (stopTabCloseWatcher) {
+          stopTabCloseWatcher();
+          stopTabCloseWatcher = null;
+        }
+        if (calculationCancelledByClosedTab || e?.cancelled || /cancelled/i.test(String(e?.message || ""))) {
+          rwphToastPanelInfo(status, "Calculation stopped because the results loading tab was closed before it finished.", "warn", "RWPH Results");
+          return;
         }
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
           try {
