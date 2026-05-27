@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.329
+// @version      1.1.330
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.329: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.330: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -6993,7 +6993,7 @@
 </html>`;
   }
 
-  function buildResultsLoadingHtml(progressId = "") {
+  function buildResultsLoadingHtml(progressId = "", startedAtMs = Date.now()) {
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -7149,7 +7149,7 @@
   </main>
   <script>
     (function(){
-      var started = Date.now();
+      var started = Number(${JSON.stringify(Number(startedAtMs || Date.now()))}) || Date.now();
       var el = document.getElementById("rwph-load-seconds");
       var statusEl = document.getElementById("rwph-live-status");
       var barEl = document.getElementById("rwph-progress-bar");
@@ -7206,20 +7206,31 @@
           }).catch(function(){});
       }
       function tick(){
+        if (!el) el = document.getElementById("rwph-load-seconds");
         if (!el) return;
         var total = Math.max(0, Math.floor((Date.now() - started) / 1000));
         el.textContent = formatElapsed(total);
         updateStepDots(total);
       }
+      function wake(){
+        tick();
+        pollProgressFromLoadingTab();
+        setTimeout(tick, 80);
+        setTimeout(tick, 350);
+        setTimeout(pollProgressFromLoadingTab, 500);
+      }
       tick();
       window.rwphLoadingTimer = setInterval(tick, 1000);
+      window.rwphLoadingCatchupTimer = setInterval(tick, 5000);
       setTimeout(tick, 250);
+      setTimeout(tick, 1000);
       setTimeout(tick, 61000);
-      document.addEventListener("visibilitychange", tick);
-      window.addEventListener("pageshow", tick);
-      window.addEventListener("focus", tick);
+      document.addEventListener("visibilitychange", wake);
+      window.addEventListener("pageshow", wake);
+      window.addEventListener("focus", wake);
+      window.addEventListener("online", wake);
       pollProgressFromLoadingTab();
-      window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 650);
+      window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 1500);
     })();
   </script>
 </body>
@@ -7238,30 +7249,44 @@
   function rwphStartResultsLoadingCounter(tab, startedAt) {
     const started = Number(startedAt || Date.now());
     let missingTicks = 0;
+    let closedTicks = 0;
     let timer = null;
     const tick = () => {
       try {
-        if (!tab || tab.closed) {
+        if (!tab) {
           if (timer) clearInterval(timer);
           return;
         }
+        if (tab.closed) {
+          closedTicks += 1;
+          // v1.1.330: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // Do not kill the parent timer unless it has looked closed for a long time.
+          if (closedTicks > 60 && timer) clearInterval(timer);
+          return;
+        }
+        closedTicks = 0;
         const doc = tab.document;
         const el = doc && doc.getElementById && doc.getElementById("rwph-load-seconds");
         if (!el) {
           missingTicks += 1;
-          if (missingTicks > 4 && timer) clearInterval(timer);
+          if (missingTicks > 120 && timer) clearInterval(timer);
           return;
         }
         missingTicks = 0;
         el.textContent = rwphFormatResultsLoadingElapsed(started);
       } catch (_) {
-        if (timer) clearInterval(timer);
+        // A refreshed blob/loading tab can be temporarily inaccessible while it reloads.
+        // Keep the counter alive so it reconnects instead of freezing permanently.
+        missingTicks += 1;
+        if (missingTicks > 120 && timer) clearInterval(timer);
       }
     };
     timer = setInterval(tick, 1000);
     setTimeout(tick, 120);
     setTimeout(tick, 1100);
+    setTimeout(tick, 5000);
     setTimeout(tick, 61000);
+    return () => clearInterval(timer);
   }
 
   function rwphPostResultsLoadingStep(tab, stepIndex) {
@@ -7335,17 +7360,33 @@
     let stopped = false;
     let pending = false;
     let timer = null;
+    let closedSince = 0;
+    let closedChecks = 0;
+    const closedGraceMs = 45000;
 
     const poll = () => {
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          stopped = true;
-          if (timer) clearInterval(timer);
-          try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
+          // v1.1.330: do not cancel just because a phone/PDA browser temporarily pauses
+          // or misreports a background loading tab. Only treat it as closed after a long,
+          // repeated closed state while the main Torn tab is visible again.
+          if (document.visibilityState === "hidden") return;
+          if (!closedSince) closedSince = Date.now();
+          closedChecks += 1;
+          if (Date.now() - closedSince >= closedGraceMs && closedChecks >= 12) {
+            stopped = true;
+            if (timer) clearInterval(timer);
+            try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
+          }
           return;
         }
-      } catch (_) {}
+        closedSince = 0;
+        closedChecks = 0;
+      } catch (_) {
+        closedSince = 0;
+        closedChecks = 0;
+      }
       pending = true;
       GM_xmlhttpRequest({
         method: "POST",
@@ -7367,8 +7408,10 @@
       });
     };
 
-    timer = setInterval(poll, 650);
+    timer = setInterval(poll, 1500);
     setTimeout(poll, 80);
+    window.addEventListener("focus", poll);
+    document.addEventListener("visibilitychange", poll);
     return () => {
       stopped = true;
       if (timer) clearInterval(timer);
@@ -7381,16 +7424,38 @@
     let stopped = false;
     let cancelled = false;
     let timer = null;
+    let closedSince = 0;
+    let closedChecks = 0;
+    const closedGraceMs = 45000;
     const cancelOnce = () => {
       if (stopped || cancelled) return;
-      try { if (tab && !tab.closed) return; } catch (_) {}
+      try {
+        if (tab && !tab.closed) {
+          closedSince = 0;
+          closedChecks = 0;
+          return;
+        }
+      } catch (_) {
+        // Temporary cross-document reload/access errors are not a close signal.
+        closedSince = 0;
+        closedChecks = 0;
+        return;
+      }
+      // v1.1.330: background tab pauses should not cancel calculations. Only cancel after
+      // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
+      if (document.visibilityState === "hidden") return;
+      if (!closedSince) closedSince = Date.now();
+      closedChecks += 1;
+      if (Date.now() - closedSince < closedGraceMs || closedChecks < 12) return;
       cancelled = true;
       if (timer) clearInterval(timer);
       rwphSendCalcCancel(id, "Results loading tab was closed before RWPH finished calculating.");
       try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
     };
-    timer = setInterval(cancelOnce, 750);
-    setTimeout(cancelOnce, 900);
+    timer = setInterval(cancelOnce, 2000);
+    setTimeout(cancelOnce, 5000);
+    window.addEventListener("focus", cancelOnce);
+    document.addEventListener("visibilitychange", cancelOnce);
     return () => {
       stopped = true;
       if (timer) clearInterval(timer);
@@ -7399,12 +7464,36 @@
 
   function openBlankResultsTab(progressId = "") {
     try {
-      const tab = window.open("about:blank", "_blank");
-      if (!tab || tab.closed) return null;
       const rwphLoadingStartedAt = Date.now();
+      const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
+      let loadingBlobUrl = "";
+      let tab = null;
+
+      // v1.1.330: open a real reloadable loading document instead of writing to about:blank.
+      // Refreshing a document.write() about:blank tab reloads to an empty page on phone/PDA.
+      // A blob URL keeps the loading page HTML, progress id, and start time available after refresh.
+      try {
+        if (typeof Blob === "function" && window.URL && typeof window.URL.createObjectURL === "function") {
+          const blob = new Blob([loadingHtml], { type: "text/html;charset=utf-8" });
+          loadingBlobUrl = window.URL.createObjectURL(blob);
+          tab = window.open(loadingBlobUrl, "_blank");
+          if (tab && !tab.closed) {
+            try { tab.__rwphLoadingBlobUrl = loadingBlobUrl; } catch (_) {}
+            setTimeout(() => rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt), 250);
+            return tab;
+          }
+          try { window.URL.revokeObjectURL(loadingBlobUrl); } catch (_) {}
+        }
+      } catch (blobOpenError) {
+        console.warn("Could not open reloadable loading page, falling back to about:blank:", blobOpenError);
+        try { if (loadingBlobUrl) window.URL.revokeObjectURL(loadingBlobUrl); } catch (_) {}
+      }
+
+      tab = window.open("about:blank", "_blank");
+      if (!tab || tab.closed) return null;
       try {
         tab.document.open();
-        tab.document.write(buildResultsLoadingHtml(progressId));
+        tab.document.write(loadingHtml);
         tab.document.close();
         rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt);
       } catch (writeError) {
