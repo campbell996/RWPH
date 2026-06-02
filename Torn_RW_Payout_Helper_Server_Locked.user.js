@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.335
+// @version      1.1.337
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.335: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.337: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -5663,8 +5663,12 @@
     <div class="rwph-newsletter-code-body">
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Raw HTML Code</div>
-        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">How to copy: this raw HTML box is no-keyboard text, not a typing box. On phone/Torn PDA, hold the code, choose Select All, then Copy. On computer, right-click the code, Select All, then CTRL+C. Paste it into Torn's faction newsletter Source code tab. The panel scrollbars are only part of RWPH.</div>
-        <pre spellcheck="false" tabindex="0" role="textbox" aria-readonly="true" id="rwph-newsletter-code-text-${key}" data-rwph-newsletter-code="${key}" data-rwph-code-source="${esc(htmlCode)}">${esc(htmlCode)}</pre>
+        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">Use the buttons below so phone/PDA selects only this newsletter code, not the whole results tab. Paste into Torn's faction newsletter Source code tab.</div>
+        <div class="rwph-newsletter-code-actions">
+          <button class="btn secondary" type="button" data-rwph-select-newsletter-code="${key}">Select Code Only</button>
+          <button class="btn" type="button" data-rwph-copy-newsletter-code="${key}">Copy Raw HTML</button>
+        </div>
+        <textarea readonly inputmode="none" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" tabindex="0" aria-readonly="true" id="rwph-newsletter-code-text-${key}" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
       </div>
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Live Preview</div>
@@ -5914,13 +5918,15 @@
     .rwph-newsletter-code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid rgba(251,191,36,.22);border-radius:16px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(8,47,73,.68));box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
     .rwph-newsletter-code-title{font:950 15px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.35px;text-transform:uppercase;color:#f8fafc;text-shadow:0 0 16px rgba(245,158,11,.22);}
     .rwph-newsletter-code-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;margin-top:3px;}
-    .rwph-newsletter-code-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+    .rwph-newsletter-code-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
     .rwph-newsletter-code-actions .btn{width:100%;}
     .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
     .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
     .rwph-newsletter-code-label{text-align:center;color:#fde68a;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
-    .rwph-newsletter-code-box pre[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
+    .rwph-newsletter-code-box textarea[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
     .rwph-newsletter-copy-status{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;text-align:center;padding:5px 6px;border:1px solid rgba(251,191,36,.18);border-radius:10px;background:rgba(2,6,23,.48);}
+    .rwph-newsletter-copy-status[data-tone="ok"]{color:#dcfce7;border-color:rgba(34,197,94,.34);background:rgba(20,83,45,.22);}
+    .rwph-newsletter-copy-status[data-tone="warn"]{color:#fef3c7;border-color:rgba(250,204,21,.34);background:rgba(113,63,18,.26);}
     .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
     @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
@@ -6729,6 +6735,80 @@
       }
     }
 
+    function rwphNewsletterCodeBox(key) {
+      const safeKey = String(key || "standard");
+      return document.getElementById("rwph-newsletter-code-text-" + safeKey);
+    }
+
+    function rwphSetNewsletterCopyStatus(key, text, tone = "info") {
+      const status = document.querySelector('[data-rwph-newsletter-copy-status="' + String(key || "standard") + '"]');
+      if (!status) return;
+      status.textContent = String(text || "");
+      status.dataset.tone = tone;
+    }
+
+    function rwphSelectNewsletterCodeOnly(key) {
+      const box = rwphNewsletterCodeBox(key);
+      if (!box) return false;
+      try {
+        box.focus({ preventScroll: true });
+      } catch (_) {
+        try { box.focus(); } catch (__) {}
+      }
+      try {
+        box.select();
+        box.setSelectionRange(0, box.value.length);
+        rwphSetNewsletterCopyStatus(key, "Selected this newsletter code only. Now choose Copy, or press Copy Raw HTML.", "ok");
+        return true;
+      } catch (_) {}
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(box);
+        const selection = window.getSelection && window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+          rwphSetNewsletterCopyStatus(key, "Selected this newsletter code only. Now choose Copy, or press Copy Raw HTML.", "ok");
+          return true;
+        }
+      } catch (_) {}
+      rwphSetNewsletterCopyStatus(key, "Could not select only the code on this browser. Press Copy Raw HTML instead.", "warn");
+      return false;
+    }
+
+    document.addEventListener("click", async function(ev) {
+      const selectBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-select-newsletter-code]") : null;
+      if (selectBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        rwphSelectNewsletterCodeOnly(selectBtn.getAttribute("data-rwph-select-newsletter-code") || "standard");
+        return;
+      }
+
+      const copyBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-copy-newsletter-code]") : null;
+      if (copyBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const key = copyBtn.getAttribute("data-rwph-copy-newsletter-code") || "standard";
+        const box = rwphNewsletterCodeBox(key);
+        const code = String(box?.value || rwphNewsletterHtmlCode?.[key] || "");
+        const oldText = copyBtn.textContent;
+        copyBtn.disabled = true;
+        copyBtn.textContent = "Copying...";
+        const ok = await copyText(rwphStripNewsletterMarkerCommentsRuntime(code));
+        if (ok) {
+          rwphSetNewsletterCopyStatus(key, "Copied raw HTML code. Paste it into Torn's faction newsletter Source code tab.", "ok");
+          copyBtn.textContent = "Copied";
+        } else {
+          rwphSelectNewsletterCodeOnly(key);
+          rwphSetNewsletterCopyStatus(key, "Clipboard was blocked. Code only is selected now; choose Copy from the phone menu.", "warn");
+          copyBtn.textContent = "Select Shown";
+        }
+        setTimeout(function(){ copyBtn.disabled = false; copyBtn.textContent = oldText; }, 900);
+        return;
+      }
+    });
+
     document.addEventListener("click", async function(ev) {
       const btn = ev.target && ev.target.closest ? ev.target.closest("[data-copy-torn-newsletter]") : null;
       if (!btn) return;
@@ -7216,6 +7296,55 @@
         if (isFinite(Number(data.percent))) window.rwphSetLoadingProgress(Number(data.percent), data.label || "", data.step);
         else window.rwphSetLoadingStepDone(data.step);
       });
+      var rwphFallbackResultOpening = false;
+      function esc(value){
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch] || ch; });
+      }
+      function money(value){
+        var n = Number(value || 0);
+        try { return "$" + Math.round(n).toLocaleString(); } catch (_) { return "$" + Math.round(n); }
+      }
+      function renderFallbackResultsPage(payload){
+        var rows = Array.isArray(payload && payload.rows) ? payload.rows : [];
+        var summary = payload && payload.summary ? payload.summary : {};
+        var pointsMode = !!(summary.pointsMode || summary.calculationMode === "points");
+        var memberPayout = Number(summary.memberPayout || summary.totalPayout || 0);
+        var totalRespect = Number(summary.totalRespect || 0);
+        var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RWPH Results</title><style>'+
+          '*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#fff7ed;background:linear-gradient(180deg,#020617,#1b1208);padding:12px}.wrap{max-width:980px;margin:0 auto}.head,.card,.stat{border:1px solid rgba(251,191,36,.28);border-radius:16px;background:rgba(15,23,42,.88);box-shadow:0 12px 30px rgba(0,0,0,.35)}.head{padding:14px;margin-bottom:12px}.head h1{margin:0 0 6px;font-size:22px}.muted{color:#cfaa8e;font-size:12px;font-weight:800}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:12px 0}.stat{padding:10px}.stat span{display:block;color:#cfaa8e;font-size:11px;font-weight:900;text-transform:uppercase}.stat b{font-size:16px}.rows{display:grid;gap:8px}.card{padding:10px}.name{font-weight:950;color:#fff}.line{margin-top:6px;color:#fff2dd;font-size:12px;line-height:1.45}.warn{border-color:rgba(250,204,21,.4);background:rgba(113,63,18,.32);padding:10px;border-radius:14px;margin:10px 0;color:#fef3c7;font-weight:800;font-size:12px}</style></head><body><div class="wrap">';
+        html += '<div class="head"><h1>RWPH Results</h1><div class="muted">PDA fallback results page. If you go back to Torn after this, RWPH may still replace this with the full tools page.</div></div>';
+        html += '<div class="stats">'+
+          '<div class="stat"><span>Members</span><b>'+rows.length+'</b></div>'+
+          '<div class="stat"><span>Member Payout</span><b>'+money(memberPayout)+'</b></div>'+
+          '<div class="stat"><span>'+(pointsMode?'Per Point':'Per Hit')+'</span><b>'+money(summary.perHitAmount || summary.perWeightedHitAmount || 0)+'</b></div>'+
+          '<div class="stat"><span>Total Respect</span><b>'+Number(totalRespect || 0).toFixed(2)+'</b></div>'+
+          '<div class="stat"><span>War Hits</span><b>'+Number(summary.totalWarHits || summary.totalHits || 0)+'</b></div>'+
+          '<div class="stat"><span>Removed Member Hits</span><b>'+Number(summary.removedLeftFactionHits || 0)+'</b></div>'+
+          '</div>';
+        html += '<div class="warn">This PDA fallback is shown because Torn PDA can pause the original Torn tab before it writes the full results tools. Payments/newsletter tools are still available when the full RWPH results tab opens from the Torn tab.</div>';
+        html += '<div class="rows">';
+        rows.forEach(function(r, i){
+          html += '<div class="card"><div class="name">#'+(i+1)+' '+esc(r.name || ('Torn ID '+(r.id||'')))+'</div>'+
+            '<div class="line"><b>Payout:</b> '+money(r.payout || 0)+' &nbsp; <b>'+(pointsMode?'Points':'Weight')+':</b> '+Number(r.points || r.weight || 0).toFixed(2)+'<br>'+
+            '<b>War:</b> '+Number(r.warHits || r.attacks || 0)+' &nbsp; <b>Assists:</b> '+Number(r.assists || 0)+' &nbsp; <b>Outside:</b> '+Number(r.outsideHits || 0)+' &nbsp; <b>Retals:</b> '+Number(r.retaliationHits || 0)+'<br>'+
+            '<b>Respect:</b> '+Number(r.respect || 0).toFixed(2)+' &nbsp; <b>Total Respect:</b> '+Number((r.totalRespect != null ? r.totalRespect : r.respect) || 0).toFixed(2)+'</div></div>';
+        });
+        html += '</div></div></body></html>';
+        document.open(); document.write(html); document.close();
+      }
+      function pollFinalResultFromLoadingTab(){
+        if (rwphFallbackResultOpening || !rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
+        rwphFallbackResultOpening = true;
+        fetch(rwphApiBase + "/api/calc/result", {
+          method: "POST", mode: "cors", cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ progressId: rwphProgressId })
+        }).then(function(res){ return res && res.json ? res.json() : null; })
+          .then(function(json){
+            if (json && json.ok && json.ready && json.payload) renderFallbackResultsPage(json.payload);
+            else rwphFallbackResultOpening = false;
+          }).catch(function(){ rwphFallbackResultOpening = false; });
+      }
       function pollProgressFromLoadingTab(){
         if (!rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
         fetch(rwphApiBase + "/api/calc/progress", {
@@ -7227,9 +7356,14 @@
         }).then(function(res){ return res && res.json ? res.json() : null; })
           .then(function(json){
             if (json && json.ok) {
+              if (el && Number(json.elapsedSeconds) >= 0) el.textContent = formatElapsed(Number(json.elapsedSeconds));
               if (Number(json.percent) >= 0) window.rwphSetLoadingProgress(Number(json.percent), json.label || "", Number(json.step));
               else if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
               if (statusEl && json.label) statusEl.textContent = json.label;
+              if (json.resultReady || Number(json.percent) >= 100) {
+                if (statusEl) statusEl.textContent = "Results ready. Opening PDA fallback results...";
+                pollFinalResultFromLoadingTab();
+              }
               if (statusEl && json.cancelled) statusEl.textContent = json.label || "Calculation cancelled because this loading tab was closed.";
             }
           }).catch(function(){});
@@ -7288,7 +7422,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.335: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.337: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7426,7 +7560,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.335: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.337: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7499,7 +7633,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.335: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.337: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7529,7 +7663,7 @@
       const ua = String(navigator?.userAgent || "");
       const isPhoneOrPda = /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(ua) || !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
 
-      // v1.1.335: phone/Torn PDA can hand blob: links to Android as an external
+      // v1.1.337: phone/Torn PDA can hand blob: links to Android as an external
       // link and show "no compatible app". Keep blob loading for desktop only.
       // Mobile opens a normal about:blank tab and writes the loading screen into it.
       if (!isPhoneOrPda) {
