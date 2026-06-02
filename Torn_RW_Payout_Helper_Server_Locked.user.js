@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.337
+// @version      1.1.339
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.337: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.339: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -5663,11 +5663,7 @@
     <div class="rwph-newsletter-code-body">
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Raw HTML Code</div>
-        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">Use the buttons below so phone/PDA selects only this newsletter code, not the whole results tab. Paste into Torn's faction newsletter Source code tab.</div>
-        <div class="rwph-newsletter-code-actions">
-          <button class="btn secondary" type="button" data-rwph-select-newsletter-code="${key}">Select Code Only</button>
-          <button class="btn" type="button" data-rwph-copy-newsletter-code="${key}">Copy Raw HTML</button>
-        </div>
+        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">Raw HTML code only. Tap inside the box, select/copy the code, then paste it into Torn's faction newsletter Source code tab.</div>
         <textarea readonly inputmode="none" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" tabindex="0" aria-readonly="true" id="rwph-newsletter-code-text-${key}" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
       </div>
       <div class="rwph-newsletter-code-box">
@@ -5918,8 +5914,6 @@
     .rwph-newsletter-code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid rgba(251,191,36,.22);border-radius:16px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(8,47,73,.68));box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
     .rwph-newsletter-code-title{font:950 15px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.35px;text-transform:uppercase;color:#f8fafc;text-shadow:0 0 16px rgba(245,158,11,.22);}
     .rwph-newsletter-code-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;margin-top:3px;}
-    .rwph-newsletter-code-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-    .rwph-newsletter-code-actions .btn{width:100%;}
     .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
     .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
     .rwph-newsletter-code-label{text-align:center;color:#fde68a;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
@@ -5929,7 +5923,7 @@
     .rwph-newsletter-copy-status[data-tone="warn"]{color:#fef3c7;border-color:rgba(250,204,21,.34);background:rgba(113,63,18,.26);}
     .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
-    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
+    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
     .close-hint { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(251,191,36,.16); background:rgba(15,23,42,.58); color:#cfaa8e; font-size:11px; font-weight:800; line-height:1.35; text-align:center; }
     .results-action-zone { display:grid; gap:8px; margin:10px 0 0; padding-top:12px; border-top:1px solid rgba(251,191,36,.18); }
     .results-action-zone .btn { width:100%; }
@@ -6735,80 +6729,6 @@
       }
     }
 
-    function rwphNewsletterCodeBox(key) {
-      const safeKey = String(key || "standard");
-      return document.getElementById("rwph-newsletter-code-text-" + safeKey);
-    }
-
-    function rwphSetNewsletterCopyStatus(key, text, tone = "info") {
-      const status = document.querySelector('[data-rwph-newsletter-copy-status="' + String(key || "standard") + '"]');
-      if (!status) return;
-      status.textContent = String(text || "");
-      status.dataset.tone = tone;
-    }
-
-    function rwphSelectNewsletterCodeOnly(key) {
-      const box = rwphNewsletterCodeBox(key);
-      if (!box) return false;
-      try {
-        box.focus({ preventScroll: true });
-      } catch (_) {
-        try { box.focus(); } catch (__) {}
-      }
-      try {
-        box.select();
-        box.setSelectionRange(0, box.value.length);
-        rwphSetNewsletterCopyStatus(key, "Selected this newsletter code only. Now choose Copy, or press Copy Raw HTML.", "ok");
-        return true;
-      } catch (_) {}
-      try {
-        const range = document.createRange();
-        range.selectNodeContents(box);
-        const selection = window.getSelection && window.getSelection();
-        if (selection) {
-          selection.removeAllRanges();
-          selection.addRange(range);
-          rwphSetNewsletterCopyStatus(key, "Selected this newsletter code only. Now choose Copy, or press Copy Raw HTML.", "ok");
-          return true;
-        }
-      } catch (_) {}
-      rwphSetNewsletterCopyStatus(key, "Could not select only the code on this browser. Press Copy Raw HTML instead.", "warn");
-      return false;
-    }
-
-    document.addEventListener("click", async function(ev) {
-      const selectBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-select-newsletter-code]") : null;
-      if (selectBtn) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        rwphSelectNewsletterCodeOnly(selectBtn.getAttribute("data-rwph-select-newsletter-code") || "standard");
-        return;
-      }
-
-      const copyBtn = ev.target && ev.target.closest ? ev.target.closest("[data-rwph-copy-newsletter-code]") : null;
-      if (copyBtn) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const key = copyBtn.getAttribute("data-rwph-copy-newsletter-code") || "standard";
-        const box = rwphNewsletterCodeBox(key);
-        const code = String(box?.value || rwphNewsletterHtmlCode?.[key] || "");
-        const oldText = copyBtn.textContent;
-        copyBtn.disabled = true;
-        copyBtn.textContent = "Copying...";
-        const ok = await copyText(rwphStripNewsletterMarkerCommentsRuntime(code));
-        if (ok) {
-          rwphSetNewsletterCopyStatus(key, "Copied raw HTML code. Paste it into Torn's faction newsletter Source code tab.", "ok");
-          copyBtn.textContent = "Copied";
-        } else {
-          rwphSelectNewsletterCodeOnly(key);
-          rwphSetNewsletterCopyStatus(key, "Clipboard was blocked. Code only is selected now; choose Copy from the phone menu.", "warn");
-          copyBtn.textContent = "Select Shown";
-        }
-        setTimeout(function(){ copyBtn.disabled = false; copyBtn.textContent = oldText; }, 900);
-        return;
-      }
-    });
-
     document.addEventListener("click", async function(ev) {
       const btn = ev.target && ev.target.closest ? ev.target.closest("[data-copy-torn-newsletter]") : null;
       if (!btn) return;
@@ -7297,6 +7217,45 @@
         else window.rwphSetLoadingStepDone(data.step);
       });
       var rwphFallbackResultOpening = false;
+      var rwphFinalResultOpened = false;
+      var rwphResultStorageKey = rwphProgressId ? ("rwph_loading_result_html_" + rwphProgressId) : "";
+      function rwphOpenFinalResultsHtml(html){
+        if (rwphFinalResultOpened || !html) return false;
+        rwphFinalResultOpened = true;
+        try {
+          if (window.rwphLoadingProgressPoller) clearInterval(window.rwphLoadingProgressPoller);
+          if (window.rwphLoadingStoredResultPoller) clearInterval(window.rwphLoadingStoredResultPoller);
+          if (window.rwphLoadingTimer) clearInterval(window.rwphLoadingTimer);
+          if (window.rwphLoadingCatchupTimer) clearInterval(window.rwphLoadingCatchupTimer);
+        } catch (_) {}
+        try {
+          if (rwphResultStorageKey) localStorage.removeItem(rwphResultStorageKey);
+        } catch (_) {}
+        try {
+          document.open();
+          document.write(String(html));
+          document.close();
+          return true;
+        } catch (_) {
+          rwphFinalResultOpened = false;
+          return false;
+        }
+      }
+      function rwphCheckStoredFinalResults(){
+        if (rwphFinalResultOpened || !rwphResultStorageKey) return;
+        try {
+          var raw = localStorage.getItem(rwphResultStorageKey);
+          if (!raw) return;
+          var data = JSON.parse(raw);
+          if (data && data.progressId === rwphProgressId && data.html) rwphOpenFinalResultsHtml(data.html);
+        } catch (_) {}
+      }
+      window.addEventListener("message", function(event){
+        var data = event && event.data;
+        if (!data || data.rwphType !== "rwph-final-results-html") return;
+        if (rwphProgressId && data.progressId && data.progressId !== rwphProgressId) return;
+        rwphOpenFinalResultsHtml(data.html || "");
+      });
       function esc(value){
         return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch] || ch; });
       }
@@ -7341,8 +7300,10 @@
           body: JSON.stringify({ progressId: rwphProgressId })
         }).then(function(res){ return res && res.json ? res.json() : null; })
           .then(function(json){
-            if (json && json.ok && json.ready && json.payload) renderFallbackResultsPage(json.payload);
-            else rwphFallbackResultOpening = false;
+            if (json && json.ok && json.ready && json.payload) {
+              if (statusEl) statusEl.textContent = "Results ready. Opening PDA fallback result rows...";
+              renderFallbackResultsPage(json.payload);
+            } else rwphFallbackResultOpening = false;
           }).catch(function(){ rwphFallbackResultOpening = false; });
       }
       function pollProgressFromLoadingTab(){
@@ -7392,6 +7353,8 @@
       window.addEventListener("pageshow", wake);
       window.addEventListener("focus", wake);
       window.addEventListener("online", wake);
+      rwphCheckStoredFinalResults();
+      window.rwphLoadingStoredResultPoller = setInterval(rwphCheckStoredFinalResults, 1000);
       pollProgressFromLoadingTab();
       window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 1500);
     })();
@@ -7422,7 +7385,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.337: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.339: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7560,7 +7523,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.337: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.339: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7633,7 +7596,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.337: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.339: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7663,7 +7626,7 @@
       const ua = String(navigator?.userAgent || "");
       const isPhoneOrPda = /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(ua) || !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
 
-      // v1.1.337: phone/Torn PDA can hand blob: links to Android as an external
+      // v1.1.339: phone/Torn PDA can hand blob: links to Android as an external
       // link and show "no compatible app". Keep blob loading for desktop only.
       // Mobile opens a normal about:blank tab and writes the loading screen into it.
       if (!isPhoneOrPda) {
@@ -7702,9 +7665,47 @@
     }
   }
 
-  function writeFullscreenResultsTab(tab, rows, summary) {
+  function rwphSendFinalResultsToLoadingTab(tab, progressId, rows, summary) {
+    const id = String(progressId || "").trim();
+    if (!id) return "";
+    let html = "";
+    try {
+      html = buildFullscreenResultsHtml(rows || [], summary || {});
+    } catch (e) {
+      console.warn("Could not build final results HTML for loading tab handoff:", e);
+      return "";
+    }
+
+    // Phone/Torn PDA can pause the opener tab or block document.write into the
+    // pre-opened results tab. Store and post the final HTML so the loading tab
+    // can replace itself without opening a new tab or using blocked fetch/blob links.
+    try {
+      localStorage.setItem("rwph_loading_result_html_" + id, JSON.stringify({
+        progressId: id,
+        createdAt: Date.now(),
+        html,
+      }));
+    } catch (e) {
+      console.warn("Could not store final results HTML for loading tab:", e);
+    }
+
+    try {
+      if (tab && !tab.closed && typeof tab.postMessage === "function") {
+        tab.postMessage({ rwphType: "rwph-final-results-html", progressId: id, html }, "*");
+      }
+    } catch (_) {}
+    try {
+      if (tab && tab.window && typeof tab.window.postMessage === "function") {
+        tab.window.postMessage({ rwphType: "rwph-final-results-html", progressId: id, html }, "*");
+      }
+    } catch (_) {}
+
+    return html;
+  }
+
+  function writeFullscreenResultsTab(tab, rows, summary, prebuiltHtml = "") {
     if (!tab || tab.closed) return false;
-    const html = buildFullscreenResultsHtml(rows || [], summary || {});
+    const html = prebuiltHtml || buildFullscreenResultsHtml(rows || [], summary || {});
     try {
       tab.document.open();
       tab.document.write(html);
@@ -12712,12 +12713,14 @@
         rwphSetCacheButtonState(isPointsMode ? "points" : "standard", reportCacheReady, { factionName: lastSummary?.factionName || result.factionName || "", cache: result.cache || null, expiresAtMs: result.cache?.expiresAtMs || 0, cachedAtMs: result.cache?.cachedAtMs || 0, summary: lastSummary }, false);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
+        const finalResultsHtml = rwphSendFinalResultsToLoadingTab(preOpenedResultsTab, progressId, lastRows, lastSummary);
+
         if (stopProgressPolling) {
           stopProgressPolling();
           stopProgressPolling = null;
         }
         await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
-        const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
+        const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary, finalResultsHtml) || openFullscreenResultsTab(lastRows, lastSummary);
         if (openedResultsTab) {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
