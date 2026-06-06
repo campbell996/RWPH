@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.348
+// @version      1.1.347
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.348: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.347: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7561,7 +7561,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.348: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.347: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7697,7 +7697,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.348: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.347: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7770,7 +7770,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.348: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.347: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7791,36 +7791,15 @@
     };
   }
 
-  function buildResultsLoadingDataUrlHtml(progressId = "", startedAtMs = Date.now()) {
-    const id = JSON.stringify(String(progressId || ""));
-    const api = JSON.stringify(String(PAYWALL_API_BASE || "").replace(/\/$/, ""));
-    const started = Number(startedAtMs || Date.now());
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RWPH Loading Results</title><style>
-*{box-sizing:border-box}html,body{margin:0;min-height:100vh}body{font-family:Arial,Helvetica,sans-serif;color:#fff2dd;background:radial-gradient(circle at 12% 0%,rgba(251,191,36,.18),transparent 30%),linear-gradient(180deg,#100806,#21110b 48%,#090504);padding:12px}.box{max-width:760px;margin:0 auto;border:1px solid rgba(184,136,89,.34);border-radius:20px;overflow:hidden;background:linear-gradient(180deg,rgba(58,26,21,.96),rgba(14,10,8,.98));box-shadow:0 18px 55px rgba(0,0,0,.56)}.head{padding:14px;border-bottom:1px solid rgba(184,136,89,.24);background:linear-gradient(135deg,rgba(68,32,24,.98),rgba(20,15,13,.98))}.eyebrow{color:#fde68a;font:950 10px/1 Arial;letter-spacing:.9px;text-transform:uppercase}h1{margin:5px 0 4px;color:#fff7ed;font:950 22px/1 Arial}.sub{color:#cfaa8e;font:800 12px/1.35 Arial}.body{padding:14px;display:grid;gap:12px}.status{border:1px solid rgba(251,191,36,.16);border-radius:14px;background:rgba(10,8,7,.42);padding:10px;font:900 12px/1.4 Arial}.timer{display:inline-block;margin-top:8px;border:1px solid rgba(251,191,36,.24);border-left:4px solid rgba(245,158,11,.82);border-radius:999px;padding:8px 12px;color:#fff;font:950 14px/1 Arial;background:rgba(63,29,23,.72)}.barwrap{height:14px;border-radius:999px;overflow:hidden;border:1px solid rgba(251,191,36,.28);background:rgba(10,8,7,.72)}#bar{height:100%;width:6%;border-radius:999px;background:linear-gradient(90deg,#7f1d1d,#f97316,#fbbf24,#fef3c7);transition:width .35s ease}.open{width:100%;border:1px solid rgba(184,136,89,.26);border-left:4px solid rgba(148,163,184,.70);border-radius:15px;background:linear-gradient(180deg,rgba(63,29,23,.72),rgba(20,15,13,.82));color:#cfaa8e;font:950 15px/1 Arial;padding:13px 12px;cursor:not-allowed;opacity:.86}.open.ready{border-color:rgba(34,197,94,.40);border-left-color:rgba(34,197,94,.86);background:linear-gradient(180deg,rgba(22,101,52,.98),rgba(20,83,45,.95),rgba(5,46,22,.96));color:#dcfce7;cursor:pointer;opacity:1}.steps{margin:0;padding:0;display:grid;gap:7px;list-style:none;counter-reset:s}.steps li{counter-increment:s;border:1px solid rgba(184,136,89,.22);border-radius:13px;background:rgba(63,29,23,.45);padding:8px 10px;font:850 12px/1.3 Arial}.steps li:before{content:counter(s);display:inline-grid;place-items:center;width:22px;height:22px;margin-right:7px;border-radius:8px;background:#3f1d17;color:#fde68a;font-weight:950}.steps li.done{border-color:rgba(34,197,94,.36);color:#dcfce7}.steps li.done:before{content:"✓";background:#166534;color:#ecfdf5}.note{border:1px solid rgba(250,204,21,.24);border-radius:14px;background:rgba(113,63,18,.26);padding:10px;color:#fef3c7;font:850 12px/1.4 Arial}
-</style></head><body><main class="box"><section class="head"><div class="eyebrow">Ranked War Payout Helper</div><h1>Building Results</h1><div class="sub">Refresh-safe loading page. No blob URL and no visible backend/ngrok page.</div><div class="timer">Elapsed: <span id="elapsed">0 sec</span></div></section><section class="body"><div class="barwrap"><div id="bar"></div></div><div id="status" class="status">Starting calculation. The button unlocks when results data is complete.</div><button id="open" class="open" type="button" disabled>Results Locked — Loading Data</button><ul class="steps" id="steps"><li>Verifies licence and server access.</li><li>Checks report cache and war window.</li><li>Fetches and sorts hits.</li><li>Applies weights and payout split.</li><li>Builds full results page and tools.</li></ul><div class="note"><b>Refresh is safe:</b> this page reconnects using the calculation progress ID. Keep it open until the button unlocks.</div></section></main><script>
-(function(){var id=${id},api=${api},started=${started},ready=false,html="",polling=false;var elapsed=document.getElementById("elapsed"),status=document.getElementById("status"),bar=document.getElementById("bar"),btn=document.getElementById("open"),steps=[].slice.call(document.querySelectorAll("#steps li"));function fmt(s){s=Math.max(0,Math.floor(Number(s)||0));var m=Math.floor(s/60),r=s%60;return m?m+"m "+String(r).padStart(2,"0")+"s":s+" "+(s===1?"sec":"secs")}function tick(){if(elapsed)elapsed.textContent=fmt((Date.now()-started)/1000)}function paint(step,percent,label){step=Math.max(0,Math.min(4,Math.floor(Number(step)||0)));percent=Math.max(3,Math.min(100,Number(percent)||0));if(bar)bar.style.width=percent+"%";steps.forEach(function(li,i){li.classList.toggle("done",percent>=99.5||i<=step-1)});if(label&&status)status.textContent=label}function unlock(gotHtml){if(gotHtml)html=String(gotHtml||"");ready=!!html;if(!ready)return;if(btn){btn.disabled=false;btn.classList.add("ready");btn.textContent="Open Results Page"}paint(4,100,"Results data complete. Click Open Results Page when you are ready.")}function getResults(){if(!id||!api)return Promise.resolve(null);return fetch(api+"/api/calc/result-html?progressId="+encodeURIComponent(id),{mode:"cors",cache:"no-store",headers:{"ngrok-skip-browser-warning":"true"}}).then(function(r){return r&&r.json?r.json():null}).then(function(j){if(j&&j.ok&&j.ready&&j.html){unlock(j.html);return j.html}return null}).catch(function(){return null})}function check(){if(polling||!id||!api)return;polling=true;fetch(api+"/api/calc/progress",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json","ngrok-skip-browser-warning":"true"},body:JSON.stringify({progressId:id})}).then(function(r){return r&&r.json?r.json():null}).then(function(j){if(j&&j.ok){paint(j.step,j.percent,j.label||"Working...");if(j.resultHtmlReady)getResults();if(j.cancelled&&status)status.textContent=j.label||"Calculation cancelled."}}).catch(function(){if(status)status.textContent="Waiting for backend connection...";}).finally(function(){polling=false})}function openResults(){if(!ready||!html){if(status)status.textContent="Results are still loading. The button will unlock when data is complete.";getResults();return}document.open();document.write(html);document.close()}if(btn)btn.addEventListener("click",openResults);tick();check();getResults();setInterval(tick,1000);setInterval(check,1500);setInterval(getResults,2500);window.addEventListener("focus",function(){check();getResults()});document.addEventListener("visibilitychange",function(){check();getResults()});})();
-<\/script></body></html>`;
-  }
-
   function openBlankResultsTab(progressId = "") {
     try {
       const rwphLoadingStartedAt = Date.now();
       const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
-      const compactLoadingHtml = buildResultsLoadingDataUrlHtml(progressId, rwphLoadingStartedAt);
       let tab = null;
 
-      // v1.1.348: data URLs have length limits in mobile/PDA browsers. Use a
-      // compact loading page for the data URL so it does not open blank.
-      try {
-        const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(compactLoadingHtml);
-        tab = window.open(dataUrl, "_blank");
-        if (tab && !tab.closed) {
-          return tab;
-        }
-      } catch (dataOpenError) {
-        console.warn("Could not open compact refresh-safe data loading page, falling back to about:blank:", dataOpenError);
-      }
-
+      // v1.1.347: always use an about:blank loading tab. Blob tabs and backend
+      // URL tabs can block opener access or trigger app/browser warning pages,
+      // which stops the locked Open Results button from unlocking.
       tab = window.open("about:blank", "_blank");
       if (!tab || tab.closed) return null;
       try {
