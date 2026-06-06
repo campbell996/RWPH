@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.358
+// @version      1.1.359
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.358: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.359: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7572,7 +7572,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.358: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.359: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7714,7 +7714,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.358: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.359: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7787,7 +7787,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.358: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.359: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -10030,9 +10030,9 @@
       .replace(/\s*(?:min-width)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
       .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
-      .replace(/width\s*:\s*100%\s*;/gi, "width:96%;")
-      .replace(/width="100%"/gi, 'width="96%"')
-      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:96%;")
+      .replace(/width\s*:\s*100%\s*;/gi, "width:100%;")
+      .replace(/width="100%"/gi, 'width="100%"')
+      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:100%;")
       .replace(/\s{2,}/g, " ")
       .replace(/>\s+</g, "><")
       .trim();
@@ -10385,12 +10385,11 @@
     const rowBg = (i) => i % 2 ? theme.panelA : theme.panelB;
 
     const wrapper = (inner, max = 300) => {
-      const safeMax = Math.min(Math.max(Number(max) || 290, 240), 300);
       return `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.18;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${theme.bg};border-collapse:collapse;margin:0;padding:0;table-layout:fixed;">
     <tr>
       <td align="center" style="padding:2px 1px;">
-        <table width="96%" cellpadding="0" cellspacing="0" border="0" style="width:96%;max-width:${safeMax}px;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;overflow-wrap:anywhere;word-break:break-word;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:100%;border-collapse:collapse;background-color:${theme.outer};border:1px solid ${theme.line};table-layout:fixed;overflow-wrap:anywhere;word-break:break-word;">
           ${inner}
         </table>
       </td>
