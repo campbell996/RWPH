@@ -15,7 +15,6 @@ Manual time-window calculations now try to match a faction ranked-war report ins
 
 RWPH does **not** send items, send cash, confirm payments, attack, buy, sell, travel, or perform Torn gameplay actions automatically. Users must manually review and confirm all Torn actions inside Torn.
 
-RWPH can calculate payout results, prepare payment rows, copy payment details, prefill some Torn fields where available, and create exports/newsletter text. The user/faction remains responsible for checking results before making any Torn payments.
 
 ---
 
@@ -193,7 +192,6 @@ Payments Copy Panel buttons are hidden after use with a forced hidden state so u
 
 ## v1.1.239 Member/Total Payout Update
 - The old Total payout pool control is now named **Member Payout** in both Basic Calculations and Advanced Calculations.
-- Each mode now also has a **Total Payout** field for showing the full payout record amount in result tabs and newsletters.
 - Member Payout remains the amount used to calculate member rows and payment-copy amounts.
 - Backend/database cached report signatures include Total Payout so different payout records do not reopen the wrong cached result.
 
@@ -271,14 +269,10 @@ The public performance/cache status message now appears inside both calculation 
 
 ## v1.1.240 Results/cache-status update
 
-Per Hit result tabs and newsletter templates show Per Hit Amount. Cache-found status text is now mode-specific so the Advanced Calculations dropdown only reports matching Points System cached reports and the Basic Calculations dropdown only reports matching Per Hit cached reports.
 
 
-## v1.1.251 Results/export/newsletter layout and stat alignment
 
 - Cleaned up visual spacing/readability in both result tabs without changing calculations or the existing result layout structure.
-- Aligned CSV export columns and newsletter stat tables so Per Hit and Points System reports show matching stat names and values.
-- Cleaned up newsletter table readability without changing newsletter themes or report flow.
 
 ## v1.1.249 Results card layout cleanup
 
@@ -310,11 +304,8 @@ Enemy war faction hospital bonus can be positive or negative so enemy ranked-war
 RWPH no longer puts result-tab calculations into a report queue. The loading/results tab now starts the selected calculation directly. Backend/database cached reports, route rate limits, cooldowns, and Torn API retry/backoff protection remain in place.
 
 
-## v1.1.251 Results/newsletter payout display cleanup
 
 - Fullscreen result tabs no longer show Member Payout, Total Payout, or Members Paid in the top hero metadata area.
-- Points System result summaries and newsletters can display Per Point Amount wording.
-- Newsletter CSS was tightened to improve screen fit without changing newsletter themes or calculation behavior.
 
 ## v1.1.252 Calculation section rename
 
@@ -330,7 +321,6 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ### v1.1.330
 
-- Restored known-good v1.1.318 result/stat display behaviour and removed the risky v1.1.319 newsletter stat/card rewrite.
 
 
 ### v1.1.330
@@ -338,7 +328,6 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 - Fixed Admin panel button handling after panel rebuilds/tab switches.
 - Fixed the Payments Copy Panel **Accept Warning** button so it unlocks prefill buttons without wiping the panel.
 - Added safer feedback/status handling so popup messages cannot overwrite full panels.
-- Payout maths, licence checks, API key handling, and newsletter generated HTML are unchanged.
 
 ### v1.1.308
 
@@ -363,12 +352,9 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 ### v1.1.305
 
 - Removed clearly unused helper code and excluded the old userscript backup copy from the release package.
-- No API-key storage, payout calculation, licence, newsletter, or payment-copy behaviour was intentionally changed.
 
 ### v1.1.304
 
-- Removed **Removed Left-Member Hits** from newsletter **All Result Stats** sections.
-- Added/kept **Total Respect** in newsletter **All Result Stats** sections.
 
 ### v1.1.303
 - Removed the full API ToS / Key Usage Details dropdown from the unlocked main Payout panel while keeping the compact visible API Key Usage Notice.
@@ -378,87 +364,55 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 - Added a permanent visible API Key Usage Notice directly under both API key fields in the locked Unlock tab and unlocked Payout tab.
 - The notice now clearly explains why the key is needed, what data is read, where the key is saved, when it is sent to the backend, and what RWPH does not do.
 - Full API ToS / Key Usage Details now opens by default below the visible notice.
-- Kept the HTML newsletter system and the safer no-horizontal-scroll newsletter layout from v1.1.301.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.301
-- Main HTML newsletters use safer narrow/wrapping table layouts to reduce Torn faction-newsletter side-to-side scrollbars.
-- Kept the HTML newsletter system and did not include PNG/picture newsletter changes.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.300
 
-- Updated Test Newsletter All Result Stats by removing War Hits, Assists, Outside Hits, Retals, Removed Left-Member Hits, and Fetched Attacks.
-- Added Total Respect back to Test Newsletter All Result Stats.
-- Normal Basic/Advanced newsletters are unchanged.
 
 ### v1.1.300
 
-- Removed Weight/Points, Share, Respect, Total Respect, and Tracked from Test Newsletter payout user cards.
-- Removed Tracked Hits, Total Respect, and Pay Respect from Test Newsletter All Result Stats.
-- Normal Basic/Advanced newsletters are unchanged.
 
 ### v1.1.298
 
-- Changed **Test Newsletter** from **150 members** to **120 members**.
-- Normal Basic/Advanced newsletters are unchanged and still use their real payout row count.
 
 ### v1.1.297
 
-- Added compact-code mode for long/test newsletters so the test newsletter produces much shorter raw HTML while keeping the summary and payout rows.
-- Real newsletters with 80+ rows also use compact long-newsletter output.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.292
 
-- Added a **Test Newsletter (100 Members)** button to Basic and Advanced result tabs.
-- The test newsletter repeats existing result rows to generate a large test newsletter for long-layout and phone/Torn PDA testing.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.290
 
-- Newsletter payout cards now show a compact rank badge plus player name and payout amount.
-- Newsletter **All Result Stats** sections were simplified to only show **Member Payout**, **Per Hit/Per Point Amount**, and **Payable Hits**.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.289
 
-- Simplified newsletter payout user cards so they only show the player name and payout amount.
-- Full Basic/Advanced result stats remain in the newsletter summary/stat sections outside the payout cards.
-- Applied the simplified payout-card layout to all 5 newsletter themes.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.288
 
-- Made generated newsletter HTML more phone/Torn PDA friendly.
 - Compacted payout user cards to roughly one-quarter of the previous size by tightening padding, font sizes, and spacing.
-- Kept generated newsletter HTML free of scrollbar/overflow CSS.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.286
 
-- Newsletters now include the full results-tab stat set.
-- Newsletter payout rows now use result-card style formatting with rank, member identity, payout, metric, payable hits, and per-member stat blocks.
-- Applied to all 5 Basic and Advanced newsletter styles while keeping phone-friendly layouts.
 
 ### v1.1.284
 
-- Rebuilt generated newsletter HTML output to fit phone/Torn PDA screens better.
 - Replaced wide desktop payout tables with compact 3-column mobile payout rows while keeping all five themes visually different.
-- Kept panel scrollbars, but generated newsletter HTML remains cleaned of scrollbar/overflow CSS.
 
 ### v1.1.283
 
-- Removed **Copy All** and **Select All** from the raw HTML newsletter panels.
 - Kept the top-right **X** close button.
-- Added manual copy instructions for computer and phone/Torn PDA copying, then pasting into Torn faction newsletter controls in the **Source code** tab.
-- Removed newsletter auto-copy / auto-select panel code.
-- Kept panel scrollbars, but stripped scrollbar/overflow CSS from the generated raw newsletter HTML code itself.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.282
 
-- Rebuilt the raw newsletter code area from a textarea into a selectable contenteditable code block.
 - **Select All** now uses DOM range selection so the full raw HTML visibly highlights in Torn PDA/webviews.
 - **Copy All** now copies from the stored full HTML source and keeps the full code highlighted if clipboard access is blocked.
 - Added a manual copy prompt fallback when both normal clipboard routes are blocked.
@@ -466,42 +420,28 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 ### v1.1.275
 
-- Raw newsletter HTML code panel now uses the same RWPH dark panel layout/style/theme as the results tools.
 - Added move support via the panel title bar, resize handles, size preset buttons, and close control.
-- Kept the newsletter workflow manual-only: users copy HTML and preview manually before using Torn faction newsletters.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.274
 
-- Newsletter buttons now open a raw HTML-code panel directly inside the results tab instead of downloading HTML files.
 - The panel includes raw HTML code, **Copy All** and a live inline preview.
-- This applies to all Basic and Advanced newsletter themes and remains manual-only.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.273
 
-- Newsletter main headings now use the user's faction name, for example **Your Faction Payout Newsletter**, instead of the newsletter button/theme name.
-- Applied to all Basic and Advanced newsletter styles.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.272
 
-- Rebuilt newsletter output around self-contained inline HTML-code templates for Torn faction newsletters.
 - Result tabs now provide a visible HTML-code panel with copy, rendered preview, and download actions for each theme.
-- Newsletter generation remains manual-only; RWPH does not send faction newsletters automatically.
 
 ### v1.1.269
 
-- Fixed Basic and Advanced newsletter actions so they open a visible copy/export panel instead of relying on clipboard success only.
-- Newsletter links now download Torn-safe text if scripts or clipboard permissions are blocked.
-- Manual copy remains review-only; RWPH still does not send faction newsletters or payments automatically.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.268
 
-- Fixed newsletter copy actions by adding stronger fallback copying for Torn PDA/browser contexts that block rich clipboard access.
-- Newsletter copy now tries rich HTML, rendered-content copy, plain text, and then a manual copy panel.
-- Manual copy remains review-only; RWPH still does not send faction newsletters or payments automatically.
 
 ### v1.1.267
 
@@ -520,7 +460,6 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 - Fixed **Removed Left-Member Hits** over-counting by counting unique tracked hits only. Bonus-only stats such as war-faction retal bonus, hospital bonus, and fair-fight bonus are no longer added as extra removed hits.
 - Applied the corrected removed-left-member hit counter to both Basic Calculations and Advanced Calculations.
-- Updated newsletter output to show the corrected **Removed Left-Member Hits** stat when former members are excluded.
 
 ### v1.1.264
 
@@ -540,21 +479,17 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.261
-- Newsletter buttons now copy Torn-safe rich/plain newsletter content for Torn faction newsletters instead of requiring raw HTML source/code.
 - Rich HTML clipboard copy is attempted first, with a readable plain-text fallback if the browser or Torn strips styling.
-- Help wording now explains that raw HTML/CSS can show as text in Torn faction newsletters.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.260
 - RWPH removes former faction members from Basic and Advanced result rows when the current faction member list can be loaded, unless the matching Include members who left the faction checkbox is ticked.
-- Current-member filtering also applies when opening compatible cached reports, so result tabs, exports, newsletters, and payment rows stay aligned to the current faction.
 - Removed former members are noted in calculation warnings where possible.
 - Updated README, terms, server version, package version, and userscript version.
 
 ### v1.1.257
 
 - Member Payout is explicitly treated as the member payment calculation pool.
-- Total Payout is retained only as display/report metadata for results and newsletters.
 - The backend accepts a dedicated `memberPayout` field and prefers it when calculating payment rows, while keeping backwards compatibility for older requests.
 
 ### v1.1.256
@@ -579,9 +514,8 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 
-v1.1.330 note: Fixed Admin panel button handling and the Payments Copy Panel Accept Warning unlock flow. No API-key handling, licence, payout calculation, or generated-newsletter behaviour changed.
 
 
-## v1.1.364 note
+## v1.1.366 note
 
 This update only changes loading progress display behaviour. API key usage and storage terms are unchanged.
