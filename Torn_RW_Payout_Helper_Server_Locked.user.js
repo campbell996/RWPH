@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.351
+// @version      1.1.353
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.351: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.353: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7561,7 +7561,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.351: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.353: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7703,7 +7703,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.351: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.353: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7776,7 +7776,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.351: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.353: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7870,17 +7870,28 @@
   function rwphCreateResultsLoadingPanel(progressId = "", loadingHtml = "", startedAtMs = Date.now()) {
     rwphCloseExistingResultsLoadingPanel();
 
+    const savedLayoutKey = "rwph_results_loading_panel_layout";
+    let closed = false;
+    let fullscreen = false;
+    let previousLayout = null;
+
+    const clamp = (value, min, max) => Math.min(Math.max(Number(value) || 0, min), max);
+    const point = (ev) => {
+      const t = (ev.touches && ev.touches[0]) || (ev.changedTouches && ev.changedTouches[0]);
+      return { x: Number((t && t.clientX) || ev.clientX || 0), y: Number((t && t.clientY) || ev.clientY || 0) };
+    };
+
     const panel = document.createElement("div");
     panel.id = "rwph-results-loading-panel";
     panel.className = "rwph-floating-panel rwph-results-loading-panel";
-    panel.dataset.layoutKey = "rwph_results_loading_panel_layout";
+    panel.dataset.layoutKey = savedLayoutKey;
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "RWPH results loading panel");
     panel.style.cssText = [
       "position:fixed",
       "right:18px",
       "bottom:18px",
-      "z-index:1000002",
+      "z-index:2147483600",
       "width:min(900px,calc(100vw - 24px))",
       "height:min(820px,calc(100vh - 24px))",
       "min-width:min(320px,calc(100vw - 24px))",
@@ -7888,75 +7899,96 @@
       "display:flex",
       "flex-direction:column",
       "border-radius:18px",
-      "border:1px solid rgba(251,191,36,.34)",
-      "background:linear-gradient(180deg,rgba(33,23,20,.98),rgba(11,7,5,.98))",
-      "box-shadow:0 22px 70px rgba(0,0,0,.58),0 0 28px rgba(184,136,89,.14)",
+      "border:1px solid rgba(251,191,36,.42)",
+      "background:linear-gradient(180deg,rgba(33,23,20,.99),rgba(11,7,5,.99))",
+      "box-shadow:0 22px 70px rgba(0,0,0,.62),0 0 28px rgba(184,136,89,.18)",
       "overflow:hidden",
       "box-sizing:border-box",
+      "color:#fff2dd",
     ].join(";");
 
     const head = document.createElement("div");
     head.className = "rwph-results-loading-panel-head";
     head.style.cssText = [
+      "position:relative",
+      "z-index:2147483602",
       "flex:0 0 auto",
+      "height:54px",
       "display:flex",
       "align-items:center",
       "justify-content:space-between",
       "gap:10px",
-      "padding:10px 12px",
-      "background:linear-gradient(135deg,rgba(68,32,24,.98),rgba(20,15,13,.98))",
-      "border-bottom:1px solid rgba(184,136,89,.28)",
+      "padding:8px 10px 8px 12px",
+      "background:linear-gradient(135deg,rgba(68,32,24,.99),rgba(20,15,13,.99))",
+      "border-bottom:1px solid rgba(184,136,89,.34)",
       "cursor:move",
       "user-select:none",
       "touch-action:none",
       "color:#fff2dd",
       "font:950 12px/1 Arial,Helvetica,sans-serif",
+      "box-sizing:border-box",
     ].join(";");
 
     const title = document.createElement("div");
-    title.innerHTML = '<div style="color:#fde68a;font-size:10px;letter-spacing:.75px;text-transform:uppercase;">Ranked War Payout Helper</div><div style="color:#fff7ed;font-size:13px;margin-top:2px;">Results Loading</div>';
+    title.style.cssText = "min-width:0;flex:1 1 auto;overflow:hidden;";
+    title.innerHTML = '<div style="color:#fde68a;font-size:10px;letter-spacing:.75px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Ranked War Payout Helper</div><div style="color:#fff7ed;font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Results Loading</div>';
 
-    const fullBtn = document.createElement("button");
-    fullBtn.type = "button";
-    fullBtn.textContent = "⛶";
-    fullBtn.setAttribute("aria-label", "Fullscreen results loading panel");
-    fullBtn.title = "Fullscreen";
-    fullBtn.style.cssText = [
+    const controls = document.createElement("div");
+    controls.style.cssText = [
+      "position:relative",
+      "z-index:2147483603",
+      "display:flex",
+      "align-items:center",
+      "gap:8px",
       "flex:0 0 auto",
-      "width:34px",
-      "height:34px",
-      "border-radius:12px",
-      "border:1px solid rgba(251,191,36,.30)",
-      "background:linear-gradient(180deg,rgba(63,29,23,.95),rgba(20,15,13,.96))",
-      "color:#fff7ed",
-      "font:950 16px/1 Arial,Helvetica,sans-serif",
-      "cursor:pointer",
-      "box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)",
-      "text-shadow:0 1px 0 rgba(0,0,0,.75)",
+      "pointer-events:auto",
     ].join(";");
 
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.textContent = "×";
-    closeBtn.setAttribute("aria-label", "Close results loading panel");
-    closeBtn.style.cssText = [
-      "flex:0 0 auto",
-      "width:34px",
-      "height:34px",
-      "border-radius:12px",
-      "border:1px solid rgba(251,191,36,.30)",
-      "background:linear-gradient(180deg,rgba(63,29,23,.95),rgba(20,15,13,.96))",
-      "color:#fff7ed",
-      "font:950 20px/1 Arial,Helvetica,sans-serif",
-      "cursor:pointer",
-      "box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)",
-      "text-shadow:0 1px 0 rgba(0,0,0,.75)",
-    ].join(";");
+    const makeControlButton = (label, titleText, fontSize = "14px") => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.title = titleText;
+      btn.setAttribute("aria-label", titleText);
+      btn.style.cssText = [
+        "display:inline-flex",
+        "align-items:center",
+        "justify-content:center",
+        "width:36px",
+        "height:36px",
+        "min-width:36px",
+        "min-height:36px",
+        "border-radius:12px",
+        "border:1px solid rgba(251,191,36,.36)",
+        "background:linear-gradient(180deg,rgba(63,29,23,.98),rgba(20,15,13,.98))",
+        "color:#fff7ed",
+        `font:950 ${fontSize}/1 Arial,Helvetica,sans-serif`,
+        "cursor:pointer",
+        "box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)",
+        "text-shadow:0 1px 0 rgba(0,0,0,.75)",
+        "padding:0",
+        "margin:0",
+        "pointer-events:auto",
+      ].join(";");
+      btn.addEventListener("mousedown", (ev) => ev.stopPropagation());
+      btn.addEventListener("touchstart", (ev) => ev.stopPropagation(), { passive: true });
+      return btn;
+    };
+
+    const fullBtn = makeControlButton("⛶", "Fullscreen results loading panel", "16px");
+    const closeBtn = makeControlButton("×", "Close results loading panel", "22px");
+
+    controls.appendChild(fullBtn);
+    controls.appendChild(closeBtn);
+    head.appendChild(title);
+    head.appendChild(controls);
 
     const frame = document.createElement("iframe");
     frame.id = "rwph-results-loading-frame";
     frame.setAttribute("title", "RWPH results loading");
     frame.style.cssText = [
+      "position:relative",
+      "z-index:1",
       "flex:1 1 auto",
       "width:100%",
       "min-height:0",
@@ -7965,47 +7997,190 @@
       "display:block",
     ].join(";");
 
-    const controls = document.createElement("div");
-    controls.style.cssText = "display:flex;align-items:center;gap:8px;flex:0 0 auto;";
-    controls.appendChild(fullBtn);
-    controls.appendChild(closeBtn);
-
-    head.appendChild(title);
-    head.appendChild(controls);
     panel.appendChild(head);
     panel.appendChild(frame);
-    document.body.appendChild(panel);
+    (document.body || document.documentElement).appendChild(panel);
 
-    let closed = false;
+    const makeResizeHandle = (dir) => {
+      const h = document.createElement("div");
+      h.className = "rwph-results-resize-handle rwph-results-resize-" + dir;
+      h.dataset.resizeDir = dir;
+      h.title = dir === "nw" ? "Resize from top-left" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
+      h.style.cssText = [
+        "position:absolute",
+        "width:22px",
+        "height:22px",
+        "z-index:2147483604",
+        "touch-action:none",
+        "user-select:none",
+        "-webkit-user-select:none",
+        "opacity:.98",
+        "background:rgba(2,6,23,.20)",
+        "border-color:rgba(245,158,11,.94)",
+        "border-style:solid",
+        "box-sizing:border-box",
+        "filter:drop-shadow(0 0 6px rgba(245,158,11,.32))",
+      ].join(";");
+      if (dir === "se") {
+        h.style.right = "5px"; h.style.bottom = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "0 3px 3px 0"; h.style.borderRadius = "0 0 8px 0";
+      } else if (dir === "sw") {
+        h.style.left = "5px"; h.style.bottom = "5px"; h.style.cursor = "nesw-resize"; h.style.borderWidth = "0 0 3px 3px"; h.style.borderRadius = "0 0 0 8px";
+      } else {
+        h.style.left = "5px"; h.style.top = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "3px 0 0 3px"; h.style.borderRadius = "8px 0 0 0";
+      }
+      panel.appendChild(h);
+      return h;
+    };
+    ["nw", "sw", "se"].forEach(makeResizeHandle);
+
+    const saveLayout = () => {
+      if (fullscreen) return;
+      try {
+        const r = panel.getBoundingClientRect();
+        localStorage.setItem(savedLayoutKey, JSON.stringify({
+          left: Math.round(r.left),
+          top: Math.round(r.top),
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+        }));
+      } catch (_) {}
+    };
+
+    const applySavedLayout = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(savedLayoutKey) || "null");
+        if (!saved) return;
+        const minW = 280, minH = 220;
+        const maxW = Math.max(minW, window.innerWidth - 16);
+        const maxH = Math.max(minH, window.innerHeight - 16);
+        const w = clamp(saved.width, minW, maxW);
+        const h = clamp(saved.height, minH, maxH);
+        const l = clamp(saved.left, 8, Math.max(8, window.innerWidth - w - 8));
+        const t = clamp(saved.top, 8, Math.max(8, window.innerHeight - h - 8));
+        panel.style.setProperty("left", l + "px", "important");
+        panel.style.setProperty("top", t + "px", "important");
+        panel.style.setProperty("right", "auto", "important");
+        panel.style.setProperty("bottom", "auto", "important");
+        panel.style.setProperty("width", w + "px", "important");
+        panel.style.setProperty("height", h + "px", "important");
+        panel.style.setProperty("max-height", "none", "important");
+      } catch (_) {}
+    };
+
+    let dragging = false;
+    let resizing = false;
+    let activeDir = "se";
+    let startX = 0, startY = 0, startLeft = 0, startTop = 0, startWidth = 0, startHeight = 0;
+
+    const beginDrag = (ev) => {
+      if (ev.target && ev.target.closest && ev.target.closest("button,.rwph-results-resize-handle")) return;
+      const p = point(ev);
+      const r = panel.getBoundingClientRect();
+      dragging = true;
+      resizing = false;
+      fullscreen = false;
+      fullBtn.textContent = "⛶";
+      fullBtn.title = "Fullscreen results loading panel";
+      startX = p.x; startY = p.y; startLeft = r.left; startTop = r.top;
+      panel.style.setProperty("left", r.left + "px", "important");
+      panel.style.setProperty("top", r.top + "px", "important");
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("bottom", "auto", "important");
+      ev.preventDefault();
+      ev.stopPropagation?.();
+    };
+
+    const beginResize = (ev) => {
+      const handle = ev.target && ev.target.closest ? ev.target.closest(".rwph-results-resize-handle") : null;
+      if (!handle || !panel.contains(handle)) return;
+      const p = point(ev);
+      const r = panel.getBoundingClientRect();
+      resizing = true;
+      dragging = false;
+      fullscreen = false;
+      fullBtn.textContent = "⛶";
+      fullBtn.title = "Fullscreen results loading panel";
+      activeDir = handle.dataset.resizeDir || "se";
+      startX = p.x; startY = p.y; startLeft = r.left; startTop = r.top; startWidth = r.width; startHeight = r.height;
+      panel.style.setProperty("left", r.left + "px", "important");
+      panel.style.setProperty("top", r.top + "px", "important");
+      panel.style.setProperty("right", "auto", "important");
+      panel.style.setProperty("bottom", "auto", "important");
+      ev.preventDefault();
+      ev.stopPropagation?.();
+    };
+
+    const move = (ev) => {
+      if (!dragging && !resizing) return;
+      const p = point(ev);
+      if (dragging) {
+        const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+        const maxTop = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
+        panel.style.setProperty("left", clamp(startLeft + p.x - startX, 8, maxLeft) + "px", "important");
+        panel.style.setProperty("top", clamp(startTop + p.y - startY, 8, maxTop) + "px", "important");
+      }
+      if (resizing) {
+        const minW = 280, minH = 220;
+        const maxW = Math.max(minW, window.innerWidth - 16);
+        const maxH = Math.max(minH, window.innerHeight - 16);
+        const dx = p.x - startX;
+        const dy = p.y - startY;
+        let w = startWidth, h = startHeight, l = startLeft, t = startTop;
+        if (activeDir.includes("e")) w = startWidth + dx;
+        if (activeDir.includes("s")) h = startHeight + dy;
+        if (activeDir.includes("w")) w = startWidth - dx;
+        if (activeDir.includes("n")) h = startHeight - dy;
+        w = clamp(w, minW, maxW);
+        h = clamp(h, minH, maxH);
+        if (activeDir.includes("w")) l = startLeft + (startWidth - w);
+        if (activeDir.includes("n")) t = startTop + (startHeight - h);
+        l = clamp(l, 8, Math.max(8, window.innerWidth - w - 8));
+        t = clamp(t, 8, Math.max(8, window.innerHeight - h - 8));
+        panel.style.setProperty("left", l + "px", "important");
+        panel.style.setProperty("top", t + "px", "important");
+        panel.style.setProperty("right", "auto", "important");
+        panel.style.setProperty("bottom", "auto", "important");
+        panel.style.setProperty("width", w + "px", "important");
+        panel.style.setProperty("height", h + "px", "important");
+      }
+      ev.preventDefault();
+    };
+
+    const endMove = () => {
+      if (dragging || resizing) saveLayout();
+      dragging = false;
+      resizing = false;
+    };
+
+    head.addEventListener("mousedown", beginDrag);
+    head.addEventListener("touchstart", beginDrag, { passive: false });
+    panel.addEventListener("mousedown", beginResize);
+    panel.addEventListener("touchstart", beginResize, { passive: false });
+    document.addEventListener("mousemove", move);
+    document.addEventListener("touchmove", move, { passive: false });
+    document.addEventListener("mouseup", endMove);
+    document.addEventListener("touchend", endMove);
+    document.addEventListener("touchcancel", endMove);
+
     const markClosed = () => {
       closed = true;
+      try { document.removeEventListener("mousemove", move); } catch (_) {}
+      try { document.removeEventListener("touchmove", move); } catch (_) {}
+      try { document.removeEventListener("mouseup", endMove); } catch (_) {}
+      try { document.removeEventListener("touchend", endMove); } catch (_) {}
+      try { document.removeEventListener("touchcancel", endMove); } catch (_) {}
       try { panel.remove(); } catch (_) {}
     };
-    closeBtn.addEventListener("click", markClosed);
+    closeBtn.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      markClosed();
+    });
 
-    let rwphLoadingPanelFullscreen = false;
-    let rwphLoadingPanelPrevStyle = null;
-    function rwphToggleResultsLoadingPanelFullscreen() {
+    const toggleFullscreen = () => {
       try {
-        if (!rwphLoadingPanelFullscreen) {
-          const rect = panel.getBoundingClientRect();
-          rwphLoadingPanelPrevStyle = {
-            left: panel.style.left || "",
-            top: panel.style.top || "",
-            right: panel.style.right || "",
-            bottom: panel.style.bottom || "",
-            width: panel.style.width || "",
-            height: panel.style.height || "",
-            maxHeight: panel.style.maxHeight || "",
-            minWidth: panel.style.minWidth || "",
-            minHeight: panel.style.minHeight || "",
-            borderRadius: panel.style.borderRadius || "",
-            transform: panel.style.transform || "",
-            rectLeft: Math.round(rect.left),
-            rectTop: Math.round(rect.top),
-            rectWidth: Math.round(rect.width),
-            rectHeight: Math.round(rect.height),
-          };
+        if (!fullscreen) {
+          const r = panel.getBoundingClientRect();
+          previousLayout = { left: r.left, top: r.top, width: r.width, height: r.height };
           panel.style.setProperty("left", "6px", "important");
           panel.style.setProperty("top", "6px", "important");
           panel.style.setProperty("right", "auto", "important");
@@ -8016,52 +8191,34 @@
           panel.style.setProperty("min-height", "0", "important");
           panel.style.setProperty("max-height", "none", "important");
           panel.style.setProperty("border-radius", "14px", "important");
-          fullBtn.textContent = "⛶";
-          fullBtn.title = "Exit fullscreen";
+          fullscreen = true;
+          fullBtn.textContent = "▣";
+          fullBtn.title = "Exit fullscreen results loading panel";
           fullBtn.setAttribute("aria-label", "Exit fullscreen results loading panel");
-          rwphLoadingPanelFullscreen = true;
         } else {
-          const prev = rwphLoadingPanelPrevStyle || {};
-          if (prev.left || prev.top || prev.width || prev.height) {
-            panel.style.setProperty("left", prev.left || (prev.rectLeft || 18) + "px", "important");
-            panel.style.setProperty("top", prev.top || (prev.rectTop || 18) + "px", "important");
-            panel.style.setProperty("right", prev.right || "auto", "important");
-            panel.style.setProperty("bottom", prev.bottom || "auto", "important");
-            panel.style.setProperty("width", prev.width || (prev.rectWidth || 900) + "px", "important");
-            panel.style.setProperty("height", prev.height || (prev.rectHeight || 720) + "px", "important");
-            panel.style.setProperty("max-height", prev.maxHeight || "none", "important");
-            panel.style.setProperty("min-width", prev.minWidth || "250px", "important");
-            panel.style.setProperty("min-height", prev.minHeight || "180px", "important");
-            panel.style.setProperty("border-radius", prev.borderRadius || "18px", "important");
-            panel.style.transform = prev.transform || "";
-          } else {
-            panel.style.removeProperty("left");
-            panel.style.removeProperty("top");
-            panel.style.right = "18px";
-            panel.style.bottom = "18px";
-            panel.style.width = "min(900px,calc(100vw - 24px))";
-            panel.style.height = "min(820px,calc(100vh - 24px))";
-            panel.style.borderRadius = "18px";
-          }
+          const r = previousLayout || { left: 18, top: 18, width: Math.min(900, window.innerWidth - 24), height: Math.min(820, window.innerHeight - 24) };
+          panel.style.setProperty("left", clamp(r.left, 8, Math.max(8, window.innerWidth - 288)) + "px", "important");
+          panel.style.setProperty("top", clamp(r.top, 8, Math.max(8, window.innerHeight - 228)) + "px", "important");
+          panel.style.setProperty("right", "auto", "important");
+          panel.style.setProperty("bottom", "auto", "important");
+          panel.style.setProperty("width", clamp(r.width, 280, Math.max(280, window.innerWidth - 16)) + "px", "important");
+          panel.style.setProperty("height", clamp(r.height, 220, Math.max(220, window.innerHeight - 16)) + "px", "important");
+          panel.style.setProperty("min-width", "280px", "important");
+          panel.style.setProperty("min-height", "220px", "important");
+          panel.style.setProperty("border-radius", "18px", "important");
+          fullscreen = false;
           fullBtn.textContent = "⛶";
-          fullBtn.title = "Fullscreen";
+          fullBtn.title = "Fullscreen results loading panel";
           fullBtn.setAttribute("aria-label", "Fullscreen results loading panel");
-          rwphLoadingPanelFullscreen = false;
-          try { localStorage.setItem("rwph_results_loading_panel_layout", JSON.stringify({
-            left: Math.round(panel.getBoundingClientRect().left),
-            top: Math.round(panel.getBoundingClientRect().top),
-            width: Math.round(panel.getBoundingClientRect().width),
-            height: Math.round(panel.getBoundingClientRect().height),
-          })); } catch (_) {}
+          saveLayout();
         }
-        rwphStyleResultsLoadingPanelControls(panel);
       } catch (e) {
         console.warn("Could not toggle results loading panel fullscreen:", e);
       }
-    }
+    };
     fullBtn.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      rwphToggleResultsLoadingPanelFullscreen();
+      toggleFullscreen();
     });
 
     try {
@@ -8073,13 +8230,39 @@
         panel.style.height = "calc(100vh - 12px)";
         panel.style.minWidth = "0";
         panel.style.minHeight = "0";
+        panel.querySelectorAll(".rwph-results-resize-handle").forEach((h) => {
+          h.style.width = "32px";
+          h.style.height = "32px";
+          h.style.zIndex = "2147483605";
+        });
+      } else {
+        applySavedLayout();
       }
-    } catch (_) {}
+    } catch (_) {
+      applySavedLayout();
+    }
 
-    try {
-      if (typeof setupMoveResize === "function") setupMoveResize(panel, ".rwph-results-loading-panel-head");
-      rwphStyleResultsLoadingPanelControls(panel);
-    } catch (_) {}
+    const fakeTab = {
+      rwphIsLoadingPanel: true,
+      rwphPanel: panel,
+      rwphFrame: frame,
+      get closed() {
+        try { return closed || !document.body.contains(panel); } catch (_) { return true; }
+      },
+      get document() {
+        return frame.contentDocument || frame.contentWindow?.document || document;
+      },
+      get window() {
+        return frame.contentWindow || window;
+      },
+      focus() {
+        try { panel.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (_) {}
+      },
+      postMessage(message, targetOrigin) {
+        try { frame.contentWindow?.postMessage(message, targetOrigin || "*"); } catch (_) {}
+      },
+      close: markClosed,
+    };
 
     try {
       const doc = frame.contentDocument || frame.contentWindow?.document;
@@ -8090,33 +8273,6 @@
     } catch (e) {
       console.warn("Could not write loading page into results loading panel:", e);
     }
-
-    const fakeTab = {
-      rwphIsLoadingPanel: true,
-      rwphPanel: panel,
-      rwphFrame: frame,
-      get closed() {
-        try {
-          return closed || !document.body.contains(panel);
-        } catch (_) {
-          return true;
-        }
-      },
-      get document() {
-        return frame.contentDocument || frame.contentWindow?.document || document;
-      },
-      get window() {
-        return frame.contentWindow || window;
-      },
-      focus() {
-        try { rwphStyleResultsLoadingPanelControls(panel); } catch (_) {}
-        try { panel.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (_) {}
-      },
-      postMessage(message, targetOrigin) {
-        try { frame.contentWindow?.postMessage(message, targetOrigin || "*"); } catch (_) {}
-      },
-      close: markClosed,
-    };
 
     return fakeTab;
   }
@@ -11037,6 +11193,56 @@
       text: buildTornFactionNewsletterText(rows || [], summary || {}, themeKey || "standard"),
     };
   }
+
+
+  // v1.1.353: final newsletter override - member name + amount paid only.
+  function buildRwphNamePaidOnlyNewsletter(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const theme = rwphNewsletterHtmlTheme(themeKey || "standard");
+    const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
+    const bg = theme.bg || "#111217";
+    const outer = theme.outer || theme.panelA || "#1a1c24";
+    const panelA = theme.panelA || outer;
+    const panelB = theme.panelB || theme.header || outer;
+    const header = theme.header || panelB;
+    const line = theme.line || "#3a4050";
+    const strongLine = theme.strongLine || theme.accent || "#f2b84b";
+    const accent = theme.accent || "#f2b84b";
+    const text = theme.text || "#f2f2f2";
+    const soft = theme.soft || theme.muted || "#c9c9c9";
+    const icon = esc(theme.icon || "");
+    const safeText = "word-break:break-word;overflow-wrap:anywhere;";
+    const tableFit = "width:100%;border-collapse:collapse;table-layout:fixed;";
+
+    const payoutRows = (m.list || []).map((r, idx) => {
+      const rowBg = idx % 2 ? panelA : panelB;
+      return `<tr bgcolor="${rowBg}"><td width="66%" style="width:66%;padding:5px 4px;border:1px solid ${line};background:${rowBg};color:${text};font:bold 10px Arial,Helvetica,sans-serif;vertical-align:top;${safeText}">${esc(r.name || ("Unknown " + (r.id || "")))}</td><td width="34%" align="right" style="width:34%;padding:5px 4px;border:1px solid ${line};background:${rowBg};color:#86efac;font:bold 10px Arial,Helvetica,sans-serif;vertical-align:top;text-align:right;${safeText}">${money(r.payout || 0)}</td></tr>`;
+    }).join("") || `<tr><td colspan="2" style="padding:7px;border:1px solid ${line};background:${panelB};color:${soft};font:10px Arial,Helvetica,sans-serif;text-align:center;${safeText}">No payout rows.</td></tr>`;
+
+    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${bg};color:${text};font-family:Arial,Helvetica,sans-serif;"><tr><td style="padding:3px;background:${bg};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${outer};border:1px solid ${line};"><tr><td colspan="2" style="padding:7px 5px;background:${header};border-bottom:2px solid ${strongLine};text-align:center;${safeText}"><div style="font:bold 13px Arial,Helvetica,sans-serif;color:${accent};line-height:1.1;${safeText}">${icon} ${title}</div><div style="font:8px Arial,Helvetica,sans-serif;color:${soft};line-height:1.1;margin-top:1px;${safeText}">Member payouts</div></td></tr><tr bgcolor="${header}"><td width="66%" style="width:66%;padding:4px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;${safeText}">Member</td><td width="34%" align="right" style="width:34%;padding:4px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;text-align:right;${safeText}">Amount Paid</td></tr>${payoutRows}</table></td></tr></table>`;
+    return rwphCleanNewsletterHtmlCode(html);
+  }
+
+  function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
+    return buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildRwphTornTestFullCodeNewsletter(rows, summary, themeKey) {
+    return buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
+    return buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildTornFactionNewsletterBundle(rows, summary, themeKey) {
+    return {
+      title: String(summary?.newsletterTitle || summary?.factionName || "Faction Payout Newsletter"),
+      html: buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard"),
+      text: (rows || []).map((r) => `${r.name || ("Unknown " + (r.id || ""))}: ${money(r.payout || 0)}`).join("\\n"),
+    };
+  }
+
 
   function createHtmlNewsletter(rows, summary) {
     const html = buildWarPayoutNewsletterHtml(rows, summary || {});
