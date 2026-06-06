@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.345
+// @version      1.1.346
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.345: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.346: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -1395,7 +1395,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-basic-120-results", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1429,7 +1429,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-basic-120-results", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -7561,7 +7561,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.345: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.346: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7697,7 +7697,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.345: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.346: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7770,7 +7770,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.345: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.346: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7797,7 +7797,7 @@
       const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
       let tab = null;
 
-      // v1.1.345: always use an about:blank loading tab. Blob tabs and backend
+      // v1.1.346: always use an about:blank loading tab. Blob tabs and backend
       // URL tabs can block opener access or trigger app/browser warning pages,
       // which stops the locked Open Results button from unlocking.
       tab = window.open("about:blank", "_blank");
@@ -8150,6 +8150,57 @@
     return document.getElementById("rw-basic-fast-mode")?.checked === true;
   }
 
+  function rwphBasic120ResultsEnabled() {
+    return document.getElementById("rw-basic-120-results")?.checked === true;
+  }
+
+  function rwphApplyBasic120ResultsTestRows(rows = [], summary = {}, enabled = false) {
+    const sourceRows = Array.isArray(rows) && rows.length ? rows : [{
+      id: "0000000",
+      name: "Test Member",
+      warHits: 10,
+      assists: 2,
+      outsideHits: 1,
+      retaliationHits: 1,
+      totalTrackedHits: 14,
+      payableEvents: 14,
+      weight: 14,
+      points: 14,
+      payout: 1000000,
+      respect: 0,
+      totalRespect: 0,
+      avgFairFight: 1,
+    }];
+
+    if (!enabled) {
+      return { rows: Array.isArray(rows) ? rows : [], summary: summary || {} };
+    }
+
+    const testRows = Array.from({ length: 120 }, (_, idx) => {
+      const base = sourceRows[idx % sourceRows.length] || {};
+      const copy = { ...base };
+      const originalName = String(base.name || `Member ${idx + 1}`);
+      copy.name = `${originalName} #${String(idx + 1).padStart(3, "0")}`;
+      copy.rwphTest120ResultRow = true;
+      copy.rwphSourceResultIndex = (idx % sourceRows.length) + 1;
+      return copy;
+    });
+
+    const testSummary = {
+      ...(summary || {}),
+      nameCount: 120,
+      memberCount: 120,
+      test120ResultsPage: true,
+      displayOnly120ResultsPage: true,
+      warnings: [
+        ...((summary && Array.isArray(summary.warnings)) ? summary.warnings : []),
+        "Test Results Page is enabled: Basic result rows are repeated to create a 120-member layout test page. Do not use this test page for real payments.",
+      ],
+    };
+
+    return { rows: testRows, summary: testSummary };
+  }
+
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
     rwphCachedReports ||= {};
@@ -8216,6 +8267,7 @@
       retaliationHitWeight: rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
       assistWeight: rwphFixedPerHitWeight("rw-assist-weight", 0),
       basicFastMode: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasicFastModeEnabled(),
+      basic120ResultsPage: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasic120ResultsEnabled(),
       pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
       pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
       pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
@@ -8420,6 +8472,11 @@
 
       lastRows = result.rows || [];
       lastSummary = result.summary || {};
+      if (mode === "standard" && rwphBasic120ResultsEnabled()) {
+        const testResult = rwphApplyBasic120ResultsTestRows(lastRows, lastSummary, true);
+        lastRows = testResult.rows;
+        lastSummary = testResult.summary;
+      }
       rwphStorePayAllRows(lastRows);
       rwphSaveLastResults(lastRows, lastSummary);
       rwphSetCacheButtonState(mode, true, {
@@ -12196,8 +12253,10 @@
               </div>
               <div class="rw-compact-check-grid rw-compact-check-grid-single">
                 <label><input id="rw-basic-fast-mode" type="checkbox"> Fast Mode — ranked-war report only</label>
+                <label><input id="rw-basic-120-results" type="checkbox"> Test Results Page — 120 members</label>
               </div>
               <div class="rw-calc-brief rw-calc-mini-note">Fast Mode is much quicker. It uses Torn rankedwarreport for War Hits, members, Respect and Total Respect, but skips attack-log extras like assists, outside hits and retals.</div>
+              <div class="rw-calc-brief rw-calc-mini-note">Test Results Page repeats the Basic result rows until the fullscreen results page has 120 members. This is for layout/testing only.</div>
               <label>Exclude member from results
                 <textarea id="rw-excluded-members" rows="2" placeholder="Paste Torn name or ID. One per line for multiple." spellcheck="false"></textarea>
               </label>
@@ -12649,7 +12708,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
+    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-basic-120-results", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -12879,6 +12938,7 @@
       const retaliationHitWeight = rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1);
       const assistWeight = rwphFixedPerHitWeight("rw-assist-weight", 0);
       const basicFastMode = !isPointsMode && rwphBasicFastModeEnabled();
+      const basic120ResultsPage = !isPointsMode && rwphBasic120ResultsEnabled();
       const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
       const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
       const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
@@ -12943,6 +13003,7 @@
           retaliationHitWeight,
           assistWeight,
           basicFastMode,
+          basic120ResultsPage,
           pointWarHitValue,
           pointAssistValue,
           pointOutsideHitValue,
@@ -12976,6 +13037,11 @@
 
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
+        if (!isPointsMode && rwphBasic120ResultsEnabled()) {
+          const testResult = rwphApplyBasic120ResultsTestRows(lastRows, lastSummary, true);
+          lastRows = testResult.rows;
+          lastSummary = testResult.summary;
+        }
         rwphStorePayAllRows(lastRows);
         rwphSaveLastResults(lastRows, lastSummary);
         const reportCacheReady = !!(result.cached || result.cache?.hit || result.cache?.saved || lastSummary?.cacheSaved);
