@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.341
+// @version      1.1.342
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.341: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.342: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7481,7 +7481,7 @@
           method: "POST",
           mode: "cors",
           cache: "no-store",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
           body: JSON.stringify({ progressId: rwphProgressId })
         }).then(function(res){ return res && res.json ? res.json() : null; })
           .then(function(json){
@@ -7490,7 +7490,7 @@
               else if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
               if (json.resultHtmlReady && !rwphManualResultsHtml) {
                 try {
-                  fetch(rwphApiBase + "/api/calc/result-html?progressId=" + encodeURIComponent(rwphProgressId), { cache: "no-store" })
+                  fetch(rwphApiBase + "/api/calc/result-html?progressId=" + encodeURIComponent(rwphProgressId), { cache: "no-store", headers: { "ngrok-skip-browser-warning": "true" } })
                     .then(function(r){ return r && r.json ? r.json() : null; })
                     .then(function(payload){ if (payload && payload.ok && payload.ready && payload.html) rwphShowManualResultsButton(payload.html); })
                     .catch(function(){});
@@ -7557,7 +7557,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.341: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.342: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7695,7 +7695,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.341: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.342: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7768,7 +7768,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.341: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.342: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7796,24 +7796,13 @@
       let loadingBlobUrl = "";
       let tab = null;
 
-      // v1.1.341: open a backend-hosted loading tab first. It is refresh-safe,
-      // avoids blob: app-handling errors on PDA/phone, and can unlock the
-      // results button by polling the backend result-html store.
-      try {
-        const hostedUrl = `${PAYWALL_API_BASE}/api/calc/loading-tab?progressId=${encodeURIComponent(String(progressId || ""))}&startedAt=${encodeURIComponent(String(rwphLoadingStartedAt))}`;
-        tab = window.open(hostedUrl, "_blank");
-        if (tab && !tab.closed) {
-          setTimeout(() => rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt), 250);
-          return tab;
-        }
-      } catch (hostedOpenError) {
-        console.warn("Could not open backend-hosted loading page, falling back:", hostedOpenError);
-      }
-
+      // v1.1.342: do NOT open the backend/ngrok URL as the loading tab.
+      // Ngrok can show a browser warning/interstitial when opened as a page.
+      // RWPH writes the loading page into an about:blank tab instead, while
+      // still polling the backend result-html store for the unlock button.
       const ua = String(navigator?.userAgent || "");
       const isPhoneOrPda = /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(ua) || !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
 
-      // Fallback only.
       if (!isPhoneOrPda) {
         try {
           if (typeof Blob === "function" && window.URL && typeof window.URL.createObjectURL === "function") {
@@ -7857,7 +7846,7 @@
       GM_xmlhttpRequest({
         method: "POST",
         url: `${PAYWALL_API_BASE}/api/calc/result-html`,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
         data: JSON.stringify({ progressId: id, html: String(html || "") }),
         timeout: 30000,
       });
@@ -7867,7 +7856,7 @@
           method: "POST",
           mode: "cors",
           cache: "no-store",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
           body: JSON.stringify({ progressId: id, html: String(html || "") }),
         }).catch(() => {});
       } catch (_) {}
