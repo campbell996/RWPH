@@ -5663,8 +5663,8 @@
     <div class="rwph-newsletter-code-body">
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Raw HTML Code</div>
-        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">Raw HTML code only. Tap inside the box, select/copy the code, then paste it into Torn's faction newsletter Source code tab.</div>
-        <textarea readonly inputmode="none" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" tabindex="0" aria-readonly="true" id="rwph-newsletter-code-text-${key}" data-rwph-newsletter-code="${key}">${esc(htmlCode)}</textarea>
+        <div class="rwph-newsletter-copy-status" data-rwph-newsletter-copy-status="${key}">How to copy: this raw HTML box is no-keyboard text, not a typing box. On phone/Torn PDA, hold the code, choose Select All, then Copy. On computer, right-click the code, Select All, then CTRL+C. Paste it into Torn's faction newsletter Source code tab. The panel scrollbars are only part of RWPH.</div>
+        <pre spellcheck="false" tabindex="0" role="textbox" aria-readonly="true" id="rwph-newsletter-code-text-${key}" data-rwph-newsletter-code="${key}" data-rwph-code-source="${esc(htmlCode)}">${esc(htmlCode)}</pre>
       </div>
       <div class="rwph-newsletter-code-box">
         <div class="rwph-newsletter-code-label">Live Preview</div>
@@ -5914,16 +5914,16 @@
     .rwph-newsletter-code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid rgba(251,191,36,.22);border-radius:16px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(8,47,73,.68));box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
     .rwph-newsletter-code-title{font:950 15px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.35px;text-transform:uppercase;color:#f8fafc;text-shadow:0 0 16px rgba(245,158,11,.22);}
     .rwph-newsletter-code-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;margin-top:3px;}
+    .rwph-newsletter-code-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+    .rwph-newsletter-code-actions .btn{width:100%;}
     .rwph-newsletter-code-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0;flex:1 1 auto;overflow:hidden;}
     .rwph-newsletter-code-box{display:flex;flex-direction:column;gap:6px;min-height:0;}
     .rwph-newsletter-code-label{text-align:center;color:#fde68a;font:950 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.4px;}
-    .rwph-newsletter-code-box textarea[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
+    .rwph-newsletter-code-box pre[data-rwph-newsletter-code]{flex:1 1 auto;min-height:230px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
     .rwph-newsletter-copy-status{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;text-align:center;padding:5px 6px;border:1px solid rgba(251,191,36,.18);border-radius:10px;background:rgba(2,6,23,.48);}
-    .rwph-newsletter-copy-status[data-tone="ok"]{color:#dcfce7;border-color:rgba(34,197,94,.34);background:rgba(20,83,45,.22);}
-    .rwph-newsletter-copy-status[data-tone="warn"]{color:#fef3c7;border-color:rgba(250,204,21,.34);background:rgba(113,63,18,.26);}
     .rwph-newsletter-code-preview{flex:1 1 auto;min-height:230px;background:#111827;border:1px solid rgba(251,191,36,.22);border-radius:14px;padding:10px;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-newsletter-code-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;box-shadow:0 12px 26px rgba(0,0,0,.26);}
-    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
+    @media (max-width:760px){.rwph-newsletter-code-body{grid-template-columns:1fr;overflow:auto}.rwph-newsletter-code-actions{grid-template-columns:1fr}.rwph-newsletter-code-panel{height:calc(100vh - 18px);width:calc(100vw - 18px);padding:10px}.rwph-newsletter-code-preview{max-height:45vh}}
     .close-hint { margin:0; padding:9px 10px; border-radius:12px; border:1px solid rgba(251,191,36,.16); background:rgba(15,23,42,.58); color:#cfaa8e; font-size:11px; font-weight:800; line-height:1.35; text-align:center; }
     .results-action-zone { display:grid; gap:8px; margin:10px 0 0; padding-top:12px; border-top:1px solid rgba(251,191,36,.18); }
     .results-action-zone .btn { width:100%; }
@@ -7002,118 +7002,270 @@
   <title>RWPH Loading Results</title>
   <style>
     * { box-sizing:border-box; }
-    :root {
-      --bg:#020617;
-      --panel:#0f172a;
-      --panel2:#1e293b;
-      --line:rgba(251,191,36,.24);
-      --line2:rgba(251,191,36,.36);
-      --text:#fff7ed;
-      --muted:#cfaa8e;
-      --soft:#fbbf24;
-      --green:#22c55e;
-      --warn:#facc15;
+    :root{
+      --rw-bg:#130b07;
+      --rw-bg2:#21110b;
+      --rw-panel:#211714;
+      --rw-panel2:#2b1d18;
+      --rw-panel3:#3a241c;
+      --rw-line:rgba(184,136,89,.34);
+      --rw-line2:rgba(251,191,36,.28);
+      --rw-text:#fff2dd;
+      --rw-soft:#cfaa8e;
+      --rw-gold:#fbbf24;
+      --rw-orange:#f97316;
+      --rw-green:#22c55e;
+      --rw-red:#7f1d1d;
+      --rw-shadow:0 18px 55px rgba(0,0,0,.56);
     }
-    body {
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-family:Arial, Helvetica, sans-serif;
-      color:var(--text);
+    html,body{margin:0;min-height:100vh;}
+    body{
+      font-family:Arial,Helvetica,sans-serif;
+      color:var(--rw-text);
       background:
-        radial-gradient(circle at 14% 0%, rgba(245,158,11,.18), transparent 30%),
-        radial-gradient(circle at 88% 2%, rgba(245,158,11,.18), transparent 30%),
-        linear-gradient(180deg, #020617 0%, #0b1120 52%, #020617 100%);
-      padding:18px;
-      text-align:left;
+        radial-gradient(circle at 12% 0%, rgba(251,191,36,.18), transparent 30%),
+        radial-gradient(circle at 88% 8%, rgba(185,28,28,.13), transparent 28%),
+        linear-gradient(180deg,#100806 0%,#21110b 48%,#090504 100%);
+      padding:16px;
+      overflow-x:hidden;
     }
-    body::before {
+    body::before{
       content:"";
       position:fixed;
       inset:0;
       pointer-events:none;
-      background:repeating-linear-gradient(0deg, rgba(251,191,36,.035) 0 1px, transparent 1px 28px);
-      opacity:.55;
+      background:
+        linear-gradient(90deg,rgba(251,191,36,.028) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(251,191,36,.022) 1px,transparent 1px);
+      background-size:34px 34px;
+      opacity:.58;
+      mix-blend-mode:screen;
     }
-    .rwph-loading-shell {
+    .rwph-loading-shell{
       position:relative;
       z-index:1;
-      width:min(680px, 100%);
+      width:min(860px,100%);
+      margin:0 auto;
       overflow:hidden;
-      border:1px solid var(--line);
+      border:1px solid var(--rw-line);
       border-radius:22px;
-      background:radial-gradient(circle at 18% 0%, rgba(245,158,11,.14), transparent 34%), linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.94));
-      box-shadow:0 24px 70px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.06), 0 0 24px rgba(245,158,11,.09);
+      background:
+        radial-gradient(circle at 16% 0%,rgba(251,191,36,.12),transparent 34%),
+        linear-gradient(180deg,rgba(58,26,21,.96) 0%,rgba(31,27,24,.96) 30%,rgba(14,10,8,.98) 100%);
+      box-shadow:var(--rw-shadow),inset 0 1px 0 rgba(255,255,255,.07),0 0 28px rgba(184,136,89,.12);
     }
-    .rwph-loading-head {
-      display:flex;
+    .rwph-loading-shell::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      border-radius:22px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+    .rwph-loading-head{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:14px;
       align-items:center;
-      justify-content:space-between;
-      gap:12px;
       padding:14px 16px;
-      background:linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.88) 52%, rgba(49,46,129,.72));
-      border-bottom:1px solid var(--line);
+      border-bottom:1px solid rgba(184,136,89,.24);
+      background:
+        linear-gradient(135deg,rgba(68,32,24,.98),rgba(42,31,27,.96) 45%,rgba(20,15,13,.98));
     }
-    .rwph-brand {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    img { width:42px; height:42px; object-fit:contain; filter:drop-shadow(0 0 14px rgba(251,191,36,.36)); }
-    h1 { margin:0; font-size:19px; line-height:1.1; color:#ffffff; text-shadow:0 1px 1px #000, 0 0 14px rgba(251,191,36,.22); }
-    .sub { margin-top:3px; color:var(--muted); font-size:12px; font-weight:800; line-height:1.35; }
-    .loading-time {
+    .rwph-brand{display:flex;align-items:center;gap:12px;min-width:0;}
+    .rwph-logo-wrap{
       flex:0 0 auto;
+      width:52px;
+      height:52px;
+      border-radius:16px;
+      display:grid;
+      place-items:center;
+      border:1px solid rgba(251,191,36,.25);
+      background:linear-gradient(180deg,rgba(63,29,23,.92),rgba(20,15,13,.96));
+      box-shadow:0 12px 28px rgba(0,0,0,.34),0 0 18px rgba(251,191,36,.12),inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 0 13px rgba(251,191,36,.35));}
+    .eyebrow{
       display:inline-flex;
       align-items:center;
-      gap:8px;
-      padding:8px 11px;
-      border:1px solid var(--line2);
-      border-left:4px solid rgba(245,158,11,.78);
-      border-radius:14px;
-      background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88));
+      gap:6px;
+      margin-bottom:4px;
+      color:#fde68a;
+      font:950 10px/1 Arial,Helvetica,sans-serif;
+      letter-spacing:.9px;
+      text-transform:uppercase;
+    }
+    .eyebrow::before{content:"";width:7px;height:7px;border-radius:999px;background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.8);}
+    h1{margin:0;color:#fff7ed;font:950 22px/1.05 Arial,Helvetica,sans-serif;text-shadow:0 1px 1px #000,0 0 16px rgba(251,191,36,.2);}
+    .sub{margin-top:4px;color:var(--rw-soft);font-size:12px;font-weight:800;line-height:1.35;}
+    .loading-time{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      align-items:center;
+      gap:9px;
+      min-width:154px;
+      padding:10px 12px;
+      border:1px solid rgba(251,191,36,.24);
+      border-left:4px solid rgba(245,158,11,.82);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(63,29,23,.88),rgba(20,15,13,.94));
       color:#fff2dd;
-      font-size:12px;
-      font-weight:950;
-      box-shadow:0 10px 24px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05);
+      box-shadow:0 12px 28px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.05);
       white-space:nowrap;
     }
-    .loading-dot { width:8px; height:8px; border-radius:999px; background:#f59e0b; box-shadow:0 0 12px rgba(245,158,11,.85); animation:rwphLoadPulse 1.2s ease-in-out infinite; }
-    .rwph-progress-wrap{height:9px;border-radius:999px;overflow:hidden;border:1px solid rgba(251,191,36,.28);background:rgba(2,6,23,.64);box-shadow:inset 0 1px 4px rgba(0,0,0,.45);}
-    .rwph-progress-bar{height:100%;width:8%;border-radius:999px;background:linear-gradient(90deg,#f59e0b,#f97316,#fde68a);box-shadow:0 0 14px rgba(245,158,11,.38);transition:width .35s ease;}
-    .rwph-live-status{font-size:12px;font-weight:900;color:#fff2dd;line-height:1.35;padding:9px 10px;border:1px solid rgba(251,191,36,.18);border-radius:14px;background:rgba(2,6,23,.35);}
-    .rwph-loading-body { padding:14px; display:grid; gap:12px; }
-    .rwph-info-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
-    .rwph-info-card,
-    .wait-note,
-    .loading-list li {
+    .loading-dot{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:#f59e0b;
+      box-shadow:0 0 16px rgba(245,158,11,.88);
+      animation:rwphLoadPulse 1.18s ease-in-out infinite;
+    }
+    .time-label{display:block;color:#cfaa8e;font:900 10px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.6px;}
+    #rwph-load-seconds{display:block;margin-top:3px;color:#fff;font:950 18px/1 Arial,Helvetica,sans-serif;}
+    .rwph-loading-body{padding:14px;display:grid;gap:12px;}
+    .rwph-dashboard{
+      display:grid;
+      grid-template-columns:1.15fr .85fr;
+      gap:12px;
+      align-items:stretch;
+    }
+    .rwph-status-card,.rwph-side-card,.wait-note,.loading-list li{
+      border:1px solid rgba(184,136,89,.22);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(63,29,23,.72),rgba(20,15,13,.70));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 10px 24px rgba(0,0,0,.22);
+    }
+    .rwph-status-card{padding:12px;display:grid;gap:10px;}
+    .status-title{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#fff;font:950 13px/1.2 Arial,Helvetica,sans-serif;}
+    .status-pill{
+      flex:0 0 auto;
+      border:1px solid rgba(245,158,11,.28);
+      border-radius:999px;
+      padding:5px 8px;
+      color:#fde68a;
+      background:rgba(113,63,18,.26);
+      font:950 10px/1 Arial,Helvetica,sans-serif;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    .rwph-live-status{
+      color:#fff2dd;
+      font-size:12px;
+      font-weight:900;
+      line-height:1.42;
+      padding:10px;
       border:1px solid rgba(251,191,36,.16);
       border-radius:14px;
-      background:linear-gradient(180deg, rgba(30,41,59,.54), rgba(2,6,23,.38));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+      background:rgba(10,8,7,.42);
     }
-    .rwph-info-card { padding:10px; min-height:78px; }
-    .rwph-info-title { color:#ffffff; font-weight:950; font-size:12px; margin-bottom:5px; text-shadow:0 1px 1px #000, 0 0 10px rgba(251,191,36,.18); }
-    .rwph-info-text { color:#cfe8ff; font-weight:800; font-size:11px; line-height:1.42; }
-    .loading-list { margin:0; padding:0; display:grid; gap:8px; list-style:none; }
-    .loading-list li { display:flex; gap:9px; align-items:flex-start; color:#fff2dd; font-size:12px; font-weight:850; line-height:1.36; padding:10px; transition:border-color .2s ease, background .2s ease, color .2s ease; }
-    .loading-list li::before { content:""; flex:0 0 auto; width:9px; height:9px; margin-top:3px; border-radius:999px; background:#f59e0b; box-shadow:0 0 10px rgba(245,158,11,.45); transition:background .2s ease, box-shadow .2s ease, transform .2s ease; }
-    .loading-list li.rwph-load-step-active { border-color:rgba(245,158,11,.40); background:linear-gradient(180deg, rgba(14,165,233,.16), rgba(2,6,23,.48)); color:#f0f9ff; }
-    .loading-list li.rwph-load-step-active::before { transform:scale(1.18); box-shadow:0 0 14px rgba(245,158,11,.80); }
-    .loading-list li.rwph-load-step-done { border-color:rgba(34,197,94,.42); background:linear-gradient(180deg, rgba(34,197,94,.13), rgba(2,6,23,.48)); color:#dcfce7; }
-    .loading-list li.rwph-load-step-done::before { background:var(--green); box-shadow:0 0 14px rgba(34,197,94,.85); transform:scale(1.05); }
-    .wait-note { padding:11px 12px; border-color:rgba(250,204,21,.25); background:linear-gradient(180deg, rgba(113,63,18,.30), rgba(2,6,23,.52)); color:#fef3c7; font-size:12px; font-weight:850; line-height:1.45; }
-    .wait-note b { color:#fff7d6; }
-    @keyframes rwphLoadPulse { 0%,100%{transform:scale(.85);opacity:.65;} 50%{transform:scale(1.18);opacity:1;} }
-    @media (max-width:680px){
-      body { padding:10px; align-items:flex-start; }
-      .rwph-loading-head { align-items:flex-start; flex-direction:column; }
-      .loading-time { width:100%; justify-content:center; }
-      .rwph-info-grid { grid-template-columns:1fr; }
-      h1 { font-size:17px; }
+    .rwph-progress-block{display:grid;gap:7px;}
+    .rwph-progress-top{display:flex;justify-content:space-between;gap:10px;color:#cfaa8e;font:900 11px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.45px;}
+    .rwph-progress-wrap{
+      height:13px;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid rgba(251,191,36,.28);
+      background:rgba(10,8,7,.72);
+      box-shadow:inset 0 1px 6px rgba(0,0,0,.55);
+    }
+    .rwph-progress-bar{
+      height:100%;
+      width:8%;
+      border-radius:999px;
+      background:linear-gradient(90deg,#7f1d1d,#f97316,#fbbf24,#fef3c7);
+      box-shadow:0 0 16px rgba(245,158,11,.45);
+      transition:width .35s ease;
+    }
+    .rwph-open-results-button{
+      width:100%;
+      border:1px solid rgba(34,197,94,.40);
+      border-left:4px solid rgba(34,197,94,.78);
+      border-radius:15px;
+      background:linear-gradient(180deg,rgba(22,101,52,.98),rgba(20,83,45,.95) 45%,rgba(5,46,22,.96));
+      color:#dcfce7;
+      font:950 15px/1 Arial,Helvetica,sans-serif;
+      padding:13px 12px;
+      box-shadow:0 14px 30px rgba(0,0,0,.30),0 0 18px rgba(34,197,94,.10),inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .rwph-open-results-button[hidden]{display:none!important;}
+    .rwph-side-card{padding:12px;display:grid;gap:9px;}
+    .side-title{color:#fde68a;font:950 12px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.55px;}
+    .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .mini{
+      border:1px solid rgba(184,136,89,.18);
+      border-radius:13px;
+      background:rgba(10,8,7,.34);
+      padding:9px;
+      min-height:62px;
+    }
+    .mini b{display:block;color:#fff;font-size:12px;margin-bottom:4px;}
+    .mini span{display:block;color:#cfaa8e;font-size:11px;font-weight:800;line-height:1.32;}
+    .loading-list{margin:0;padding:0;display:grid;gap:8px;list-style:none;counter-reset:rwphStep;}
+    .loading-list li{
+      counter-increment:rwphStep;
+      position:relative;
+      display:grid;
+      grid-template-columns:32px 1fr;
+      gap:10px;
+      align-items:center;
+      color:#fff2dd;
+      font-size:12px;
+      font-weight:850;
+      line-height:1.35;
+      padding:10px;
+      transition:border-color .2s ease,background .2s ease,color .2s ease,transform .2s ease;
+    }
+    .loading-list li::before{
+      content:counter(rwphStep);
+      width:30px;
+      height:30px;
+      display:grid;
+      place-items:center;
+      border-radius:12px;
+      border:1px solid rgba(251,191,36,.25);
+      background:linear-gradient(180deg,rgba(127,29,29,.55),rgba(63,29,23,.68));
+      color:#fde68a;
+      font:950 12px/1 Arial,Helvetica,sans-serif;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 12px rgba(245,158,11,.10);
+    }
+    .loading-list li.rwph-load-step-active{
+      border-color:rgba(245,158,11,.48);
+      background:linear-gradient(180deg,rgba(127,29,29,.38),rgba(63,29,23,.66));
+      color:#fff7ed;
+      transform:translateY(-1px);
+    }
+    .loading-list li.rwph-load-step-active::before{background:linear-gradient(180deg,#b45309,#7c2d12);box-shadow:0 0 18px rgba(245,158,11,.42);}
+    .loading-list li.rwph-load-step-done{
+      border-color:rgba(34,197,94,.38);
+      background:linear-gradient(180deg,rgba(20,83,45,.28),rgba(20,15,13,.62));
+      color:#dcfce7;
+    }
+    .loading-list li.rwph-load-step-done::before{
+      content:"✓";
+      background:linear-gradient(180deg,#22c55e,#166534);
+      color:#ecfdf5;
+      border-color:rgba(34,197,94,.34);
+      box-shadow:0 0 16px rgba(34,197,94,.34);
+    }
+    .wait-note{
+      padding:11px 12px;
+      border-color:rgba(250,204,21,.24);
+      background:linear-gradient(180deg,rgba(113,63,18,.26),rgba(20,15,13,.66));
+      color:#fef3c7;
+      font-size:12px;
+      font-weight:850;
+      line-height:1.45;
+    }
+    .wait-note b{color:#fff7d6;}
+    @keyframes rwphLoadPulse{0%,100%{transform:scale(.82);opacity:.68;}50%{transform:scale(1.22);opacity:1;}}
+    @media (max-width:740px){
+      body{padding:10px;}
+      .rwph-loading-head{grid-template-columns:1fr;align-items:stretch;}
+      .loading-time{justify-content:center;grid-template-columns:auto auto;}
+      .rwph-dashboard{grid-template-columns:1fr;}
+      .mini-grid{grid-template-columns:1fr;}
+      h1{font-size:19px;}
     }
   </style>
 </head>
@@ -7121,22 +7273,45 @@
   <main class="rwph-loading-shell">
     <div class="rwph-loading-head">
       <div class="rwph-brand">
-        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH">
+        <div class="rwph-logo-wrap"><img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH"></div>
         <div>
-          <h1>Loading Results</h1>
-          <div class="sub">RWPH is building a completed-war payout report using the same backend/database rules as the main panel.</div>
+          <div class="eyebrow">Ranked War Payout Helper</div>
+          <h1>Building Results</h1>
+          <div class="sub">RWPH is calculating the selected war with the same bronze main-panel theme and backend cache rules.</div>
         </div>
       </div>
-      <div class="loading-time"><span class="loading-dot"></span><span>Loading for <b id="rwph-load-seconds">0 sec</b></span></div>
-    </div>
-    <section class="rwph-loading-body">
-      <div class="rwph-info-grid" aria-label="RWPH loading rules">
-        <div class="rwph-info-card"><div class="rwph-info-title">Last finished war only</div><div class="rwph-info-text">Active/current wars are blocked until Torn marks the ranked war as finished.</div></div>
-        <div class="rwph-info-card"><div class="rwph-info-title">Database cache only</div><div class="rwph-info-text">Cached reports come from the backend/database, not old browser-saved results.</div></div>
-        <div class="rwph-info-card"><div class="rwph-info-title">24 hour cache</div><div class="rwph-info-text">Matching Per Hit and Points System cached reports can be opened separately and are deleted after 24 hours.</div></div>
+      <div class="loading-time">
+        <span class="loading-dot"></span>
+        <span><span class="time-label">Elapsed</span><b id="rwph-load-seconds">0 sec</b></span>
       </div>
-      <div class="rwph-progress-wrap" aria-label="Calculation progress"><div id="rwph-progress-bar" class="rwph-progress-bar"></div></div>
-      <div id="rwph-live-status" class="rwph-live-status">Starting calculation. The bar and dots now follow live backend progress.</div>
+    </div>
+
+    <section class="rwph-loading-body">
+      <div class="rwph-dashboard">
+        <div class="rwph-status-card">
+          <div class="status-title">
+            <span>Live calculation status</span>
+            <span class="status-pill">Server side</span>
+          </div>
+          <div class="rwph-progress-block">
+            <div class="rwph-progress-top"><span>Calculation progress</span><span>Live backend stages</span></div>
+            <div class="rwph-progress-wrap" aria-label="Calculation progress"><div id="rwph-progress-bar" class="rwph-progress-bar"></div></div>
+          </div>
+          <div id="rwph-live-status" class="rwph-live-status">Starting calculation. Keep this tab open. The results button appears when data is complete.</div>
+          <button id="rwph-open-results-button" class="rwph-open-results-button" type="button" hidden>Open Results Page</button>
+        </div>
+
+        <aside class="rwph-side-card" aria-label="Loading notes">
+          <div class="side-title">What RWPH is doing</div>
+          <div class="mini-grid">
+            <div class="mini"><b>Cache first</b><span>Uses the backend cache when a matching war report is already saved.</span></div>
+            <div class="mini"><b>Safe fetch</b><span>Retries Torn API delays and keeps progress updated while it works.</span></div>
+            <div class="mini"><b>Manual open</b><span>Results will not auto-open. Click the button after data is complete.</span></div>
+            <div class="mini"><b>Same rules</b><span>Basic and Advanced cache blocking stays controlled by the backend.</span></div>
+          </div>
+        </aside>
+      </div>
+
       <ul class="loading-list" aria-label="What RWPH is loading">
         <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence and confirms server access.</li>
         <li data-rwph-load-step="1">Checks the backend/database report cache for this finished war and payout setup.</li>
@@ -7144,7 +7319,8 @@
         <li data-rwph-load-step="3">Applies your weights and splits the Member Payout across members.</li>
         <li data-rwph-load-step="4">Builds the fullscreen results page, Payments tools, CSV export, and newsletter buttons.</li>
       </ul>
-      <div class="wait-note"><b>Public performance mode:</b> RWPH starts the selected calculation directly, reuses matching completed-war database cache, and retries Torn API rate limits automatically. Small wars often load quickly; bigger wars or Torn/API delays can take 1-5 minutes on phone/PDA. The timer now changes to minutes after 59 seconds.</div>
+
+      <div class="wait-note"><b>Keep this loading tab open:</b> closing it before the calculation finishes can cancel the backend job. When the data is complete, click <b>Open Results Page</b> to show the full results and tools.</div>
     </section>
   </main>
   <script>
@@ -7152,11 +7328,14 @@
       var started = Number(${JSON.stringify(Number(startedAtMs || Date.now()))}) || Date.now();
       var el = document.getElementById("rwph-load-seconds");
       var statusEl = document.getElementById("rwph-live-status");
+      var openResultsButton = document.getElementById("rwph-open-results-button");
       var barEl = document.getElementById("rwph-progress-bar");
       var steps = Array.prototype.slice.call(document.querySelectorAll("[data-rwph-load-step]"));
       var rwphProgressId = ${JSON.stringify(String(progressId || ""))};
       var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
       var highestDoneStep = -1;
+      var rwphManualResultsHtml = "";
+      var rwphManualResultsStorageKey = rwphProgressId ? ("rwph_manual_results_html_" + rwphProgressId) : "";
       function formatElapsed(total){
         total = Math.max(0, Math.floor(Number(total) || 0));
         var mins = Math.floor(total / 60);
@@ -7210,102 +7389,69 @@
         paintSteps(activeStep, percent);
         if (updateBar !== false) setProgressBar(percent);
       };
+      function rwphOpenManualResultsPage(){
+        var html = String(rwphManualResultsHtml || "");
+        if (!html && rwphManualResultsStorageKey) {
+          try {
+            var raw = localStorage.getItem(rwphManualResultsStorageKey);
+            var stored = raw ? JSON.parse(raw) : null;
+            if (stored && stored.progressId === rwphProgressId && stored.html) html = String(stored.html || "");
+          } catch (_) {}
+        }
+        if (!html) {
+          if (statusEl) statusEl.textContent = "Results are not ready yet. Wait until the calculation says data complete.";
+          return;
+        }
+        try {
+          if (window.rwphLoadingTimer) clearInterval(window.rwphLoadingTimer);
+          if (window.rwphLoadingCatchupTimer) clearInterval(window.rwphLoadingCatchupTimer);
+          if (window.rwphLoadingProgressPoller) clearInterval(window.rwphLoadingProgressPoller);
+          if (window.rwphManualResultsStoragePoller) clearInterval(window.rwphManualResultsStoragePoller);
+        } catch (_) {}
+        try {
+          if (rwphManualResultsStorageKey) localStorage.removeItem(rwphManualResultsStorageKey);
+        } catch (_) {}
+        document.open();
+        document.write(html);
+        document.close();
+      }
+
+      function rwphShowManualResultsButton(html){
+        if (html) rwphManualResultsHtml = String(html || "");
+        if (openResultsButton) {
+          openResultsButton.hidden = false;
+          openResultsButton.disabled = false;
+        }
+        window.rwphSetLoadingProgress(100, "Results data complete. Click Open Results Page when you are ready.", 4);
+        if (statusEl) statusEl.textContent = "Results data complete. Click Open Results Page when you are ready.";
+      }
+
+      function rwphCheckStoredManualResults(){
+        if (!rwphManualResultsStorageKey || rwphManualResultsHtml) return;
+        try {
+          var raw = localStorage.getItem(rwphManualResultsStorageKey);
+          var stored = raw ? JSON.parse(raw) : null;
+          if (stored && stored.progressId === rwphProgressId && stored.html) {
+            rwphShowManualResultsButton(stored.html);
+          }
+        } catch (_) {}
+      }
+
+      window.rwphShowManualResultsButton = rwphShowManualResultsButton;
+      if (openResultsButton) openResultsButton.addEventListener("click", rwphOpenManualResultsPage);
+
       window.addEventListener("message", function(event){
         var data = event && event.data;
-        if (!data || data.rwphType !== "rwph-calc-progress") return;
+        if (!data) return;
+        if (data.rwphType === "rwph-manual-results-ready") {
+          if (rwphProgressId && data.progressId && data.progressId !== rwphProgressId) return;
+          rwphShowManualResultsButton(data.html || "");
+          return;
+        }
+        if (data.rwphType !== "rwph-calc-progress") return;
         if (isFinite(Number(data.percent))) window.rwphSetLoadingProgress(Number(data.percent), data.label || "", data.step);
         else window.rwphSetLoadingStepDone(data.step);
       });
-      var rwphFallbackResultOpening = false;
-      var rwphFinalResultOpened = false;
-      var rwphResultStorageKey = rwphProgressId ? ("rwph_loading_result_html_" + rwphProgressId) : "";
-      function rwphOpenFinalResultsHtml(html){
-        if (rwphFinalResultOpened || !html) return false;
-        rwphFinalResultOpened = true;
-        try {
-          if (window.rwphLoadingProgressPoller) clearInterval(window.rwphLoadingProgressPoller);
-          if (window.rwphLoadingStoredResultPoller) clearInterval(window.rwphLoadingStoredResultPoller);
-          if (window.rwphLoadingTimer) clearInterval(window.rwphLoadingTimer);
-          if (window.rwphLoadingCatchupTimer) clearInterval(window.rwphLoadingCatchupTimer);
-        } catch (_) {}
-        try {
-          if (rwphResultStorageKey) localStorage.removeItem(rwphResultStorageKey);
-        } catch (_) {}
-        try {
-          document.open();
-          document.write(String(html));
-          document.close();
-          return true;
-        } catch (_) {
-          rwphFinalResultOpened = false;
-          return false;
-        }
-      }
-      function rwphCheckStoredFinalResults(){
-        if (rwphFinalResultOpened || !rwphResultStorageKey) return;
-        try {
-          var raw = localStorage.getItem(rwphResultStorageKey);
-          if (!raw) return;
-          var data = JSON.parse(raw);
-          if (data && data.progressId === rwphProgressId && data.html) rwphOpenFinalResultsHtml(data.html);
-        } catch (_) {}
-      }
-      window.addEventListener("message", function(event){
-        var data = event && event.data;
-        if (!data || data.rwphType !== "rwph-final-results-html") return;
-        if (rwphProgressId && data.progressId && data.progressId !== rwphProgressId) return;
-        rwphOpenFinalResultsHtml(data.html || "");
-      });
-      function esc(value){
-        return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch] || ch; });
-      }
-      function money(value){
-        var n = Number(value || 0);
-        try { return "$" + Math.round(n).toLocaleString(); } catch (_) { return "$" + Math.round(n); }
-      }
-      function renderFallbackResultsPage(payload){
-        var rows = Array.isArray(payload && payload.rows) ? payload.rows : [];
-        var summary = payload && payload.summary ? payload.summary : {};
-        var pointsMode = !!(summary.pointsMode || summary.calculationMode === "points");
-        var memberPayout = Number(summary.memberPayout || summary.totalPayout || 0);
-        var totalRespect = Number(summary.totalRespect || 0);
-        var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RWPH Results</title><style>'+
-          '*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#fff7ed;background:linear-gradient(180deg,#020617,#1b1208);padding:12px}.wrap{max-width:980px;margin:0 auto}.head,.card,.stat{border:1px solid rgba(251,191,36,.28);border-radius:16px;background:rgba(15,23,42,.88);box-shadow:0 12px 30px rgba(0,0,0,.35)}.head{padding:14px;margin-bottom:12px}.head h1{margin:0 0 6px;font-size:22px}.muted{color:#cfaa8e;font-size:12px;font-weight:800}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:12px 0}.stat{padding:10px}.stat span{display:block;color:#cfaa8e;font-size:11px;font-weight:900;text-transform:uppercase}.stat b{font-size:16px}.rows{display:grid;gap:8px}.card{padding:10px}.name{font-weight:950;color:#fff}.line{margin-top:6px;color:#fff2dd;font-size:12px;line-height:1.45}.warn{border-color:rgba(250,204,21,.4);background:rgba(113,63,18,.32);padding:10px;border-radius:14px;margin:10px 0;color:#fef3c7;font-weight:800;font-size:12px}</style></head><body><div class="wrap">';
-        html += '<div class="head"><h1>RWPH Results</h1><div class="muted">PDA fallback results page. If you go back to Torn after this, RWPH may still replace this with the full tools page.</div></div>';
-        html += '<div class="stats">'+
-          '<div class="stat"><span>Members</span><b>'+rows.length+'</b></div>'+
-          '<div class="stat"><span>Member Payout</span><b>'+money(memberPayout)+'</b></div>'+
-          '<div class="stat"><span>'+(pointsMode?'Per Point':'Per Hit')+'</span><b>'+money(summary.perHitAmount || summary.perWeightedHitAmount || 0)+'</b></div>'+
-          '<div class="stat"><span>Total Respect</span><b>'+Number(totalRespect || 0).toFixed(2)+'</b></div>'+
-          '<div class="stat"><span>War Hits</span><b>'+Number(summary.totalWarHits || summary.totalHits || 0)+'</b></div>'+
-          '<div class="stat"><span>Removed Member Hits</span><b>'+Number(summary.removedLeftFactionHits || 0)+'</b></div>'+
-          '</div>';
-        html += '<div class="warn">This PDA fallback is shown because Torn PDA can pause the original Torn tab before it writes the full results tools. Payments/newsletter tools are still available when the full RWPH results tab opens from the Torn tab.</div>';
-        html += '<div class="rows">';
-        rows.forEach(function(r, i){
-          html += '<div class="card"><div class="name">#'+(i+1)+' '+esc(r.name || ('Torn ID '+(r.id||'')))+'</div>'+
-            '<div class="line"><b>Payout:</b> '+money(r.payout || 0)+' &nbsp; <b>'+(pointsMode?'Points':'Weight')+':</b> '+Number(r.points || r.weight || 0).toFixed(2)+'<br>'+
-            '<b>War:</b> '+Number(r.warHits || r.attacks || 0)+' &nbsp; <b>Assists:</b> '+Number(r.assists || 0)+' &nbsp; <b>Outside:</b> '+Number(r.outsideHits || 0)+' &nbsp; <b>Retals:</b> '+Number(r.retaliationHits || 0)+'<br>'+
-            '<b>Respect:</b> '+Number(r.respect || 0).toFixed(2)+' &nbsp; <b>Total Respect:</b> '+Number((r.totalRespect != null ? r.totalRespect : r.respect) || 0).toFixed(2)+'</div></div>';
-        });
-        html += '</div></div></body></html>';
-        document.open(); document.write(html); document.close();
-      }
-      function pollFinalResultFromLoadingTab(){
-        if (rwphFallbackResultOpening || !rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
-        rwphFallbackResultOpening = true;
-        fetch(rwphApiBase + "/api/calc/result", {
-          method: "POST", mode: "cors", cache: "no-store",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ progressId: rwphProgressId })
-        }).then(function(res){ return res && res.json ? res.json() : null; })
-          .then(function(json){
-            if (json && json.ok && json.ready && json.payload) {
-              if (statusEl) statusEl.textContent = "Results ready. Opening PDA fallback result rows...";
-              renderFallbackResultsPage(json.payload);
-            } else rwphFallbackResultOpening = false;
-          }).catch(function(){ rwphFallbackResultOpening = false; });
-      }
       function pollProgressFromLoadingTab(){
         if (!rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
         fetch(rwphApiBase + "/api/calc/progress", {
@@ -7317,14 +7463,9 @@
         }).then(function(res){ return res && res.json ? res.json() : null; })
           .then(function(json){
             if (json && json.ok) {
-              if (el && Number(json.elapsedSeconds) >= 0) el.textContent = formatElapsed(Number(json.elapsedSeconds));
               if (Number(json.percent) >= 0) window.rwphSetLoadingProgress(Number(json.percent), json.label || "", Number(json.step));
               else if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
               if (statusEl && json.label) statusEl.textContent = json.label;
-              if (json.resultReady || Number(json.percent) >= 100) {
-                if (statusEl) statusEl.textContent = "Results ready. Opening PDA fallback results...";
-                pollFinalResultFromLoadingTab();
-              }
               if (statusEl && json.cancelled) statusEl.textContent = json.label || "Calculation cancelled because this loading tab was closed.";
             }
           }).catch(function(){});
@@ -7353,8 +7494,8 @@
       window.addEventListener("pageshow", wake);
       window.addEventListener("focus", wake);
       window.addEventListener("online", wake);
-      rwphCheckStoredFinalResults();
-      window.rwphLoadingStoredResultPoller = setInterval(rwphCheckStoredFinalResults, 1000);
+      rwphCheckStoredManualResults();
+      window.rwphManualResultsStoragePoller = setInterval(rwphCheckStoredManualResults, 1000);
       pollProgressFromLoadingTab();
       window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 1500);
     })();
@@ -7665,47 +7806,50 @@
     }
   }
 
-  function rwphSendFinalResultsToLoadingTab(tab, progressId, rows, summary) {
+  function rwphPrepareManualResultsOpenButton(tab, progressId, rows, summary) {
     const id = String(progressId || "").trim();
-    if (!id) return "";
+    if (!id || !tab || tab.closed) return false;
+
     let html = "";
     try {
       html = buildFullscreenResultsHtml(rows || [], summary || {});
     } catch (e) {
-      console.warn("Could not build final results HTML for loading tab handoff:", e);
-      return "";
+      console.warn("Could not build manual-open results HTML:", e);
+      return false;
     }
 
-    // Phone/Torn PDA can pause the opener tab or block document.write into the
-    // pre-opened results tab. Store and post the final HTML so the loading tab
-    // can replace itself without opening a new tab or using blocked fetch/blob links.
     try {
-      localStorage.setItem("rwph_loading_result_html_" + id, JSON.stringify({
+      localStorage.setItem("rwph_manual_results_html_" + id, JSON.stringify({
         progressId: id,
         createdAt: Date.now(),
         html,
       }));
     } catch (e) {
-      console.warn("Could not store final results HTML for loading tab:", e);
+      console.warn("Could not store manual-open results HTML:", e);
     }
 
     try {
-      if (tab && !tab.closed && typeof tab.postMessage === "function") {
-        tab.postMessage({ rwphType: "rwph-final-results-html", progressId: id, html }, "*");
+      if (typeof tab.postMessage === "function") {
+        tab.postMessage({ rwphType: "rwph-manual-results-ready", progressId: id, html }, "*");
       }
     } catch (_) {}
     try {
-      if (tab && tab.window && typeof tab.window.postMessage === "function") {
-        tab.window.postMessage({ rwphType: "rwph-final-results-html", progressId: id, html }, "*");
+      if (tab.window && typeof tab.window.postMessage === "function") {
+        tab.window.postMessage({ rwphType: "rwph-manual-results-ready", progressId: id, html }, "*");
+      }
+    } catch (_) {}
+    try {
+      if (tab.window && typeof tab.window.rwphShowManualResultsButton === "function") {
+        tab.window.rwphShowManualResultsButton(html);
       }
     } catch (_) {}
 
-    return html;
+    return true;
   }
 
-  function writeFullscreenResultsTab(tab, rows, summary, prebuiltHtml = "") {
+  function writeFullscreenResultsTab(tab, rows, summary) {
     if (!tab || tab.closed) return false;
-    const html = prebuiltHtml || buildFullscreenResultsHtml(rows || [], summary || {});
+    const html = buildFullscreenResultsHtml(rows || [], summary || {});
     try {
       tab.document.open();
       tab.document.write(html);
@@ -8171,8 +8315,8 @@
         stopProgressPolling = null;
       }
       await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
-      const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary) || openFullscreenResultsTab(lastRows, lastSummary);
-      if (openedResultsTab) {
+      const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
+      if (manualOpenReady) {
         const resultsPanel = document.getElementById("rw-results-panel");
         if (resultsPanel) {
           resultsPanel.hidden = true;
@@ -8180,7 +8324,7 @@
           resultsPanel.style.display = "none";
         }
         rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
-        rwphToastPanelInfo(status, `Cached ${label} report opened. ${lastRows.length} members loaded.`, "info", "RWPH Cache");
+        rwphToastPanelInfo(status, `Cached ${label} report loaded. Click Open Results Page in the loading tab when ready.`, "info", "RWPH Cache");
       } else {
         const resultsPanel = document.getElementById("rw-results-panel");
         if (resultsPanel) {
@@ -8192,7 +8336,7 @@
           resultsPanel.scrollTop = 0;
         }
         rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
-        rwphToastPanelInfo(status, `Cached ${label} report opened in the panel because the results tab was blocked.`, "warn", "RWPH Cache");
+        rwphToastPanelInfo(status, `Cached ${label} report loaded in the panel because the loading tab was blocked.`, "warn", "RWPH Cache");
       }
     } catch (e) {
       if (stopProgressPolling) {
@@ -12713,22 +12857,20 @@
         rwphSetCacheButtonState(isPointsMode ? "points" : "standard", reportCacheReady, { factionName: lastSummary?.factionName || result.factionName || "", cache: result.cache || null, expiresAtMs: result.cache?.expiresAtMs || 0, cachedAtMs: result.cache?.cachedAtMs || 0, summary: lastSummary }, false);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
-        const finalResultsHtml = rwphSendFinalResultsToLoadingTab(preOpenedResultsTab, progressId, lastRows, lastSummary);
-
         if (stopProgressPolling) {
           stopProgressPolling();
           stopProgressPolling = null;
         }
         await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
-        const openedResultsTab = writeFullscreenResultsTab(preOpenedResultsTab, lastRows, lastSummary, finalResultsHtml) || openFullscreenResultsTab(lastRows, lastSummary);
-        if (openedResultsTab) {
+        const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
+        if (manualOpenReady) {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
             resultsPanel.hidden = true;
             resultsPanel.setAttribute("hidden", "");
             resultsPanel.style.display = "none";
           }
-          rwphToastPanelInfo(status, `${result.cached ? "Cached report loaded" : (isPointsMode ? "Points report done" : "Done")}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Results opened in a fullscreen new tab.`, "info", isPointsMode ? "RWPH Points" : "RWPH Results");
+          rwphToastPanelInfo(status, `${result.cached ? "Cached report loaded" : (isPointsMode ? "Points report done" : "Done")}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Click Open Results Page in the loading tab when ready.`, "info", isPointsMode ? "RWPH Points" : "RWPH Results");
         } else {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
