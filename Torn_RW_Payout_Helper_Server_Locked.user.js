@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.339
+// @version      1.1.340
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.339: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.340: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7526,7 +7526,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.339: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.340: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7664,7 +7664,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.339: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.340: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7737,7 +7737,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.339: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.340: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7767,7 +7767,7 @@
       const ua = String(navigator?.userAgent || "");
       const isPhoneOrPda = /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(ua) || !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
 
-      // v1.1.339: phone/Torn PDA can hand blob: links to Android as an external
+      // v1.1.340: phone/Torn PDA can hand blob: links to Android as an external
       // link and show "no compatible app". Keep blob loading for desktop only.
       // Mobile opens a normal about:blank tab and writes the loading screen into it.
       if (!isPhoneOrPda) {
@@ -7806,6 +7806,90 @@
     }
   }
 
+  function rwphBuildManualResultsReadyHtml(progressId, resultsHtml, rows, summary) {
+    const safeResultsJson = JSON.stringify(String(resultsHtml || "")).replace(/<\/script/gi, "<\\/script");
+    const rowCount = Array.isArray(rows) ? rows.length : 0;
+    const pointsMode = String(summary?.calculationMode || "").toLowerCase() === "points" || !!summary?.pointsMode;
+    const modeLabel = pointsMode ? "Advanced Points" : "Basic Per Hit";
+    const warHits = Number(summary?.totalWarHits || summary?.totalHits || 0);
+    const assists = Number(summary?.totalAssists || 0);
+    const outside = Number(summary?.totalOutsideHits || 0);
+    const retals = Number(summary?.totalRetaliationHits || 0);
+    const respect = Number(summary?.totalRespect || 0);
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RWPH Results Ready</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100vh}
+body{font-family:Arial,Helvetica,sans-serif;color:#fff2dd;background:radial-gradient(circle at 12% 0%,rgba(251,191,36,.18),transparent 30%),radial-gradient(circle at 88% 8%,rgba(185,28,28,.13),transparent 28%),linear-gradient(180deg,#100806 0%,#21110b 48%,#090504 100%);padding:16px;display:flex;align-items:center;justify-content:center}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(251,191,36,.028) 1px,transparent 1px),linear-gradient(0deg,rgba(251,191,36,.022) 1px,transparent 1px);background-size:34px 34px;opacity:.58}
+.shell{position:relative;z-index:1;width:min(760px,100%);border:1px solid rgba(184,136,89,.34);border-radius:22px;overflow:hidden;background:radial-gradient(circle at 16% 0%,rgba(251,191,36,.12),transparent 34%),linear-gradient(180deg,rgba(58,26,21,.96) 0%,rgba(31,27,24,.96) 30%,rgba(14,10,8,.98) 100%);box-shadow:0 18px 55px rgba(0,0,0,.56),inset 0 1px 0 rgba(255,255,255,.07),0 0 28px rgba(184,136,89,.12)}
+.head{display:flex;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid rgba(184,136,89,.24);background:linear-gradient(135deg,rgba(68,32,24,.98),rgba(42,31,27,.96) 45%,rgba(20,15,13,.98))}
+.logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;border:1px solid rgba(251,191,36,.25);background:linear-gradient(180deg,rgba(63,29,23,.92),rgba(20,15,13,.96));box-shadow:0 12px 28px rgba(0,0,0,.34),0 0 18px rgba(251,191,36,.12)}
+.logo img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 0 13px rgba(251,191,36,.35))}
+.eyebrow{color:#fde68a;font:950 10px/1 Arial,Helvetica,sans-serif;letter-spacing:.9px;text-transform:uppercase;margin-bottom:4px}
+h1{margin:0;color:#fff7ed;font:950 23px/1.05 Arial,Helvetica,sans-serif;text-shadow:0 1px 1px #000,0 0 16px rgba(251,191,36,.2)}
+.sub{margin-top:5px;color:#cfaa8e;font-size:12px;font-weight:800;line-height:1.35}
+.body{padding:14px;display:grid;gap:12px}
+.ready{border:1px solid rgba(34,197,94,.38);border-left:4px solid rgba(34,197,94,.78);border-radius:16px;background:linear-gradient(180deg,rgba(22,101,52,.28),rgba(20,15,13,.62));padding:12px;color:#dcfce7;font-weight:900;line-height:1.4}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{border:1px solid rgba(184,136,89,.22);border-radius:14px;background:linear-gradient(180deg,rgba(63,29,23,.72),rgba(20,15,13,.70));padding:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+.stat span{display:block;color:#cfaa8e;font:900 10px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.stat b{display:block;color:#fff;font:950 16px/1 Arial,Helvetica,sans-serif}
+.open{width:100%;border:1px solid rgba(34,197,94,.44);border-left:4px solid rgba(34,197,94,.86);border-radius:16px;background:linear-gradient(180deg,rgba(22,101,52,.98),rgba(20,83,45,.95) 45%,rgba(5,46,22,.96));color:#dcfce7;font:950 16px/1 Arial,Helvetica,sans-serif;padding:15px 12px;box-shadow:0 14px 30px rgba(0,0,0,.30),0 0 18px rgba(34,197,94,.10),inset 0 1px 0 rgba(255,255,255,.06)}
+.note{border:1px solid rgba(250,204,21,.24);border-radius:16px;background:linear-gradient(180deg,rgba(113,63,18,.26),rgba(20,15,13,.66));color:#fef3c7;font-size:12px;font-weight:850;line-height:1.45;padding:11px 12px}
+@media(max-width:640px){body{padding:10px;align-items:flex-start}.head{align-items:flex-start}.stats{grid-template-columns:1fr 1fr}h1{font-size:19px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <section class="head">
+    <div class="logo"><img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH"></div>
+    <div>
+      <div class="eyebrow">Ranked War Payout Helper</div>
+      <h1>Results Data Complete</h1>
+      <div class="sub">The calculation is finished. Open the full results page when you are ready.</div>
+    </div>
+  </section>
+  <section class="body">
+    <div class="ready">Ready — the results page and tools have been built. It will not open automatically.</div>
+    <div class="stats">
+      <div class="stat"><span>Mode</span><b>${esc(modeLabel)}</b></div>
+      <div class="stat"><span>Members</span><b>${rowCount}</b></div>
+      <div class="stat"><span>War Hits</span><b>${warHits}</b></div>
+      <div class="stat"><span>Assists</span><b>${assists}</b></div>
+      <div class="stat"><span>Outside</span><b>${outside}</b></div>
+      <div class="stat"><span>Retals</span><b>${retals}</b></div>
+    </div>
+    <div class="stat"><span>Total Respect</span><b>${Number.isFinite(respect) ? respect.toFixed(2) : "0.00"}</b></div>
+    <button id="rwph-open-results-now" class="open" type="button">Open Results Page</button>
+    <div class="note"><b>Tip:</b> Keep this tab open until you press the button. The button opens the full results page with Payments tools, CSV export, and newsletter panels.</div>
+  </section>
+</main>
+<script>
+(function(){
+  var resultsHtml = ${safeResultsJson};
+  var opened = false;
+  function openResults(){
+    if (opened || !resultsHtml) return;
+    opened = true;
+    document.open();
+    document.write(resultsHtml);
+    document.close();
+  }
+  var btn = document.getElementById("rwph-open-results-now");
+  if (btn) btn.addEventListener("click", openResults);
+})();
+</script>
+</body>
+</html>`;
+  }
+
   function rwphPrepareManualResultsOpenButton(tab, progressId, rows, summary) {
     const id = String(progressId || "").trim();
     if (!id || !tab || tab.closed) return false;
@@ -7826,6 +7910,17 @@
       }));
     } catch (e) {
       console.warn("Could not store manual-open results HTML:", e);
+    }
+
+    try {
+      const readyHtml = rwphBuildManualResultsReadyHtml(id, html, rows || [], summary || {});
+      tab.document.open();
+      tab.document.write(readyHtml);
+      tab.document.close();
+      try { tab.focus(); } catch (_) {}
+      return true;
+    } catch (e) {
+      console.warn("Could not write manual results-ready page:", e);
     }
 
     try {

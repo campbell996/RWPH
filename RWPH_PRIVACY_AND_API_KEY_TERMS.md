@@ -582,6 +582,6 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 v1.1.330 note: Fixed Admin panel button handling and the Payments Copy Panel Accept Warning unlock flow. No API-key handling, licence, payout calculation, or generated-newsletter behaviour changed.
 
 
-## v1.1.339 note
+## v1.1.340 note
 
 This update only changes loading progress display behaviour. API key usage and storage terms are unchanged.
