@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.356
+// @version      1.1.358
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.356: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.358: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7572,7 +7572,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.356: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.358: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7714,7 +7714,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.356: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.358: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7787,7 +7787,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.356: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.358: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -10017,35 +10017,22 @@
 
   function rwphCleanNewsletterHtmlCode(html) {
     return rwphStripNewsletterMarkerComments(String(html || ""))
-      // Torn message/newsletter fit cleanup only. Do not change stats/content/columns.
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+      // Raw newsletter code must never include helper/panel CSS. Keep scrollbars on
+      // the RWPH panel itself, but remove any scrollbar/overflow CSS from the
+      // generated HTML that gets pasted into Torn's Source code tab.
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*::-webkit-scrollbar(?:-[a-z]+)?\s*\{[\s\S]*?\}/gi, "")
       .replace(/\s*scrollbar-[a-z-]+\s*:\s*[^;\}"]+;?/gi, "")
-      .replace(/\s(?:overflow|overflow-x|overflow-y|scrolling)="[^"]*"/gi, "")
-      .replace(/\s*(?:min-width|max-height)\s*:\s*[^;\}"]+;?/gi, "")
-      .replace(/\s*width\s*:\s*(?:calc\([^;"]+\)|[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
-      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:100%;")
-      .replace(/\s*margin-left\s*:\s*-[^;"]+;?/gi, "")
-      .replace(/\s*margin-right\s*:\s*-[^;"]+;?/gi, "")
+      .replace(/\swidth="(?!9[0-8]%|100%)[0-9]+"/gi, "")
+      .replace(/\s*(?:min-width)\s*:\s*[^;\}"]+;?/gi, "")
+      .replace(/\s*width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
       .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
-      .replace(/width\s*:\s*96%\s*;/gi, "width:100%;")
-      .replace(/width="96%"/gi, 'width="100%"')
-      .replace(/style="([^"]*)"/gi, function(match, css) {
-        const cleanCss = String(css || "")
-          .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;]+;?/gi, "")
-          .replace(/\s*(?:min-width|max-height)\s*:\s*[^;]+;?/gi, "")
-          .replace(/\s*width\s*:\s*(?:calc\([^)]+\)|[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
-          .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:100%;")
-          .replace(/\s*margin-left\s*:\s*-[^;]+;?/gi, "")
-          .replace(/\s*margin-right\s*:\s*-[^;]+;?/gi, "")
-          .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
-          .replace(/\s{2,}/g, " ")
-          .trim();
-        return `style="${cleanCss}"`;
-      })
+      .replace(/width\s*:\s*100%\s*;/gi, "width:96%;")
+      .replace(/width="100%"/gi, 'width="96%"')
+      .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:96%;")
       .replace(/\s{2,}/g, " ")
       .replace(/>\s+</g, "><")
       .trim();
@@ -10294,6 +10281,7 @@
   function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
+    const metricLabel = m.pointsMode ? "Points" : "Weight";
     const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
     const modeLabel = m.pointsMode ? "Advanced" : "Basic";
     const bg1 = theme.panelA || theme.outer || theme.bg;
@@ -10304,22 +10292,21 @@
     const text = theme.text || "#f2f2f2";
     const soft = theme.soft || theme.muted || "#c9c9c9";
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const safeText = "word-break:break-word;overflow-wrap:anywhere;";
-    const tableFit = "width:100%;border-collapse:collapse;table-layout:fixed;";
-    const stat = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:9px Arial;vertical-align:top;${safeText}"><b style="color:${soft};font-size:7px">${esc(label)}</b><br><span style="${safeText}">${esc(String(value))}</span></td>`;
-    const summaryRows = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}">`+
-      `<tr>${stat("Member Payout", money(m.memberPayout), bg1)}${stat(perUnitLabel, money(m.perUnitAmount), bg2)}</tr>`+
-      `<tr>${stat("Payable Hits", String(m.totalPayableEvents || 0), bg2)}${stat("Members", String(m.list.length), bg1)}</tr>`+
-      `<tr>${stat("Total Respect", Number(m.totalRespect || 0).toFixed(2), bg1)}${stat("Mode", modeLabel, bg2)}</tr>`+
+    const stat = (label, value) => `<td style="padding:3px;border:1px solid ${line};background:${bg1};color:${text};font:10px Arial"><b style="color:${soft};font-size:8px">${esc(label)}</b><br>${esc(String(value))}</td>`;
+    const summaryRows = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">`+
+      `<tr>${stat("Member Payout", money(m.memberPayout))}${stat(perUnitLabel, money(m.perUnitAmount))}</tr>`+
+      `<tr>${stat("Payable Hits", String(m.totalPayableEvents || 0))}${stat("Members", String(m.list.length))}</tr>`+
+      `<tr>${stat("Total Respect", Number(m.totalRespect || 0).toFixed(2))}${stat("Mode", modeLabel)}</tr>`+
       `</table>`;
     const payoutRows = m.list.map((r, idx) => {
       const bg = idx % 2 ? bg1 : bg2;
-      return `<tr bgcolor="${bg}"><td width="12%" style="width:12%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;text-align:center;vertical-align:top;${safeText}">#${idx + 1}</td><td width="54%" style="width:54%;padding:3px 2px;border:1px solid ${line};color:${text};font:bold 9px Arial;vertical-align:top;${safeText}">${esc(r.name)}</td><td width="34%" style="width:34%;padding:3px 2px;border:1px solid ${line};color:#86efac;font:bold 8px Arial;text-align:right;vertical-align:top;${safeText}">${money(r.payout)}</td></tr>`;
+      return `<tr bgcolor="${bg}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#${idx + 1}</b></td><td style="padding:3px;border:1px solid ${line};color:${text};font:10px Arial">${esc(r.name)}</td><td style="padding:3px;border:1px solid ${line};color:#86efac;font:10px Arial;text-align:right"><b>${money(r.payout)}</b></td></tr>`;
     }).join("");
-    const payouts = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}"><tr bgcolor="${head}"><td width="12%" style="width:12%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;text-align:center;${safeText}">#</td><td width="54%" style="width:54%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;${safeText}">Player</td><td width="34%" style="width:34%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;text-align:right;${safeText}">Payout</td></tr>${payoutRows}</table>`;
-    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:8px Arial;${safeText}">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Manual exclusions only." : "Only manually excluded members were removed."}</td></tr></table>`;
-    return rwphCleanNewsletterHtmlCode(`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${theme.bg};color:${text};font:9px Arial"><tr><td style="padding:2px;background:${theme.bg};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${theme.outer};border:1px solid ${line}"><tr><td style="padding:6px 4px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center;${safeText}"><div style="font:bold 12px Arial;color:${accent};${safeText}">${esc(theme.icon || "")} ${title}</div><div style="font:8px Arial;color:${soft};${safeText}">${modeLabel} • compact long newsletter</div></td></tr><tr><td style="padding:3px;${safeText}"><div style="font:bold 9px Arial;color:${accent};margin-bottom:2px;${safeText}">All Result Stats</div>${summaryRows}</td></tr><tr><td style="padding:3px;${safeText}"><div style="font:bold 9px Arial;color:${accent};margin-bottom:2px;${safeText}">Payouts</div>${payouts}</td></tr><tr><td style="padding:3px;${safeText}">${notices}</td></tr></table></td></tr></table>`);
+    const payouts = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr bgcolor="${head}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial"><b>Player</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:right"><b>Payout</b></td></tr>${payoutRows}</table>`;
+    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:9px Arial">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Manual exclusions only." : "Only manually excluded members were removed."}</td></tr></table>`;
+    return rwphCleanNewsletterHtmlCode(`<div style="background:${theme.bg};color:${text};font:10px Arial;padding:4px"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};border:1px solid ${line}"><tr><td style="padding:7px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center"><div style="font:700 14px Arial;color:${accent}">${esc(theme.icon || "")} ${title}</div><div style="font:9px Arial;color:${soft}">${modeLabel} • compact long newsletter</div></td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">All Result Stats</div>${summaryRows}</td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">Payouts</div>${payouts}</td></tr><tr><td style="padding:4px">${notices}</td></tr></table></div>`);
   }
+
 
   function buildRwphTornTestFullCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
@@ -10335,7 +10322,7 @@
     const bg2 = theme.panelB || theme.header || theme.bg;
     const head = theme.header || bg2;
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const statCell = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:8px Arial;vertical-align:top;word-break:break-word;overflow-wrap:anywhere"><b style="color:${soft};font-size:7px">${esc(label)}</b><br>${esc(String(value))}</td>`;
+    const statCell = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:9px Arial;vertical-align:top"><b style="color:${soft};font-size:7px">${esc(label)}</b><br>${esc(String(value))}</td>`;
     const statRows = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed">${items.reduce((html, item, idx) => idx % 2 === 0 ? html + `<tr>${statCell(item[0], item[1], idx % 4 ? bg2 : bg1)}${statCell((items[idx+1]||["",""])[0], (items[idx+1]||["",""])[1], idx % 4 ? bg1 : bg2)}</tr>` : html, "")}</table>`;
     const allStats = [
       ["Member Payout", money(m.memberPayout)],
@@ -10354,7 +10341,7 @@
         ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2)],
       );
     }
-    const miniStat = (label, value, i) => `<td width="20%" style="width:20%;padding:1px;border:1px solid ${line};background:${i % 2 ? bg1 : bg2};font:6px Arial;color:${text};vertical-align:top;line-height:1.12;word-break:break-word;overflow-wrap:anywhere"><b style="color:${soft};font-size:5px">${esc(label)}</b><br>${esc(String(value))}</td>`;
+    const miniStat = (label, value, i) => `<td width="20%" style="width:20%;padding:1px;border:1px solid ${line};background:${i % 2 ? bg1 : bg2};font:6px Arial;color:${text};vertical-align:top;line-height:1.12"><b style="color:${soft};font-size:5px">${esc(label)}</b><br>${esc(String(value))}</td>`;
     const cardStatTable = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed">${items.reduce((html, item, idx) => idx % 5 === 0 ? html + `<tr>${miniStat(item[0], item[1], idx)}${miniStat((items[idx+1]||["",""])[0], (items[idx+1]||["",""])[1], idx+1)}${miniStat((items[idx+2]||["",""])[0], (items[idx+2]||["",""])[1], idx+2)}${miniStat((items[idx+3]||["",""])[0], (items[idx+3]||["",""])[1], idx+3)}${miniStat((items[idx+4]||["",""])[0], (items[idx+4]||["",""])[1], idx+4)}</tr>` : html, "")}</table>`;
     const payoutCards = m.list.map((r, idx) => {
       const metric = m.pointsMode ? Number(r.points || r.weight || 0) : Number(r.weight || 0);
@@ -10377,7 +10364,7 @@
           ["Avg FF", Number(r.avgFairFight || 1).toFixed(2)],
         );
       }
-      return `<tr><td style="padding:1px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font-family:Arial;color:${text}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed"><tr><td width="10%" style="width:10%;padding:0 1px 1px 0;text-align:center"><div style="border:1px solid ${theme.strongLine || accent};background:${head};color:${accent};font:bold 7px Arial;line-height:11px">#${idx + 1}</div></td><td width="52%" style="width:52%;padding:0 1px 1px 0;color:${text};font:bold 7px Arial;word-break:break-word;overflow-wrap:anywhere;line-height:1.05">${esc(r.name)}</td><td width="38%" style="width:38%;padding:0 0 1px 0;color:#86efac;font:bold 7px Arial;text-align:right;word-break:break-word;line-height:1.05">${money(r.payout)}</td></tr><tr><td colspan="3">${cardStatTable(stats)}</td></tr></table></td></tr>`;
+      return `<tr><td style="padding:1px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font-family:Arial;color:${text}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed"><tr><td width="10%" style="width:10%;padding:0 1px 1px 0;text-align:center"><div style="border:1px solid ${theme.strongLine || accent};background:${head};color:${accent};font:bold 7px Arial;line-height:11px">#${idx + 1}</div></td><td width="52%" style="width:52%;padding:0 1px 1px 0;color:${text};font:bold 7px Arial;word-break:break-word;line-height:1.05">${esc(r.name)}</td><td width="38%" style="width:38%;padding:0 0 1px 0;color:#86efac;font:bold 7px Arial;text-align:right;word-break:break-word;line-height:1.05">${money(r.payout)}</td></tr><tr><td colspan="3">${cardStatTable(stats)}</td></tr></table></td></tr>`;
     }).join("");
     const payoutTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse">${payoutCards}</table>`;
     const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:8px Arial">Test Newsletter: 120 repeated rows. Review real payouts before sending faction funds.</td></tr></table>`;
@@ -11243,87 +11230,6 @@
       text: buildTornFactionNewsletterText(rows || [], summary || {}, themeKey || "standard"),
     };
   }
-
-
-  // v1.1.356: final newsletter override - member name + amount paid only.
-  function buildRwphNamePaidOnlyNewsletter(rows, summary, themeKey) {
-    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
-    const theme = rwphNewsletterHtmlTheme(themeKey || "standard");
-    const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const bg = theme.bg || "#111217";
-    const outer = theme.outer || theme.panelA || "#1a1c24";
-    const panelA = theme.panelA || outer;
-    const panelB = theme.panelB || theme.header || outer;
-    const header = theme.header || panelB;
-    const line = theme.line || "#3a4050";
-    const strongLine = theme.strongLine || theme.accent || "#f2b84b";
-    const accent = theme.accent || "#f2b84b";
-    const text = theme.text || "#f2f2f2";
-    const soft = theme.soft || theme.muted || "#c9c9c9";
-    const icon = esc(theme.icon || "");
-    const safeText = "word-break:break-word;overflow-wrap:anywhere;";
-    const tableFit = "width:100%;border-collapse:collapse;table-layout:fixed;margin:0;padding:0;";
-    const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
-
-    const totalStatCell = (label, value, rowBg) => `<td width="50%" style="width:50%;padding:3px 2px;border:1px solid ${line};background:${rowBg};color:${text};font:8px Arial,Helvetica,sans-serif;line-height:1.08;vertical-align:top;${safeText}"><div style="color:${soft};font-size:6px;line-height:1.05;font-weight:bold;text-transform:uppercase;${safeText}">${esc(label)}</div><div style="color:${text};font-size:8px;line-height:1.08;font-weight:bold;${safeText}">${esc(String(value))}</div></td>`;
-    const totalResultsRows = [
-      ["Member Payout", money(m.memberPayout)],
-      ["Total Payout", money(m.overallTotalPayout)],
-      [perUnitLabel, money(m.perUnitAmount)],
-      ["Payable Hits", String(m.totalPayableEvents || 0)],
-      ["Total Respect", Number(m.totalRespect || 0).toFixed(2)],
-      ["Members", String((m.list || []).length)],
-    ];
-    const totalResultsTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}">${totalResultsRows.reduce((html, item, idx) => {
-      if (idx % 2) return html;
-      const next = totalResultsRows[idx + 1] || ["", ""];
-      const alt = idx % 4 ? panelB : panelA;
-      const alt2 = idx % 4 ? panelA : panelB;
-      return html + `<tr>${totalStatCell(item[0], item[1], alt)}${totalStatCell(next[0], next[1], alt2)}</tr>`;
-    }, "")}</table>`;
-
-    const memberCard = (r, idx) => {
-      const rowBg = idx % 2 ? panelA : panelB;
-      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${rowBg};border:1px solid ${line};"><tr><td width="24%" align="center" style="width:24%;padding:4px 1px;background:${header};border-right:1px solid ${line};color:${accent};font:bold 8px Arial,Helvetica,sans-serif;line-height:1.05;text-align:center;vertical-align:top;${safeText}">#${idx + 1}</td><td width="76%" style="width:76%;padding:4px 2px;background:${rowBg};color:${text};font:bold 9px Arial,Helvetica,sans-serif;line-height:1.08;vertical-align:top;${safeText}">${esc(r.name || ("Unknown " + (r.id || "")))}</td></tr><tr><td colspan="2" align="right" style="padding:3px 3px 4px 3px;background:${rowBg};border-top:1px solid ${line};color:#86efac;font:bold 9px Arial,Helvetica,sans-serif;line-height:1.08;text-align:right;${safeText}">${money(r.payout || 0)}</td></tr></table>`;
-    };
-
-    const list = m.list || [];
-    let payoutRows = "";
-    for (let i = 0; i < list.length; i += 2) {
-      const left = `<td width="50%" valign="top" style="width:50%;padding:2px;vertical-align:top;${safeText}">${memberCard(list[i], i)}</td>`;
-      const right = list[i + 1]
-        ? `<td width="50%" valign="top" style="width:50%;padding:2px;vertical-align:top;${safeText}">${memberCard(list[i + 1], i + 1)}</td>`
-        : `<td width="50%" valign="top" style="width:50%;padding:2px;vertical-align:top;${safeText}">&nbsp;</td>`;
-      payoutRows += `<tr>${left}${right}</tr>`;
-    }
-    if (!payoutRows) {
-      payoutRows = `<tr><td colspan="2" style="padding:6px 2px;border:1px solid ${line};background:${panelB};color:${soft};font:9px Arial,Helvetica,sans-serif;text-align:center;${safeText}">No payout rows.</td></tr>`;
-    }
-
-    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${bg};color:${text};font-family:Arial,Helvetica,sans-serif;"><tr><td style="padding:1px;background:${bg};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${outer};border:1px solid ${line};"><tr><td colspan="2" style="padding:6px 3px;background:${header};border-bottom:2px solid ${strongLine};text-align:center;${safeText}"><div style="font:bold 12px Arial,Helvetica,sans-serif;color:${accent};line-height:1.08;${safeText}">${icon} ${title}</div><div style="font:7px Arial,Helvetica,sans-serif;color:${soft};line-height:1.08;margin-top:1px;${safeText}">Member payouts</div></td></tr><tr><td colspan="2" style="padding:4px 2px 1px 2px;background:${outer};color:${accent};font:bold 8px Arial,Helvetica,sans-serif;line-height:1.08;${safeText}">Total Results</td></tr><tr><td colspan="2" style="padding:0 2px 4px 2px;background:${outer};${safeText}">${totalResultsTable}</td></tr><tr><td colspan="2" style="padding:4px 2px 1px 2px;background:${outer};color:${accent};font:bold 8px Arial,Helvetica,sans-serif;line-height:1.08;${safeText}">Member Payouts</td></tr><tr><td colspan="2" style="padding:0 1px 3px 1px;background:${outer};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}">${payoutRows}</table></td></tr></table></td></tr></table>`;
-    return rwphCleanNewsletterHtmlCode(html);
-  }
-
-  function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
-    return buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard");
-  }
-
-  function buildRwphTornTestFullCodeNewsletter(rows, summary, themeKey) {
-    return buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard");
-  }
-
-  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
-    return buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard");
-  }
-
-  function buildTornFactionNewsletterBundle(rows, summary, themeKey) {
-    return {
-      title: String(summary?.newsletterTitle || summary?.factionName || "Faction Payout Newsletter"),
-      html: buildRwphNamePaidOnlyNewsletter(rows || [], summary || {}, themeKey || "standard"),
-      text: (rows || []).map((r) => `${r.name || ("Unknown " + (r.id || ""))}: ${money(r.payout || 0)}`).join("\\n"),
-    };
-  }
-
 
   function createHtmlNewsletter(rows, summary) {
     const html = buildWarPayoutNewsletterHtml(rows, summary || {});
