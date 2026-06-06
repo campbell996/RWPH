@@ -1197,13 +1197,13 @@ RWPH is built to make ranked-war payout work faster and cleaner, but the faction
 The old Include Left Members / automatic left-member removal system has been removed. RWPH now removes members only when they are typed or pasted into the Basic/Advanced **Exclude member from results** box. The existing Removed Member Hits result stat now counts hits removed by that manual exclude system.
 
 
-## v1.1.363
+## v1.1.364
 
 - Fixed results loading dots and progress bar so they follow the same live backend stage/percent state.
 - Loading dots now show previous stages as done and the current backend stage as active instead of jumping ahead.
 
 
-## v1.1.363 newsletter layout note
+## v1.1.364 newsletter layout note
 
 - Newsletter member payouts now display as two member cards per line where space allows.
 - Newsletter content is unchanged: Total Results remains at the top, and member cards show rank, member name, and amount paid.
