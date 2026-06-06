@@ -516,6 +516,6 @@ Basic Calculations and Advanced Calculations now keep assists, retaliation hits,
 
 
 
-## v1.1.369 note
+## v1.1.370 note
 
 This update only changes loading progress display behaviour. API key usage and storage terms are unchanged.

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.369
+// @version      1.1.370
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.369: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.370: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -5565,50 +5565,73 @@
     const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvText)}`;
     const payAllHref = rwphFactionControlsPayAllUrl();
 
-    function rwphBuildCompactThemedNewsletterHtmlStatic() {
-      const sourceRows = Array.isArray(list) ? list : [];
+    function rwphBuildMainPanelNewsletterHtmlStatic(options = {}) {
+      const baseRows = Array.isArray(list) ? list : [];
+      const repeatTo120 = !!options.repeatTo120;
       const maxRows = 120;
-      const shownRows = sourceRows.slice(0, maxRows);
+      let shownRows = [];
+      if (repeatTo120) {
+        shownRows = baseRows.length ? Array.from({ length: maxRows }, (_, idx) => ({ ...baseRows[idx % baseRows.length], rwphRepeatedRank: idx + 1 })) : [];
+      } else {
+        shownRows = baseRows.slice(0, maxRows).map((r, idx) => ({ ...r, rwphRepeatedRank: idx + 1 }));
+      }
       const s = summary || {};
       const isPoints = !!(s.pointsMode || s.calculationMode === "points");
       const title = String(s.factionName || s.newsletterTitle || "Ranked War Payout Results");
       const mode = isPoints ? "Advanced" : "Basic";
-      const totalPaid = sourceRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
-      const shownPaid = shownRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
-      const totalRespect = Number(s.totalRespect || sourceRows.reduce((sum, r) => sum + Number(r.totalRespect || r.respect || 0), 0));
-      const totalPayable = Number(s.totalPayableEvents || sourceRows.reduce((sum, r) => sum + Number(r.payableEvents || 0), 0));
+      const totalPaid = shownRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
+      const totalRespect = Number(s.totalRespect || baseRows.reduce((sum, r) => sum + Number(r.totalRespect || r.respect || 0), 0));
+      const totalPayable = Number(s.totalPayableEvents || baseRows.reduce((sum, r) => sum + Number(r.payableEvents || 0), 0));
       let perUnit = Number(isPoints ? (s.perPointAmount || s.perHitAmount || s.payPerPoint || 0) : (s.perHitAmount || s.payPerHit || 0));
       if (!perUnit) {
-        const units = sourceRows.reduce((sum, r) => sum + Number(isPoints ? (r.points || r.weight || 0) : (r.payableEvents || r.weight || r.warHits || r.attacks || 0)), 0);
-        perUnit = units ? totalPaid / units : 0;
+        const units = baseRows.reduce((sum, r) => sum + Number(isPoints ? (r.points || r.weight || 0) : (r.payableEvents || r.weight || r.warHits || r.attacks || 0)), 0);
+        const originalPaid = baseRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
+        perUnit = units ? originalPaid / units : 0;
       }
-      const stat = (label, value, bg) => `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid #6b3b18;padding:3px;color:#fff7ed;word-break:break-word"><b style="color:#ffd37a">${esc(label)}</b><br>${esc(value)}</td>`;
-      const memberCell = (r, index, bg) => {
+      const mainBg = "#020617";
+      const panel = "#0f172a";
+      const panelSoft = "#1e293b";
+      const panelDeep = "#111827";
+      const lineHard = "#b45309";
+      const gold = "#fbbf24";
+      const text = "#fff7ed";
+      const muted = "#d4c1b4";
+      const green = "#86efac";
+      const cardBg = (idx) => idx % 2 ? panelDeep : panelSoft;
+      const stat = (label, value, bg) => `<td width="50%" align="center" style="width:50%;background:${bg};border:1px solid ${lineHard};padding:4px 3px;color:${text};font:9px Arial,Helvetica,sans-serif;line-height:1.12;word-break:break-word;vertical-align:top"><b style="display:block;color:${gold};font-size:7px;text-transform:uppercase">${esc(label)}</b><span style="font-weight:bold">${esc(value)}</span></td>`;
+      const memberCard = (r, index) => {
         const metric = isPoints ? Number(r.points || r.weight || 0).toFixed(1) : String(Number(r.payableEvents || r.weight || r.warHits || r.attacks || 0));
-        return `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid #5b3418;padding:3px;color:#fff7ed;word-break:break-word;vertical-align:top"><b style="color:#ffd37a">#${index + 1}</b> <b>${esc(String(r.name || ("Unknown " + (r.id || ""))).replace(/\s+/g, " ").trim())}</b><br><span style="color:#cbd5e1">${isPoints ? "Pts " : "Hits "}${esc(metric)}</span><br><b style="color:#86efac">${esc(money(r.payout || 0))}</b></td>`;
+        const name = String(r.name || ("Unknown " + (r.id || ""))).replace(/\s+/g, " ").trim();
+        return `<td width="33.33%" align="center" valign="top" style="width:33.33%;padding:2px;vertical-align:top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;background:${cardBg(index)};border:1px solid ${lineHard};color:${text};font:8px Arial,Helvetica,sans-serif"><tr><td align="center" style="padding:3px 2px;background:linear-gradient(180deg,#3f1d17,#1e293b);border-bottom:1px solid ${lineHard};color:${gold};font-weight:bold;word-break:break-word">#${index + 1}</td></tr><tr><td align="center" style="padding:3px 2px 1px 2px;color:${text};font-weight:bold;line-height:1.05;word-break:break-word">${esc(name)}</td></tr><tr><td align="center" style="padding:1px 2px;color:${muted};line-height:1.05;word-break:break-word">${isPoints ? "Pts" : "Hits"} ${esc(metric)}</td></tr><tr><td align="center" style="padding:1px 2px 3px 2px;color:${green};font-weight:bold;line-height:1.05;word-break:break-word">${esc(money(r.payout || 0))}</td></tr></table></td>`;
       };
-      let html = "";
-      html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:#120905;color:#fff7ed;font:10px Arial,Helvetica,sans-serif">`;
-      html += `<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:6px;color:#fff7ed"><div style="font-size:14px;font-weight:bold;color:#ffd37a">${esc(title)}</div><div style="font-size:9px;color:#cfaa8e">${esc(mode)} payout newsletter • compact 120-card layout</div></td></tr>`;
-      html += `<tr>${stat("Total Payout", money(totalPaid), "#20130c")}${stat(isPoints ? "Per Point" : "Per Hit", money(perUnit), "#1a2533")}</tr>`;
-      html += `<tr>${stat("Payable Hits", String(totalPayable || 0), "#1a2533")}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), "#20130c")}</tr>`;
-      html += `<tr>${stat("Members Shown", String(shownRows.length) + (sourceRows.length > maxRows ? " / " + sourceRows.length : ""), "#20130c")}${stat("Shown Payout", money(shownPaid), "#1a2533")}</tr>`;
-      html += `<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:4px;color:#ffd37a;font-weight:bold">Payout Cards</td></tr>`;
-      for (let i = 0; i < shownRows.length; i += 2) {
-        html += "<tr>";
-        html += memberCell(shownRows[i], i, i % 4 === 0 ? "#1b1208" : "#111827");
-        html += shownRows[i + 1] ? memberCell(shownRows[i + 1], i + 1, i % 4 === 0 ? "#111827" : "#1b1208") : `<td width="50%" bgcolor="#120905" style="border:1px solid #5b3418;padding:3px">&nbsp;</td>`;
-        html += "</tr>";
+      let cardRows = "";
+      for (let i = 0; i < shownRows.length; i += 3) {
+        cardRows += "<tr>";
+        cardRows += memberCard(shownRows[i], i);
+        cardRows += shownRows[i + 1] ? memberCard(shownRows[i + 1], i + 1) : `<td width="33.33%" style="width:33.33%;padding:2px">&nbsp;</td>`;
+        cardRows += shownRows[i + 2] ? memberCard(shownRows[i + 2], i + 2) : `<td width="33.33%" style="width:33.33%;padding:2px">&nbsp;</td>`;
+        cardRows += "</tr>";
       }
-      if (!shownRows.length) html += `<tr><td colspan="2" align="center" bgcolor="#1b1208" style="border:1px solid #5b3418;padding:8px;color:#ffd37a">No payout rows found.</td></tr>`;
-      if (sourceRows.length > maxRows) html += `<tr><td colspan="2" align="center" bgcolor="#2a1609" style="border:1px solid #b88759;padding:4px;color:#cfaa8e">Only the first 120 rows are included so the Torn faction newsletter stays short enough to post.</td></tr>`;
-      html += `<tr><td colspan="2" align="center" bgcolor="#120905" style="border:1px solid #5b3418;padding:4px;color:#cfaa8e">Generated by Ranked War Payout Helper. Review payouts before sending funds.</td></tr>`;
+      if (!shownRows.length) {
+        cardRows = `<tr><td colspan="3" align="center" style="padding:8px;background:${panelSoft};border:1px solid ${lineHard};color:${gold};font:9px Arial,Helvetica,sans-serif">No payout rows found.</td></tr>`;
+      }
+      let html = "";
+      html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;background:${mainBg};color:${text};font:9px Arial,Helvetica,sans-serif">`;
+      html += `<tr><td colspan="3" align="center" style="background:linear-gradient(180deg,#3f1d17,#020617);border:1px solid ${lineHard};padding:7px 4px;color:${text};word-break:break-word"><div style="font-size:14px;font-weight:bold;color:${gold};line-height:1.08">${esc(title)}</div><div style="font-size:8px;color:${muted};line-height:1.08;margin-top:2px">${esc(mode)} payout newsletter • RWPH main-panel theme • ${repeatTo120 ? "120 repeated member cards" : "current results"} • 3 cards per row</div></td></tr>`;
+      html += `<tr><td colspan="3" style="padding:3px;background:${mainBg}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>${stat("Total Payout", money(totalPaid), panelSoft)}${stat(isPoints ? "Per Point" : "Per Hit", money(perUnit), panel)}</tr><tr>${stat("Payable Hits", String(totalPayable || 0), panel)}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), panelSoft)}</tr><tr>${stat("Cards", String(shownRows.length), panelSoft)}${stat(repeatTo120 ? "Repeated From" : "Members", String(baseRows.length), panel)}</tr></table></td></tr>`;
+      html += `<tr><td colspan="3" align="center" style="background:linear-gradient(180deg,#3f1d17,#111827);border:1px solid ${lineHard};padding:4px;color:${gold};font-weight:bold">Payout Cards</td></tr>`;
+      html += cardRows;
+      if (!repeatTo120 && baseRows.length > maxRows) html += `<tr><td colspan="3" align="center" style="background:${panel};border:1px solid ${lineHard};padding:4px;color:${muted};font-size:8px">Only the first 120 rows are included so the Torn faction newsletter stays short enough to post.</td></tr>`;
+      if (repeatTo120 && baseRows.length && baseRows.length < maxRows) html += `<tr><td colspan="3" align="center" style="background:${panel};border:1px solid ${lineHard};padding:4px;color:${muted};font-size:8px">Members repeated until exactly 120 cards.</td></tr>`;
+      html += `<tr><td colspan="3" align="center" style="background:${mainBg};border:1px solid ${lineHard};padding:4px;color:${muted};font-size:8px">Generated by Ranked War Payout Helper. Review payouts before sending funds.</td></tr>`;
       html += "</table>";
       return html.replace(/>\s+</g, "><").trim();
     }
 
-    const rwphCompactNewsletterHtml = rwphBuildCompactThemedNewsletterHtmlStatic();
+    const rwphCompactNewsletterHtml = rwphBuildMainPanelNewsletterHtmlStatic({ repeatTo120: false });
+    const rwphCompactNewsletter120Html = rwphBuildMainPanelNewsletterHtmlStatic({ repeatTo120: true });
     const rwphCompactNewsletterLength = rwphCompactNewsletterHtml.length.toLocaleString();
+    const rwphCompactNewsletter120Length = rwphCompactNewsletter120Html.length.toLocaleString();
 
     const cards = list.map((r) => {
       const mainMetricLabel = pointsMode ? "Points" : "Weight";
@@ -6471,11 +6494,12 @@
       </div>
     </section>
       <div class="results-action-zone" aria-label="Results actions">
-        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or create a compact themed newsletter HTML panel.</p>
+        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or create compact themed newsletter HTML.</p>
         <button class="btn secondary" id="thisPageHtmlBtn" type="button">This page HTML</button>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
-        <a class="btn secondary" id="resultsHtmlPanelBtn" href="#rwph-results-html-panel">Newsletter</a>
+        <a class="btn secondary" id="resultsHtmlPanelBtn" href="#rwph-results-html-panel" data-open-results-html-panel="rwph-results-html-panel">Newsletter</a>
+        <a class="btn secondary" id="resultsHtmlPanel120Btn" href="#rwph-results-html-panel-120" data-open-results-html-panel="rwph-results-html-panel-120">Newsletter 120</a>
       </div>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
@@ -6484,18 +6508,33 @@
       <div class="rwph-results-html-head">
         <div>
           <div class="rwph-results-html-title">Newsletter HTML</div>
-          <div class="rwph-results-html-note">Compact themed layout for Torn faction newsletters. Built to fit 120 member cards plus main stats. Generated size: ${rwphCompactNewsletterLength} characters.</div>
+          <div class="rwph-results-html-note">Main-panel themed layout. Current results, max 120 cards, 3 member cards per row. Size: ${rwphCompactNewsletterLength} characters.</div>
         </div>
         <a class="rwph-results-html-close" href="#" title="Close">×</a>
       </div>
       <div class="rwph-results-html-actions">
-        <button class="btn secondary" id="copyResultsHtmlBtn" type="button">Copy HTML</button>
-        <button class="btn secondary" id="downloadResultsHtmlFromPanelBtn" type="button">Download HTML</button>
+        <button class="btn secondary rwph-copy-results-html-btn" data-results-html-box="resultsHtmlPanelBox" type="button">Copy HTML</button>
+        <button class="btn secondary rwph-download-results-html-btn" data-results-html-box="resultsHtmlPanelBox" data-download-prefix="rwph-themed-newsletter" type="button">Download HTML</button>
       </div>
-      <div class="rwph-results-html-status" id="resultsHtmlPanelStatus">Themed newsletter HTML ready. ${rwphCompactNewsletterLength} characters.</div>
+      <div class="rwph-results-html-status" id="resultsHtmlPanelStatus">Newsletter HTML ready. ${rwphCompactNewsletterLength} characters.</div>
       <textarea class="rwph-results-html-box" id="resultsHtmlPanelBox" readonly spellcheck="false">${esc(rwphCompactNewsletterHtml)}</textarea>
     </section>
 
+    <section class="rwph-results-html-panel" id="rwph-results-html-panel-120" aria-label="Newsletter 120 HTML panel">
+      <div class="rwph-results-html-head">
+        <div>
+          <div class="rwph-results-html-title">Newsletter 120 HTML</div>
+          <div class="rwph-results-html-note">Main-panel themed layout. Repeats current members until exactly 120 cards. 3 member cards per row. Size: ${rwphCompactNewsletter120Length} characters.</div>
+        </div>
+        <a class="rwph-results-html-close" href="#" title="Close">×</a>
+      </div>
+      <div class="rwph-results-html-actions">
+        <button class="btn secondary rwph-copy-results-html-btn" data-results-html-box="resultsHtmlPanel120Box" type="button">Copy HTML</button>
+        <button class="btn secondary rwph-download-results-html-btn" data-results-html-box="resultsHtmlPanel120Box" data-download-prefix="rwph-themed-newsletter-120" type="button">Download HTML</button>
+      </div>
+      <div class="rwph-results-html-status" id="resultsHtmlPanel120Status">Newsletter 120 HTML ready. ${rwphCompactNewsletter120Length} characters.</div>
+      <textarea class="rwph-results-html-box" id="resultsHtmlPanel120Box" readonly spellcheck="false">${esc(rwphCompactNewsletter120Html)}</textarea>
+    </section>
 
     <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
@@ -6944,17 +6983,18 @@
       }
     }
 
-    function openResultsHtmlPanel() {
+    function openResultsHtmlPanel(panelId) {
       try {
-        var existingPanel = document.getElementById("rwph-results-html-panel");
+        panelId = panelId || "rwph-results-html-panel";
+        var existingPanel = document.getElementById(panelId);
         if (existingPanel) {
-          try { location.hash = "rwph-results-html-panel"; } catch (_) {}
+          try { location.hash = panelId; } catch (_) {}
           existingPanel.style.display = "flex";
           existingPanel.style.visibility = "visible";
           existingPanel.style.opacity = "1";
-          var existingBox = document.getElementById("resultsHtmlPanelBox");
-          var existingStatus = document.getElementById("resultsHtmlPanelStatus");
-          if (existingStatus) existingStatus.textContent = "Themed newsletter HTML ready. " + ((existingBox && existingBox.value) ? existingBox.value.length.toLocaleString() : "0") + " characters.";
+          var existingBox = existingPanel.querySelector(".rwph-results-html-box");
+          var existingStatus = existingPanel.querySelector(".rwph-results-html-status");
+          if (existingStatus) existingStatus.textContent = (panelId.indexOf("120") >= 0 ? "Newsletter 120 HTML ready. " : "Newsletter HTML ready. ") + ((existingBox && existingBox.value) ? existingBox.value.length.toLocaleString() : "0") + " characters.";
           return;
         }
 
@@ -7046,10 +7086,11 @@
 
     function rwphHandleResultsHtmlPanelClick(ev) {
       var target = ev && ev.target;
-      var btn = target && target.closest ? target.closest("#resultsHtmlPanelBtn,[data-open-results-html-panel]") : null;
+      var btn = target && target.closest ? target.closest("#resultsHtmlPanelBtn,#resultsHtmlPanel120Btn,[data-open-results-html-panel]") : null;
       if (!btn) return;
+      var panelId = btn.getAttribute("data-open-results-html-panel") || (btn.id === "resultsHtmlPanel120Btn" ? "rwph-results-html-panel-120" : "rwph-results-html-panel");
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      openResultsHtmlPanel();
+      openResultsHtmlPanel(panelId);
     }
 
     var resultsHtmlPanelBtn = document.getElementById("resultsHtmlPanelBtn");
@@ -7057,17 +7098,25 @@
       resultsHtmlPanelBtn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
       resultsHtmlPanelBtn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
     }
+    var resultsHtmlPanel120Btn = document.getElementById("resultsHtmlPanel120Btn");
+    if (resultsHtmlPanel120Btn) {
+      resultsHtmlPanel120Btn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
+      resultsHtmlPanel120Btn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
+    }
     document.addEventListener("click", rwphHandleResultsHtmlPanelClick, true);
 
     document.addEventListener("click", async function(ev) {
       var target = ev && ev.target;
       if (!target || !target.closest) return;
-      var copyBtn = target.closest("#copyResultsHtmlBtn");
-      var downloadBtn = target.closest("#downloadResultsHtmlFromPanelBtn");
+      var copyBtn = target.closest(".rwph-copy-results-html-btn,[data-results-html-copy]");
+      var downloadBtn = target.closest(".rwph-download-results-html-btn,[data-results-html-download]");
       if (!copyBtn && !downloadBtn) return;
-      var box = document.getElementById("resultsHtmlPanelBox");
-      var status = document.getElementById("resultsHtmlPanelStatus");
-      var value = (box && box.value) || buildCompactThemedNewsletterHtml();
+      var btn = copyBtn || downloadBtn;
+      var boxId = btn.getAttribute("data-results-html-box") || "resultsHtmlPanelBox";
+      var box = document.getElementById(boxId);
+      var panel = btn.closest(".rwph-results-html-panel") || document;
+      var status = panel.querySelector ? panel.querySelector(".rwph-results-html-status") : document.getElementById("resultsHtmlPanelStatus");
+      var value = (box && box.value) || "";
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       if (copyBtn) {
         try {
@@ -7084,8 +7133,9 @@
           var url = URL.createObjectURL(blob);
           var a = document.createElement("a");
           var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+          var prefix = downloadBtn.getAttribute("data-download-prefix") || "rwph-themed-newsletter";
           a.href = url;
-          a.download = "rwph-themed-newsletter-" + stamp + ".html";
+          a.download = prefix + "-" + stamp + ".html";
           document.body.appendChild(a);
           a.click();
           a.remove();
@@ -7710,7 +7760,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.369: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.370: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7852,7 +7902,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.369: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.370: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7925,7 +7975,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.369: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.370: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
