@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.366
+// @version      1.1.368
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.366: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.368: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -6425,11 +6425,11 @@
       </div>
     </section>
       <div class="results-action-zone" aria-label="Results actions">
-        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or create a results HTML panel for copying.</p>
+        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or create a compact themed newsletter HTML panel.</p>
         <button class="btn secondary" id="thisPageHtmlBtn" type="button">This page HTML</button>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
-        <button class="btn secondary" id="resultsHtmlPanelBtn" type="button">Newsletter</button>
+        <button class="btn secondary" id="resultsHtmlPanelBtn" type="button" data-open-results-html-panel="1" onclick="try{if(window.rwphOpenResultsHtmlPanel){window.rwphOpenResultsHtmlPanel();}}catch(e){} return false;">Newsletter</button>
       </div>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
@@ -6794,6 +6794,75 @@
       return "<!doctype html>\n" + docClone.outerHTML;
     }
 
+    function buildCompactThemedNewsletterHtml() {
+      var sourceRows = Array.isArray(rows) ? rows : [];
+      var maxRows = 120;
+      var shownRows = sourceRows.slice(0, maxRows);
+      var s = summary || {};
+      var isPoints = !!(s.pointsMode || s.calculationMode === "points");
+      var title = String(s.factionName || s.newsletterTitle || "Ranked War Payout Results");
+      var mode = isPoints ? "Advanced" : "Basic";
+      var totalPaid = sourceRows.reduce(function(sum, r) { return sum + Number(r.payout || 0); }, 0);
+      var shownPaid = shownRows.reduce(function(sum, r) { return sum + Number(r.payout || 0); }, 0);
+      var totalRespect = Number(s.totalRespect || sourceRows.reduce(function(sum, r) { return sum + Number(r.totalRespect || r.respect || 0); }, 0));
+      var totalPayable = Number(s.totalPayableEvents || sourceRows.reduce(function(sum, r) { return sum + Number(r.payableEvents || 0); }, 0));
+      var perUnit = Number(isPoints ? (s.perPointAmount || s.perHitAmount || s.payPerPoint || 0) : (s.perHitAmount || s.payPerHit || 0));
+      if (!perUnit) {
+        var units = sourceRows.reduce(function(sum, r) {
+          return sum + Number(isPoints ? (r.points || r.weight || 0) : (r.payableEvents || r.weight || r.warHits || r.attacks || 0));
+        }, 0);
+        perUnit = units ? totalPaid / units : 0;
+      }
+
+      function cleanName(v) {
+        return String(v || "").replace(/\s+/g, " ").trim();
+      }
+      function stat(label, value, bg) {
+        return '<td width="50%" bgcolor="' + bg + '" align="center" style="border:1px solid #6b3b18;padding:3px;color:#fff7ed;word-break:break-word"><b style="color:#ffd37a">' + escapeHtml(label) + '</b><br>' + escapeHtml(value) + '</td>';
+      }
+      function memberCell(r, index, bg) {
+        var name = cleanName(r.name || ("Unknown " + (r.id || "")));
+        var metric = isPoints ? Number(r.points || r.weight || 0).toFixed(1) : String(Number(r.payableEvents || r.weight || r.warHits || r.attacks || 0));
+        return '<td width="50%" bgcolor="' + bg + '" align="center" style="border:1px solid #5b3418;padding:3px;color:#fff7ed;word-break:break-word;vertical-align:top">'
+          + '<b style="color:#ffd37a">#' + (index + 1) + '</b> <b>' + escapeHtml(name) + '</b><br>'
+          + '<span style="color:#cbd5e1">' + (isPoints ? 'Pts ' : 'Hits ') + escapeHtml(metric) + '</span><br>'
+          + '<b style="color:#86efac">' + escapeHtml(money(r.payout || 0)) + '</b>'
+          + '</td>';
+      }
+
+      var html = '';
+      html += '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:#120905;color:#fff7ed;font:10px Arial,Helvetica,sans-serif">';
+      html += '<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:6px;color:#fff7ed">';
+      html += '<div style="font-size:14px;font-weight:bold;color:#ffd37a">' + escapeHtml(title) + '</div>';
+      html += '<div style="font-size:9px;color:#cfaa8e">' + mode + ' payout newsletter • compact 120-card layout</div>';
+      html += '</td></tr>';
+      html += '<tr>' + stat('Total Payout', money(totalPaid), '#20130c') + stat(isPoints ? 'Per Point' : 'Per Hit', money(perUnit), '#1a2533') + '</tr>';
+      html += '<tr>' + stat('Payable Hits', String(totalPayable || 0), '#1a2533') + stat('Total Respect', Number(totalRespect || 0).toFixed(2), '#20130c') + '</tr>';
+      html += '<tr>' + stat('Members Shown', String(shownRows.length) + (sourceRows.length > maxRows ? ' / ' + sourceRows.length : ''), '#20130c') + stat('Shown Payout', money(shownPaid), '#1a2533') + '</tr>';
+      html += '<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:4px;color:#ffd37a;font-weight:bold">Payout Cards</td></tr>';
+
+      for (var i = 0; i < shownRows.length; i += 2) {
+        html += '<tr>';
+        html += memberCell(shownRows[i], i, i % 4 === 0 ? '#1b1208' : '#111827');
+        if (shownRows[i + 1]) {
+          html += memberCell(shownRows[i + 1], i + 1, i % 4 === 0 ? '#111827' : '#1b1208');
+        } else {
+          html += '<td width="50%" bgcolor="#120905" style="border:1px solid #5b3418;padding:3px">&nbsp;</td>';
+        }
+        html += '</tr>';
+      }
+
+      if (!shownRows.length) {
+        html += '<tr><td colspan="2" align="center" bgcolor="#1b1208" style="border:1px solid #5b3418;padding:8px;color:#ffd37a">No payout rows found.</td></tr>';
+      }
+      if (sourceRows.length > maxRows) {
+        html += '<tr><td colspan="2" align="center" bgcolor="#2a1609" style="border:1px solid #b88759;padding:4px;color:#cfaa8e">Only the first 120 rows are included so the Torn faction newsletter stays short enough to post.</td></tr>';
+      }
+      html += '<tr><td colspan="2" align="center" bgcolor="#120905" style="border:1px solid #5b3418;padding:4px;color:#cfaa8e">Generated by Ranked War Payout Helper. Review payouts before sending funds.</td></tr>';
+      html += '</table>';
+      return html.replace(/>\s+</g, "><").trim();
+    }
+
     function downloadThisResultsPageHtml() {
       try {
         var html = getCurrentResultsPageHtml();
@@ -6824,7 +6893,7 @@
         panel.setAttribute("aria-label", "Results HTML panel");
         panel.innerHTML = ''
           + '<div class="rwph-results-html-head">'
-          + '<div><div class="rwph-results-html-title">Results HTML</div><div class="rwph-results-html-note">Copy this HTML into Torn source mode or save it for your faction records.</div></div>'
+          + '<div><div class="rwph-results-html-title">Newsletter HTML</div><div class="rwph-results-html-note">Compact themed layout for Torn faction newsletters. Built to fit 120 member cards plus main stats.</div></div>'
           + '<button class="rwph-results-html-close" type="button" title="Close">×</button>'
           + '</div>'
           + '<div class="rwph-results-html-actions">'
@@ -6833,16 +6902,34 @@
           + '</div>'
           + '<div class="rwph-results-html-status" id="resultsHtmlPanelStatus"></div>'
           + '<textarea class="rwph-results-html-box" id="resultsHtmlPanelBox" readonly spellcheck="false"></textarea>';
-        document.body.appendChild(panel);
+        (document.body || document.documentElement).appendChild(panel);
+        panel.style.display = "flex";
+        panel.style.visibility = "visible";
+        panel.style.opacity = "1";
 
         var box = document.getElementById("resultsHtmlPanelBox");
         var status = document.getElementById("resultsHtmlPanelStatus");
         if (box) {
-          box.value = getCurrentResultsPageHtml();
-          setTimeout(function(){ try { box.focus(); box.select(); } catch (_) {} }, 100);
+          if (status) status.textContent = "Building themed newsletter HTML...";
+          setTimeout(function() {
+            try {
+              box.value = buildCompactThemedNewsletterHtml();
+              if (status) status.textContent = "Themed newsletter HTML ready. " + (box.value || "").length.toLocaleString() + " characters.";
+              try { box.focus(); box.select(); } catch (_) {}
+            } catch (e) {
+              if (status) status.textContent = "Could not build results HTML.";
+              console.warn("RWPH results HTML build failed:", e);
+            }
+          }, 25);
         }
 
-        panel.querySelector(".rwph-results-html-close").addEventListener("click", function() { panel.remove(); });
+        function closeResultsHtmlPanel() {
+          try { panel.remove(); } catch (_) {}
+        }
+        panel.querySelector(".rwph-results-html-close").addEventListener("click", closeResultsHtmlPanel);
+        panel.addEventListener("keydown", function(ev) {
+          if (ev && ev.key === "Escape") closeResultsHtmlPanel();
+        });
         panel.querySelector("#copyResultsHtmlBtn").addEventListener("click", async function() {
           try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -6859,12 +6946,12 @@
         });
         panel.querySelector("#downloadResultsHtmlFromPanelBtn").addEventListener("click", function() {
           try {
-            var blob = new Blob([box.value || getCurrentResultsPageHtml()], { type: "text/html;charset=utf-8" });
+            var blob = new Blob([box.value || buildCompactThemedNewsletterHtml()], { type: "text/html;charset=utf-8" });
             var url = URL.createObjectURL(blob);
             var a = document.createElement("a");
             var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
             a.href = url;
-            a.download = "rwph-results-panel-html-" + stamp + ".html";
+            a.download = "rwph-themed-newsletter-" + stamp + ".html";
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -6883,8 +6970,22 @@
     var thisPageHtmlBtn = document.getElementById("thisPageHtmlBtn");
     if (thisPageHtmlBtn) thisPageHtmlBtn.addEventListener("click", downloadThisResultsPageHtml);
 
+    window.rwphOpenResultsHtmlPanel = openResultsHtmlPanel;
+
+    function rwphHandleResultsHtmlPanelClick(ev) {
+      var target = ev && ev.target;
+      var btn = target && target.closest ? target.closest("#resultsHtmlPanelBtn,[data-open-results-html-panel]") : null;
+      if (!btn) return;
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      openResultsHtmlPanel();
+    }
+
     var resultsHtmlPanelBtn = document.getElementById("resultsHtmlPanelBtn");
-    if (resultsHtmlPanelBtn) resultsHtmlPanelBtn.addEventListener("click", openResultsHtmlPanel);
+    if (resultsHtmlPanelBtn) {
+      resultsHtmlPanelBtn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
+      resultsHtmlPanelBtn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
+    }
+    document.addEventListener("click", rwphHandleResultsHtmlPanelClick, true);
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
     if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", storePayAllRowsFallback);
@@ -7499,7 +7600,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.366: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.368: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7641,7 +7742,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.366: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.368: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7714,7 +7815,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.366: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.368: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -10644,7 +10745,7 @@
               <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, custom Avg FF bonus per payable hit, and payout from final score.</li>
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>This page HTML:</b> downloads the current results page/panel as a standalone HTML file.</li>
-              <li><b>Newsletter:</b> opens a copyable HTML panel of the current results page.</li>
+              <li><b>Newsletter:</b> opens a compact themed HTML panel designed to fit 120 member cards plus main stats in Torn faction newsletters.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
             </ul>
@@ -11420,7 +11521,7 @@
               <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, custom Avg FF bonus per payable hit, and payout from final score.</li>
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
               <li><b>This page HTML:</b> downloads the current results page/panel as a standalone HTML file.</li>
-              <li><b>Newsletter:</b> opens a copyable HTML panel of the current results page.</li>
+              <li><b>Newsletter:</b> opens a compact themed HTML panel designed to fit 120 member cards plus main stats in Torn faction newsletters.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
             </ul>
