@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.342
+// @version      1.1.343
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.342: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.343: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7348,6 +7348,7 @@
       var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
       var highestDoneStep = -1;
       var rwphManualResultsHtml = "";
+      window.rwphManualResultsHtml = "";
       var rwphManualResultsStorageKey = rwphProgressId ? ("rwph_manual_results_html_" + rwphProgressId) : "";
       function formatElapsed(total){
         total = Math.max(0, Math.floor(Number(total) || 0));
@@ -7403,7 +7404,7 @@
         if (updateBar !== false) setProgressBar(percent);
       };
       function rwphOpenManualResultsPage(){
-        var html = String(rwphManualResultsHtml || "");
+        var html = String(rwphManualResultsHtml || window.rwphManualResultsHtml || "");
         if (!html && rwphManualResultsStorageKey) {
           try {
             var raw = localStorage.getItem(rwphManualResultsStorageKey);
@@ -7430,7 +7431,10 @@
       }
 
       function rwphShowManualResultsButton(html){
-        if (html) rwphManualResultsHtml = String(html || "");
+        if (html) {
+          rwphManualResultsHtml = String(html || "");
+          window.rwphManualResultsHtml = rwphManualResultsHtml;
+        }
         if (openResultsButton) {
           openResultsButton.hidden = false;
           openResultsButton.disabled = false;
@@ -7557,7 +7561,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.342: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.343: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7695,7 +7699,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.342: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.343: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7768,7 +7772,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.342: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.343: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7793,35 +7797,11 @@
     try {
       const rwphLoadingStartedAt = Date.now();
       const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
-      let loadingBlobUrl = "";
       let tab = null;
 
-      // v1.1.342: do NOT open the backend/ngrok URL as the loading tab.
-      // Ngrok can show a browser warning/interstitial when opened as a page.
-      // RWPH writes the loading page into an about:blank tab instead, while
-      // still polling the backend result-html store for the unlock button.
-      const ua = String(navigator?.userAgent || "");
-      const isPhoneOrPda = /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(ua) || !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
-
-      if (!isPhoneOrPda) {
-        try {
-          if (typeof Blob === "function" && window.URL && typeof window.URL.createObjectURL === "function") {
-            const blob = new Blob([loadingHtml], { type: "text/html;charset=utf-8" });
-            loadingBlobUrl = window.URL.createObjectURL(blob);
-            tab = window.open(loadingBlobUrl, "_blank");
-            if (tab && !tab.closed) {
-              try { tab.__rwphLoadingBlobUrl = loadingBlobUrl; } catch (_) {}
-              setTimeout(() => rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt), 250);
-              return tab;
-            }
-            try { window.URL.revokeObjectURL(loadingBlobUrl); } catch (_) {}
-          }
-        } catch (blobOpenError) {
-          console.warn("Could not open reloadable loading page, falling back to about:blank:", blobOpenError);
-          try { if (loadingBlobUrl) window.URL.revokeObjectURL(loadingBlobUrl); } catch (_) {}
-        }
-      }
-
+      // v1.1.343: always use an about:blank loading tab. Blob tabs and backend
+      // URL tabs can block opener access or trigger app/browser warning pages,
+      // which stops the locked Open Results button from unlocking.
       tab = window.open("about:blank", "_blank");
       if (!tab || tab.closed) return null;
       try {
@@ -7863,6 +7843,73 @@
     }
   }
 
+  function rwphDirectUnlockLoadingTab(tab, progressId, html) {
+    const id = String(progressId || "").trim();
+    if (!tab || tab.closed || !html) return false;
+
+    let unlocked = false;
+
+    try {
+      if (tab.window) {
+        tab.window.rwphManualResultsHtml = String(html || "");
+      }
+    } catch (_) {}
+
+    try {
+      const doc = tab.document;
+      const btn = doc && doc.getElementById ? doc.getElementById("rwph-open-results-button") : null;
+      const status = doc && doc.getElementById ? doc.getElementById("rwph-live-status") : null;
+      const bar = doc && doc.getElementById ? doc.getElementById("rwph-progress-bar") : null;
+      const steps = doc && doc.querySelectorAll ? Array.prototype.slice.call(doc.querySelectorAll("[data-rwph-load-step]")) : [];
+
+      if (btn) {
+        btn.hidden = false;
+        btn.disabled = false;
+        btn.setAttribute("aria-disabled", "false");
+        btn.setAttribute("data-state", "ready");
+        btn.textContent = "Open Results Page";
+        btn.onclick = function(ev) {
+          try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (_) {}
+          try {
+            doc.open();
+            doc.write(String(html || ""));
+            doc.close();
+          } catch (_) {}
+          return false;
+        };
+        unlocked = true;
+      }
+
+      if (status) status.textContent = "Results data complete. Click Open Results Page when you are ready.";
+      if (bar) bar.style.width = "100%";
+      steps.forEach((step) => {
+        try {
+          step.classList.add("rwph-load-step-done");
+          step.classList.remove("rwph-load-step-active");
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    try {
+      if (tab.window && typeof tab.window.rwphShowManualResultsButton === "function") {
+        tab.window.rwphShowManualResultsButton(String(html || ""));
+        unlocked = true;
+      }
+    } catch (_) {}
+
+    try {
+      if (tab.window && id) {
+        tab.window.localStorage.setItem("rwph_manual_results_html_" + id, JSON.stringify({
+          progressId: id,
+          createdAt: Date.now(),
+          html: String(html || ""),
+        }));
+      }
+    } catch (_) {}
+
+    return unlocked;
+  }
+
   function rwphPrepareManualResultsOpenButton(tab, progressId, rows, summary) {
     const id = String(progressId || "").trim();
     if (!id || !tab || tab.closed) return false;
@@ -7876,6 +7923,7 @@
     }
 
     rwphStoreManualResultHtmlOnServer(id, html);
+    rwphDirectUnlockLoadingTab(tab, id, html);
 
     try {
       localStorage.setItem("rwph_manual_results_html_" + id, JSON.stringify({
@@ -7905,6 +7953,7 @@
     try {
       setTimeout(() => {
         try {
+          rwphDirectUnlockLoadingTab(tab, id, html);
           if (tab && !tab.closed && tab.window && typeof tab.window.rwphShowManualResultsButton === "function") {
             tab.window.rwphShowManualResultsButton(html);
           } else if (tab && !tab.closed && typeof tab.postMessage === "function") {
@@ -7912,6 +7961,9 @@
           }
         } catch (_) {}
       }, 650);
+      setTimeout(() => {
+        try { rwphDirectUnlockLoadingTab(tab, id, html); } catch (_) {}
+      }, 1800);
     } catch (_) {}
 
     return true;
