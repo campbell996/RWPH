@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.354
+// @version      1.1.355
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.354: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.355: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7572,7 +7572,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.354: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.355: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7714,7 +7714,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.354: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.355: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7787,7 +7787,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.354: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.355: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -11245,7 +11245,7 @@
   }
 
 
-  // v1.1.354: final newsletter override - member name + amount paid only.
+  // v1.1.355: final newsletter override - member name + amount paid only.
   function buildRwphNamePaidOnlyNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey || "standard");
@@ -11263,7 +11263,6 @@
     const icon = esc(theme.icon || "");
     const safeText = "word-break:break-word;overflow-wrap:anywhere;";
     const tableFit = "width:100%;border-collapse:collapse;table-layout:fixed;";
-    const metricLabel = m.pointsMode ? "Total Points" : "Total Weight";
     const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
 
     const totalStatCell = (label, value, rowBg) => `<td width="50%" style="width:50%;padding:4px;border:1px solid ${line};background:${rowBg};color:${text};font:9px Arial,Helvetica,sans-serif;vertical-align:top;${safeText}"><div style="color:${soft};font-size:7px;line-height:1.05;font-weight:bold;text-transform:uppercase;${safeText}">${esc(label)}</div><div style="color:${text};font-size:9px;line-height:1.1;font-weight:bold;${safeText}">${esc(String(value))}</div></td>`;
@@ -11274,8 +11273,6 @@
       ["Payable Hits", String(m.totalPayableEvents || 0)],
       ["Total Respect", Number(m.totalRespect || 0).toFixed(2)],
       ["Members", String((m.list || []).length)],
-      [metricLabel, Number(m.totalWeight || 0).toFixed(2)],
-      ["Mode", m.pointsMode ? "Advanced" : "Basic"],
     ];
     const totalResultsTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}">${totalResultsRows.reduce((html, item, idx) => {
       if (idx % 2) return html;
@@ -11287,10 +11284,10 @@
 
     const payoutRows = (m.list || []).map((r, idx) => {
       const rowBg = idx % 2 ? panelA : panelB;
-      return `<tr bgcolor="${rowBg}"><td width="66%" style="width:66%;padding:5px 4px;border:1px solid ${line};background:${rowBg};color:${text};font:bold 10px Arial,Helvetica,sans-serif;vertical-align:top;${safeText}">${esc(r.name || ("Unknown " + (r.id || "")))}</td><td width="34%" align="right" style="width:34%;padding:5px 4px;border:1px solid ${line};background:${rowBg};color:#86efac;font:bold 10px Arial,Helvetica,sans-serif;vertical-align:top;text-align:right;${safeText}">${money(r.payout || 0)}</td></tr>`;
-    }).join("") || `<tr><td colspan="2" style="padding:7px;border:1px solid ${line};background:${panelB};color:${soft};font:10px Arial,Helvetica,sans-serif;text-align:center;${safeText}">No payout rows.</td></tr>`;
+      return `<tr bgcolor="${rowBg}"><td width="14%" align="center" style="width:14%;padding:5px 3px;border:1px solid ${line};background:${rowBg};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;vertical-align:top;text-align:center;${safeText}">#${idx + 1}</td><td width="52%" style="width:52%;padding:5px 4px;border:1px solid ${line};background:${rowBg};color:${text};font:bold 10px Arial,Helvetica,sans-serif;vertical-align:top;${safeText}">${esc(r.name || ("Unknown " + (r.id || "")))}</td><td width="34%" align="right" style="width:34%;padding:5px 4px;border:1px solid ${line};background:${rowBg};color:#86efac;font:bold 10px Arial,Helvetica,sans-serif;vertical-align:top;text-align:right;${safeText}">${money(r.payout || 0)}</td></tr>`;
+    }).join("") || `<tr><td colspan="3" style="padding:7px;border:1px solid ${line};background:${panelB};color:${soft};font:10px Arial,Helvetica,sans-serif;text-align:center;${safeText}">No payout rows.</td></tr>`;
 
-    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${bg};color:${text};font-family:Arial,Helvetica,sans-serif;"><tr><td style="padding:3px;background:${bg};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${outer};border:1px solid ${line};"><tr><td colspan="2" style="padding:7px 5px;background:${header};border-bottom:2px solid ${strongLine};text-align:center;${safeText}"><div style="font:bold 13px Arial,Helvetica,sans-serif;color:${accent};line-height:1.1;${safeText}">${icon} ${title}</div><div style="font:8px Arial,Helvetica,sans-serif;color:${soft};line-height:1.1;margin-top:1px;${safeText}">Member payouts</div></td></tr><tr><td colspan="2" style="padding:5px 4px 2px 4px;background:${outer};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;${safeText}">Total Results</td></tr><tr><td colspan="2" style="padding:0 4px 5px 4px;background:${outer};${safeText}">${totalResultsTable}</td></tr><tr bgcolor="${header}"><td width="66%" style="width:66%;padding:4px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;${safeText}">Member</td><td width="34%" align="right" style="width:34%;padding:4px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;text-align:right;${safeText}">Amount Paid</td></tr>${payoutRows}</table></td></tr></table>`;
+    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${bg};color:${text};font-family:Arial,Helvetica,sans-serif;"><tr><td style="padding:3px;background:${bg};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${outer};border:1px solid ${line};"><tr><td colspan="3" style="padding:7px 5px;background:${header};border-bottom:2px solid ${strongLine};text-align:center;${safeText}"><div style="font:bold 13px Arial,Helvetica,sans-serif;color:${accent};line-height:1.1;${safeText}">${icon} ${title}</div><div style="font:8px Arial,Helvetica,sans-serif;color:${soft};line-height:1.1;margin-top:1px;${safeText}">Member payouts</div></td></tr><tr><td colspan="3" style="padding:5px 4px 2px 4px;background:${outer};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;${safeText}">Total Results</td></tr><tr><td colspan="3" style="padding:0 4px 5px 4px;background:${outer};${safeText}">${totalResultsTable}</td></tr><tr bgcolor="${header}"><td width="14%" align="center" style="width:14%;padding:4px 3px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;text-align:center;${safeText}">Rank</td><td width="52%" style="width:52%;padding:4px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;${safeText}">Member</td><td width="34%" align="right" style="width:34%;padding:4px;border:1px solid ${line};background:${header};color:${accent};font:bold 9px Arial,Helvetica,sans-serif;text-align:right;${safeText}">Amount Paid</td></tr>${payoutRows}</table></td></tr></table>`;
     return rwphCleanNewsletterHtmlCode(html);
   }
 
