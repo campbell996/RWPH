@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.372
+// @version      1.1.374
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.372: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.374: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -5571,6 +5571,18 @@
       green: { title: "Newsletter Green", panelA:"#102016", panelB:"#052e16", head:"#14532d", outer:"#020f08", line:"#22c55e", cardLine:"#166534", accent:"#86efac", text:"#f0fdf4", muted:"#bbf7d0", good:"#facc15" },
       purple: { title: "Newsletter Purple", panelA:"#1e1233", panelB:"#2e1065", head:"#4c1d95", outer:"#0b0616", line:"#a78bfa", cardLine:"#6d28d9", accent:"#c4b5fd", text:"#faf5ff", muted:"#ddd6fe", good:"#86efac" },
       crimson: { title: "Newsletter Crimson", panelA:"#2a0a0a", panelB:"#450a0a", head:"#7f1d1d", outer:"#160606", line:"#f87171", cardLine:"#991b1b", accent:"#fecaca", text:"#fff1f2", muted:"#fca5a5", good:"#86efac" },
+      neon: { title: "Newsletter Neon", panelA:"#07111f", panelB:"#111827", head:"#0f172a", outer:"#020617", line:"#22d3ee", cardLine:"#0e7490", accent:"#67e8f9", text:"#ecfeff", muted:"#a5f3fc", good:"#f0abfc" },
+      ice: { title: "Newsletter Ice", panelA:"#ecfeff", panelB:"#cffafe", head:"#0891b2", outer:"#f0fdfa", line:"#06b6d4", cardLine:"#67e8f9", accent:"#155e75", text:"#083344", muted:"#0e7490", good:"#047857" },
+      sunset: { title: "Newsletter Sunset", panelA:"#431407", panelB:"#7c2d12", head:"#9a3412", outer:"#1c0a04", line:"#fb923c", cardLine:"#c2410c", accent:"#fed7aa", text:"#fff7ed", muted:"#fdba74", good:"#bbf7d0" },
+      toxic: { title: "Newsletter Toxic", panelA:"#172105", panelB:"#365314", head:"#4d7c0f", outer:"#080d03", line:"#a3e635", cardLine:"#65a30d", accent:"#d9f99d", text:"#f7fee7", muted:"#bef264", good:"#67e8f9" },
+      steel: { title: "Newsletter Steel", panelA:"#111827", panelB:"#374151", head:"#4b5563", outer:"#030712", line:"#9ca3af", cardLine:"#6b7280", accent:"#e5e7eb", text:"#f9fafb", muted:"#d1d5db", good:"#86efac" },
+      candy: { title: "Newsletter Candy", panelA:"#500724", panelB:"#831843", head:"#be185d", outer:"#19020b", line:"#f9a8d4", cardLine:"#db2777", accent:"#fbcfe8", text:"#fff1f2", muted:"#f9a8d4", good:"#bbf7d0" },
+      ocean: { title: "Newsletter Ocean", panelA:"#06283d", panelB:"#075985", head:"#0369a1", outer:"#031724", line:"#38bdf8", cardLine:"#0284c7", accent:"#bae6fd", text:"#f0f9ff", muted:"#7dd3fc", good:"#86efac" },
+      fire: { title: "Newsletter Fire", panelA:"#3b0a03", panelB:"#7f1d1d", head:"#b91c1c", outer:"#160404", line:"#f97316", cardLine:"#dc2626", accent:"#fed7aa", text:"#fff7ed", muted:"#fdba74", good:"#fef08a" },
+      forest: { title: "Newsletter Forest", panelA:"#052e16", panelB:"#064e3b", head:"#065f46", outer:"#02170b", line:"#34d399", cardLine:"#047857", accent:"#a7f3d0", text:"#ecfdf5", muted:"#6ee7b7", good:"#fde68a" },
+      royal: { title: "Newsletter Royal", panelA:"#1e1b4b", panelB:"#312e81", head:"#4338ca", outer:"#0b1026", line:"#818cf8", cardLine:"#4f46e5", accent:"#c7d2fe", text:"#eef2ff", muted:"#a5b4fc", good:"#fcd34d" },
+      ghost: { title: "Newsletter Ghost", panelA:"#f8fafc", panelB:"#e2e8f0", head:"#94a3b8", outer:"#ffffff", line:"#64748b", cardLine:"#cbd5e1", accent:"#0f172a", text:"#020617", muted:"#334155", good:"#166534" },
+      rose: { title: "Newsletter Rose", panelA:"#2d0714", panelB:"#4c0519", head:"#9f1239", outer:"#17030a", line:"#fb7185", cardLine:"#be123c", accent:"#fecdd3", text:"#fff1f2", muted:"#fda4af", good:"#86efac" },
     };
 
     function rwphBuildCompactThemedNewsletterHtmlStatic(options = {}) {
@@ -5631,13 +5643,30 @@
       { key: "green", panelId: "rwph-results-html-panel-green", buttonId: "resultsHtmlPanelGreenBtn", label: "Newsletter Green", prefix: "rwph-newsletter-green" },
       { key: "purple", panelId: "rwph-results-html-panel-purple", buttonId: "resultsHtmlPanelPurpleBtn", label: "Newsletter Purple", prefix: "rwph-newsletter-purple" },
       { key: "crimson", panelId: "rwph-results-html-panel-crimson", buttonId: "resultsHtmlPanelCrimsonBtn", label: "Newsletter Crimson", prefix: "rwph-newsletter-crimson" },
+      { key: "neon", panelId: "rwph-results-html-panel-neon", buttonId: "resultsHtmlPanelNeonBtn", label: "Newsletter Neon", prefix: "rwph-newsletter-neon" },
+      { key: "ice", panelId: "rwph-results-html-panel-ice", buttonId: "resultsHtmlPanelIceBtn", label: "Newsletter Ice", prefix: "rwph-newsletter-ice" },
+      { key: "sunset", panelId: "rwph-results-html-panel-sunset", buttonId: "resultsHtmlPanelSunsetBtn", label: "Newsletter Sunset", prefix: "rwph-newsletter-sunset" },
+      { key: "toxic", panelId: "rwph-results-html-panel-toxic", buttonId: "resultsHtmlPanelToxicBtn", label: "Newsletter Toxic", prefix: "rwph-newsletter-toxic" },
+      { key: "steel", panelId: "rwph-results-html-panel-steel", buttonId: "resultsHtmlPanelSteelBtn", label: "Newsletter Steel", prefix: "rwph-newsletter-steel" },
+      { key: "candy", panelId: "rwph-results-html-panel-candy", buttonId: "resultsHtmlPanelCandyBtn", label: "Newsletter Candy", prefix: "rwph-newsletter-candy" },
+      { key: "ocean", panelId: "rwph-results-html-panel-ocean", buttonId: "resultsHtmlPanelOceanBtn", label: "Newsletter Ocean", prefix: "rwph-newsletter-ocean" },
+      { key: "fire", panelId: "rwph-results-html-panel-fire", buttonId: "resultsHtmlPanelFireBtn", label: "Newsletter Fire", prefix: "rwph-newsletter-fire" },
+      { key: "forest", panelId: "rwph-results-html-panel-forest", buttonId: "resultsHtmlPanelForestBtn", label: "Newsletter Forest", prefix: "rwph-newsletter-forest" },
+      { key: "royal", panelId: "rwph-results-html-panel-royal", buttonId: "resultsHtmlPanelRoyalBtn", label: "Newsletter Royal", prefix: "rwph-newsletter-royal" },
+      { key: "ghost", panelId: "rwph-results-html-panel-ghost", buttonId: "resultsHtmlPanelGhostBtn", label: "Newsletter Ghost", prefix: "rwph-newsletter-ghost" },
+      { key: "rose", panelId: "rwph-results-html-panel-rose", buttonId: "resultsHtmlPanelRoseBtn", label: "Newsletter Rose", prefix: "rwph-newsletter-rose" },
     ].map((variant) => {
       const theme = rwphNewsletterThemes[variant.key] || rwphNewsletterThemes.gold;
       const html = rwphBuildCompactThemedNewsletterHtmlStatic({ theme: variant.key });
       return { ...variant, themeTitle: theme.title, html, length: html.length.toLocaleString() };
     });
 
-    const rwphNewsletterButtonsHtml = rwphNewsletterVariants.map((variant) => `<a class="btn secondary" id="${esc(variant.buttonId)}" href="#${esc(variant.panelId)}" data-open-results-html-panel="${esc(variant.panelId)}">${esc(variant.label)}</a>`).join("");
+    const rwphNewsletterButtonsHtml = `<details class="rwph-newsletter-dropdown">
+      <summary class="btn secondary rwph-newsletter-dropdown-summary">Newsletter ▾</summary>
+      <div class="rwph-newsletter-dropdown-menu">
+        ${rwphNewsletterVariants.map((variant) => `<a class="rwph-newsletter-dropdown-item" id="${esc(variant.buttonId)}" href="#${esc(variant.panelId)}" data-open-results-html-panel="${esc(variant.panelId)}">${esc(variant.label)}</a>`).join("")}
+      </div>
+    </details>`;
     const rwphNewsletterPanelsHtml = rwphNewsletterVariants.map((variant) => `
     <section class="rwph-results-html-panel" id="${esc(variant.panelId)}" aria-label="${esc(variant.label)} HTML panel">
       <div class="rwph-results-html-head">
@@ -5904,6 +5933,13 @@
     .results-action-zone { display:grid; gap:8px; margin:10px 0 0; padding-top:12px; border-top:1px solid rgba(251,191,36,.18); }
     .results-action-zone .btn { width:100%; }
     .results-action-note { margin:0; color:#c8c8c8; font-size:11px; font-weight:800; line-height:1.35; }
+    .rwph-newsletter-dropdown{width:100%;box-sizing:border-box;border-radius:14px;}
+    .rwph-newsletter-dropdown-summary{list-style:none;cursor:pointer;user-select:none;display:block;box-sizing:border-box;}
+    .rwph-newsletter-dropdown-summary::-webkit-details-marker{display:none;}
+    .rwph-newsletter-dropdown-menu{display:grid;gap:7px;margin-top:7px;padding:8px;border:1px solid rgba(251,191,36,.22);border-radius:14px;background:rgba(2,6,23,.68);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);max-height:320px;overflow:auto;}
+    .rwph-newsletter-dropdown-item{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none!important;color:#fff7ed!important;border:1px solid rgba(251,191,36,.24);border-left:4px solid rgba(245,158,11,.62);border-radius:12px;padding:9px 10px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));font:900 11px/1.2 Arial,Helvetica,sans-serif;box-shadow:0 10px 22px rgba(0,0,0,.22);}
+    .rwph-newsletter-dropdown-item:hover{filter:brightness(1.12);transform:translateY(-1px);}
+    .rwph-newsletter-dropdown[open] .rwph-newsletter-dropdown-summary{border-color:rgba(251,191,36,.45);box-shadow:0 0 0 2px rgba(245,158,11,.10) inset;}
     .rwph-results-html-panel{position:fixed;z-index:2147483646;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 22px));height:min(820px,calc(100vh - 22px));display:none;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;border-radius:20px;border:1px solid rgba(251,191,36,.45);background:linear-gradient(180deg,rgba(15,23,42,.99),rgba(2,6,23,.98));box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 45px rgba(245,158,11,.16);color:#fff2dd;font-family:Arial,Helvetica,sans-serif;}
     .rwph-results-html-panel:target{display:flex!important;visibility:visible!important;opacity:1!important;}
     .rwph-results-html-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid rgba(251,191,36,.22);border-radius:16px;background:linear-gradient(135deg,rgba(30,41,59,.94),rgba(8,47,73,.70));}
@@ -6520,7 +6556,7 @@
       </div>
     </section>
       <div class="results-action-zone" aria-label="Results actions">
-        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or create a compact themed newsletter HTML panel.</p>
+        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or open the Newsletter dropdown for compact themed HTML panels.</p>
         <button class="btn secondary" id="thisPageHtmlBtn" type="button">This page HTML</button>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
@@ -7074,7 +7110,7 @@
       try { box.select(); } catch (_) {}
     }, true);
 
-    // v1.1.372: newsletter panel copy/download buttons removed. Use right-click/select all/copy on the raw HTML box.
+    // v1.1.374: newsletter panel copy/download buttons removed. Use right-click/select all/copy on the raw HTML box.
 
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
@@ -7690,7 +7726,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.372: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.374: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7832,7 +7868,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.372: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.374: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7905,7 +7941,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.372: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.374: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -8791,7 +8827,7 @@
   }
 
 
-  // v1.1.372: Basic  removed.
+  // v1.1.374: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
