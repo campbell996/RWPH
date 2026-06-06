@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.346
+// @version      1.1.347
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.346: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.347: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7561,7 +7561,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.346: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.347: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7697,7 +7697,7 @@
       if (stopped || pending) return;
       try {
         if (hasResultsTab && tab.closed) {
-          // v1.1.346: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.347: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7770,7 +7770,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.346: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.347: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7797,9 +7797,20 @@
       const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
       let tab = null;
 
-      // v1.1.346: always use an about:blank loading tab. Blob tabs and backend
-      // URL tabs can block opener access or trigger app/browser warning pages,
-      // which stops the locked Open Results button from unlocking.
+      // v1.1.347: use a data: loading page first. This keeps refresh from
+      // reloading to a blank about:blank page, without using blob: URLs and
+      // without opening the backend/ngrok URL as the visible tab.
+      try {
+        const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(loadingHtml);
+        tab = window.open(dataUrl, "_blank");
+        if (tab && !tab.closed) {
+          try { setTimeout(() => rwphStartResultsLoadingCounter(tab, rwphLoadingStartedAt), 250); } catch (_) {}
+          return tab;
+        }
+      } catch (dataOpenError) {
+        console.warn("Could not open refresh-safe data loading page, falling back to about:blank:", dataOpenError);
+      }
+
       tab = window.open("about:blank", "_blank");
       if (!tab || tab.closed) return null;
       try {
@@ -9373,8 +9384,8 @@
         <tr>${card("Paid Members", String(m.list.length), "current faction results")}${card("Fetched Attacks", String(m.attacksFetched), "server calculation")}${card("Names Loaded", String(m.nameCount), "member matches")}${card("Pay Respect", m.totalPayRespect.toFixed(2), "payable respect")}</tr>
         ${m.pointsMode ? `<tr>${card("Own Hosp", String(m.totalOwnFactionHospitalizingHits), `${m.totalOwnFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Enemy Hosp", String(m.totalEnemyFactionHospitalizingHits), `${m.totalEnemyFactionHospitalBonusPoints.toFixed(2)} bonus pts`)}${card("Fair Bonus", m.totalFairFightBonusPoints.toFixed(2), "Avg FF bonus")}${card("Pay Respect", m.totalPayRespect.toFixed(2), "payable respect")}</tr>` : ""}
       </tbody></table>
-      <div style="overflow-x:auto;border:1px solid ${t.line};border-radius:12px;background:${t.panel};">
-        <table style="width:100%;min-width:820px;border-collapse:collapse;">
+      <div style="border:1px solid ${t.line};border-radius:12px;background:${t.panel};">
+        <table style="width:96%;border-collapse:collapse;table-layout:fixed;">
           <thead><tr style="background:${t.line};">
             <th style="padding:8px;color:${t.text};font-size:11px;">#</th><th style="padding:8px;color:${t.text};font-size:11px;text-align:left;">Member</th><th style="padding:8px;color:${t.text};font-size:11px;">War</th><th style="padding:8px;color:${t.text};font-size:11px;">Ast</th><th style="padding:8px;color:${t.text};font-size:11px;">Out</th><th style="padding:8px;color:${t.text};font-size:11px;">Ret</th><th style="padding:8px;color:${t.text};font-size:11px;">Payable</th><th style="padding:8px;color:${t.text};font-size:11px;">${esc(metricLabel)}</th><th style="padding:8px;color:${t.text};font-size:11px;">Payout</th><th style="padding:8px;color:${t.text};font-size:11px;">Share</th>
           </tr></thead><tbody>${rowHtml}</tbody>
@@ -9498,19 +9509,29 @@
       // Raw newsletter code must never include helper/panel CSS. Keep scrollbars on
       // the RWPH panel itself, but remove any scrollbar/overflow CSS from the
       // generated HTML that gets pasted into Torn's Source code tab.
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*::-webkit-scrollbar(?:-[a-z]+)?\s*\{[\s\S]*?\}/gi, "")
       .replace(/\s*scrollbar-[a-z-]+\s*:\s*[^;\}"]+;?/gi, "")
+      .replace(/\s(?:overflow|overflow-x|overflow-y|scrolling)="[^"]*"/gi, "")
       .replace(/\swidth="(?!9[0-8]%|100%)[0-9]+"/gi, "")
-      .replace(/\s*(?:min-width)\s*:\s*[^;\}"]+;?/gi, "")
+      .replace(/\s*(?:min-width|max-height)\s*:\s*[^;\}"]+;?/gi, "")
       .replace(/\s*width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "")
       .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
       .replace(/width\s*:\s*100%\s*;/gi, "width:96%;")
       .replace(/width="100%"/gi, 'width="96%"')
       .replace(/\s*max-width\s*:\s*(?:[0-9]+(?:\.[0-9]+)?px)\s*;?/gi, "max-width:96%;")
+      .replace(/style="([^"]*)"/gi, function(match, css) {
+        const cleanCss = String(css || "")
+          .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;]+;?/gi, "")
+          .replace(/\s*(?:min-width|max-height)\s*:\s*[^;]+;?/gi, "")
+          .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+        return `style="${cleanCss}"`;
+      })
       .replace(/\s{2,}/g, " ")
       .replace(/>\s+</g, "><")
       .trim();
@@ -10579,10 +10600,10 @@
       :root{--bg:#050514;--panel:rgba(10,14,35,.86);--line:rgba(251,146,60,.28);--text:#f7fbff;--muted:#b7c7ff;--hot:#ff39d4;--main:#00f5ff;--good:#45ff9f;}
       *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 15% 12%,rgba(255,57,212,.24),transparent 28%),radial-gradient(circle at 85% 0%,rgba(251,146,60,.22),transparent 30%),linear-gradient(135deg,#050514,#0b1028 55%,#04040f);padding:22px;text-align:center;}
       .shell{max-width:1280px;margin:0 auto;display:grid;gap:16px}.hero,.card,.table-card{border:1px solid var(--line);border-radius:26px;background:linear-gradient(180deg,rgba(10,14,35,.92),rgba(5,5,20,.82));box-shadow:0 0 42px rgba(251,146,60,.10),0 18px 60px rgba(0,0,0,.45);backdrop-filter:blur(12px)}
-      .hero{padding:24px;position:relative;overflow:hidden}.hero:before{content:"";position:absolute;inset:-1px;background:linear-gradient(90deg,transparent,rgba(251,146,60,.18),transparent);height:2px}.logo{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(251,146,60,.45))}.eyebrow{color:var(--main);font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;padding:7px 11px;border:1px solid rgba(255,57,212,.38);border-radius:999px;color:#ffd7f8;background:rgba(255,57,212,.10);font-size:11px;font-weight:950}h1{margin:10px 0 7px;font-size:34px;line-height:1.05;text-shadow:0 0 24px rgba(251,146,60,.28)}p{color:var(--muted);font-weight:800}.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.stat-card{padding:14px}.stat-card span,.member span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:20px;color:#fff}.stat-card em{display:block;margin-top:1px;color:#8fd8ff;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 14px;font-size:20px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;padding:10px;border:1px solid rgba(251,146,60,.16);border-radius:16px;background:rgba(255,255,255,.035);margin-bottom:9px}.top-rank{font-weight:950;color:var(--hot)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-size:11px;font-weight:800}.top-meter{height:13px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(251,146,60,.16)}.top-meter i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--hot),var(--main),var(--good));box-shadow:0 0 18px rgba(251,146,60,.35)}.top-pay{font-weight:950;color:var(--good);text-align:right}.table-wrap{overflow:auto;border-radius:18px;border:1px solid rgba(251,146,60,.15)}table{width:100%;border-collapse:collapse;min-width:840px;background:rgba(0,0,0,.22)}th,td{padding:10px 8px;border-bottom:1px solid rgba(251,146,60,.12);font-size:12px;text-align:center}th{color:#dffcff;background:rgba(251,146,60,.08);font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:var(--good);font-weight:950}.footer{color:var(--muted);font-size:11px;font-weight:800;padding:8px}@media(max-width:950px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
+      .hero{padding:24px;position:relative;overflow:hidden}.hero:before{content:"";position:absolute;inset:-1px;background:linear-gradient(90deg,transparent,rgba(251,146,60,.18),transparent);height:2px}.logo{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(251,146,60,.45))}.eyebrow{color:var(--main);font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;padding:7px 11px;border:1px solid rgba(255,57,212,.38);border-radius:999px;color:#ffd7f8;background:rgba(255,57,212,.10);font-size:11px;font-weight:950}h1{margin:10px 0 7px;font-size:34px;line-height:1.05;text-shadow:0 0 24px rgba(251,146,60,.28)}p{color:var(--muted);font-weight:800}.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.stat-card{padding:14px}.stat-card span,.member span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:20px;color:#fff}.stat-card em{display:block;margin-top:1px;color:#8fd8ff;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 14px;font-size:20px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;padding:10px;border:1px solid rgba(251,146,60,.16);border-radius:16px;background:rgba(255,255,255,.035);margin-bottom:9px}.top-rank{font-weight:950;color:var(--hot)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-size:11px;font-weight:800}.top-meter{height:13px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(251,146,60,.16)}.top-meter i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--hot),var(--main),var(--good));box-shadow:0 0 18px rgba(251,146,60,.35)}.top-pay{font-weight:950;color:var(--good);text-align:right}.table-wrap{border-radius:18px;border:1px solid rgba(251,146,60,.15)}table{width:96%;border-collapse:collapse;table-layout:fixed;background:rgba(0,0,0,.22)}th,td{padding:10px 8px;border-bottom:1px solid rgba(251,146,60,.12);font-size:12px;text-align:center}th{color:#dffcff;background:rgba(251,146,60,.08);font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:var(--good);font-weight:950}.footer{color:var(--muted);font-size:11px;font-weight:800;padding:8px}@media(max-width:950px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
     ` : `
       :root{--bg:#17130e;--paper:#f3e3c3;--ink:#2b2115;--muted:#6f5a3f;--line:#9b7544;--accent:#7b1f1f;--gold:#c0934a;}
-      *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:radial-gradient(circle at 50% 0%,rgba(192,147,74,.26),transparent 28%),linear-gradient(180deg,#22170e,#110d09);padding:24px;text-align:center}.shell{max-width:1220px;margin:0 auto;background:linear-gradient(180deg,#f8edcf,#e8d1a3);border:3px solid var(--line);box-shadow:0 18px 80px rgba(0,0,0,.55),inset 0 0 0 7px rgba(123,31,31,.10);padding:18px;display:grid;gap:16px}.hero{border:2px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(192,147,74,.14));padding:22px}.logo{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}.eyebrow{color:var(--accent);font-family:Arial,sans-serif;font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;border:1px solid var(--line);padding:6px 11px;background:#efe0bd;color:var(--accent);font-family:Arial,sans-serif;font-size:11px;font-weight:950;letter-spacing:1px}h1{font-size:34px;margin:10px 0 8px;letter-spacing:.3px}p{margin:0;color:var(--muted);font-family:Arial,sans-serif;font-weight:800}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat-card,.card,.table-card{border:2px solid rgba(111,90,63,.45);background:rgba(255,248,225,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}.stat-card{padding:13px}.stat-card span,.member span{display:block;font-family:Arial,sans-serif;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:21px;color:var(--accent)}.stat-card em{display:block;margin-top:1px;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 12px;color:var(--accent);font-size:22px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;border-bottom:1px dashed rgba(111,90,63,.45);padding:10px 6px}.top-rank{font-weight:950;color:var(--accent)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800}.top-meter{height:12px;background:#dbc08d;border:1px solid rgba(111,90,63,.45);overflow:hidden}.top-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}.top-pay{font-weight:950;color:#315b2f;text-align:right}.table-wrap{overflow:auto;border:2px solid rgba(111,90,63,.45)}table{width:100%;border-collapse:collapse;min-width:840px;background:rgba(255,250,235,.55)}th,td{padding:10px 8px;border-bottom:1px solid rgba(111,90,63,.32);font-size:12px;text-align:center}th{background:rgba(123,31,31,.12);color:var(--accent);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:#315b2f;font-weight:950}.footer{color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800;padding:8px}@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.shell{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
+      *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:radial-gradient(circle at 50% 0%,rgba(192,147,74,.26),transparent 28%),linear-gradient(180deg,#22170e,#110d09);padding:24px;text-align:center}.shell{max-width:1220px;margin:0 auto;background:linear-gradient(180deg,#f8edcf,#e8d1a3);border:3px solid var(--line);box-shadow:0 18px 80px rgba(0,0,0,.55),inset 0 0 0 7px rgba(123,31,31,.10);padding:18px;display:grid;gap:16px}.hero{border:2px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(192,147,74,.14));padding:22px}.logo{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}.eyebrow{color:var(--accent);font-family:Arial,sans-serif;font-weight:950;letter-spacing:2px;font-size:12px}.theme{display:inline-block;margin-top:8px;border:1px solid var(--line);padding:6px 11px;background:#efe0bd;color:var(--accent);font-family:Arial,sans-serif;font-size:11px;font-weight:950;letter-spacing:1px}h1{font-size:34px;margin:10px 0 8px;letter-spacing:.3px}p{margin:0;color:var(--muted);font-family:Arial,sans-serif;font-weight:800}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat-card,.card,.table-card{border:2px solid rgba(111,90,63,.45);background:rgba(255,248,225,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}.stat-card{padding:13px}.stat-card span,.member span{display:block;font-family:Arial,sans-serif;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.8px}.stat-card b{display:block;margin-top:5px;font-size:21px;color:var(--accent)}.stat-card em{display:block;margin-top:1px;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-style:normal;font-weight:800}.card,.table-card{padding:16px}h2{margin:0 0 12px;color:var(--accent);font-size:22px}.top-row{display:grid;grid-template-columns:58px minmax(0,230px) 1fr 130px;gap:12px;align-items:center;border-bottom:1px dashed rgba(111,90,63,.45);padding:10px 6px}.top-rank{font-weight:950;color:var(--accent)}.top-member{text-align:left}.top-member b{display:block}.top-member span{display:block;color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800}.top-meter{height:12px;background:#dbc08d;border:1px solid rgba(111,90,63,.45);overflow:hidden}.top-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}.top-pay{font-weight:950;color:#315b2f;text-align:right}.table-wrap{border:2px solid rgba(111,90,63,.45)}table{width:96%;border-collapse:collapse;table-layout:fixed;background:rgba(255,250,235,.55)}th,td{padding:10px 8px;border-bottom:1px solid rgba(111,90,63,.32);font-size:12px;text-align:center}th{background:rgba(123,31,31,.12);color:var(--accent);font-family:Arial,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.8px}.member{text-align:left}.pay{color:#315b2f;font-weight:950}.footer{color:var(--muted);font-family:Arial,sans-serif;font-size:11px;font-weight:800;padding:8px}@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.top-row{grid-template-columns:44px 1fr}.top-meter,.top-pay{grid-column:2}.top-pay{text-align:left}}@media(max-width:640px){body{padding:10px}.shell{padding:10px}.stats{grid-template-columns:1fr}h1{font-size:24px}}
     `;
 
     const cleanupCss = " body{overflow-x:hidden}.shell{width:100%;max-width:100%}.stat-card{min-height:76px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}.stat-card b,.stat-card em{overflow-wrap:anywhere}.table-card,.table-wrap{min-width:0;max-width:100%}.table-wrap{box-shadow:inset 0 1px 0 rgba(255,255,255,.035);-webkit-overflow-scrolling:touch}table{min-width:" + (pointsMode ? "1080px" : "820px") + "}th{white-space:nowrap}th,td{padding:8px 6px}td{vertical-align:middle}.top-row{min-height:58px}@media(max-width:640px){th,td{font-size:10px;padding:6px 4px}.table-card{padding:10px}.stat-card{min-height:auto}}";
