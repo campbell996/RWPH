@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.370
+// @version      1.1.372
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.370: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.372: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -1374,7 +1374,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-basic-120-results", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -1408,7 +1408,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-basic-120-results", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -5565,13 +5565,20 @@
     const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvText)}`;
     const payAllHref = rwphFactionControlsPayAllUrl();
 
+    const rwphNewsletterThemes = {
+      gold: { title: "Newsletter", panelA:"#1b1208", panelB:"#111827", head:"#2a1609", outer:"#120905", line:"#b88759", cardLine:"#5b3418", accent:"#ffd37a", text:"#fff7ed", muted:"#cfaa8e", good:"#86efac" },
+      blue: { title: "Newsletter Blue", panelA:"#0f172a", panelB:"#082f49", head:"#0c4a6e", outer:"#020617", line:"#38bdf8", cardLine:"#075985", accent:"#7dd3fc", text:"#f0f9ff", muted:"#bae6fd", good:"#86efac" },
+      green: { title: "Newsletter Green", panelA:"#102016", panelB:"#052e16", head:"#14532d", outer:"#020f08", line:"#22c55e", cardLine:"#166534", accent:"#86efac", text:"#f0fdf4", muted:"#bbf7d0", good:"#facc15" },
+      purple: { title: "Newsletter Purple", panelA:"#1e1233", panelB:"#2e1065", head:"#4c1d95", outer:"#0b0616", line:"#a78bfa", cardLine:"#6d28d9", accent:"#c4b5fd", text:"#faf5ff", muted:"#ddd6fe", good:"#86efac" },
+      crimson: { title: "Newsletter Crimson", panelA:"#2a0a0a", panelB:"#450a0a", head:"#7f1d1d", outer:"#160606", line:"#f87171", cardLine:"#991b1b", accent:"#fecaca", text:"#fff1f2", muted:"#fca5a5", good:"#86efac" },
+    };
+
     function rwphBuildCompactThemedNewsletterHtmlStatic(options = {}) {
       const sourceRows = Array.isArray(list) ? list : [];
       const maxRows = 120;
-      const repeatTo120 = !!(options && options.repeatTo120);
-      const shownRows = repeatTo120
-        ? (sourceRows.length ? Array.from({ length: maxRows }, (_, idx) => sourceRows[idx % sourceRows.length]) : [])
-        : sourceRows.slice(0, maxRows);
+      const themeKey = String(options?.theme || "gold").toLowerCase();
+      const theme = rwphNewsletterThemes[themeKey] || rwphNewsletterThemes.gold;
+      const shownRows = sourceRows.slice(0, maxRows);
       const s = summary || {};
       const isPoints = !!(s.pointsMode || s.calculationMode === "points");
       const title = String(s.factionName || s.newsletterTitle || "Ranked War Payout Results");
@@ -5585,36 +5592,69 @@
         const units = sourceRows.reduce((sum, r) => sum + Number(isPoints ? (r.points || r.weight || 0) : (r.payableEvents || r.weight || r.warHits || r.attacks || 0)), 0);
         perUnit = units ? totalPaid / units : 0;
       }
-      const stat = (label, value, bg) => `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid #6b3b18;padding:3px;color:#fff7ed;word-break:break-word"><b style="color:#ffd37a">${esc(label)}</b><br>${esc(value)}</td>`;
+      const stat = (label, value, bg) => `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.line};padding:3px;color:${theme.text};word-break:break-word"><b style="color:${theme.accent}">${esc(label)}</b><br>${esc(value)}</td>`;
       const memberCell = (r, index, bg) => {
         const metric = isPoints ? Number(r.points || r.weight || 0).toFixed(1) : String(Number(r.payableEvents || r.weight || r.warHits || r.attacks || 0));
-        return `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid #5b3418;padding:3px;color:#fff7ed;word-break:break-word;vertical-align:top"><b style="color:#ffd37a">#${index + 1}</b> <b>${esc(String(r.name || ("Unknown " + (r.id || ""))).replace(/\s+/g, " ").trim())}</b><br><span style="color:#cbd5e1">${isPoints ? "Pts " : "Hits "}${esc(metric)}</span><br><b style="color:#86efac">${esc(money(r.payout || 0))}</b></td>`;
+        return `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:3px;color:${theme.text};word-break:break-word;vertical-align:top"><b style="color:${theme.accent}">#${index + 1}</b> <b>${esc(String(r.name || ("Unknown " + (r.id || ""))).replace(/\s+/g, " ").trim())}</b><br><span style="color:${theme.muted}">${isPoints ? "Pts " : "Hits "}${esc(metric)}</span><br><b style="color:${theme.good}">${esc(money(r.payout || 0))}</b></td>`;
       };
       let html = "";
-      html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:#120905;color:#fff7ed;font:10px Arial,Helvetica,sans-serif">`;
-      html += `<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:6px;color:#fff7ed"><div style="font-size:14px;font-weight:bold;color:#ffd37a">${esc(title)}</div><div style="font-size:9px;color:#cfaa8e">${esc(mode)} payout newsletter • ${repeatTo120 ? "120 repeated member cards" : "compact 120-card layout"}</div></td></tr>`;
-      html += `<tr>${stat("Total Payout", money(totalPaid), "#20130c")}${stat(isPoints ? "Per Point" : "Per Hit", money(perUnit), "#1a2533")}</tr>`;
-      html += `<tr>${stat("Payable Hits", String(totalPayable || 0), "#1a2533")}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), "#20130c")}</tr>`;
-      html += `<tr>${stat("Members Shown", String(shownRows.length) + (sourceRows.length > maxRows ? " / " + sourceRows.length : ""), "#20130c")}${stat("Shown Payout", money(shownPaid), "#1a2533")}</tr>`;
-      html += `<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:4px;color:#ffd37a;font-weight:bold">Payout Cards</td></tr>`;
+      html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif">`;
+      html += `<tr><td colspan="2" bgcolor="${theme.head}" align="center" style="border:1px solid ${theme.line};padding:6px;color:${theme.text}"><div style="font-size:14px;font-weight:bold;color:${theme.accent}">${esc(title)}</div><div style="font-size:9px;color:${theme.muted}">${esc(mode)} payout newsletter • ${esc(theme.title)} • compact 120-card layout</div></td></tr>`;
+      html += `<tr>${stat("Total Payout", money(totalPaid), theme.panelA)}${stat(isPoints ? "Per Point" : "Per Hit", money(perUnit), theme.panelB)}</tr>`;
+      html += `<tr>${stat("Payable Hits", String(totalPayable || 0), theme.panelB)}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA)}</tr>`;
+      html += `<tr>${stat("Members Shown", String(shownRows.length) + (sourceRows.length > maxRows ? " / " + sourceRows.length : ""), theme.panelA)}${stat("Shown Payout", money(shownPaid), theme.panelB)}</tr>`;
+      html += `<tr><td colspan="2" bgcolor="${theme.head}" align="center" style="border:1px solid ${theme.line};padding:4px;color:${theme.accent};font-weight:bold">Payout Cards</td></tr>`;
       for (let i = 0; i < shownRows.length; i += 2) {
         html += "<tr>";
-        html += memberCell(shownRows[i], i, i % 4 === 0 ? "#1b1208" : "#111827");
-        html += shownRows[i + 1] ? memberCell(shownRows[i + 1], i + 1, i % 4 === 0 ? "#111827" : "#1b1208") : `<td width="50%" bgcolor="#120905" style="border:1px solid #5b3418;padding:3px">&nbsp;</td>`;
+        html += memberCell(shownRows[i], i, i % 4 === 0 ? theme.panelA : theme.panelB);
+        if (shownRows[i + 1]) {
+          html += memberCell(shownRows[i + 1], i + 1, i % 4 === 0 ? theme.panelB : theme.panelA);
+        } else {
+          html += `<td width="50%" bgcolor="${theme.outer}" style="border:1px solid ${theme.cardLine};padding:3px">&nbsp;</td>`;
+        }
         html += "</tr>";
       }
-      if (!shownRows.length) html += `<tr><td colspan="2" align="center" bgcolor="#1b1208" style="border:1px solid #5b3418;padding:8px;color:#ffd37a">No payout rows found.</td></tr>`;
-      if (!repeatTo120 && sourceRows.length > maxRows) html += `<tr><td colspan="2" align="center" bgcolor="#2a1609" style="border:1px solid #b88759;padding:4px;color:#cfaa8e">Only the first 120 rows are included so the Torn faction newsletter stays short enough to post.</td></tr>`;
-      if (repeatTo120 && sourceRows.length && sourceRows.length < maxRows) html += `<tr><td colspan="2" align="center" bgcolor="#2a1609" style="border:1px solid #b88759;padding:4px;color:#cfaa8e">Members repeated until exactly 120 cards.</td></tr>`;
-      html += `<tr><td colspan="2" align="center" bgcolor="#120905" style="border:1px solid #5b3418;padding:4px;color:#cfaa8e">Generated by Ranked War Payout Helper. Review payouts before sending funds.</td></tr>`;
+      if (!shownRows.length) {
+        html += `<tr><td colspan="2" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent}">No payout rows found.</td></tr>`;
+      }
+      if (sourceRows.length > maxRows) {
+        html += `<tr><td colspan="2" align="center" bgcolor="${theme.head}" style="border:1px solid ${theme.line};padding:4px;color:${theme.muted}">Only the first 120 rows are included so the Torn faction newsletter stays short enough to post.</td></tr>`;
+      }
+      html += `<tr><td colspan="2" align="center" bgcolor="${theme.outer}" style="border:1px solid ${theme.cardLine};padding:4px;color:${theme.muted}">Generated by Ranked War Payout Helper. Review payouts before sending funds.</td></tr>`;
       html += "</table>";
       return html.replace(/>\s+</g, "><").trim();
     }
 
-    const rwphCompactNewsletterHtml = rwphBuildCompactThemedNewsletterHtmlStatic();
-    const rwphCompactNewsletter120Html = rwphBuildCompactThemedNewsletterHtmlStatic({ repeatTo120: true });
-    const rwphCompactNewsletterLength = rwphCompactNewsletterHtml.length.toLocaleString();
-    const rwphCompactNewsletter120Length = rwphCompactNewsletter120Html.length.toLocaleString();
+    const rwphNewsletterVariants = [
+      { key: "gold", panelId: "rwph-results-html-panel-gold", buttonId: "resultsHtmlPanelGoldBtn", label: "Newsletter", prefix: "rwph-newsletter-gold" },
+      { key: "blue", panelId: "rwph-results-html-panel-blue", buttonId: "resultsHtmlPanelBlueBtn", label: "Newsletter Blue", prefix: "rwph-newsletter-blue" },
+      { key: "green", panelId: "rwph-results-html-panel-green", buttonId: "resultsHtmlPanelGreenBtn", label: "Newsletter Green", prefix: "rwph-newsletter-green" },
+      { key: "purple", panelId: "rwph-results-html-panel-purple", buttonId: "resultsHtmlPanelPurpleBtn", label: "Newsletter Purple", prefix: "rwph-newsletter-purple" },
+      { key: "crimson", panelId: "rwph-results-html-panel-crimson", buttonId: "resultsHtmlPanelCrimsonBtn", label: "Newsletter Crimson", prefix: "rwph-newsletter-crimson" },
+    ].map((variant) => {
+      const theme = rwphNewsletterThemes[variant.key] || rwphNewsletterThemes.gold;
+      const html = rwphBuildCompactThemedNewsletterHtmlStatic({ theme: variant.key });
+      return { ...variant, themeTitle: theme.title, html, length: html.length.toLocaleString() };
+    });
+
+    const rwphNewsletterButtonsHtml = rwphNewsletterVariants.map((variant) => `<a class="btn secondary" id="${esc(variant.buttonId)}" href="#${esc(variant.panelId)}" data-open-results-html-panel="${esc(variant.panelId)}">${esc(variant.label)}</a>`).join("");
+    const rwphNewsletterPanelsHtml = rwphNewsletterVariants.map((variant) => `
+    <section class="rwph-results-html-panel" id="${esc(variant.panelId)}" aria-label="${esc(variant.label)} HTML panel">
+      <div class="rwph-results-html-head">
+        <div>
+          <div class="rwph-results-html-title">${esc(variant.label)} HTML</div>
+          <div class="rwph-results-html-note">${esc(variant.themeTitle)} theme. Preview is shown below. Right-click inside the HTML box, choose Select All, then Copy. Generated size: ${esc(variant.length)} characters.</div>
+        </div>
+        <a class="rwph-results-html-close" href="#" title="Close">×</a>
+      </div>
+      <div class="rwph-results-html-status">${esc(variant.label)} preview ready. ${esc(variant.length)} characters.</div>
+      <div class="rwph-results-html-preview-wrap">
+        <div class="rwph-results-html-preview-title">Preview</div>
+        <div class="rwph-results-html-preview">${variant.html}</div>
+      </div>
+      <div class="rwph-results-html-preview-title">Raw HTML — right-click here, Select All, then Copy</div>
+      <textarea class="rwph-results-html-box" id="${esc(variant.panelId)}-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();">${esc(variant.html)}</textarea>
+    </section>`).join("");
 
     const cards = list.map((r) => {
       const mainMetricLabel = pointsMode ? "Points" : "Weight";
@@ -5865,15 +5905,18 @@
     .results-action-zone .btn { width:100%; }
     .results-action-note { margin:0; color:#c8c8c8; font-size:11px; font-weight:800; line-height:1.35; }
     .rwph-results-html-panel{position:fixed;z-index:2147483646;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 22px));height:min(820px,calc(100vh - 22px));display:none;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;border-radius:20px;border:1px solid rgba(251,191,36,.45);background:linear-gradient(180deg,rgba(15,23,42,.99),rgba(2,6,23,.98));box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 45px rgba(245,158,11,.16);color:#fff2dd;font-family:Arial,Helvetica,sans-serif;}
-    .rwph-results-html-panel:target{display:flex!important;visibility:visible!important;opacity:1!important;}#rwph-results-html-panel-120:target{display:flex!important;visibility:visible!important;opacity:1!important;}
+    .rwph-results-html-panel:target{display:flex!important;visibility:visible!important;opacity:1!important;}
     .rwph-results-html-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid rgba(251,191,36,.22);border-radius:16px;background:linear-gradient(135deg,rgba(30,41,59,.94),rgba(8,47,73,.70));}
     .rwph-results-html-title{font:950 15px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.35px;text-transform:uppercase;color:#f8fafc;}
     .rwph-results-html-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;margin-top:3px;}
     .rwph-results-html-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;cursor:pointer;}
-    .rwph-results-html-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .rwph-results-html-box{flex:1 1 auto;min-height:0;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
+    .rwph-results-html-box{flex:1 1 auto;min-height:120px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
     .rwph-results-html-status{min-height:18px;text-align:center;color:#fde68a;font:800 11px/1.3 Arial,Helvetica,sans-serif;}
-    @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-actions{grid-template-columns:1fr}.rwph-results-html-box{font-size:11px;}}
+    .rwph-results-html-preview-wrap{flex:0 1 auto;max-height:45%;min-height:120px;overflow:auto;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;padding:8px;box-sizing:border-box;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+    .rwph-results-html-preview-title{color:#fde68a;text-align:center;font:900 11px/1.2 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.25px;margin:0 0 5px;}
+    .rwph-results-html-preview{width:100%;max-width:100%;box-sizing:border-box;overflow:auto;background:#020617;border-radius:10px;padding:3px;}
+    .rwph-results-html-preview table{max-width:100%!important;}
+    @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
     .toolbar { display:grid; grid-template-columns:1fr; width:100%; margin-top:0; }
     .btn { width:100%; text-align:center; }
     .summary { grid-area: summary; grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -6481,43 +6524,12 @@
         <button class="btn secondary" id="thisPageHtmlBtn" type="button">This page HTML</button>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
-        <a class="btn secondary" id="resultsHtmlPanelBtn" href="#rwph-results-html-panel" data-open-results-html-panel="rwph-results-html-panel">Newsletter</a>
-        <a class="btn secondary" id="resultsHtmlPanel120Btn" href="#rwph-results-html-panel-120" data-open-results-html-panel="rwph-results-html-panel-120">Newsletter 120</a>
+        ${rwphNewsletterButtonsHtml}
       </div>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
     </aside>
 
-    <section class="rwph-results-html-panel" id="rwph-results-html-panel" aria-label="Newsletter HTML panel">
-      <div class="rwph-results-html-head">
-        <div>
-          <div class="rwph-results-html-title">Newsletter HTML</div>
-          <div class="rwph-results-html-note">Compact themed layout for Torn faction newsletters. Current results, max 120 cards. Generated size: ${rwphCompactNewsletterLength} characters.</div>
-        </div>
-        <a class="rwph-results-html-close" href="#" title="Close">×</a>
-      </div>
-      <div class="rwph-results-html-actions">
-        <button class="btn secondary rwph-copy-results-html-btn" data-results-html-box="resultsHtmlPanelBox" type="button">Copy HTML</button>
-        <button class="btn secondary rwph-download-results-html-btn" data-results-html-box="resultsHtmlPanelBox" data-download-prefix="rwph-themed-newsletter" type="button">Download HTML</button>
-      </div>
-      <div class="rwph-results-html-status" id="resultsHtmlPanelStatus">Themed newsletter HTML ready. ${rwphCompactNewsletterLength} characters.</div>
-      <textarea class="rwph-results-html-box" id="resultsHtmlPanelBox" readonly spellcheck="false">${esc(rwphCompactNewsletterHtml)}</textarea>
-    </section>
-
-    <section class="rwph-results-html-panel" id="rwph-results-html-panel-120" aria-label="Newsletter 120 HTML panel">
-      <div class="rwph-results-html-head">
-        <div>
-          <div class="rwph-results-html-title">Newsletter 120 HTML</div>
-          <div class="rwph-results-html-note">Copy of the normal newsletter layout. Repeats current members until it has exactly 120 cards. Generated size: ${rwphCompactNewsletter120Length} characters.</div>
-        </div>
-        <a class="rwph-results-html-close" href="#" title="Close">×</a>
-      </div>
-      <div class="rwph-results-html-actions">
-        <button class="btn secondary rwph-copy-results-html-btn" data-results-html-box="resultsHtmlPanel120Box" type="button">Copy HTML</button>
-        <button class="btn secondary rwph-download-results-html-btn" data-results-html-box="resultsHtmlPanel120Box" data-download-prefix="rwph-themed-newsletter-120" type="button">Download HTML</button>
-      </div>
-      <div class="rwph-results-html-status" id="resultsHtmlPanel120Status">Newsletter 120 HTML ready. ${rwphCompactNewsletter120Length} characters.</div>
-      <textarea class="rwph-results-html-box" id="resultsHtmlPanel120Box" readonly spellcheck="false">${esc(rwphCompactNewsletter120Html)}</textarea>
-    </section>
+    ${rwphNewsletterPanelsHtml}
 
     <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
@@ -6968,7 +6980,7 @@
 
     function openResultsHtmlPanel(panelId) {
       try {
-        panelId = panelId || "rwph-results-html-panel";
+        panelId = panelId || "rwph-results-html-panel-gold";
         var existingPanel = document.getElementById(panelId);
         if (existingPanel) {
           try { location.hash = panelId; } catch (_) {}
@@ -6977,7 +6989,7 @@
           existingPanel.style.opacity = "1";
           var existingBox = existingPanel.querySelector(".rwph-results-html-box");
           var existingStatus = existingPanel.querySelector(".rwph-results-html-status");
-          if (existingStatus) existingStatus.textContent = (panelId.indexOf("120") >= 0 ? "Newsletter 120 HTML ready. " : "Themed newsletter HTML ready. ") + ((existingBox && existingBox.value) ? existingBox.value.length.toLocaleString() : "0") + " characters.";
+          if (existingStatus) existingStatus.textContent = "Newsletter HTML ready. " + ((existingBox && existingBox.value) ? existingBox.value.length.toLocaleString() : "0") + " characters.";
           return;
         }
 
@@ -6990,12 +7002,10 @@
           + '<div><div class="rwph-results-html-title">Newsletter HTML</div><div class="rwph-results-html-note">Compact themed layout for Torn faction newsletters. Built to fit 120 member cards plus main stats.</div></div>'
           + '<button class="rwph-results-html-close" type="button" title="Close">×</button>'
           + '</div>'
-          + '<div class="rwph-results-html-actions">'
-          + '<button class="btn secondary" id="copyResultsHtmlBtn" type="button">Copy HTML</button>'
-          + '<button class="btn secondary" id="downloadResultsHtmlFromPanelBtn" type="button">Download HTML</button>'
-          + '</div>'
-          + '<div class="rwph-results-html-status" id="resultsHtmlPanelStatus"></div>'
-          + '<textarea class="rwph-results-html-box" id="resultsHtmlPanelBox" readonly spellcheck="false"></textarea>';
+          + '<div class="rwph-results-html-status" id="resultsHtmlPanelStatus">Right-click inside the HTML box, choose Select All, then Copy.</div>'
+          + '<div class="rwph-results-html-preview-wrap"><div class="rwph-results-html-preview-title">Preview</div><div class="rwph-results-html-preview" id="resultsHtmlPanelPreview"></div></div>'
+          + '<div class="rwph-results-html-preview-title">Raw HTML — right-click here, Select All, then Copy</div>'
+          + '<textarea class="rwph-results-html-box" id="resultsHtmlPanelBox" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>';
         (document.body || document.documentElement).appendChild(panel);
         panel.style.display = "flex";
         panel.style.visibility = "visible";
@@ -7008,6 +7018,8 @@
           setTimeout(function() {
             try {
               box.value = buildCompactThemedNewsletterHtml();
+              var preview = document.getElementById("resultsHtmlPanelPreview");
+              if (preview) preview.innerHTML = box.value;
               if (status) status.textContent = "Themed newsletter HTML ready. " + (box.value || "").length.toLocaleString() + " characters.";
               try { box.focus(); box.select(); } catch (_) {}
             } catch (e) {
@@ -7025,38 +7037,7 @@
         panel.addEventListener("keydown", function(ev) {
           if (ev && ev.key === "Escape") closeResultsHtmlPanel();
         });
-        panel.querySelector("#copyResultsHtmlBtn").addEventListener("click", async function() {
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              await navigator.clipboard.writeText(box.value || "");
-            } else {
-              box.focus();
-              box.select();
-              document.execCommand("copy");
-            }
-            if (status) status.textContent = "Results HTML copied.";
-          } catch (e) {
-            if (status) status.textContent = "Copy blocked. Select the HTML box and copy manually.";
-          }
-        });
-        panel.querySelector("#downloadResultsHtmlFromPanelBtn").addEventListener("click", function() {
-          try {
-            var blob = new Blob([box.value || buildCompactThemedNewsletterHtml()], { type: "text/html;charset=utf-8" });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement("a");
-            var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-            a.href = url;
-            a.download = "rwph-themed-newsletter-" + stamp + ".html";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 1500);
-            if (status) status.textContent = "Results HTML downloaded.";
-          } catch (e) {
-            if (status) status.textContent = "Download failed.";
-          }
-        });
-      } catch (e) {
+} catch (e) {
         alert("Could not open the results HTML panel.");
         console.warn("RWPH results HTML panel failed:", e);
       }
@@ -7069,66 +7050,32 @@
 
     function rwphHandleResultsHtmlPanelClick(ev) {
       var target = ev && ev.target;
-      var btn = target && target.closest ? target.closest("#resultsHtmlPanelBtn,#resultsHtmlPanel120Btn,[data-open-results-html-panel]") : null;
+      var btn = target && target.closest ? target.closest("[data-open-results-html-panel]") : null;
       if (!btn) return;
-      var panelId = btn.getAttribute("data-open-results-html-panel") || (btn.id === "resultsHtmlPanel120Btn" ? "rwph-results-html-panel-120" : "rwph-results-html-panel");
+      var panelId = btn.getAttribute("data-open-results-html-panel") || "rwph-results-html-panel-gold";
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       openResultsHtmlPanel(panelId);
     }
 
-    var resultsHtmlPanelBtn = document.getElementById("resultsHtmlPanelBtn");
-    if (resultsHtmlPanelBtn) {
-      resultsHtmlPanelBtn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
-      resultsHtmlPanelBtn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
-    }
-    var resultsHtmlPanel120Btn = document.getElementById("resultsHtmlPanel120Btn");
-    if (resultsHtmlPanel120Btn) {
-      resultsHtmlPanel120Btn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
-      resultsHtmlPanel120Btn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
-    }
+    document.querySelectorAll("[data-open-results-html-panel]").forEach(function(btn) {
+      btn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
+      btn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
+    });
     document.addEventListener("click", rwphHandleResultsHtmlPanelClick, true);
 
-    document.addEventListener("click", async function(ev) {
-      var target = ev && ev.target;
-      if (!target || !target.closest) return;
-      var copyBtn = target.closest(".rwph-copy-results-html-btn,[data-results-html-copy]");
-      var downloadBtn = target.closest(".rwph-download-results-html-btn,[data-results-html-download]");
-      if (!copyBtn && !downloadBtn) return;
-      var btn = copyBtn || downloadBtn;
-      var boxId = btn.getAttribute("data-results-html-box") || "resultsHtmlPanelBox";
-      var box = document.getElementById(boxId);
-      var panel = btn.closest(".rwph-results-html-panel") || document;
-      var status = panel.querySelector ? panel.querySelector(".rwph-results-html-status") : document.getElementById("resultsHtmlPanelStatus");
-      var value = (box && box.value) || "";
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      if (copyBtn) {
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(value);
-          else { if (box) { box.focus(); box.select(); } document.execCommand("copy"); }
-          if (status) status.textContent = "Newsletter HTML copied. " + value.length.toLocaleString() + " characters.";
-        } catch (e) {
-          if (status) status.textContent = "Copy blocked. Select the HTML box and copy manually.";
-        }
-      }
-      if (downloadBtn) {
-        try {
-          var blob = new Blob([value], { type: "text/html;charset=utf-8" });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement("a");
-          var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-          var prefix = downloadBtn.getAttribute("data-download-prefix") || "rwph-themed-newsletter";
-          a.href = url;
-          a.download = prefix + "-" + stamp + ".html";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 1500);
-          if (status) status.textContent = "Newsletter HTML downloaded.";
-        } catch (e) {
-          if (status) status.textContent = "Download failed.";
-        }
-      }
+    document.addEventListener("contextmenu", function(ev) {
+      var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
+      if (!box) return;
+      try { box.focus(); box.select(); } catch (_) {}
     }, true);
+    document.addEventListener("focusin", function(ev) {
+      var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
+      if (!box) return;
+      try { box.select(); } catch (_) {}
+    }, true);
+
+    // v1.1.372: newsletter panel copy/download buttons removed. Use right-click/select all/copy on the raw HTML box.
+
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
     if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", storePayAllRowsFallback);
@@ -7743,7 +7690,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.370: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.372: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7885,7 +7832,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.370: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.372: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7958,7 +7905,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.370: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.372: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -8843,56 +8790,8 @@
     return document.getElementById("rw-basic-fast-mode")?.checked === true;
   }
 
-  function rwphBasic120ResultsEnabled() {
-    return document.getElementById("rw-basic-120-results")?.checked === true;
-  }
 
-  function rwphApplyBasic120ResultsTestRows(rows = [], summary = {}, enabled = false) {
-    const sourceRows = Array.isArray(rows) && rows.length ? rows : [{
-      id: "0000000",
-      name: "Test Member",
-      warHits: 10,
-      assists: 2,
-      outsideHits: 1,
-      retaliationHits: 1,
-      totalTrackedHits: 14,
-      payableEvents: 14,
-      weight: 14,
-      points: 14,
-      payout: 1000000,
-      respect: 0,
-      totalRespect: 0,
-      avgFairFight: 1,
-    }];
-
-    if (!enabled) {
-      return { rows: Array.isArray(rows) ? rows : [], summary: summary || {} };
-    }
-
-    const testRows = Array.from({ length: 120 }, (_, idx) => {
-      const base = sourceRows[idx % sourceRows.length] || {};
-      const copy = { ...base };
-      const originalName = String(base.name || `Member ${idx + 1}`);
-      copy.name = `${originalName} #${String(idx + 1).padStart(3, "0")}`;
-      copy.rwphTest120ResultRow = true;
-      copy.rwphSourceResultIndex = (idx % sourceRows.length) + 1;
-      return copy;
-    });
-
-    const testSummary = {
-      ...(summary || {}),
-      nameCount: 120,
-      memberCount: 120,
-      test120ResultsPage: true,
-      displayOnly120ResultsPage: true,
-      warnings: [
-        ...((summary && Array.isArray(summary.warnings)) ? summary.warnings : []),
-        "Test Results Page is enabled: Basic result rows are repeated to create a 120-member layout test page. Do not use this test page for real payments.",
-      ],
-    };
-
-    return { rows: testRows, summary: testSummary };
-  }
+  // v1.1.372: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
@@ -8960,7 +8859,7 @@
       retaliationHitWeight: rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
       assistWeight: rwphFixedPerHitWeight("rw-assist-weight", 0),
       basicFastMode: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasicFastModeEnabled(),
-      basic120ResultsPage: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasic120ResultsEnabled(),
+      basic120ResultsPage: false,
       pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
       pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
       pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
@@ -9165,11 +9064,6 @@
 
       lastRows = result.rows || [];
       lastSummary = result.summary || {};
-      if (mode === "standard" && rwphBasic120ResultsEnabled()) {
-        const testResult = rwphApplyBasic120ResultsTestRows(lastRows, lastSummary, true);
-        lastRows = testResult.rows;
-        lastSummary = testResult.summary;
-      }
       rwphStorePayAllRows(lastRows);
       rwphSaveLastResults(lastRows, lastSummary);
       rwphSetCacheButtonState(mode, true, {
@@ -11433,10 +11327,8 @@
               </div>
               <div class="rw-compact-check-grid rw-compact-check-grid-single">
                 <label><input id="rw-basic-fast-mode" type="checkbox"> Fast Mode — ranked-war report only</label>
-                <label><input id="rw-basic-120-results" type="checkbox"> Test Results Page — 120 members</label>
               </div>
               <div class="rw-calc-brief rw-calc-mini-note">Fast Mode is much quicker. It uses Torn rankedwarreport for War Hits, members, Respect and Total Respect, but skips attack-log extras like assists, outside hits and retals.</div>
-              <div class="rw-calc-brief rw-calc-mini-note">Test Results Page repeats the Basic result rows until the fullscreen results page has 120 members. This is for layout/testing only.</div>
               <label>Exclude member from results
                 <textarea id="rw-excluded-members" rows="2" placeholder="Paste Torn name or ID. One per line for multiple." spellcheck="false"></textarea>
               </label>
@@ -11877,7 +11769,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-basic-120-results", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
+    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -12085,7 +11977,7 @@
       const retaliationHitWeight = rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1);
       const assistWeight = rwphFixedPerHitWeight("rw-assist-weight", 0);
       const basicFastMode = !isPointsMode && rwphBasicFastModeEnabled();
-      const basic120ResultsPage = !isPointsMode && rwphBasic120ResultsEnabled();
+      const basic120ResultsPage = false;
       const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
       const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
       const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
@@ -12184,11 +12076,6 @@
 
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
-        if (!isPointsMode && rwphBasic120ResultsEnabled()) {
-          const testResult = rwphApplyBasic120ResultsTestRows(lastRows, lastSummary, true);
-          lastRows = testResult.rows;
-          lastSummary = testResult.summary;
-        }
         rwphStorePayAllRows(lastRows);
         rwphSaveLastResults(lastRows, lastSummary);
         const reportCacheReady = !!(result.cached || result.cache?.hit || result.cache?.saved || lastSummary?.cacheSaved);
