@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.348
+// @version      1.1.351
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.348: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.351: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -7561,7 +7561,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.348: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.351: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7703,7 +7703,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.348: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.351: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7776,7 +7776,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.348: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.351: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -7804,11 +7804,76 @@
     } catch (_) {}
   }
 
+  function rwphStyleResultsLoadingPanelControls(panel) {
+    if (!panel) return;
+    try {
+      panel.querySelectorAll(":scope > .resize-handle").forEach((h) => {
+        const dir = h.dataset.resizeDir || "";
+        h.style.setProperty("position", "absolute", "important");
+        h.style.setProperty("width", "18px", "important");
+        h.style.setProperty("height", "18px", "important");
+        h.style.setProperty("z-index", "70", "important");
+        h.style.setProperty("touch-action", "none", "important");
+        h.style.setProperty("-webkit-user-select", "none", "important");
+        h.style.setProperty("user-select", "none", "important");
+        h.style.setProperty("opacity", ".95", "important");
+        h.style.setProperty("background", "rgba(2,6,23,.18)", "important");
+        h.style.setProperty("border-color", "rgba(245,158,11,.88)", "important");
+        h.style.setProperty("border-style", "solid", "important");
+        h.style.setProperty("box-sizing", "border-box", "important");
+        h.style.setProperty("filter", "drop-shadow(0 0 6px rgba(245,158,11,.22))", "important");
+        if (dir === "se") {
+          h.style.setProperty("right", "5px", "important");
+          h.style.setProperty("bottom", "5px", "important");
+          h.style.setProperty("cursor", "nwse-resize", "important");
+          h.style.setProperty("border-width", "0 2px 2px 0", "important");
+          h.style.setProperty("border-radius", "0 0 8px 0", "important");
+        } else if (dir === "sw") {
+          h.style.setProperty("left", "5px", "important");
+          h.style.setProperty("bottom", "5px", "important");
+          h.style.setProperty("cursor", "nesw-resize", "important");
+          h.style.setProperty("border-width", "0 0 2px 2px", "important");
+          h.style.setProperty("border-radius", "0 0 0 8px", "important");
+        } else if (dir === "nw") {
+          h.style.setProperty("left", "5px", "important");
+          h.style.setProperty("top", "5px", "important");
+          h.style.setProperty("cursor", "nwse-resize", "important");
+          h.style.setProperty("border-width", "2px 0 0 2px", "important");
+          h.style.setProperty("border-radius", "8px 0 0 0", "important");
+        }
+      });
+
+      if (window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches) {
+        panel.querySelectorAll(":scope > .resize-handle").forEach((h) => {
+          h.style.setProperty("width", "30px", "important");
+          h.style.setProperty("height", "30px", "important");
+          h.style.setProperty("z-index", "90", "important");
+          h.style.setProperty("background", "rgba(2,6,23,.28)", "important");
+          if (h.dataset.resizeDir === "se") {
+            h.style.setProperty("right", "3px", "important");
+            h.style.setProperty("bottom", "3px", "important");
+            h.style.setProperty("border-width", "0 3px 3px 0", "important");
+          } else if (h.dataset.resizeDir === "sw") {
+            h.style.setProperty("left", "3px", "important");
+            h.style.setProperty("bottom", "3px", "important");
+            h.style.setProperty("border-width", "0 0 3px 3px", "important");
+          } else if (h.dataset.resizeDir === "nw") {
+            h.style.setProperty("left", "3px", "important");
+            h.style.setProperty("top", "3px", "important");
+            h.style.setProperty("border-width", "3px 0 0 3px", "important");
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
   function rwphCreateResultsLoadingPanel(progressId = "", loadingHtml = "", startedAtMs = Date.now()) {
     rwphCloseExistingResultsLoadingPanel();
 
     const panel = document.createElement("div");
     panel.id = "rwph-results-loading-panel";
+    panel.className = "rwph-floating-panel rwph-results-loading-panel";
+    panel.dataset.layoutKey = "rwph_results_loading_panel_layout";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "RWPH results loading panel");
     panel.style.cssText = [
@@ -7851,6 +7916,25 @@
     const title = document.createElement("div");
     title.innerHTML = '<div style="color:#fde68a;font-size:10px;letter-spacing:.75px;text-transform:uppercase;">Ranked War Payout Helper</div><div style="color:#fff7ed;font-size:13px;margin-top:2px;">Results Loading</div>';
 
+    const fullBtn = document.createElement("button");
+    fullBtn.type = "button";
+    fullBtn.textContent = "⛶";
+    fullBtn.setAttribute("aria-label", "Fullscreen results loading panel");
+    fullBtn.title = "Fullscreen";
+    fullBtn.style.cssText = [
+      "flex:0 0 auto",
+      "width:34px",
+      "height:34px",
+      "border-radius:12px",
+      "border:1px solid rgba(251,191,36,.30)",
+      "background:linear-gradient(180deg,rgba(63,29,23,.95),rgba(20,15,13,.96))",
+      "color:#fff7ed",
+      "font:950 16px/1 Arial,Helvetica,sans-serif",
+      "cursor:pointer",
+      "box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)",
+      "text-shadow:0 1px 0 rgba(0,0,0,.75)",
+    ].join(";");
+
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.textContent = "×";
@@ -7865,6 +7949,8 @@
       "color:#fff7ed",
       "font:950 20px/1 Arial,Helvetica,sans-serif",
       "cursor:pointer",
+      "box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)",
+      "text-shadow:0 1px 0 rgba(0,0,0,.75)",
     ].join(";");
 
     const frame = document.createElement("iframe");
@@ -7879,8 +7965,13 @@
       "display:block",
     ].join(";");
 
+    const controls = document.createElement("div");
+    controls.style.cssText = "display:flex;align-items:center;gap:8px;flex:0 0 auto;";
+    controls.appendChild(fullBtn);
+    controls.appendChild(closeBtn);
+
     head.appendChild(title);
-    head.appendChild(closeBtn);
+    head.appendChild(controls);
     panel.appendChild(head);
     panel.appendChild(frame);
     document.body.appendChild(panel);
@@ -7891,6 +7982,87 @@
       try { panel.remove(); } catch (_) {}
     };
     closeBtn.addEventListener("click", markClosed);
+
+    let rwphLoadingPanelFullscreen = false;
+    let rwphLoadingPanelPrevStyle = null;
+    function rwphToggleResultsLoadingPanelFullscreen() {
+      try {
+        if (!rwphLoadingPanelFullscreen) {
+          const rect = panel.getBoundingClientRect();
+          rwphLoadingPanelPrevStyle = {
+            left: panel.style.left || "",
+            top: panel.style.top || "",
+            right: panel.style.right || "",
+            bottom: panel.style.bottom || "",
+            width: panel.style.width || "",
+            height: panel.style.height || "",
+            maxHeight: panel.style.maxHeight || "",
+            minWidth: panel.style.minWidth || "",
+            minHeight: panel.style.minHeight || "",
+            borderRadius: panel.style.borderRadius || "",
+            transform: panel.style.transform || "",
+            rectLeft: Math.round(rect.left),
+            rectTop: Math.round(rect.top),
+            rectWidth: Math.round(rect.width),
+            rectHeight: Math.round(rect.height),
+          };
+          panel.style.setProperty("left", "6px", "important");
+          panel.style.setProperty("top", "6px", "important");
+          panel.style.setProperty("right", "auto", "important");
+          panel.style.setProperty("bottom", "auto", "important");
+          panel.style.setProperty("width", "calc(100vw - 12px)", "important");
+          panel.style.setProperty("height", "calc(100vh - 12px)", "important");
+          panel.style.setProperty("min-width", "0", "important");
+          panel.style.setProperty("min-height", "0", "important");
+          panel.style.setProperty("max-height", "none", "important");
+          panel.style.setProperty("border-radius", "14px", "important");
+          fullBtn.textContent = "⛶";
+          fullBtn.title = "Exit fullscreen";
+          fullBtn.setAttribute("aria-label", "Exit fullscreen results loading panel");
+          rwphLoadingPanelFullscreen = true;
+        } else {
+          const prev = rwphLoadingPanelPrevStyle || {};
+          if (prev.left || prev.top || prev.width || prev.height) {
+            panel.style.setProperty("left", prev.left || (prev.rectLeft || 18) + "px", "important");
+            panel.style.setProperty("top", prev.top || (prev.rectTop || 18) + "px", "important");
+            panel.style.setProperty("right", prev.right || "auto", "important");
+            panel.style.setProperty("bottom", prev.bottom || "auto", "important");
+            panel.style.setProperty("width", prev.width || (prev.rectWidth || 900) + "px", "important");
+            panel.style.setProperty("height", prev.height || (prev.rectHeight || 720) + "px", "important");
+            panel.style.setProperty("max-height", prev.maxHeight || "none", "important");
+            panel.style.setProperty("min-width", prev.minWidth || "250px", "important");
+            panel.style.setProperty("min-height", prev.minHeight || "180px", "important");
+            panel.style.setProperty("border-radius", prev.borderRadius || "18px", "important");
+            panel.style.transform = prev.transform || "";
+          } else {
+            panel.style.removeProperty("left");
+            panel.style.removeProperty("top");
+            panel.style.right = "18px";
+            panel.style.bottom = "18px";
+            panel.style.width = "min(900px,calc(100vw - 24px))";
+            panel.style.height = "min(820px,calc(100vh - 24px))";
+            panel.style.borderRadius = "18px";
+          }
+          fullBtn.textContent = "⛶";
+          fullBtn.title = "Fullscreen";
+          fullBtn.setAttribute("aria-label", "Fullscreen results loading panel");
+          rwphLoadingPanelFullscreen = false;
+          try { localStorage.setItem("rwph_results_loading_panel_layout", JSON.stringify({
+            left: Math.round(panel.getBoundingClientRect().left),
+            top: Math.round(panel.getBoundingClientRect().top),
+            width: Math.round(panel.getBoundingClientRect().width),
+            height: Math.round(panel.getBoundingClientRect().height),
+          })); } catch (_) {}
+        }
+        rwphStyleResultsLoadingPanelControls(panel);
+      } catch (e) {
+        console.warn("Could not toggle results loading panel fullscreen:", e);
+      }
+    }
+    fullBtn.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      rwphToggleResultsLoadingPanelFullscreen();
+    });
 
     try {
       const media = window.matchMedia?.("(max-width: 760px), (pointer: coarse)");
@@ -7906,6 +8078,7 @@
 
     try {
       if (typeof setupMoveResize === "function") setupMoveResize(panel, ".rwph-results-loading-panel-head");
+      rwphStyleResultsLoadingPanelControls(panel);
     } catch (_) {}
 
     try {
@@ -7936,6 +8109,7 @@
         return frame.contentWindow || window;
       },
       focus() {
+        try { rwphStyleResultsLoadingPanelControls(panel); } catch (_) {}
         try { panel.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (_) {}
       },
       postMessage(message, targetOrigin) {
@@ -9637,6 +9811,7 @@
 
   function rwphCleanNewsletterHtmlCode(html) {
     return rwphStripNewsletterMarkerComments(String(html || ""))
+      // Torn message/newsletter fit cleanup only. Do not change stats/content.
       .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
       .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -9650,6 +9825,8 @@
       .replace(/\s*margin-left\s*:\s*-[^;"]+;?/gi, "")
       .replace(/\s*margin-right\s*:\s*-[^;"]+;?/gi, "")
       .replace(/\s*white-space\s*:\s*nowrap\s*;?/gi, "")
+      .replace(/width\s*:\s*96%\s*;/gi, "width:100%;")
+      .replace(/width="96%"/gi, 'width="100%"')
       .replace(/style="([^"]*)"/gi, function(match, css) {
         const cleanCss = String(css || "")
           .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;]+;?/gi, "")
@@ -9911,7 +10088,6 @@
   function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
     const theme = rwphNewsletterHtmlTheme(themeKey);
-    const metricLabel = m.pointsMode ? "Points" : "Weight";
     const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
     const modeLabel = m.pointsMode ? "Advanced" : "Basic";
     const bg1 = theme.panelA || theme.outer || theme.bg;
@@ -9922,21 +10098,22 @@
     const text = theme.text || "#f2f2f2";
     const soft = theme.soft || theme.muted || "#c9c9c9";
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const stat = (label, value) => `<td style="padding:3px;border:1px solid ${line};background:${bg1};color:${text};font:10px Arial"><b style="color:${soft};font-size:8px">${esc(label)}</b><br>${esc(String(value))}</td>`;
-    const summaryRows = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">`+
-      `<tr>${stat("Member Payout", money(m.memberPayout))}${stat(perUnitLabel, money(m.perUnitAmount))}</tr>`+
-      `<tr>${stat("Payable Hits", String(m.totalPayableEvents || 0))}${stat("Members", String(m.list.length))}</tr>`+
-      `<tr>${stat("Total Respect", Number(m.totalRespect || 0).toFixed(2))}${stat("Mode", modeLabel)}</tr>`+
+    const safeText = "word-break:break-word;overflow-wrap:anywhere;";
+    const tableFit = "width:100%;border-collapse:collapse;table-layout:fixed;";
+    const stat = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:9px Arial;vertical-align:top;${safeText}"><b style="color:${soft};font-size:7px">${esc(label)}</b><br><span style="${safeText}">${esc(String(value))}</span></td>`;
+    const summaryRows = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}">`+
+      `<tr>${stat("Member Payout", money(m.memberPayout), bg1)}${stat(perUnitLabel, money(m.perUnitAmount), bg2)}</tr>`+
+      `<tr>${stat("Payable Hits", String(m.totalPayableEvents || 0), bg2)}${stat("Members", String(m.list.length), bg1)}</tr>`+
+      `<tr>${stat("Total Respect", Number(m.totalRespect || 0).toFixed(2), bg1)}${stat("Mode", modeLabel, bg2)}</tr>`+
       `</table>`;
     const payoutRows = m.list.map((r, idx) => {
       const bg = idx % 2 ? bg1 : bg2;
-      return `<tr bgcolor="${bg}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#${idx + 1}</b></td><td style="padding:3px;border:1px solid ${line};color:${text};font:10px Arial">${esc(r.name)}</td><td style="padding:3px;border:1px solid ${line};color:#86efac;font:10px Arial;text-align:right"><b>${money(r.payout)}</b></td></tr>`;
+      return `<tr bgcolor="${bg}"><td width="12%" style="width:12%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;text-align:center;vertical-align:top;${safeText}">#${idx + 1}</td><td width="54%" style="width:54%;padding:3px 2px;border:1px solid ${line};color:${text};font:bold 9px Arial;vertical-align:top;${safeText}">${esc(r.name)}</td><td width="34%" style="width:34%;padding:3px 2px;border:1px solid ${line};color:#86efac;font:bold 8px Arial;text-align:right;vertical-align:top;${safeText}">${money(r.payout)}</td></tr>`;
     }).join("");
-    const payouts = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr bgcolor="${head}"><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:center"><b>#</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial"><b>Player</b></td><td style="padding:3px;border:1px solid ${line};color:${accent};font:10px Arial;text-align:right"><b>Payout</b></td></tr>${payoutRows}</table>`;
-    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:9px Arial">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Manual exclusions only." : "Only manually excluded members were removed."}</td></tr></table>`;
-    return rwphCleanNewsletterHtmlCode(`<div style="background:${theme.bg};color:${text};font:10px Arial;padding:4px"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};border:1px solid ${line}"><tr><td style="padding:7px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center"><div style="font:700 14px Arial;color:${accent}">${esc(theme.icon || "")} ${title}</div><div style="font:9px Arial;color:${soft}">${modeLabel} • compact long newsletter</div></td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">All Result Stats</div>${summaryRows}</td></tr><tr><td style="padding:4px"><div style="font:700 10px Arial;color:${accent};margin-bottom:2px">Payouts</div>${payouts}</td></tr><tr><td style="padding:4px">${notices}</td></tr></table></div>`);
+    const payouts = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}"><tr bgcolor="${head}"><td width="12%" style="width:12%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;text-align:center;${safeText}">#</td><td width="54%" style="width:54%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;${safeText}">Player</td><td width="34%" style="width:34%;padding:3px 2px;border:1px solid ${line};color:${accent};font:bold 8px Arial;text-align:right;${safeText}">Payout</td></tr>${payoutRows}</table>`;
+    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:8px Arial;${safeText}">Review payouts before sending faction funds. ${m.includeLeftFactionMembers ? "Manual exclusions only." : "Only manually excluded members were removed."}</td></tr></table>`;
+    return rwphCleanNewsletterHtmlCode(`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${theme.bg};color:${text};font:9px Arial"><tr><td style="padding:2px;background:${theme.bg};${safeText}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="${tableFit}background:${theme.outer};border:1px solid ${line}"><tr><td style="padding:6px 4px;background:${head};border-bottom:2px solid ${theme.strongLine || accent};text-align:center;${safeText}"><div style="font:bold 12px Arial;color:${accent};${safeText}">${esc(theme.icon || "")} ${title}</div><div style="font:8px Arial;color:${soft};${safeText}">${modeLabel} • compact long newsletter</div></td></tr><tr><td style="padding:3px;${safeText}"><div style="font:bold 9px Arial;color:${accent};margin-bottom:2px;${safeText}">All Result Stats</div>${summaryRows}</td></tr><tr><td style="padding:3px;${safeText}"><div style="font:bold 9px Arial;color:${accent};margin-bottom:2px;${safeText}">Payouts</div>${payouts}</td></tr><tr><td style="padding:3px;${safeText}">${notices}</td></tr></table></td></tr></table>`);
   }
-
 
   function buildRwphTornTestFullCodeNewsletter(rows, summary, themeKey) {
     const m = buildTornFactionNewsletterModel(rows || [], summary || {});
@@ -9952,7 +10129,7 @@
     const bg2 = theme.panelB || theme.header || theme.bg;
     const head = theme.header || bg2;
     const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const statCell = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:9px Arial;vertical-align:top"><b style="color:${soft};font-size:7px">${esc(label)}</b><br>${esc(String(value))}</td>`;
+    const statCell = (label, value, bg = bg1) => `<td width="50%" style="width:50%;padding:3px;border:1px solid ${line};background:${bg};color:${text};font:8px Arial;vertical-align:top;word-break:break-word;overflow-wrap:anywhere"><b style="color:${soft};font-size:7px">${esc(label)}</b><br>${esc(String(value))}</td>`;
     const statRows = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed">${items.reduce((html, item, idx) => idx % 2 === 0 ? html + `<tr>${statCell(item[0], item[1], idx % 4 ? bg2 : bg1)}${statCell((items[idx+1]||["",""])[0], (items[idx+1]||["",""])[1], idx % 4 ? bg1 : bg2)}</tr>` : html, "")}</table>`;
     const allStats = [
       ["Member Payout", money(m.memberPayout)],
@@ -9971,7 +10148,7 @@
         ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2)],
       );
     }
-    const miniStat = (label, value, i) => `<td width="20%" style="width:20%;padding:1px;border:1px solid ${line};background:${i % 2 ? bg1 : bg2};font:6px Arial;color:${text};vertical-align:top;line-height:1.12"><b style="color:${soft};font-size:5px">${esc(label)}</b><br>${esc(String(value))}</td>`;
+    const miniStat = (label, value, i) => `<td width="20%" style="width:20%;padding:1px;border:1px solid ${line};background:${i % 2 ? bg1 : bg2};font:6px Arial;color:${text};vertical-align:top;line-height:1.12;word-break:break-word;overflow-wrap:anywhere"><b style="color:${soft};font-size:5px">${esc(label)}</b><br>${esc(String(value))}</td>`;
     const cardStatTable = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed">${items.reduce((html, item, idx) => idx % 5 === 0 ? html + `<tr>${miniStat(item[0], item[1], idx)}${miniStat((items[idx+1]||["",""])[0], (items[idx+1]||["",""])[1], idx+1)}${miniStat((items[idx+2]||["",""])[0], (items[idx+2]||["",""])[1], idx+2)}${miniStat((items[idx+3]||["",""])[0], (items[idx+3]||["",""])[1], idx+3)}${miniStat((items[idx+4]||["",""])[0], (items[idx+4]||["",""])[1], idx+4)}</tr>` : html, "")}</table>`;
     const payoutCards = m.list.map((r, idx) => {
       const metric = m.pointsMode ? Number(r.points || r.weight || 0) : Number(r.weight || 0);
@@ -9994,7 +10171,7 @@
           ["Avg FF", Number(r.avgFairFight || 1).toFixed(2)],
         );
       }
-      return `<tr><td style="padding:1px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font-family:Arial;color:${text}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed"><tr><td width="10%" style="width:10%;padding:0 1px 1px 0;text-align:center"><div style="border:1px solid ${theme.strongLine || accent};background:${head};color:${accent};font:bold 7px Arial;line-height:11px">#${idx + 1}</div></td><td width="52%" style="width:52%;padding:0 1px 1px 0;color:${text};font:bold 7px Arial;word-break:break-word;line-height:1.05">${esc(r.name)}</td><td width="38%" style="width:38%;padding:0 0 1px 0;color:#86efac;font:bold 7px Arial;text-align:right;word-break:break-word;line-height:1.05">${money(r.payout)}</td></tr><tr><td colspan="3">${cardStatTable(stats)}</td></tr></table></td></tr>`;
+      return `<tr><td style="padding:1px;border:1px solid ${line};background:${idx % 2 ? bg1 : bg2};font-family:Arial;color:${text}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed"><tr><td width="10%" style="width:10%;padding:0 1px 1px 0;text-align:center"><div style="border:1px solid ${theme.strongLine || accent};background:${head};color:${accent};font:bold 7px Arial;line-height:11px">#${idx + 1}</div></td><td width="52%" style="width:52%;padding:0 1px 1px 0;color:${text};font:bold 7px Arial;word-break:break-word;overflow-wrap:anywhere;line-height:1.05">${esc(r.name)}</td><td width="38%" style="width:38%;padding:0 0 1px 0;color:#86efac;font:bold 7px Arial;text-align:right;word-break:break-word;line-height:1.05">${money(r.payout)}</td></tr><tr><td colspan="3">${cardStatTable(stats)}</td></tr></table></td></tr>`;
     }).join("");
     const payoutTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse">${payoutCards}</table>`;
     const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse"><tr><td style="padding:4px;border:1px solid ${line};background:${bg1};color:${soft};font:8px Arial">Test Newsletter: 120 repeated rows. Review real payouts before sending faction funds.</td></tr></table>`;
@@ -10860,86 +11037,6 @@
       text: buildTornFactionNewsletterText(rows || [], summary || {}, themeKey || "standard"),
     };
   }
-
-
-  // v1.1.348: final Torn message/PDA/phone-safe newsletter HTML override.
-  function buildRwphTornFitMessageNewsletter(rows, summary, themeKey, options = {}) {
-    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
-    const theme = rwphNewsletterHtmlTheme(themeKey || "standard");
-    const modeLabel = m.pointsMode ? "Advanced" : "Basic";
-    const perUnitLabel = m.pointsMode ? "Per Point" : "Per Hit";
-    const metricLabel = m.pointsMode ? "Points" : "Weight";
-    const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
-    const bg = theme.bg || "#111217";
-    const outer = theme.outer || theme.panelA || "#1a1c24";
-    const panelA = theme.panelA || outer;
-    const panelB = theme.panelB || theme.header || outer;
-    const header = theme.header || panelB;
-    const line = theme.line || "#3a4050";
-    const strongLine = theme.strongLine || theme.accent || "#f2b84b";
-    const accent = theme.accent || "#f2b84b";
-    const text = theme.text || "#f2f2f2";
-    const muted = theme.muted || "#aeb4c2";
-    const soft = theme.soft || muted;
-    const icon = esc(theme.icon || "");
-    const tdBase = `font-family:Arial,Helvetica,sans-serif;border:1px solid ${line};vertical-align:top;word-break:break-word;overflow-wrap:anywhere;`;
-    const statCell = (label, value, sub = "", cellBg = panelA) =>
-      `<td width="50%" valign="top" style="width:50%;padding:4px;background-color:${cellBg};color:${text};${tdBase}font-size:9px;line-height:1.12;"><div style="color:${muted};font-size:7px;line-height:1.05;font-weight:bold;text-transform:uppercase;">${esc(label)}</div><div style="color:${text};font-size:9px;line-height:1.1;font-weight:bold;">${esc(String(value))}</div>${sub ? `<div style="color:${soft};font-size:7px;line-height:1.05;">${esc(String(sub))}</div>` : ""}</td>`;
-
-    const statRows = (items) => {
-      let html = "";
-      for (let i = 0; i < items.length; i += 2) {
-        html += `<tr>${statCell(items[i][0], items[i][1], items[i][2] || "", i % 4 ? panelB : panelA)}${statCell((items[i + 1] || ["", "", ""])[0], (items[i + 1] || ["", "", ""])[1], (items[i + 1] || ["", "", ""])[2] || "", i % 4 ? panelA : panelB)}</tr>`;
-      }
-      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">${html}</table>`;
-    };
-
-    const stats = [
-      ["Member Payout", money(m.memberPayout), `${m.list.length} members`],
-      ["Total Payout", money(m.overallTotalPayout), "record total"],
-      [perUnitLabel, money(m.perUnitAmount), m.pointsMode ? "per point" : "per hit"],
-      [metricLabel, Number(m.totalWeight || 0).toFixed(2), m.pointsMode ? "total points" : "total weight"],
-      ["Payable Hits", String(m.totalPayableEvents || 0), modeLabel],
-      ["Total Respect", Number(m.totalRespect || 0).toFixed(2), "war report"],
-    ];
-    if (m.pointsMode) {
-      stats.push(["Own Hosp", String(m.totalOwnFactionHospitalizingHits || 0), `${Number(m.totalOwnFactionHospitalBonusPoints || 0).toFixed(2)} pts`], ["Enemy Hosp", String(m.totalEnemyFactionHospitalizingHits || 0), `${Number(m.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)} pts`], ["Fair Bonus", Number(m.totalFairFightBonusPoints || 0).toFixed(2), "FF bonus"]);
-    }
-
-    const userRows = m.list.map((r, idx) => {
-      const rowBg = idx % 2 ? panelA : panelB;
-      const metric = m.pointsMode ? Number(r.points || r.weight || 0) : Number(r.weight || 0);
-      const line1 = `War ${Number(r.warHits || 0)} • Ast ${Number(r.assists || 0)} • Out ${Number(r.outsideHits || 0)} • Ret ${Number(r.retaliationHits || 0)}`;
-      const line2 = m.pointsMode ? `${metricLabel} ${metric.toFixed(2)} • Own ${Number(r.hospitalizingHits || 0)} • Enemy ${Number(r.enemyFactionHospitalizingHits || 0)} • FF ${Number(r.avgFairFight || 1).toFixed(2)}` : `${metricLabel} ${metric.toFixed(2)} • Payable ${Number(r.payableEvents || 0)} • Respect ${Number(r.respect || 0).toFixed(2)}`;
-      return `<tr><td style="padding:3px;background-color:${rowBg};${tdBase}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr><td width="11%" valign="top" align="center" style="width:11%;padding:0 2px 0 0;font-family:Arial,Helvetica,sans-serif;border:0;color:${accent};font-size:8px;line-height:1.12;"><div style="border:1px solid ${strongLine};background-color:${header};color:${accent};font-size:7px;line-height:14px;font-weight:bold;text-align:center;">#${idx + 1}</div></td><td width="53%" valign="top" style="width:53%;padding:0 2px 0 0;font-family:Arial,Helvetica,sans-serif;border:0;color:${text};word-break:break-word;overflow-wrap:anywhere;"><div style="font-size:9px;line-height:1.08;font-weight:bold;color:${text};word-break:break-word;overflow-wrap:anywhere;">${esc(r.name)}</div><div style="font-size:7px;line-height:1.08;color:${soft};word-break:break-word;overflow-wrap:anywhere;">${esc(line1)}</div><div style="font-size:7px;line-height:1.08;color:${muted};word-break:break-word;overflow-wrap:anywhere;">${esc(line2)}</div></td><td width="36%" valign="top" align="right" style="width:36%;padding:0;font-family:Arial,Helvetica,sans-serif;border:0;color:#86efac;word-break:break-word;overflow-wrap:anywhere;"><div style="font-size:8px;line-height:1.08;color:#86efac;font-weight:bold;word-break:break-word;overflow-wrap:anywhere;">${money(r.payout)}</div><div style="font-size:7px;line-height:1.08;color:${soft};">${percent(r.payout, m.memberPayout)}</div></td></tr></table></td></tr>`;
-    }).join("");
-
-    const topRows = m.list.slice(0, 3).map((r, idx) => {
-      const rowBg = idx === 0 ? header : (idx % 2 ? panelA : panelB);
-      return `<tr><td style="padding:4px;background-color:${rowBg};${tdBase}font-size:9px;line-height:1.12;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr><td width="12%" align="center" style="width:12%;padding-right:2px;color:${accent};font-size:7px;font-weight:bold;">#${idx + 1}</td><td width="54%" style="width:54%;padding-right:2px;color:${text};font-size:8px;font-weight:bold;word-break:break-word;overflow-wrap:anywhere;">${esc(r.name)}</td><td width="34%" align="right" style="width:34%;color:#86efac;font-size:8px;font-weight:bold;word-break:break-word;overflow-wrap:anywhere;">${money(r.payout)}</td></tr></table></td></tr>`;
-    }).join("");
-
-    const sectionTitle = (label) => `<tr><td style="padding:6px 5px 2px 5px;background-color:${outer};color:${accent};font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.1;font-weight:bold;word-break:break-word;overflow-wrap:anywhere;">${esc(label)}</td></tr>`;
-    const sectionBody = (inner) => `<tr><td style="padding:0 5px 5px 5px;background-color:${outer};color:${text};font-family:Arial,Helvetica,sans-serif;font-size:9px;line-height:1.12;word-break:break-word;overflow-wrap:anywhere;">${inner}</td></tr>`;
-    const notes = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr><td style="padding:5px;background-color:${panelA};border-left:2px solid ${strongLine};color:${soft};font-family:Arial,Helvetica,sans-serif;font-size:8px;line-height:1.12;word-break:break-word;overflow-wrap:anywhere;">Review payouts before sending faction funds. RWPH never sends money automatically.</td></tr><tr><td style="padding:5px;background-color:${panelB};border-left:2px solid ${strongLine};color:${soft};font-family:Arial,Helvetica,sans-serif;font-size:8px;line-height:1.12;word-break:break-word;overflow-wrap:anywhere;">Designed to fit Torn message/newsletter pages on PC, phone and Torn PDA.</td></tr></table>`;
-    const topSection = (themeKey === "crimson" || themeKey === "gold") && topRows ? `${sectionTitle(themeKey === "gold" ? "Top Payouts" : "Top Orders")}${sectionBody(`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">${topRows}</table>`)}` : "";
-    const body = `${sectionTitle("All Result Stats")}${sectionBody(statRows(stats))}${topSection}${sectionTitle("Payouts")}${sectionBody(`<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">${userRows || `<tr><td style="padding:6px;background-color:${panelB};${tdBase}font-size:9px;line-height:1.12;color:${soft};text-align:center;">No payout rows.</td></tr>`}</table>`)}${sectionTitle("Notes")}${sectionBody(notes)}`;
-    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;background-color:${bg};color:${text};font-family:Arial,Helvetica,sans-serif;"><tr><td style="padding:4px;background-color:${bg};color:${text};font-family:Arial,Helvetica,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;background-color:${outer};border:1px solid ${line};"><tr><td style="padding:7px 5px;background-color:${header};border-bottom:2px solid ${strongLine};text-align:center;font-family:Arial,Helvetica,sans-serif;word-break:break-word;overflow-wrap:anywhere;"><div style="font-size:13px;line-height:1.08;font-weight:bold;color:${accent};word-break:break-word;overflow-wrap:anywhere;">${icon} ${title}</div><div style="font-size:8px;line-height:1.1;color:${soft};margin-top:1px;word-break:break-word;overflow-wrap:anywhere;">${modeLabel} • Torn message/PDA safe layout</div></td></tr>${body}<tr><td style="padding:5px;background-color:${bg};border-top:1px solid ${line};text-align:center;font-family:Arial,Helvetica,sans-serif;color:${muted};font-size:8px;line-height:1.1;word-break:break-word;overflow-wrap:anywhere;">Generated by Ranked War Payout Helper</td></tr></table></td></tr></table>`;
-    return rwphCleanNewsletterHtmlCode(html);
-  }
-
-  function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
-    return buildRwphTornFitMessageNewsletter(rows || [], summary || {}, themeKey || "standard");
-  }
-
-  function buildRwphTornTestFullCodeNewsletter(rows, summary, themeKey) {
-    return buildRwphTornFitMessageNewsletter(rows || [], { ...(summary || {}), testNewsletter: true, nameCount: 120 }, themeKey || "standard");
-  }
-
-  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
-    return buildRwphTornFitMessageNewsletter(rows || [], summary || {}, themeKey || "standard");
-  }
-
 
   function createHtmlNewsletter(rows, summary) {
     const html = buildWarPayoutNewsletterHtml(rows, summary || {});
