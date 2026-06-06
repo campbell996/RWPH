@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.360
+// @version      1.1.363
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,7 +24,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.312: phone loading timer now displays minutes/seconds past 59 seconds, calculation timeout is longer for slow mobile/Torn API runs, raw newsletter code uses non-keyboard selectable blocks, and Payments Copy Panel warns to use Add To Balance instead of Give money.
-  // v1.1.360: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.363: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -6572,7 +6572,8 @@
     <aside class="newsletter-zone results-side-panel" aria-label="Results actions and exports">
       <h2 class="results-side-title">Report Actions</h2>
       <div class="results-action-zone" aria-label="Results actions">
-        <p class="results-action-note"><b>Results actions:</b> Export CSV for records, or use Payments to open Torn faction controls with the payment helper.</p>
+        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, or use Payments to open Torn faction controls with the payment helper.</p>
+        <button class="btn secondary" id="thisPageHtmlBtn" type="button">This page HTML</button>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
       </div>
@@ -6957,6 +6958,31 @@
       setupMoveResize(panel, ".pay-all-head");
       panel.hidden = false;
     }
+
+    function downloadThisResultsPageHtml() {
+      try {
+        var docClone = document.documentElement.cloneNode(true);
+        var cleanButton = docClone.querySelector("#thisPageHtmlBtn");
+        if (cleanButton) cleanButton.setAttribute("data-downloaded-from", "rwph-results-page");
+        var html = "<!doctype html>\n" + docClone.outerHTML;
+        var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+        a.href = url;
+        a.download = "rwph-results-page-" + stamp + ".html";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 1500);
+      } catch (e) {
+        alert("Could not download this results page HTML.");
+        console.warn("RWPH result page HTML download failed:", e);
+      }
+    }
+
+    var thisPageHtmlBtn = document.getElementById("thisPageHtmlBtn");
+    if (thisPageHtmlBtn) thisPageHtmlBtn.addEventListener("click", downloadThisResultsPageHtml);
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
     if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", storePayAllRowsFallback);
@@ -7572,7 +7598,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.360: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.363: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7714,7 +7740,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.360: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.363: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7787,7 +7813,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.360: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.363: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -11230,6 +11256,133 @@
     };
   }
 
+
+  // v1.1.363: centered newsletter output override with two payout member cards per row.
+  function buildRwphCenteredTwoCardNewsletter(rows, summary, themeKey) {
+    const m = buildTornFactionNewsletterModel(rows || [], summary || {});
+    const theme = rwphNewsletterHtmlTheme(themeKey || "standard");
+    const key = String(themeKey || "standard").toLowerCase();
+    const modeLabel = m.pointsMode ? "Advanced" : "Basic";
+    const perUnitLabel = m.pointsMode ? "Per Point Amount" : "Per Hit Amount";
+    const perUnitSub = m.pointsMode ? "per weighted point" : "per weighted hit";
+    const title = esc(m.newsletterTitle || "Faction Payout Newsletter");
+    const rowBg = (i) => i % 2 ? theme.panelA : theme.panelB;
+    const safeText = "word-break:break-word;overflow-wrap:anywhere;text-align:center;";
+    const tableFit = "width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;margin:0;padding:0;";
+
+    const wrapper = (inner) => `<div style="margin:0;padding:0;background-color:${theme.bg};color:${theme.text};font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.18;text-align:center;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}background-color:${theme.bg};text-align:center;">
+    <tr>
+      <td align="center" style="padding:0;text-align:center;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}background-color:${theme.outer};border:1px solid ${theme.line};${safeText}">
+          ${inner}
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>`;
+
+    const header = (sub = "Ranked War Payout Helper") => `<tr><td align="center" style="width:100%;padding:6px 4px;background-color:${theme.header};border-bottom:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;${safeText}">
+      <div style="font-size:13px;line-height:1.08;font-weight:bold;color:${theme.accent};letter-spacing:.25px;${safeText}">${esc(theme.icon)} ${title}</div>
+      <div style="font-size:8px;line-height:1.1;color:${theme.soft};margin-top:1px;${safeText}">${esc(sub)} • ${esc(modeLabel)} • Full Results Stats</div>
+    </td></tr>`;
+    const footer = `<tr><td align="center" style="width:100%;padding:5px 4px;background-color:${theme.bg};border-top:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.muted};font-size:8px;line-height:1.1;${safeText}">Generated by Ranked War Payout Helper<br><span style="color:${theme.soft};">Review payouts before sending faction funds.</span></td></tr>`;
+    const sectionTitle = (label) => `<tr><td align="center" style="width:100%;padding:5px 0 2px 0;font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:10px;font-weight:bold;line-height:1.08;${safeText}">${esc(label)}</td></tr>`;
+    const sectionBody = (html, bg = theme.bg) => `<tr><td align="center" style="width:100%;padding:0 0 4px 0;background-color:${bg};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:9px;line-height:1.15;${safeText}">${html}</td></tr>`;
+
+    const cell = (label, value, bg = theme.panelA, sub = "") => `<td width="50%" valign="top" align="center" style="width:50%;padding:3px 3px;background-color:${bg};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;${safeText}">
+      <div style="font-size:6.5px;line-height:1.02;color:${theme.muted};font-weight:bold;text-transform:uppercase;letter-spacing:.1px;${safeText}">${esc(label)}</div>
+      <div style="font-size:9px;line-height:1.05;color:${theme.text};font-weight:bold;margin-top:1px;${safeText}">${esc(String(value))}</div>
+      ${sub ? `<div style="font-size:6.5px;line-height:1.05;color:${theme.soft};margin-top:0;${safeText}">${esc(String(sub))}</div>` : ""}
+    </td>`;
+    const statPair = (a, b, idx = 0) => `<tr>${cell(a[0], a[1], idx % 2 ? theme.panelB : theme.panelA, a[2] || "")}${cell(b[0], b[1], idx % 2 ? theme.panelA : theme.panelB, b[2] || "")}</tr>`;
+    const statTable = (items) => `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}text-align:center;">
+      ${items.reduce((out, item, idx) => idx % 2 === 0 ? out + statPair(item, items[idx + 1] || ["", ""], idx / 2) : out, "")}
+    </table>`;
+
+    const newsletterStats = [
+      ["Member Payout", money(m.memberPayout), `${m.list.length} paid members`],
+      [perUnitLabel, money(m.perUnitAmount), perUnitSub],
+      ["Payable Hits", String(m.totalPayableEvents || 0), modeLabel],
+      ["Total Respect", Number(m.totalRespect || 0).toFixed(2), "ranked war report"],
+    ];
+
+    const statGrid = statTable(newsletterStats);
+
+    const memberCard = (r, idx) => {
+      const bg = rowBg(idx);
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}background-color:${bg};border:1px solid ${theme.line};${safeText}">
+        <tr>
+          <td align="center" style="padding:3px 2px;background-color:${theme.header};border-bottom:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.accent};font-size:7px;line-height:1.05;font-weight:bold;${safeText}">#${idx + 1}</td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:4px 2px 2px 2px;font-family:Arial,Helvetica,sans-serif;color:${theme.text};font-size:9px;line-height:1.08;font-weight:bold;${safeText}">${esc(r.name)}</td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:2px 2px 4px 2px;font-family:Arial,Helvetica,sans-serif;color:#86efac;font-size:8px;line-height:1.08;font-weight:bold;${safeText}">${money(r.payout)}</td>
+        </tr>
+      </table>`;
+    };
+
+    let payoutCardRows = "";
+    for (let i = 0; i < m.list.length; i += 2) {
+      const left = `<td width="50%" valign="top" align="center" style="width:50%;padding:2px;vertical-align:top;${safeText}">${memberCard(m.list[i], i)}</td>`;
+      const right = m.list[i + 1]
+        ? `<td width="50%" valign="top" align="center" style="width:50%;padding:2px;vertical-align:top;${safeText}">${memberCard(m.list[i + 1], i + 1)}</td>`
+        : `<td width="50%" valign="top" align="center" style="width:50%;padding:2px;vertical-align:top;${safeText}">&nbsp;</td>`;
+      payoutCardRows += `<tr>${left}${right}</tr>`;
+    }
+
+    const userCardTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}text-align:center;">${payoutCardRows || `<tr><td align="center" style="padding:7px;background-color:${theme.panelB};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:9px;${safeText}">No payout rows.</td></tr>`}</table>`;
+
+    const topCards = m.list.slice(0, 3).map((r, idx) => `<tr><td align="center" style="padding:4px;background-color:${idx === 0 ? theme.header : rowBg(idx)};border:1px solid ${theme.line};font-family:Arial,Helvetica,sans-serif;color:${theme.text};font-size:9px;line-height:1.08;${safeText}">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}text-align:center;"><tr><td width="20%" align="center" style="width:20%;color:${theme.accent};font-weight:bold;${safeText}">#${idx + 1}</td><td width="48%" align="center" style="width:48%;font-weight:bold;color:${theme.accent};${safeText}">${esc(r.name)}</td><td width="32%" align="center" style="width:32%;color:#86efac;font-weight:bold;${safeText}">${money(r.payout)}</td></tr></table>
+    </td></tr>`).join("");
+    const topTable = `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}text-align:center;">${topCards || `<tr><td align="center" style="padding:6px;background-color:${theme.panelB};border:1px solid ${theme.line};color:${theme.soft};font-family:Arial,Helvetica,sans-serif;font-size:9px;${safeText}">No top payouts.</td></tr>`}</table>`;
+    const notices = `<table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="${tableFit}text-align:center;">
+      <tr><td align="center" style="padding:4px;background-color:${theme.panelA};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;${safeText}">• Review payouts before sending faction funds.</td></tr>
+      <tr><td align="center" style="padding:4px;background-color:${theme.panelB};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;${safeText}">• ${m.includeLeftFactionMembers ? "Manual member exclusions are controlled by the Exclude member box." : "Only manually excluded members were removed."}</td></tr>
+      <tr><td align="center" style="padding:4px;background-color:${theme.panelA};border-left:2px solid ${theme.strongLine};font-family:Arial,Helvetica,sans-serif;color:${theme.soft};font-size:8.5px;line-height:1.12;${safeText}">• Contact leadership if your payout looks wrong.</td></tr>
+    </table>`;
+
+    if (key === "cyber") {
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Neon dashboard")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Notices")}${sectionBody(notices)}${footer}`));
+    }
+    if (key === "ledger") {
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Ledger document")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Signed Payouts")}${sectionBody(userCardTable)}${sectionTitle("Notices")}${sectionBody(notices)}${footer}`));
+    }
+    if (key === "crimson") {
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Raid command report")}${sectionTitle("Top Orders")}${sectionBody(topTable)}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Command Notes")}${sectionBody(notices)}${footer}`));
+    }
+    if (key === "gold") {
+      return rwphCleanNewsletterHtmlCode(wrapper(`${header("Victory payout board")}${sectionTitle("Podium")}${sectionBody(topTable)}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Victory Payouts")}${sectionBody(userCardTable)}${sectionTitle("Final Notes")}${sectionBody(notices)}${footer}`));
+    }
+    return rwphCleanNewsletterHtmlCode(wrapper(`${header("Faction payout report")}${sectionTitle("All Result Stats")}${sectionBody(statGrid)}${sectionTitle("Payouts")}${sectionBody(userCardTable)}${sectionTitle("Important Notices")}${sectionBody(notices)}${footer}`));
+  }
+
+  function buildRwphTornCompactCodeNewsletter(rows, summary, themeKey) {
+    return buildRwphCenteredTwoCardNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildRwphTornTestFullCodeNewsletter(rows, summary, themeKey) {
+    return buildRwphCenteredTwoCardNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildRwphTornHtmlCodeNewsletter(rows, summary, themeKey) {
+    return buildRwphCenteredTwoCardNewsletter(rows || [], summary || {}, themeKey || "standard");
+  }
+
+  function buildTornFactionNewsletterBundle(rows, summary, themeKey) {
+    const html = buildRwphCenteredTwoCardNewsletter(rows || [], summary || {}, themeKey || "standard");
+    const plainText = (rows || []).map((r, idx) => `#${idx + 1} ${r.name || ("Unknown " + (r.id || ""))}: ${money(r.payout || 0)}`).join("\\n");
+    return {
+      title: String(summary?.newsletterTitle || summary?.factionName || "Faction Payout Newsletter"),
+      html,
+      text: plainText || html,
+    };
+  }
+
+
   function createHtmlNewsletter(rows, summary) {
     const html = buildWarPayoutNewsletterHtml(rows, summary || {});
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
@@ -12222,6 +12375,7 @@
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
               <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, custom Avg FF bonus per payable hit, and payout from final score.</li>
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
+              <li><b>This page HTML:</b> downloads the current results page/panel as a standalone HTML file.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
               <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each open a raw HTML-code panel inside the results tab.</li>
@@ -13010,6 +13164,7 @@
               <li><b>Close the results tab:</b> use the normal browser/Torn PDA web tab close button. RWPH removed the old internal Close Tab button.</li>
               <li><b>Member cards:</b> show payout details and contribution breakdowns. In Points System mode, cards show points, own-faction hospital hits, custom Avg FF bonus per payable hit, and payout from final score.</li>
               <li><b>Cached report open:</b> after a successful calculation, return to the main RWPH panel and click the matching cached-report button to open the backend/database cached result. Cached reports are deleted from the database automatically after 24 hours.</li>
+              <li><b>This page HTML:</b> downloads the current results page/panel as a standalone HTML file.</li>
               <li><b>Export CSV:</b> downloads a spreadsheet-friendly payout file.</li>
               <li><b>Payments:</b> opens the manual Payments Copy Panel from the current report or a backend/database cached report.</li>
               <li><b>Newsletter buttons:</b> HTML Code Torn Newsletter, HTML Code Cyber Neon Newsletter, HTML Code War Ledger Newsletter, HTML Code Crimson Raid Newsletter, and HTML Code Victory Gold Newsletter each open a raw HTML-code panel inside the results tab.</li>
