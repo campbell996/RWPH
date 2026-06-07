@@ -1104,10 +1104,17 @@ RWPH is built to make ranked-war payout work faster and cleaner, but the faction
 The old Include Left Members / automatic left-member removal system has been removed. RWPH now removes members only when they are typed or pasted into the Basic/Advanced **Exclude member from results** box. The existing Removed Member Hits result stat now counts hits removed by that manual exclude system.
 
 
-## v1.1.385
+## v1.1.386
 
 - Fixed results loading dots and progress bar so they follow the same live backend stage/percent state.
 - Loading dots now show previous stages as done and the current backend stage as active instead of jumping ahead.
 
 
 
+
+
+## v1.1.386 - 15 day Xanax licence
+
+- Changed default licence credit from **20 days per Xanax** to **15 days per Xanax**.
+- Updated the payment helper to show **15 days per Xanax**.
+- Updated `.env.example` so `LICENSE_DAYS` defaults to `15` when present.

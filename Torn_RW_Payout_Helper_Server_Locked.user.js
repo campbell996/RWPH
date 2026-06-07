@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.385
+// @version      1.1.386
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.385: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.386: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -150,7 +150,7 @@
         rwphClearRememberedOpenResultsPage();
         return false;
       }
-      // v1.1.385: do not require exact URL match; iframe/panel exports may have saved about:blank as their URL.
+      // v1.1.386: do not require exact URL match; iframe/panel exports may have saved about:blank as their URL.
       const html = String(stored.html || "");
       if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) return false;
       setTimeout(function() {
@@ -1845,7 +1845,7 @@
       }
 
 
-      /* v1.1.385: make every RWPH panel interior follow the chosen theme */
+      /* v1.1.386: make every RWPH panel interior follow the chosen theme */
       #rw-payout-helper,
       #rw-payout-helper .rw-body,
       #rw-payout-helper .rw-tab-section,
@@ -1974,7 +1974,7 @@
       }
 
 
-      /* v1.1.385: include the Xanax/payment helper panel in the selected theme */
+      /* v1.1.386: include the Xanax/payment helper panel in the selected theme */
       #rwph-xanax-send-status,
       #rwph-xanax-send-status .rwph-xanax-scroll,
       #rwph-xanax-send-status .rwph-xanax-detail-card,
@@ -2053,7 +2053,7 @@
 
 
 
-      /* v1.1.385: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
+      /* v1.1.386: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
       #rw-payout-helper :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
       #rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
       .rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
@@ -2095,7 +2095,7 @@
       }
 
 
-      /* v1.1.385: force Basic/Advanced dropdowns and every RWPH button to follow the chosen theme */
+      /* v1.1.386: force Basic/Advanced dropdowns and every RWPH button to follow the chosen theme */
       #rw-payout-helper details.rw-per-hit-settings,
       #rw-payout-helper details.rw-points-settings,
       #rw-payout-helper details.rw-per-hit-settings .rw-api-tos-content,
@@ -6883,7 +6883,7 @@
     .rwph-results-html-preview table{max-width:100%!important;}
     @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
 
-    /* v1.1.385 unified RWPH panel palette for results/newsletter page */
+    /* v1.1.386 unified RWPH panel palette for results/newsletter page */
     :root{
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
@@ -8147,7 +8147,7 @@
       }
     }, true);
 
-    // v1.1.385: newsletter raw HTML selection uses PC triple-click, or phone/PDA hold-click browser menu.
+    // v1.1.386: newsletter raw HTML selection uses PC triple-click, or phone/PDA hold-click browser menu.
 
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
@@ -8211,7 +8211,7 @@
       --rw-red:#7f1d1d;
       --rw-shadow:0 18px 55px rgba(0,0,0,.56);
 
-      /* v1.1.385 unified RWPH loading panel palette */
+      /* v1.1.386 unified RWPH loading panel palette */
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
       --rwph-theme-panel2:#2b1d18;
@@ -8810,7 +8810,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.385: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.386: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -8952,7 +8952,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.385: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.386: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -9025,7 +9025,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.385: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.386: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -10026,7 +10026,7 @@
   }
 
 
-  // v1.1.385: Basic  removed.
+  // v1.1.386: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
@@ -11370,7 +11370,7 @@
           <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
           <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
           <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
-          <div><b>Licence time:</b> 20 days per Xanax, plus any active bonus deals.</div>
+          <div><b>Licence time:</b> 15 days per Xanax, plus any active bonus deals.</div>
         </div>
 
       <div class="rwph-xanax-steps">
@@ -13596,7 +13596,7 @@
         }
 
 
-        /* v1.1.385: Stronger Basic/Advanced calculation dropdown cards */
+        /* v1.1.386: Stronger Basic/Advanced calculation dropdown cards */
         #rw-payout-helper details.rw-per-hit-settings,
         #rw-payout-helper details.rw-points-settings{
           position:relative !important;
