@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.376
+// @version      1.1.379
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.376: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.379: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -52,8 +52,62 @@
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
+  const LAST_RESULTS_HTML_OPEN_STORAGE_KEY = "rw_payout_helper_last_results_html_open";
+  const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
+
+  function rwphRememberOpenResultsPageHtml(html) {
+    try {
+      const value = String(html || "");
+      if (!value || value.length < 1000) return;
+      localStorage.setItem(LAST_RESULTS_HTML_OPEN_STORAGE_KEY, JSON.stringify({
+        active: true,
+        url: String(location.href || ""),
+        createdAt: Date.now(),
+        html: value
+      }));
+    } catch (e) {
+      console.warn("RWPH could not remember open results page:", e);
+    }
+  }
+
+  function rwphClearRememberedOpenResultsPage() {
+    try { localStorage.removeItem(LAST_RESULTS_HTML_OPEN_STORAGE_KEY); } catch (_) {}
+  }
+
+  function rwphRestoreOpenResultsPageAfterRefresh() {
+    try {
+      const raw = localStorage.getItem(LAST_RESULTS_HTML_OPEN_STORAGE_KEY);
+      if (!raw) return false;
+      const stored = JSON.parse(raw);
+      if (!stored || !stored.active || !stored.html) return false;
+      const age = Date.now() - Number(stored.createdAt || 0);
+      if (!isFinite(age) || age < 0 || age > 24 * 60 * 60 * 1000) {
+        rwphClearRememberedOpenResultsPage();
+        return false;
+      }
+      if (stored.url && String(stored.url) !== String(location.href || "")) return false;
+      const html = String(stored.html || "");
+      if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) return false;
+      setTimeout(function() {
+        try {
+          document.open();
+          document.write(html);
+          document.close();
+        } catch (e) {
+          console.warn("RWPH could not restore results page after refresh:", e);
+        }
+      }, 0);
+      return true;
+    } catch (e) {
+      console.warn("RWPH restore results page check failed:", e);
+      return false;
+    }
+  }
+
+  if (rwphRestoreOpenResultsPageAfterRefresh()) return;
+
     const PAYMENT_ITEM_ID = "206";
   const PAYMENT_ITEM_NAME = "Xanax";
   const PAYMENT_RECEIVER_NAME = "Evil_Panda_420";
@@ -1417,6 +1471,411 @@
       el.addEventListener("change", rwphSavePayoutFormState);
     }
   }
+
+
+  function rwphPanelThemePresets() {
+    return {
+      bronze: {
+        label: "Bronze Gold",
+        bg: "#130b07", bg2: "#21110b", panel: "#211714", panel2: "#2b1d18", panel3: "#3a241c",
+        line: "rgba(184,136,89,.46)", line2: "rgba(251,191,36,.40)",
+        text: "#fff2dd", soft: "#cfaa8e", accent: "#fbbf24", accent2: "#f97316", good: "#22c55e", danger: "#7f1d1d"
+      },
+      blue: {
+        label: "Ocean Blue",
+        bg: "#020617", bg2: "#082f49", panel: "#0f172a", panel2: "#0c4a6e", panel3: "#075985",
+        line: "rgba(56,189,248,.46)", line2: "rgba(125,211,252,.42)",
+        text: "#f0f9ff", soft: "#bae6fd", accent: "#38bdf8", accent2: "#0ea5e9", good: "#86efac", danger: "#7f1d1d"
+      },
+      green: {
+        label: "Forest Green",
+        bg: "#020f08", bg2: "#052e16", panel: "#102016", panel2: "#14532d", panel3: "#166534",
+        line: "rgba(34,197,94,.46)", line2: "rgba(134,239,172,.42)",
+        text: "#f0fdf4", soft: "#bbf7d0", accent: "#86efac", accent2: "#22c55e", good: "#facc15", danger: "#7f1d1d"
+      },
+      purple: {
+        label: "Royal Purple",
+        bg: "#0b0616", bg2: "#1e1233", panel: "#1e1b4b", panel2: "#4c1d95", panel3: "#6d28d9",
+        line: "rgba(167,139,250,.48)", line2: "rgba(196,181,253,.42)",
+        text: "#faf5ff", soft: "#ddd6fe", accent: "#c4b5fd", accent2: "#a78bfa", good: "#86efac", danger: "#7f1d1d"
+      },
+      crimson: {
+        label: "Crimson Red",
+        bg: "#160606", bg2: "#2a0a0a", panel: "#2a0a0a", panel2: "#7f1d1d", panel3: "#991b1b",
+        line: "rgba(248,113,113,.48)", line2: "rgba(254,202,202,.38)",
+        text: "#fff1f2", soft: "#fca5a5", accent: "#fecaca", accent2: "#f87171", good: "#86efac", danger: "#450a0a"
+      },
+      neon: {
+        label: "Neon Cyan",
+        bg: "#020617", bg2: "#07111f", panel: "#07111f", panel2: "#0e7490", panel3: "#155e75",
+        line: "rgba(34,211,238,.50)", line2: "rgba(103,232,249,.46)",
+        text: "#ecfeff", soft: "#a5f3fc", accent: "#67e8f9", accent2: "#22d3ee", good: "#f0abfc", danger: "#7f1d1d"
+      },
+      steel: {
+        label: "Steel Grey",
+        bg: "#030712", bg2: "#111827", panel: "#111827", panel2: "#374151", panel3: "#4b5563",
+        line: "rgba(156,163,175,.48)", line2: "rgba(229,231,235,.30)",
+        text: "#f9fafb", soft: "#d1d5db", accent: "#e5e7eb", accent2: "#9ca3af", good: "#86efac", danger: "#7f1d1d"
+      },
+      candy: {
+        label: "Candy Pink",
+        bg: "#19020b", bg2: "#500724", panel: "#500724", panel2: "#831843", panel3: "#be185d",
+        line: "rgba(249,168,212,.48)", line2: "rgba(251,207,232,.42)",
+        text: "#fff1f2", soft: "#f9a8d4", accent: "#fbcfe8", accent2: "#f472b6", good: "#bbf7d0", danger: "#7f1d1d"
+      }
+    };
+  }
+
+  function rwphGetPanelThemeKey() {
+    const saved = String(GM_getValue(PANEL_THEME_STORAGE_KEY, "bronze") || "bronze").toLowerCase();
+    const presets = rwphPanelThemePresets();
+    return presets[saved] ? saved : "bronze";
+  }
+
+  function rwphGetPanelThemePreset(key = "") {
+    const presets = rwphPanelThemePresets();
+    return presets[String(key || rwphGetPanelThemeKey()).toLowerCase()] || presets.bronze;
+  }
+
+  function rwphPanelThemeCss(theme, styleId = "rwph-panel-theme-choice-v1379") {
+    const t = theme || rwphGetPanelThemePreset();
+    return `
+      :root{
+        --rwph-theme-bg:${t.bg};
+        --rwph-theme-bg2:${t.bg2};
+        --rwph-theme-panel:${t.panel};
+        --rwph-theme-panel2:${t.panel2};
+        --rwph-theme-panel3:${t.panel3};
+        --rwph-theme-line:${t.line};
+        --rwph-theme-line2:${t.line2};
+        --rwph-theme-text:${t.text};
+        --rwph-theme-soft:${t.soft};
+        --rwph-theme-gold:${t.accent};
+        --rwph-theme-orange:${t.accent2};
+        --rwph-theme-green:${t.good};
+        --rwph-theme-red:${t.danger};
+        --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 34px ${t.line};
+      }
+
+      body,
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .app,
+      .hero,
+      .topbar,
+      .side,
+      .summary-card,
+      .result-card,
+      .pay-all-panel,
+      .rwph-loading-shell,
+      .rwph-status-card,
+      .rwph-side-card,
+      .mini,
+      .wait-note,
+      .rw-main-panel,
+      .rw-locked-panel,
+      .rw-admin-panel,
+      .rw-help-panel,
+      .rw-payment-panel,
+      .rw-admin-box,
+      .rw-how-box,
+      .rw-modal,
+      .rw-popup,
+      .rw-toast,
+      .rw-settings-panel,
+      .rw-api-tos-card,
+      .rw-api-tos-dropdown,
+      .rw-settings-dropdown,
+      .rw-card,
+      .rw-box,
+      .rw-section,
+      .rw-panel,
+      [id^="rwph-"][class*="panel"],
+      [class^="rwph-"][class*="panel"],
+      [class*="rwph-"][class*="panel"],
+      [class*="rw-"][class*="panel"]{
+        background:
+          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 32%),
+          radial-gradient(circle at 86% 8%, ${t.line}, transparent 30%),
+          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+        box-shadow:var(--rwph-theme-shadow)!important;
+      }
+
+      #rw-payout-helper header,
+      #rw-payout-helper .rw-header,
+      #rw-payout-helper .rw-title,
+      #rw-payout-helper .rw-panel-head,
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-tabbar,
+      #rw-pay-all-panel .rw-pay-all-head,
+      .rw-pay-all-panel .rw-pay-all-head,
+      .rwph-floating-panel .rwph-panel-head,
+      .rwph-results-loading-panel .rwph-results-loading-head,
+      .rwph-results-html-head,
+      .rw-admin-box h1,
+      .rw-admin-box h2,
+      .rw-how-box h1,
+      .rw-how-box h2,
+      .rw-api-tos-title,
+      .rw-settings-dropdown > summary,
+      .rw-api-tos-dropdown > summary{
+        background:linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
+        border-color:${t.line2}!important;
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper button,
+      #rw-payout-helper .rw-button,
+      #rw-payout-helper .rw-tab,
+      #rw-payout-helper a.btn,
+      #rw-pay-all-panel button,
+      #rw-pay-all-panel a.btn,
+      .rw-pay-all-panel button,
+      .rw-pay-all-panel a.btn,
+      .rwph-floating-panel button,
+      .rwph-floating-panel a.btn,
+      .rwph-results-html-panel button,
+      .rwph-results-html-panel a.btn,
+      .rw-results-panel button,
+      .rw-results-panel a.btn,
+      .rw-admin-box button,
+      .rw-how-box button{
+        background:linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        border-color:${t.line2}!important;
+        color:${t.text}!important;
+        box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
+      }
+
+      #rw-payout-helper button.primary,
+      #rw-payout-helper .primary,
+      #rw-payout-helper .rw-primary,
+      #rw-payout-helper .rw-tab.active,
+      #rw-payout-helper [aria-selected="true"],
+      #rw-pay-all-panel .primary,
+      .rw-pay-all-panel .primary,
+      .rwph-floating-panel .primary,
+      .rwph-results-html-panel .primary,
+      .rw-results-panel .primary{
+        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
+        border-color:${t.line2}!important;
+        color:${t.bg}!important;
+      }
+
+      h1,
+      h2,
+      h3,
+      .title-text,
+      .results-side-title,
+      .summary-card span,
+      .result-name,
+      #rw-payout-helper h1,
+      #rw-payout-helper h2,
+      #rw-payout-helper h3,
+      #rw-payout-helper .rw-title,
+      #rw-payout-helper .rw-section-title,
+      #rw-payout-helper .rw-api-tos-title,
+      #rw-pay-all-panel h1,
+      #rw-pay-all-panel h2,
+      .rw-pay-all-panel h1,
+      .rw-pay-all-panel h2,
+      .rwph-floating-panel h1,
+      .rwph-floating-panel h2,
+      .rwph-results-loading-panel h1,
+      .rwph-results-loading-panel h2,
+      .rwph-results-html-title,
+      .rwph-results-html-preview-title,
+      .rw-results-panel h1,
+      .rw-results-panel h2,
+      .rw-admin-box h1,
+      .rw-admin-box h2,
+      .rw-how-box h1,
+      .rw-how-box h2{
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper label,
+      #rw-payout-helper .rw-muted,
+      #rw-payout-helper .muted,
+      #rw-payout-helper small,
+      #rw-payout-helper .rw-calc-brief,
+      #rw-pay-all-panel .muted,
+      .rw-pay-all-panel .muted,
+      .rwph-floating-panel .muted,
+      .rwph-results-loading-panel .muted,
+      .rwph-results-html-note,
+      .rwph-results-html-status,
+      .rw-results-panel .muted,
+      .rw-admin-box .muted,
+      .rw-how-box .muted{
+        color:${t.soft}!important;
+      }
+
+      #rw-payout-helper input,
+      #rw-payout-helper textarea,
+      #rw-payout-helper select,
+      #rw-pay-all-panel input,
+      #rw-pay-all-panel textarea,
+      #rw-pay-all-panel select,
+      .rw-pay-all-panel input,
+      .rw-pay-all-panel textarea,
+      .rw-pay-all-panel select,
+      .rwph-floating-panel input,
+      .rwph-floating-panel textarea,
+      .rwph-floating-panel select,
+      .rwph-results-html-panel textarea,
+      .rw-results-panel input,
+      .rw-results-panel textarea,
+      .rw-results-panel select,
+      .rw-admin-box input,
+      .rw-admin-box textarea,
+      .rw-admin-box select,
+      .rw-how-box input,
+      .rw-how-box textarea,
+      .rw-how-box select{
+        background:${t.bg}!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      .summary-card,
+      .result-card,
+      .rwph-status-card,
+      .rwph-side-card,
+      .mini,
+      .wait-note,
+      #rw-payout-helper .card,
+      #rw-payout-helper .rw-card,
+      #rw-payout-helper .rw-box,
+      #rw-payout-helper .rw-section,
+      #rw-payout-helper .rw-api-tos-content,
+      #rw-payout-helper .rw-calc-brief,
+      #rw-payout-helper details,
+      #rw-pay-all-panel .rw-pay-all-row,
+      .rw-pay-all-panel .rw-pay-all-row,
+      .rwph-floating-panel .rw-card,
+      .rwph-results-loading-panel .rw-card,
+      .rwph-results-html-preview-wrap,
+      .rwph-results-html-preview,
+      .rw-results-panel .summary-card,
+      .rw-results-panel .result-card,
+      .rw-admin-box .rw-card,
+      .rw-how-box .rw-card{
+        background:${t.panel2}!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings{
+        border-color:${t.line2}!important;
+        background:radial-gradient(circle at 12% 0%, ${t.line2}, transparent 32%),linear-gradient(180deg, ${t.panel3}, ${t.bg})!important;
+        box-shadow:0 0 0 1px rgba(255,255,255,.055) inset,0 18px 44px rgba(0,0,0,.42),0 0 28px ${t.line}!important;
+      }
+      #rw-payout-helper details.rw-per-hit-settings::before,
+      #rw-payout-helper details.rw-points-settings::before{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+      }
+      #rw-payout-helper details.rw-per-hit-settings > summary,
+      #rw-payout-helper details.rw-points-settings > summary{
+        background:linear-gradient(135deg, ${t.line2}, ${t.line}),linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        color:${t.accent}!important;
+        border-bottom-color:${t.line}!important;
+      }
+
+      #rw-payout-helper ::-webkit-scrollbar-thumb,
+      #rw-pay-all-panel ::-webkit-scrollbar-thumb,
+      .rw-pay-all-panel ::-webkit-scrollbar-thumb,
+      .rwph-floating-panel ::-webkit-scrollbar-thumb,
+      .rwph-results-loading-panel ::-webkit-scrollbar-thumb,
+      .rwph-results-html-panel ::-webkit-scrollbar-thumb,
+      .rw-results-panel ::-webkit-scrollbar-thumb{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+        border:2px solid ${t.bg}!important;
+      }
+    `;
+  }
+
+  function rwphApplyPanelThemeChoice(key = "") {
+    const themeKey = key || rwphGetPanelThemeKey();
+    const theme = rwphGetPanelThemePreset(themeKey);
+    let style = document.getElementById("rwph-panel-theme-choice-v1379");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "rwph-panel-theme-choice-v1379";
+      (document.head || document.documentElement).appendChild(style);
+    }
+    style.textContent = rwphPanelThemeCss(theme);
+    document.documentElement.setAttribute("data-rwph-panel-theme", themeKey);
+    const current = document.getElementById("rw-current-panel-theme-label");
+    if (current) current.textContent = theme.label;
+  }
+
+  function rwphClosePanelThemePicker() {
+    const panel = document.getElementById("rwph-panel-theme-picker");
+    if (panel) panel.remove();
+  }
+
+  function rwphOpenPanelThemePicker() {
+    rwphClosePanelThemePicker();
+    const presets = rwphPanelThemePresets();
+    const currentKey = rwphGetPanelThemeKey();
+    const panel = document.createElement("section");
+    panel.id = "rwph-panel-theme-picker";
+    panel.className = "rwph-floating-panel rwph-panel-theme-picker";
+    panel.innerHTML = `
+      <div class="rwph-panel-head rwph-panel-theme-picker-head">
+        <span>Panel Theme / Colours</span>
+        <button id="rwph-theme-picker-close" class="danger" type="button" title="Close">×</button>
+      </div>
+      <div class="rwph-panel-theme-picker-body">
+        <div class="rw-small">Choose a theme below. It changes the colours of RWPH script panels and is saved for this browser/PDA.</div>
+        <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
+        <div class="rwph-panel-theme-grid">
+          ${Object.entries(presets).map(([key, theme]) => `
+            <button class="rwph-theme-choice ${key === currentKey ? "primary" : "secondary"}" type="button" data-rwph-theme-key="${esc(key)}" style="border-color:${esc(theme.line2)}!important;background:linear-gradient(135deg,${esc(theme.panel3)},${esc(theme.bg)})!important;color:${esc(theme.text)}!important;">
+              <span class="rwph-theme-swatch" style="background:linear-gradient(135deg,${esc(theme.accent)},${esc(theme.accent2)});"></span>
+              <span>${esc(theme.label)}</span>
+            </button>`).join("")}
+        </div>
+        <button id="rwph-theme-reset" class="secondary" type="button">Reset to Bronze Gold</button>
+      </div>
+      <div class="rwph-resize-handle" data-rwph-resize-dir="se" title="Resize"></div>
+    `;
+    document.body.appendChild(panel);
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-theme-picker-head");
+    rwphApplyPanelThemeChoice(currentKey);
+
+    panel.querySelector("#rwph-theme-picker-close")?.addEventListener("click", rwphClosePanelThemePicker);
+    panel.querySelector("#rwph-theme-reset")?.addEventListener("click", () => {
+      GM_setValue(PANEL_THEME_STORAGE_KEY, "bronze");
+      rwphApplyPanelThemeChoice("bronze");
+      rwphOpenPanelThemePicker();
+    });
+    panel.querySelectorAll("[data-rwph-theme-key]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-rwph-theme-key") || "bronze";
+        GM_setValue(PANEL_THEME_STORAGE_KEY, key);
+        rwphApplyPanelThemeChoice(key);
+        panel.querySelectorAll("[data-rwph-theme-key]").forEach((b) => b.classList.toggle("primary", b === btn));
+        panel.querySelectorAll("[data-rwph-theme-key]").forEach((b) => b.classList.toggle("secondary", b !== btn));
+      });
+    });
+  }
+
+  function attachPanelThemeButton() {
+    const btn = document.getElementById("rw-open-theme-picker");
+    if (!btn || btn.dataset.rwphThemeReady === "1") return;
+    btn.dataset.rwphThemeReady = "1";
+    btn.addEventListener("click", rwphOpenPanelThemePicker);
+  }
+
 
   function attachMoveLauncherButton() {
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
@@ -5681,8 +6140,12 @@
         <div class="rwph-results-html-preview-title">Preview</div>
         <div class="rwph-results-html-preview">${variant.html}</div>
       </div>
-      <div class="rwph-results-html-preview-title">Raw HTML — right-click here, Select All, then Copy</div>
-      <textarea class="rwph-results-html-box" id="${esc(variant.panelId)}-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();">${esc(variant.html)}</textarea>
+      <div class="rwph-results-html-preview-title">Raw HTML</div>
+      <div class="rwph-select-raw-html-row">
+        <button class="btn secondary rwph-select-results-html-btn" data-results-html-box="${esc(variant.panelId)}-box" type="button">Select All Raw HTML</button>
+        <span>Then press Ctrl+C, or long-press/right-click and Copy.</span>
+      </div>
+      <textarea class="rwph-results-html-box" id="${esc(variant.panelId)}-box" data-rwph-raw-html-box="1" readonly spellcheck="false" aria-label="${esc(variant.label)} raw HTML code" onfocus="this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}" onclick="this.focus();this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}" onmouseup="this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}" ontouchend="var t=this;setTimeout(function(){try{t.focus();t.select();t.setSelectionRange(0,t.value.length)}catch(e){}},30)" oncontextmenu="this.focus();this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}">${esc(variant.html)}</textarea>
     </section>`).join("");
 
     const cards = list.map((r) => {
@@ -5745,6 +6208,7 @@
       --green:#86efac;
     }
     * { box-sizing:border-box; }
+    ${rwphPanelThemeCss(rwphGetPanelThemePreset())}
     body {
       margin:0;
       min-height:100vh;
@@ -5947,6 +6411,10 @@
     .rwph-results-html-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;margin-top:3px;}
     .rwph-results-html-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;cursor:pointer;}
     .rwph-results-html-box{flex:1 1 auto;min-height:120px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
+    .rwph-results-html-box::selection{background:rgba(251,191,36,.42)!important;color:#fff!important;}
+    .rwph-select-raw-html-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:0 0 6px 0;padding:8px;border:1px solid rgba(251,191,36,.22);border-radius:13px;background:rgba(2,6,23,.42);box-sizing:border-box;text-align:center;}
+    .rwph-select-raw-html-row .btn{width:100%;min-height:34px;font-size:11px!important;padding:8px 10px!important;}
+    .rwph-select-raw-html-row span{display:block;color:#fde68a;font:850 10px/1.25 Arial,Helvetica,sans-serif;}
     .rwph-results-html-status{min-height:18px;text-align:center;color:#fde68a;font:800 11px/1.3 Arial,Helvetica,sans-serif;}
     .rwph-results-html-preview-wrap{flex:0 1 auto;max-height:45%;min-height:120px;overflow:auto;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;padding:8px;box-sizing:border-box;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-results-html-preview-title{color:#fde68a;text-align:center;font:900 11px/1.2 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.25px;margin:0 0 5px;}
@@ -5954,7 +6422,7 @@
     .rwph-results-html-preview table{max-width:100%!important;}
     @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
 
-    /* v1.1.376 unified RWPH panel palette for results/newsletter page */
+    /* v1.1.379 unified RWPH panel palette for results/newsletter page */
     :root{
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
@@ -6607,7 +7075,7 @@
     </section>
       <div class="results-action-zone" aria-label="Results actions">
         <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or open the Newsletter dropdown for compact themed HTML panels.</p>
-        <button class="btn secondary" id="thisPageHtmlBtn" type="button">This page HTML</button>
+        <a class="btn secondary" id="thisPageHtmlBtn" href="#" onclick="return window.rwphExportResultsHtml ? window.rwphExportResultsHtml(event) : false;">Export Html</a>
         <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
         ${rwphNewsletterButtonsHtml}
@@ -6676,6 +7144,20 @@
     const summary = ${summaryJson};
     const csvText = ${JSON.stringify(csvText).replaceAll("<", "\\u003c")};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
+    const rwphOpenResultsStorageKey = "rw_payout_helper_last_results_html_open";
+
+    function rwphRememberStandaloneResultsOpen() {
+      try {
+        localStorage.setItem(rwphOpenResultsStorageKey, JSON.stringify({
+          active: true,
+          url: String(location.href || ""),
+          createdAt: Date.now(),
+          html: "<!doctype html>\n" + document.documentElement.outerHTML
+        }));
+      } catch (_) {}
+    }
+    window.addEventListener("beforeunload", rwphRememberStandaloneResultsOpen);
+    setTimeout(rwphRememberStandaloneResultsOpen, 250);
 
     function storePayAllRowsFallback() {
       try {
@@ -6969,98 +7451,122 @@
 
     function getCurrentResultsPageHtml() {
       var docClone = document.documentElement.cloneNode(true);
-      var oldPanel = docClone.querySelector("#rwph-results-html-panel");
-      if (oldPanel) oldPanel.remove();
+
+      // Do not include hidden newsletter/raw-html/export helper panels in the page export.
+      docClone.querySelectorAll(".rwph-results-html-panel,#rwph-export-html-panel").forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+
+      // Make the exported file a clean static results page, not a second live RWPH tool page.
+      docClone.querySelectorAll("script").forEach(function(el) {
+        try { el.remove(); } catch (_) {}
+      });
+
       var cleanButton = docClone.querySelector("#thisPageHtmlBtn");
-      if (cleanButton) cleanButton.setAttribute("data-downloaded-from", "rwph-results-page");
+      if (cleanButton) {
+        cleanButton.textContent = "Export Html";
+        cleanButton.removeAttribute("onclick");
+        cleanButton.removeAttribute("href");
+        cleanButton.setAttribute("data-downloaded-from", "rwph-results-page");
+      }
+
+      // Preserve current textarea/input values where useful.
+      Array.prototype.forEach.call(document.querySelectorAll("textarea"), function(src) {
+        try {
+          var id = src.id;
+          if (!id) return;
+          var dst = docClone.querySelector("#" + CSS.escape(id));
+          if (dst) dst.textContent = src.value || src.textContent || "";
+        } catch (_) {}
+      });
+
       return "<!doctype html>\n" + docClone.outerHTML;
     }
 
-    function buildCompactThemedNewsletterHtml() {
-      var sourceRows = Array.isArray(rows) ? rows : [];
-      var maxRows = 120;
-      var shownRows = sourceRows.slice(0, maxRows);
-      var s = summary || {};
-      var isPoints = !!(s.pointsMode || s.calculationMode === "points");
-      var title = String(s.factionName || s.newsletterTitle || "Ranked War Payout Results");
-      var mode = isPoints ? "Advanced" : "Basic";
-      var totalPaid = sourceRows.reduce(function(sum, r) { return sum + Number(r.payout || 0); }, 0);
-      var shownPaid = shownRows.reduce(function(sum, r) { return sum + Number(r.payout || 0); }, 0);
-      var totalRespect = Number(s.totalRespect || sourceRows.reduce(function(sum, r) { return sum + Number(r.totalRespect || r.respect || 0); }, 0));
-      var totalPayable = Number(s.totalPayableEvents || sourceRows.reduce(function(sum, r) { return sum + Number(r.payableEvents || 0); }, 0));
-      var perUnit = Number(isPoints ? (s.perPointAmount || s.perHitAmount || s.payPerPoint || 0) : (s.perHitAmount || s.payPerHit || 0));
-      if (!perUnit) {
-        var units = sourceRows.reduce(function(sum, r) {
-          return sum + Number(isPoints ? (r.points || r.weight || 0) : (r.payableEvents || r.weight || r.warHits || r.attacks || 0));
-        }, 0);
-        perUnit = units ? totalPaid / units : 0;
-      }
-
-      function cleanName(v) {
-        return String(v || "").replace(/\s+/g, " ").trim();
-      }
-      function stat(label, value, bg) {
-        return '<td width="50%" bgcolor="' + bg + '" align="center" style="border:1px solid #6b3b18;padding:3px;color:#fff7ed;word-break:break-word"><b style="color:#ffd37a">' + escapeHtml(label) + '</b><br>' + escapeHtml(value) + '</td>';
-      }
-      function memberCell(r, index, bg) {
-        var name = cleanName(r.name || ("Unknown " + (r.id || "")));
-        var metric = isPoints ? Number(r.points || r.weight || 0).toFixed(1) : String(Number(r.payableEvents || r.weight || r.warHits || r.attacks || 0));
-        return '<td width="50%" bgcolor="' + bg + '" align="center" style="border:1px solid #5b3418;padding:3px;color:#fff7ed;word-break:break-word;vertical-align:top">'
-          + '<b style="color:#ffd37a">#' + (index + 1) + '</b> <b>' + escapeHtml(name) + '</b><br>'
-          + '<span style="color:#cbd5e1">' + (isPoints ? 'Pts ' : 'Hits ') + escapeHtml(metric) + '</span><br>'
-          + '<b style="color:#86efac">' + escapeHtml(money(r.payout || 0)) + '</b>'
-          + '</td>';
-      }
-
-      var html = '';
-      html += '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:#120905;color:#fff7ed;font:10px Arial,Helvetica,sans-serif">';
-      html += '<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:6px;color:#fff7ed">';
-      html += '<div style="font-size:14px;font-weight:bold;color:#ffd37a">' + escapeHtml(title) + '</div>';
-      html += '<div style="font-size:9px;color:#cfaa8e">' + mode + ' payout newsletter • compact 120-card layout</div>';
-      html += '</td></tr>';
-      html += '<tr>' + stat('Total Payout', money(totalPaid), '#20130c') + stat(isPoints ? 'Per Point' : 'Per Hit', money(perUnit), '#1a2533') + '</tr>';
-      html += '<tr>' + stat('Payable Hits', String(totalPayable || 0), '#1a2533') + stat('Total Respect', Number(totalRespect || 0).toFixed(2), '#20130c') + '</tr>';
-      html += '<tr>' + stat('Members Shown', String(shownRows.length) + (sourceRows.length > maxRows ? ' / ' + sourceRows.length : ''), '#20130c') + stat('Shown Payout', money(shownPaid), '#1a2533') + '</tr>';
-      html += '<tr><td colspan="2" bgcolor="#2a1609" align="center" style="border:1px solid #b88759;padding:4px;color:#ffd37a;font-weight:bold">Payout Cards</td></tr>';
-
-      for (var i = 0; i < shownRows.length; i += 2) {
-        html += '<tr>';
-        html += memberCell(shownRows[i], i, i % 4 === 0 ? '#1b1208' : '#111827');
-        if (shownRows[i + 1]) {
-          html += memberCell(shownRows[i + 1], i + 1, i % 4 === 0 ? '#111827' : '#1b1208');
-        } else {
-          html += '<td width="50%" bgcolor="#120905" style="border:1px solid #5b3418;padding:3px">&nbsp;</td>';
-        }
-        html += '</tr>';
-      }
-
-      if (!shownRows.length) {
-        html += '<tr><td colspan="2" align="center" bgcolor="#1b1208" style="border:1px solid #5b3418;padding:8px;color:#ffd37a">No payout rows found.</td></tr>';
-      }
-      if (sourceRows.length > maxRows) {
-        html += '<tr><td colspan="2" align="center" bgcolor="#2a1609" style="border:1px solid #b88759;padding:4px;color:#cfaa8e">Only the first 120 rows are included so the Torn faction newsletter stays short enough to post.</td></tr>';
-      }
-      html += '<tr><td colspan="2" align="center" bgcolor="#120905" style="border:1px solid #5b3418;padding:4px;color:#cfaa8e">Generated by Ranked War Payout Helper. Review payouts before sending funds.</td></tr>';
-      html += '</table>';
-      return html.replace(/>\s+</g, "><").trim();
+    function rwphExportHtmlFilename() {
+      var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      return "rwph-results-page-" + stamp + ".html";
     }
 
-    function downloadThisResultsPageHtml() {
+    function rwphOpenExportHtmlFallbackPanel(html, filename, reason) {
       try {
-        var html = getCurrentResultsPageHtml();
-        var blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-        a.href = url;
-        a.download = "rwph-results-page-" + stamp + ".html";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 1500);
+        var old = document.getElementById("rwph-export-html-panel");
+        if (old) old.remove();
+
+        var panel = document.createElement("section");
+        panel.id = "rwph-export-html-panel";
+        panel.className = "rwph-results-html-panel";
+        panel.style.display = "flex";
+        panel.style.visibility = "visible";
+        panel.style.opacity = "1";
+        panel.innerHTML = ''
+          + '<div class="rwph-results-html-head">'
+          + '<div><div class="rwph-results-html-title">Export Html</div>'
+          + '<div class="rwph-results-html-note">The direct download was blocked or too large for this browser/PDA. Right-click or long-press inside the box, Select All, then Copy. Save it as an .html file.</div></div>'
+          + '<a class="rwph-results-html-close" href="#" title="Close">×</a>'
+          + '</div>'
+          + '<div class="rwph-results-html-status">' + escapeHtml(reason || "Manual export fallback ready.") + ' File name: ' + escapeHtml(filename || "rwph-results-page.html") + '</div>'
+          + '<textarea class="rwph-results-html-box" id="rwph-export-html-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>';
+        (document.body || document.documentElement).appendChild(panel);
+        var box = document.getElementById("rwph-export-html-box");
+        if (box) {
+          box.value = String(html || "");
+          setTimeout(function() { try { box.focus(); box.select(); } catch (_) {} }, 60);
+        }
+        var close = panel.querySelector(".rwph-results-html-close");
+        if (close) close.addEventListener("click", function(ev) {
+          try { ev.preventDefault(); } catch (_) {}
+          panel.remove();
+        });
       } catch (e) {
-        alert("Could not download this results page HTML.");
-        console.warn("RWPH result page HTML download failed:", e);
+        alert("Could not export or show the HTML fallback panel.");
+        console.warn("RWPH export HTML fallback failed:", e);
+      }
+    }
+
+    function rwphDownloadHtmlWithoutBlob(filename, html) {
+      var value = String(html || "");
+      var safeName = String(filename || "rwph-results-page.html");
+
+      // Use data: download first. This avoids blob: URLs, which Torn PDA/phone browsers can refuse.
+      try {
+        var href = "data:text/html;charset=utf-8," + encodeURIComponent(value);
+        if (href.length < 1900000) {
+          var a = document.createElement("a");
+          a.href = href;
+          a.download = safeName;
+          a.rel = "noopener";
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          return true;
+        }
+        rwphOpenExportHtmlFallbackPanel(value, safeName, "HTML is too large for a safe data-link download.");
+        return false;
+      } catch (e) {
+        console.warn("RWPH data-link HTML export failed:", e);
+      }
+
+      rwphOpenExportHtmlFallbackPanel(value, safeName, "Download was blocked by this browser/PDA.");
+      return false;
+    }
+
+    function downloadThisResultsPageHtml(ev) {
+      try {
+        if (ev) {
+          if (ev.__rwphExportHandled) return false;
+          ev.__rwphExportHandled = true;
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        }
+        var html = getCurrentResultsPageHtml();
+        var filename = rwphExportHtmlFilename();
+        rwphDownloadHtmlWithoutBlob(filename, html);
+        return false;
+      } catch (e) {
+        alert("Could not export this results page HTML.");
+        console.warn("RWPH result page HTML export failed:", e);
+        return false;
       }
     }
 
@@ -7129,8 +7635,19 @@
       }
     }
 
+    window.rwphExportResultsHtml = downloadThisResultsPageHtml;
+
     var thisPageHtmlBtn = document.getElementById("thisPageHtmlBtn");
-    if (thisPageHtmlBtn) thisPageHtmlBtn.addEventListener("click", downloadThisResultsPageHtml);
+    if (thisPageHtmlBtn) {
+      thisPageHtmlBtn.addEventListener("click", downloadThisResultsPageHtml);
+      thisPageHtmlBtn.addEventListener("touchend", downloadThisResultsPageHtml, { passive: false });
+    }
+    document.addEventListener("click", function(ev) {
+      var target = ev && ev.target;
+      var btn = target && target.closest ? target.closest("#thisPageHtmlBtn") : null;
+      if (!btn) return;
+      downloadThisResultsPageHtml(ev);
+    }, true);
 
     window.rwphOpenResultsHtmlPanel = openResultsHtmlPanel;
 
@@ -7149,18 +7666,59 @@
     });
     document.addEventListener("click", rwphHandleResultsHtmlPanelClick, true);
 
+    function rwphSelectRawHtmlBox(box) {
+      if (!box) return false;
+      try {
+        box.focus();
+        box.select();
+        if (typeof box.setSelectionRange === "function") box.setSelectionRange(0, String(box.value || "").length);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    document.addEventListener("click", function(ev) {
+      var target = ev && ev.target;
+      var btn = target && target.closest ? target.closest(".rwph-select-results-html-btn") : null;
+      if (!btn) return;
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      var boxId = btn.getAttribute("data-results-html-box") || "";
+      var box = boxId ? document.getElementById(boxId) : null;
+      var ok = rwphSelectRawHtmlBox(box);
+      var panel = btn.closest ? btn.closest(".rwph-results-html-panel") : null;
+      var status = panel && panel.querySelector ? panel.querySelector(".rwph-results-html-status") : null;
+      if (status) status.textContent = ok ? "Raw HTML selected. Now press Ctrl+C, or long-press/right-click and Copy." : "Could not auto-select. Tap inside the raw HTML box and use Select All.";
+    }, true);
+
+    document.addEventListener("touchend", function(ev) {
+      var target = ev && ev.target;
+      var btn = target && target.closest ? target.closest(".rwph-select-results-html-btn") : null;
+      if (!btn) return;
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      setTimeout(function() {
+        var boxId = btn.getAttribute("data-results-html-box") || "";
+        rwphSelectRawHtmlBox(boxId ? document.getElementById(boxId) : null);
+      }, 40);
+    }, { passive:false, capture:true });
+
     document.addEventListener("contextmenu", function(ev) {
       var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
       if (!box) return;
-      try { box.focus(); box.select(); } catch (_) {}
+      rwphSelectRawHtmlBox(box);
     }, true);
     document.addEventListener("focusin", function(ev) {
       var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
       if (!box) return;
-      try { box.select(); } catch (_) {}
+      rwphSelectRawHtmlBox(box);
+    }, true);
+    document.addEventListener("mouseup", function(ev) {
+      var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
+      if (!box) return;
+      setTimeout(function(){ rwphSelectRawHtmlBox(box); }, 0);
     }, true);
 
-    // v1.1.376: newsletter panel copy/download buttons removed. Use right-click/select all/copy on the raw HTML box.
+    // v1.1.379: newsletter raw HTML boxes auto-select on focus/click/right-click, with a Select All Raw HTML helper button.
 
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
@@ -7207,6 +7765,7 @@
   <title>RWPH Loading Results</title>
   <style>
     * { box-sizing:border-box; }
+    ${rwphPanelThemeCss(rwphGetPanelThemePreset())}
     :root{
       --rw-bg:#130b07;
       --rw-bg2:#21110b;
@@ -7223,7 +7782,7 @@
       --rw-red:#7f1d1d;
       --rw-shadow:0 18px 55px rgba(0,0,0,.56);
 
-      /* v1.1.376 unified RWPH loading panel palette */
+      /* v1.1.379 unified RWPH loading panel palette */
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
       --rwph-theme-panel2:#2b1d18;
@@ -7648,6 +8207,14 @@
         try {
           if (rwphManualResultsStorageKey) localStorage.removeItem(rwphManualResultsStorageKey);
         } catch (_) {}
+        try {
+          localStorage.setItem("rw_payout_helper_last_results_html_open", JSON.stringify({
+            active: true,
+            url: String(location.href || ""),
+            createdAt: Date.now(),
+            html: String(html || "")
+          }));
+        } catch (_) {}
         document.open();
         document.write(html);
         document.close();
@@ -7784,7 +8351,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.376: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.379: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -7926,7 +8493,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.376: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.379: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -7999,7 +8566,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.376: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.379: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -8885,7 +9452,7 @@
   }
 
 
-  // v1.1.376: Basic  removed.
+  // v1.1.379: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
@@ -10837,7 +11404,7 @@
               <li><b>Duplicate protection:</b> if a matching cached report already exists, RWPH asks you to use that report instead of starting a duplicate calculation.</li>
               <li><b>Use Cached Report:</b> opens the matching cached Basic or Advanced report when available.</li>
               <li><b>Delete Cache:</b> removes the matching cached report. Successful deletes are limited to one every 10 minutes.</li>
-              <li><b>Results panel:</b> shows all result stats, member cards, CSV export, This Page HTML, Payments, and Newsletter tools.</li>
+              <li><b>Results panel:</b> shows all result stats, member cards, CSV export, Export Html, Payments, and Newsletter tools.</li>
             </ul>
           </div>
 
@@ -10846,7 +11413,7 @@
             <ul class="rw-how-list">
               <li><b>Payments:</b> opens the payment helper from the results page. RWPH helps copy/prefill details but does not send money.</li>
               <li><b>Manual safety:</b> always check Torn fields yourself before confirming any payment. Use Add To Balance where your faction process requires it.</li>
-              <li><b>This Page HTML:</b> downloads the current results page as an HTML file for records.</li>
+              <li><b>Export Html:</b> downloads the current results page as an HTML file for records.</li>
               <li><b>Newsletter dropdown:</b> opens styled newsletter HTML versions. Each panel has a preview and a raw HTML box.</li>
               <li><b>Copy newsletter HTML:</b> right-click inside the raw HTML box, choose Select All, then Copy.</li>
             </ul>
@@ -10913,6 +11480,7 @@
     const lockedResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(lockedResultsPanel);
     attachMoveLauncherButton();
+    attachPanelThemeButton();
     rwphBindAdminControls(panel);
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
@@ -11373,6 +11941,7 @@
           </details>
           <div class="rw-actions" id="rw-last-results-actions">
             <button id="rw-move-launcher" class="secondary">Launcher Movement</button>
+            <button id="rw-open-theme-picker" class="secondary" type="button">Panel Theme / Colours</button>
           </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
@@ -11475,7 +12044,7 @@
               <li><b>Duplicate protection:</b> if a matching cached report already exists, RWPH asks you to use that report instead of starting a duplicate calculation.</li>
               <li><b>Use Cached Report:</b> opens the matching cached Basic or Advanced report when available.</li>
               <li><b>Delete Cache:</b> removes the matching cached report. Successful deletes are limited to one every 10 minutes.</li>
-              <li><b>Results panel:</b> shows all result stats, member cards, CSV export, This Page HTML, Payments, and Newsletter tools.</li>
+              <li><b>Results panel:</b> shows all result stats, member cards, CSV export, Export Html, Payments, and Newsletter tools.</li>
             </ul>
           </div>
 
@@ -11484,7 +12053,7 @@
             <ul class="rw-how-list">
               <li><b>Payments:</b> opens the payment helper from the results page. RWPH helps copy/prefill details but does not send money.</li>
               <li><b>Manual safety:</b> always check Torn fields yourself before confirming any payment. Use Add To Balance where your faction process requires it.</li>
-              <li><b>This Page HTML:</b> downloads the current results page as an HTML file for records.</li>
+              <li><b>Export Html:</b> downloads the current results page as an HTML file for records.</li>
               <li><b>Newsletter dropdown:</b> opens styled newsletter HTML versions. Each panel has a preview and a raw HTML box.</li>
               <li><b>Copy newsletter HTML:</b> right-click inside the raw HTML box, choose Select All, then Copy.</li>
             </ul>
@@ -11551,6 +12120,7 @@
     const mainResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(mainResultsPanel);
     attachMoveLauncherButton();
+    attachPanelThemeButton();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
     const adminTabBtn = document.getElementById("rw-tab-admin");
@@ -12452,7 +13022,7 @@
         }
 
 
-        /* v1.1.376: Stronger Basic/Advanced calculation dropdown cards */
+        /* v1.1.379: Stronger Basic/Advanced calculation dropdown cards */
         #rw-payout-helper details.rw-per-hit-settings,
         #rw-payout-helper details.rw-points-settings{
           position:relative !important;
@@ -12554,6 +13124,77 @@
           padding:10px !important;
         }
 
+
+        .rwph-panel-theme-picker{
+          position:fixed!important;
+          z-index:2147483647!important;
+          left:50%!important;
+          top:50%!important;
+          transform:translate(-50%,-50%)!important;
+          width:min(560px,calc(100vw - 20px))!important;
+          max-height:calc(100vh - 24px)!important;
+          overflow:auto!important;
+          padding:12px!important;
+          border-radius:22px!important;
+          border:1px solid var(--rwph-theme-line2)!important;
+          box-sizing:border-box!important;
+        }
+        .rwph-panel-theme-picker-head{
+          display:flex!important;
+          align-items:center!important;
+          justify-content:space-between!important;
+          gap:10px!important;
+          padding:10px 12px!important;
+          border-radius:16px!important;
+          border:1px solid var(--rwph-theme-line2)!important;
+          cursor:move!important;
+          user-select:none!important;
+          touch-action:none!important;
+          color:var(--rwph-theme-gold)!important;
+          font:950 14px/1.2 Arial,Helvetica,sans-serif!important;
+          text-transform:uppercase!important;
+          letter-spacing:.35px!important;
+        }
+        .rwph-panel-theme-picker-body{
+          display:grid!important;
+          gap:10px!important;
+          padding:10px 2px 2px!important;
+        }
+        .rwph-panel-theme-current{
+          padding:9px 10px!important;
+          border-radius:13px!important;
+          border:1px solid var(--rwph-theme-line)!important;
+          background:rgba(2,6,23,.28)!important;
+          color:var(--rwph-theme-soft)!important;
+          text-align:center!important;
+          font:850 11px/1.35 Arial,Helvetica,sans-serif!important;
+        }
+        .rwph-panel-theme-current b{color:var(--rwph-theme-gold)!important;}
+        .rwph-panel-theme-grid{
+          display:grid!important;
+          grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;
+          gap:8px!important;
+        }
+        .rwph-theme-choice{
+          display:flex!important;
+          align-items:center!important;
+          justify-content:flex-start!important;
+          gap:8px!important;
+          min-height:42px!important;
+          border-radius:13px!important;
+          padding:8px 10px!important;
+          font:900 11px/1.2 Arial,Helvetica,sans-serif!important;
+          text-align:left!important;
+        }
+        .rwph-theme-swatch{
+          flex:0 0 24px!important;
+          width:24px!important;
+          height:24px!important;
+          border-radius:999px!important;
+          border:1px solid rgba(255,255,255,.28)!important;
+          box-shadow:0 0 12px rgba(255,255,255,.12)!important;
+        }
+
         #rw-payout-helper .success,
         #rw-pay-all-panel .success,
         .rw-pay-all-panel .success,
@@ -12572,5 +13213,6 @@
 
 
   rwphInjectUnifiedPanelThemeV1375();
+  rwphApplyPanelThemeChoice();
 
 })();
