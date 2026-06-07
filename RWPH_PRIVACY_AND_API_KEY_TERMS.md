@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.388**
+Version: **1.1.391**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -207,7 +207,20 @@ This update changes licence credit from 20 days per Xanax to **15 days per Xanax
 
 Admins can enable or disable bonus licence days for new Xanax purchases from the Admin panel. Toggling this setting does not remove existing licence time. When disabled, new purchases still receive the configured base licence days per Xanax, but no bonus days or bonus milestone progress are added.
 
+## v1.1.389 note - locked screen 15-day wording
+
+This update corrects the locked screen text to show **15 days per Xanax**. Licence/payment rules, API key usage, and backend terms are unchanged.
+
 ## v1.1.388 note - admin editable purchase bonuses
 
 Admins can add or change the purchase bonus milestone rules from the Admin panel. These saved backend settings apply only to new Xanax licence purchases made after the change. Existing licence time is not removed or recalculated by editing bonus rules. API key usage and backend data handling are unchanged.
 
+
+## v1.1.391 note - admin bonus dropdown and .env saving
+
+Admins can now manage individual purchase bonus rules from a dropdown in the Admin panel. Bonus entries can be enabled, disabled, edited, added, or deleted, and saving attempts to write the updated bonus configuration to the server `.env` file. These changes apply only to new Xanax licence purchases after the edit. Existing licence time is not removed or recalculated. API key usage is unchanged.
+
+
+## v1.1.391 note - updated purchase bonus defaults
+
+This update changes the default cumulative user milestone bonuses to `25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30` and default single-order bonuses to `10:15,25:45,50:100,100:200,500:1000`. Admins can still add new bonuses from the dropdown; saved bonuses appear as their own green/red buttons and can be written back to `.env` when the server host allows file writes. Existing licence time is not removed or recalculated.

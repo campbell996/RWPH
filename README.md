@@ -242,7 +242,7 @@ By default, the included `.env.example` is configured for Xanax payments:
 - Required item ID: `206`
 - Required item name: `Xanax`
 - Required quantity: `1`
-- Default licence days per Xanax: `20`
+- Default licence days per Xanax: `15`
 
 The backend can be configured to use a different item, name, quantity, or licence duration.
 
@@ -265,27 +265,41 @@ Default cumulative per-user milestones:
 
 | Total Xanax paid by that Torn ID | Bonus days |
 | ---: | ---: |
-| 15 | +20 |
-| 30 | +50 |
-| 60 | +100 |
-| 100 | +250 |
+| 25 | +30 |
+| 50 | +30 |
+| 75 | +30 |
+| 100 | +30 |
+| 150 | +30 |
+| 200 | +30 |
+| 250 | +30 |
+| 300 | +30 |
 
 Default single-order bonuses:
 
 | Xanax sent in one order | Bonus days |
 | ---: | ---: |
-| 50 | +365 |
-| 100 | +730 |
+| 10 | +15 |
+| 25 | +45 |
+| 50 | +100 |
+| 100 | +200 |
+| 500 | +1000 |
 
-These values start from `.env` defaults and can also be changed later from the Admin panel without editing the server file:
+These values start from `.env` defaults and can also be changed later from the Admin panel bonus dropdown. Saving from the bonus editor writes the updated bonus values back to the server `.env` file when the host allows file writes:
 
 ```env
-BONUS_MILESTONES=15:20,30:50,60:100,100:250
-SINGLE_ORDER_BONUS_MILESTONES=50:365,100:730
+BONUS_MILESTONES=25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30
+SINGLE_ORDER_BONUS_MILESTONES=10:15,25:45,50:100,100:200,500:1000
 PURCHASE_BONUSES_ENABLED=true
 ```
 
-Bonuses are calculated per Torn user. Another user's payments do not count toward someone else's cumulative milestone progress.
+Individual bonus entries can also be disabled without deleting them by adding `:off`:
+
+```env
+BONUS_MILESTONES=25:30,50:30:off,75:30,100:30,150:30,200:30,250:30,300:30
+SINGLE_ORDER_BONUS_MILESTONES=10:15,25:45:off,50:100,100:200,500:1000
+```
+
+Green bonus buttons in the Admin dropdown are enabled. Red bonus buttons are saved but skipped for new purchases. Bonuses are calculated per Torn user. Another user's payments do not count toward someone else's cumulative milestone progress.
 
 ### Admin Tools
 
@@ -299,7 +313,8 @@ Admin features:
 - Extend an existing licence by adding days.
 - Remove licence days from a user.
 - Enable or disable purchase bonuses for new Xanax purchases.
-- Add or change purchase bonus rules for new purchases.
+- Add, change, enable, disable, or delete individual purchase bonus rules for new purchases.
+- Save bonus dropdown edits back to the backend database and server `.env` file where the host allows writes.
 - Auto-grant the owner account a long licence when the admin key is saved.
 - Fill a selected licence into the admin form from the licence list.
 
@@ -1131,6 +1146,11 @@ The old Include Left Members / automatic left-member removal system has been rem
 - When disabled, new purchases still receive the normal 15 licence days per Xanax, but bonus days and bonus milestone progress are not added.
 - Added `/api/admin/bonus-settings` so the userscript can read and update the persisted server setting.
 
+## v1.1.389 - Locked screen 15-day Xanax wording
+
+- Fixed the locked/unlock screen heading so it now says each Xanax extends the licence by **15 days** instead of 20 days.
+- Updated the README default Xanax licence days note from 20 to 15.
+
 ## v1.1.388 - Admin editable purchase bonuses
 
 - Added admin editing for purchase bonus rules.
@@ -1140,3 +1160,21 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Existing licences and previously recorded payments are not recalculated or reduced.
 - The `.env` bonus values still act as startup/default rules when the database has no admin-edited rules saved.
 
+
+## v1.1.391 - Updated default bonus lists and add-bonus button flow
+
+- Changed default cumulative user milestone bonuses to `25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30`.
+- Changed default single-order bonuses to `10:15,25:45,50:100,100:200,500:1000`.
+- Admin-added bonuses save to the backend and then appear as their own green/red button in the Purchase Bonus Dropdown.
+- Old v1.1.390 default database bonus rules are migrated to the new default lists so they do not stay stuck on the previous defaults.
+
+## v1.1.390 - Admin bonus dropdown and .env saving
+
+- Changed the Admin purchase bonus section into a dropdown-style bonus manager.
+- Each bonus now appears as its own button: green for enabled, red for disabled.
+- Clicking a bonus opens an editor panel where admins can change Xanax amount, bonus days, and enabled/disabled status.
+- Admins can add new user milestone bonuses and single-order bonuses from the dropdown.
+- Admins can delete a bonus rule from the editor panel.
+- Saving bonus edits updates the backend database and attempts to write the new bonus config to the server `.env` file.
+- `.env` bonus rules now support optional `:off` entries, for example `50:30:off`.
+- Existing licence days are not recalculated or removed by changing bonus rules.
