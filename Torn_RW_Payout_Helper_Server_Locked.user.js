@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.381
+// @version      1.1.384
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.381: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.384: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -53,6 +53,7 @@
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
   const LAST_RESULTS_HTML_OPEN_STORAGE_KEY = "rw_payout_helper_last_results_html_open";
+  const RESULTS_LOADING_PANEL_STATE_STORAGE_KEY = "rw_payout_helper_results_loading_panel_state";
   const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
@@ -76,8 +77,70 @@
     try { localStorage.removeItem(LAST_RESULTS_HTML_OPEN_STORAGE_KEY); } catch (_) {}
   }
 
+  function rwphCurrentTopPageUrl() {
+    try {
+      if (window.top && window.top.location && window.top.location.href && String(window.top.location.href) !== "about:blank") {
+        return String(window.top.location.href);
+      }
+    } catch (_) {}
+    try {
+      if (window.parent && window.parent.location && window.parent.location.href && String(window.parent.location.href) !== "about:blank") {
+        return String(window.parent.location.href);
+      }
+    } catch (_) {}
+    return String(location.href || "");
+  }
+
+  function rwphRememberResultsLoadingPanelState(state = {}) {
+    try {
+      const progressId = String(state.progressId || "").trim();
+      const html = String(state.html || "");
+      if (!progressId && !html) return;
+      const current = rwphReadResultsLoadingPanelState(false) || {};
+      localStorage.setItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY, JSON.stringify({
+        ...current,
+        ...state,
+        active: true,
+        url: rwphCurrentTopPageUrl(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        progressId,
+        startedAtMs: Number(state.startedAtMs || current.startedAtMs || Date.now()),
+        type: String(state.type || current.type || (html ? "ready" : "loading")),
+      }));
+    } catch (e) {
+      console.warn("RWPH could not remember results loading panel state:", e);
+    }
+  }
+
+  function rwphReadResultsLoadingPanelState(validateAge = true) {
+    try {
+      const raw = localStorage.getItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY);
+      if (!raw) return null;
+      const stored = JSON.parse(raw);
+      if (!stored || !stored.active) return null;
+      const age = Date.now() - Number(stored.createdAt || stored.updatedAt || 0);
+      if (validateAge && (!isFinite(age) || age < 0 || age > 24 * 60 * 60 * 1000)) {
+        localStorage.removeItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY);
+        return null;
+      }
+      return stored;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphClearResultsLoadingPanelState() {
+    try { localStorage.removeItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY); } catch (_) {}
+  }
+
   function rwphRestoreOpenResultsPageAfterRefresh() {
     try {
+      try {
+        const loadingRaw = localStorage.getItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY);
+        const loadingState = loadingRaw ? JSON.parse(loadingRaw) : null;
+        if (loadingState && loadingState.active) return false;
+      } catch (_) {}
       const raw = localStorage.getItem(LAST_RESULTS_HTML_OPEN_STORAGE_KEY);
       if (!raw) return false;
       const stored = JSON.parse(raw);
@@ -87,7 +150,7 @@
         rwphClearRememberedOpenResultsPage();
         return false;
       }
-      if (stored.url && String(stored.url) !== String(location.href || "")) return false;
+      // v1.1.384: do not require exact URL match; iframe/panel exports may have saved about:blank as their URL.
       const html = String(stored.html || "");
       if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) return false;
       setTimeout(function() {
@@ -1575,6 +1638,7 @@
       #rw-payout-helper,
       #rw-pay-all-panel,
       .rw-pay-all-panel,
+      #rwph-xanax-send-status,
       .rwph-floating-panel,
       .rwph-results-loading-panel,
       .rwph-results-html-panel,
@@ -1781,7 +1845,7 @@
       }
 
 
-      /* v1.1.381: make every RWPH panel interior follow the chosen theme */
+      /* v1.1.384: make every RWPH panel interior follow the chosen theme */
       #rw-payout-helper,
       #rw-payout-helper .rw-body,
       #rw-payout-helper .rw-tab-section,
@@ -1909,9 +1973,131 @@
         accent-color:${t.accent}!important;
       }
 
+
+      /* v1.1.384: include the Xanax/payment helper panel in the selected theme */
+      #rwph-xanax-send-status,
+      #rwph-xanax-send-status .rwph-xanax-scroll,
+      #rwph-xanax-send-status .rwph-xanax-detail-card,
+      #rwph-xanax-send-status .rwph-xanax-actions,
+      #rwph-xanax-send-status .rwph-xanax-steps,
+      #rwph-xanax-send-status .rwph-xanax-safety-note,
+      #rwph-xanax-send-status .rwph-xanax-helper-message,
+      #rwph-xanax-send-status .rwph-xanax-expiry,
+      #rwph-xanax-send-status .rw-payment-expiry,
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero{
+        background:
+          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 16px 44px rgba(0,0,0,.34)!important;
+      }
+
+      #rwph-xanax-send-status #rwph-payment-helper-title,
+      #rwph-xanax-send-status .rwph-xanax-detail-title{
+        background:
+          radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
+          linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
+        border:1px solid ${t.line2}!important;
+        border-radius:12px!important;
+        color:${t.accent}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important;
+      }
+
+      #rwph-xanax-send-status button,
+      #rwph-xanax-send-status #rwph-close-helper,
+      #rwph-xanax-send-status .rwph-xanax-actions button{
+        background:linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        border:1px solid ${t.line2}!important;
+        color:${t.text}!important;
+        box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
+      }
+
+      #rwph-xanax-send-status #rwph-close-helper,
+      #rwph-xanax-send-status .danger{
+        background:linear-gradient(180deg, ${t.danger}, ${t.bg})!important;
+        border-color:rgba(248,113,113,.52)!important;
+        color:#fee2e2!important;
+      }
+
+      #rwph-xanax-send-status .rwph-xanax-helper-subtitle,
+      #rwph-xanax-send-status .rwph-xanax-expiry-note,
+      #rwph-xanax-send-status .rwph-xanax-steps,
+      #rwph-xanax-send-status .rwph-xanax-small-blue,
+      #rwph-xanax-send-status .rwph-xanax-expiry,
+      #rwph-xanax-send-status .rwph-expire-clock{
+        color:${t.soft}!important;
+      }
+
+      #rwph-xanax-send-status b,
+      #rwph-xanax-send-status .rwph-xanax-code,
+      #rwph-xanax-send-status .rwph-xanax-detail-title,
+      #rwph-xanax-send-status [data-rwph-expire-count]{
+        color:${t.accent}!important;
+      }
+
+      #rwph-xanax-send-status .rwph-xanax-helper-error,
+      #rwph-xanax-send-status .rwph-xanax-safety-note{
+        color:#fca5a5!important;
+        border-color:rgba(248,113,113,.34)!important;
+      }
+
+      #rwph-xanax-send-status input,
+      #rwph-xanax-send-status textarea,
+      #rwph-xanax-send-status select{
+        background:${t.bg}!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+
+
+      /* v1.1.384: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
+      #rw-payout-helper :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      #rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      #rwph-xanax-send-status :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-floating-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-results-loading-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rw-results-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-panel-theme-picker :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-results-html-panel > :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form):not(.rwph-results-html-preview-wrap),
+      .rwph-results-html-panel .rwph-results-html-head,
+      .rwph-results-html-panel .rwph-results-html-status,
+      .rwph-results-html-panel .rwph-raw-html-copy-note{
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-tab-section,.rw-unified-tab-panel,.rw-tabs,.rw-actions,.rw-cache-tools,.rw-mode-cache-tools,.rw-compact-check-grid,.rw-primary-calc-actions,.rw-settings-calc-actions,.rw-settings-time-actions,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-admin-unified-panel,.rw-admin-advanced-box,.rw-api-tos-content,.rw-card,.rw-box,.rw-section),
+      #rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      .rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      #rwph-xanax-send-status :where(.rwph-xanax-scroll,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
+      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current),
+      .rwph-results-html-panel :where(.rwph-results-html-preview-wrap,.rwph-raw-html-copy-note,.rwph-results-html-box){
+        background:
+          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel2}, ${t.bg})!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      /* Keep the rendered newsletter HTML itself on its own generated colours. */
+      .rwph-results-html-panel .rwph-results-html-preview,
+      .rwph-results-html-panel .rwph-results-html-preview *,
+      .rwph-results-html-panel textarea.rwph-results-html-box{
+        font-family:inherit;
+      }
+
       #rw-payout-helper ::-webkit-scrollbar-thumb,
       #rw-pay-all-panel ::-webkit-scrollbar-thumb,
       .rw-pay-all-panel ::-webkit-scrollbar-thumb,
+      #rwph-xanax-send-status ::-webkit-scrollbar-thumb,
       .rwph-floating-panel ::-webkit-scrollbar-thumb,
       .rwph-results-loading-panel ::-webkit-scrollbar-thumb,
       .rwph-results-html-panel ::-webkit-scrollbar-thumb,
@@ -1955,7 +2141,7 @@
         <button id="rwph-theme-picker-close" class="danger" type="button" title="Close">×</button>
       </div>
       <div class="rwph-panel-theme-picker-body">
-        <div class="rw-small">Choose a theme below. It changes the colours of RWPH script panels and is saved for this browser/PDA.</div>
+        <div class="rw-small">Choose a theme below. It changes the colours of all RWPH script panels and helpers, but it does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
         <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
         <div class="rwph-panel-theme-grid">
           ${Object.entries(presets).map(([key, theme]) => `
@@ -6261,11 +6447,10 @@
         <div class="rwph-results-html-preview">${variant.html}</div>
       </div>
       <div class="rwph-results-html-preview-title">Raw HTML</div>
-      <div class="rwph-select-raw-html-row">
-        <button class="btn secondary rwph-select-results-html-btn" data-results-html-box="${esc(variant.panelId)}-box" type="button">Select All Raw HTML</button>
-        <span>Then press Ctrl+C, or long-press/right-click and Copy.</span>
+      <div class="rwph-raw-html-copy-note">
+        On PC triple click on the raw code to select all and press Ctrl+C to copy. On Phone/PDA hold click on the raw code click Select All then click Copy then paste it in the source code in your faction newsletter tab.
       </div>
-      <textarea class="rwph-results-html-box" id="${esc(variant.panelId)}-box" data-rwph-raw-html-box="1" readonly spellcheck="false" aria-label="${esc(variant.label)} raw HTML code" onfocus="this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}" onclick="this.focus();this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}" onmouseup="this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}" ontouchend="var t=this;setTimeout(function(){try{t.focus();t.select();t.setSelectionRange(0,t.value.length)}catch(e){}},30)" oncontextmenu="this.focus();this.select();try{this.setSelectionRange(0,this.value.length)}catch(e){}">${esc(variant.html)}</textarea>
+      <textarea class="rwph-results-html-box" id="${esc(variant.panelId)}-box" data-rwph-raw-html-box="1" readonly spellcheck="false" aria-label="${esc(variant.label)} raw HTML code" onclick="try{if(event && event.detail >= 3){this.focus();this.select();this.setSelectionRange(0,this.value.length)}}catch(e){}" ondblclick="try{this.focus();this.select();this.setSelectionRange(0,this.value.length)}catch(e){}" oncontextmenu="this.focus();">${esc(variant.html)}</textarea>
     </section>`).join("");
 
     const cards = list.map((r) => {
@@ -6532,9 +6717,7 @@
     .rwph-results-html-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;cursor:pointer;}
     .rwph-results-html-box{flex:1 1 auto;min-height:120px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
     .rwph-results-html-box::selection{background:rgba(251,191,36,.42)!important;color:#fff!important;}
-    .rwph-select-raw-html-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:0 0 6px 0;padding:8px;border:1px solid rgba(251,191,36,.22);border-radius:13px;background:rgba(2,6,23,.42);box-sizing:border-box;text-align:center;}
-    .rwph-select-raw-html-row .btn{width:100%;min-height:34px;font-size:11px!important;padding:8px 10px!important;}
-    .rwph-select-raw-html-row span{display:block;color:#fde68a;font:850 10px/1.25 Arial,Helvetica,sans-serif;}
+    .rwph-raw-html-copy-note{display:block;margin:0 0 6px 0;padding:8px;border:1px solid rgba(251,191,36,.22);border-radius:13px;background:rgba(2,6,23,.42);box-sizing:border-box;text-align:center;color:#fde68a;font:850 10px/1.35 Arial,Helvetica,sans-serif;}
     .rwph-results-html-status{min-height:18px;text-align:center;color:#fde68a;font:800 11px/1.3 Arial,Helvetica,sans-serif;}
     .rwph-results-html-preview-wrap{flex:0 1 auto;max-height:45%;min-height:120px;overflow:auto;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;padding:8px;box-sizing:border-box;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
     .rwph-results-html-preview-title{color:#fde68a;text-align:center;font:900 11px/1.2 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.25px;margin:0 0 5px;}
@@ -6542,7 +6725,7 @@
     .rwph-results-html-preview table{max-width:100%!important;}
     @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
 
-    /* v1.1.381 unified RWPH panel palette for results/newsletter page */
+    /* v1.1.384 unified RWPH panel palette for results/newsletter page */
     :root{
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
@@ -7799,46 +7982,14 @@
     }
 
     document.addEventListener("click", function(ev) {
-      var target = ev && ev.target;
-      var btn = target && target.closest ? target.closest(".rwph-select-results-html-btn") : null;
-      if (!btn) return;
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      var boxId = btn.getAttribute("data-results-html-box") || "";
-      var box = boxId ? document.getElementById(boxId) : null;
-      var ok = rwphSelectRawHtmlBox(box);
-      var panel = btn.closest ? btn.closest(".rwph-results-html-panel") : null;
-      var status = panel && panel.querySelector ? panel.querySelector(".rwph-results-html-status") : null;
-      if (status) status.textContent = ok ? "Raw HTML selected. Now press Ctrl+C, or long-press/right-click and Copy." : "Could not auto-select. Tap inside the raw HTML box and use Select All.";
-    }, true);
-
-    document.addEventListener("touchend", function(ev) {
-      var target = ev && ev.target;
-      var btn = target && target.closest ? target.closest(".rwph-select-results-html-btn") : null;
-      if (!btn) return;
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      setTimeout(function() {
-        var boxId = btn.getAttribute("data-results-html-box") || "";
-        rwphSelectRawHtmlBox(boxId ? document.getElementById(boxId) : null);
-      }, 40);
-    }, { passive:false, capture:true });
-
-    document.addEventListener("contextmenu", function(ev) {
       var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
       if (!box) return;
-      rwphSelectRawHtmlBox(box);
-    }, true);
-    document.addEventListener("focusin", function(ev) {
-      var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
-      if (!box) return;
-      rwphSelectRawHtmlBox(box);
-    }, true);
-    document.addEventListener("mouseup", function(ev) {
-      var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
-      if (!box) return;
-      setTimeout(function(){ rwphSelectRawHtmlBox(box); }, 0);
+      if (Number(ev.detail || 0) >= 3) {
+        setTimeout(function(){ rwphSelectRawHtmlBox(box); }, 0);
+      }
     }, true);
 
-    // v1.1.381: newsletter raw HTML boxes auto-select on focus/click/right-click, with a Select All Raw HTML helper button.
+    // v1.1.384: newsletter raw HTML selection uses PC triple-click, or phone/PDA hold-click browser menu.
 
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
@@ -7902,7 +8053,7 @@
       --rw-red:#7f1d1d;
       --rw-shadow:0 18px 55px rgba(0,0,0,.56);
 
-      /* v1.1.381 unified RWPH loading panel palette */
+      /* v1.1.384 unified RWPH loading panel palette */
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
       --rwph-theme-panel2:#2b1d18;
@@ -8328,10 +8479,24 @@
           if (rwphManualResultsStorageKey) localStorage.removeItem(rwphManualResultsStorageKey);
         } catch (_) {}
         try {
+          var topUrl = String(location.href || "");
+          try {
+            if (parent && parent.location && parent.location.href && String(parent.location.href) !== "about:blank") topUrl = String(parent.location.href);
+          } catch (_) {}
           localStorage.setItem("rw_payout_helper_last_results_html_open", JSON.stringify({
             active: true,
-            url: String(location.href || ""),
+            url: topUrl,
             createdAt: Date.now(),
+            html: String(html || "")
+          }));
+          localStorage.setItem("rw_payout_helper_results_loading_panel_state", JSON.stringify({
+            active: true,
+            type: "results",
+            url: topUrl,
+            progressId: rwphProgressId,
+            startedAtMs: started,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
             html: String(html || "")
           }));
         } catch (_) {}
@@ -8383,6 +8548,22 @@
         if (data.rwphType === "rwph-manual-results-ready") {
           if (rwphProgressId && data.progressId && data.progressId !== rwphProgressId) return;
           rwphShowManualResultsButton(data.html || "");
+          try {
+            var topUrl = String(location.href || "");
+            try {
+              if (parent && parent.location && parent.location.href && String(parent.location.href) !== "about:blank") topUrl = String(parent.location.href);
+            } catch (_) {}
+            if (data.html) localStorage.setItem("rw_payout_helper_results_loading_panel_state", JSON.stringify({
+              active: true,
+              type: "ready",
+              url: topUrl,
+              progressId: rwphProgressId,
+              startedAtMs: started,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              html: String(data.html || "")
+            }));
+          } catch (_) {}
           return;
         }
         if (data.rwphType !== "rwph-calc-progress") return;
@@ -8471,7 +8652,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.381: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.384: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -8613,7 +8794,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.381: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.384: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -8686,7 +8867,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.381: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.384: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -9074,6 +9255,8 @@
 
     const markClosed = () => {
       closed = true;
+      rwphClearResultsLoadingPanelState();
+      rwphClearRememberedOpenResultsPage();
       try { document.removeEventListener("mousemove", move); } catch (_) {}
       try { document.removeEventListener("touchmove", move); } catch (_) {}
       try { document.removeEventListener("mouseup", endMove); } catch (_) {}
@@ -9191,10 +9374,112 @@
     try {
       const rwphLoadingStartedAt = Date.now();
       const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
-      return rwphCreateResultsLoadingPanel(progressId, loadingHtml, rwphLoadingStartedAt);
+      const tab = rwphCreateResultsLoadingPanel(progressId, loadingHtml, rwphLoadingStartedAt);
+      if (tab) {
+        rwphRememberResultsLoadingPanelState({
+          type: "loading",
+          progressId,
+          startedAtMs: rwphLoadingStartedAt,
+        });
+      }
+      return tab;
     } catch (e) {
       console.warn("Could not open RWPH results loading panel:", e);
       return null;
+    }
+  }
+
+
+
+  function rwphRestoreResultsLoadingPanelAfterRefresh() {
+    try {
+      const stored = rwphReadResultsLoadingPanelState(true);
+      if (!stored || !stored.active) return false;
+
+      const progressId = String(stored.progressId || "").trim();
+      const type = String(stored.type || "loading");
+      const html = String(stored.html || "");
+      const startedAtMs = Number(stored.startedAtMs || stored.createdAt || Date.now());
+
+      if (!progressId && !html) {
+        rwphClearResultsLoadingPanelState();
+        return false;
+      }
+
+      // Results already opened inside the panel: restore the same panel with the results HTML in the frame.
+      if (type === "results" && html) {
+        rwphCreateResultsLoadingPanel(progressId, html, startedAtMs);
+        return true;
+      }
+
+      // Loading or ready state: recreate the loading panel and resume progress/result polling.
+      const loadingHtml = buildResultsLoadingHtml(progressId, startedAtMs);
+      const tab = rwphCreateResultsLoadingPanel(progressId, loadingHtml, startedAtMs);
+      if (!tab) return false;
+
+      const locallyStored = (() => {
+        try {
+          const raw = progressId ? localStorage.getItem("rwph_manual_results_html_" + progressId) : "";
+          const parsed = raw ? JSON.parse(raw) : null;
+          return parsed && parsed.html ? String(parsed.html || "") : "";
+        } catch (_) {
+          return "";
+        }
+      })();
+
+      const readyHtml = html || locallyStored;
+      if (readyHtml) {
+        rwphDirectUnlockLoadingTab(tab, progressId, readyHtml);
+        rwphRememberResultsLoadingPanelState({
+          type: "ready",
+          progressId,
+          startedAtMs,
+          html: readyHtml
+        });
+        return true;
+      }
+
+      const cancelRestoredLoading = () => {
+        rwphClearResultsLoadingPanelState();
+        if (progressId) rwphSendCalcCancel(progressId, "Results loading panel was closed after a page refresh before RWPH finished calculating.");
+      };
+
+      rwphStartResultsProgressPolling(tab, progressId, cancelRestoredLoading);
+      rwphStartResultsTabCloseWatcher(tab, progressId, cancelRestoredLoading);
+      rwphSetResultsLoadingStepDone(tab, 0, 8, "Results loading panel restored after refresh. Reconnecting to calculation...");
+
+      // Extra direct result-html fetch after restore, in case the backend had finished while the page was refreshing.
+      setTimeout(() => {
+        try {
+          if (!progressId) return;
+          GM_xmlhttpRequest({
+            method: "GET",
+            url: `${PAYWALL_API_BASE}/api/calc/result-html?progressId=${encodeURIComponent(progressId)}`,
+            headers: { "ngrok-skip-browser-warning": "true" },
+            timeout: 20000,
+            onload: (res) => {
+              try {
+                const payload = JSON.parse(res.responseText || "{}");
+                if (payload && payload.ok && payload.ready && payload.html) {
+                  const ready = rwphInjectMainScrollbarCssIntoHtml(String(payload.html || ""));
+                  rwphDirectUnlockLoadingTab(tab, progressId, ready);
+                  rwphRememberResultsLoadingPanelState({
+                    type: "ready",
+                    progressId,
+                    startedAtMs,
+                    html: ready
+                  });
+                }
+              } catch (_) {}
+            },
+          });
+        } catch (_) {}
+      }, 800);
+
+      return true;
+    } catch (e) {
+      console.warn("RWPH could not restore results loading panel after refresh:", e);
+      return false;
     }
   }
 
@@ -9290,6 +9575,12 @@
         btn.onclick = function(ev) {
           try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (_) {}
           try {
+            rwphRememberOpenResultsPageHtml(String(html || ""));
+            rwphRememberResultsLoadingPanelState({
+              type: "results",
+              progressId: id,
+              html: String(html || "")
+            });
             doc.open();
             doc.write(String(html || ""));
             doc.close();
@@ -9351,6 +9642,11 @@
         createdAt: Date.now(),
         html,
       }));
+      rwphRememberResultsLoadingPanelState({
+        type: "ready",
+        progressId: id,
+        html,
+      });
     } catch (e) {
       console.warn("Could not store manual-open results HTML:", e);
     }
@@ -9572,7 +9868,7 @@
   }
 
 
-  // v1.1.381: Basic  removed.
+  // v1.1.384: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
@@ -13142,7 +13438,7 @@
         }
 
 
-        /* v1.1.381: Stronger Basic/Advanced calculation dropdown cards */
+        /* v1.1.384: Stronger Basic/Advanced calculation dropdown cards */
         #rw-payout-helper details.rw-per-hit-settings,
         #rw-payout-helper details.rw-points-settings{
           position:relative !important;
@@ -13334,5 +13630,6 @@
 
   rwphInjectUnifiedPanelThemeV1375();
   rwphApplyPanelThemeChoice();
+  setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();
