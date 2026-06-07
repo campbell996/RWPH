@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.384
+// @version      1.1.385
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.384: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.385: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -150,7 +150,7 @@
         rwphClearRememberedOpenResultsPage();
         return false;
       }
-      // v1.1.384: do not require exact URL match; iframe/panel exports may have saved about:blank as their URL.
+      // v1.1.385: do not require exact URL match; iframe/panel exports may have saved about:blank as their URL.
       const html = String(stored.html || "");
       if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) return false;
       setTimeout(function() {
@@ -1845,7 +1845,7 @@
       }
 
 
-      /* v1.1.384: make every RWPH panel interior follow the chosen theme */
+      /* v1.1.385: make every RWPH panel interior follow the chosen theme */
       #rw-payout-helper,
       #rw-payout-helper .rw-body,
       #rw-payout-helper .rw-tab-section,
@@ -1974,7 +1974,7 @@
       }
 
 
-      /* v1.1.384: include the Xanax/payment helper panel in the selected theme */
+      /* v1.1.385: include the Xanax/payment helper panel in the selected theme */
       #rwph-xanax-send-status,
       #rwph-xanax-send-status .rwph-xanax-scroll,
       #rwph-xanax-send-status .rwph-xanax-detail-card,
@@ -2053,7 +2053,7 @@
 
 
 
-      /* v1.1.384: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
+      /* v1.1.385: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
       #rw-payout-helper :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
       #rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
       .rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
@@ -2092,6 +2092,164 @@
       .rwph-results-html-panel .rwph-results-html-preview *,
       .rwph-results-html-panel textarea.rwph-results-html-box{
         font-family:inherit;
+      }
+
+
+      /* v1.1.385: force Basic/Advanced dropdowns and every RWPH button to follow the chosen theme */
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings,
+      #rw-payout-helper details.rw-per-hit-settings .rw-api-tos-content,
+      #rw-payout-helper details.rw-points-settings .rw-api-tos-content,
+      #rw-payout-helper details.rw-per-hit-settings .rw-compact-check-grid,
+      #rw-payout-helper details.rw-points-settings .rw-compact-check-grid,
+      #rw-payout-helper details.rw-per-hit-settings .rw-cache-tools,
+      #rw-payout-helper details.rw-points-settings .rw-cache-tools,
+      #rw-payout-helper details.rw-per-hit-settings .rw-mode-cache-tools,
+      #rw-payout-helper details.rw-points-settings .rw-mode-cache-tools,
+      #rw-payout-helper details.rw-per-hit-settings .rw-primary-calc-actions,
+      #rw-payout-helper details.rw-points-settings .rw-primary-calc-actions,
+      #rw-payout-helper details.rw-per-hit-settings .rw-settings-calc-actions,
+      #rw-payout-helper details.rw-points-settings .rw-settings-calc-actions,
+      #rw-payout-helper details.rw-per-hit-settings .rw-settings-time-actions,
+      #rw-payout-helper details.rw-points-settings .rw-settings-time-actions,
+      #rw-payout-helper details.rw-per-hit-settings label,
+      #rw-payout-helper details.rw-points-settings label,
+      #rw-payout-helper details.rw-per-hit-settings .rw-calc-brief,
+      #rw-payout-helper details.rw-points-settings .rw-calc-brief,
+      #rw-payout-helper details.rw-per-hit-settings input,
+      #rw-payout-helper details.rw-points-settings input,
+      #rw-payout-helper details.rw-per-hit-settings textarea,
+      #rw-payout-helper details.rw-points-settings textarea,
+      #rw-payout-helper details.rw-per-hit-settings select,
+      #rw-payout-helper details.rw-points-settings select{
+        background:
+          radial-gradient(circle at 12% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 8%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel2}, ${t.bg}) !important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings{
+        border-color:${t.line2}!important;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,.055) inset,
+          0 18px 44px rgba(0,0,0,.42),
+          0 0 32px ${t.line}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings::before,
+      #rw-payout-helper details.rw-points-settings::before{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+        box-shadow:0 0 18px ${t.line2}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings > summary,
+      #rw-payout-helper details.rw-points-settings > summary{
+        background:
+          radial-gradient(circle at 12% 0%, ${t.line2}, transparent 34%),
+          linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
+        border-color:${t.line2}!important;
+        color:${t.accent}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 24px rgba(0,0,0,.24)!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings > summary::after,
+      #rw-payout-helper details.rw-points-settings > summary::after{
+        background:linear-gradient(180deg, ${t.bg2}, ${t.bg})!important;
+        border-color:${t.line2}!important;
+        color:${t.soft}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings[open] > summary::after,
+      #rw-payout-helper details.rw-points-settings[open] > summary::after{
+        color:${t.good}!important;
+        border-color:${t.good}!important;
+      }
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        background:
+          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 36%),
+          linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        border:1px solid ${t.line2}!important;
+        color:${t.text}!important;
+        box-shadow:0 10px 22px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.07)!important;
+        text-shadow:none!important;
+      }
+
+      #rw-payout-helper :where(button.primary,.primary,.rw-primary,.rw-tab.active,[aria-selected="true"]),
+      #rw-pay-all-panel :where(button.primary,.primary),
+      .rw-pay-all-panel :where(button.primary,.primary),
+      #rwph-xanax-send-status :where(button.primary,.primary),
+      .rwph-floating-panel :where(button.primary,.primary),
+      .rwph-results-loading-panel :where(button.primary,.primary),
+      .rwph-results-html-panel :where(button.primary,.primary),
+      .rw-results-panel :where(button.primary,.primary),
+      .rwph-panel-theme-picker :where(button.primary,.primary,.rwph-theme-choice.primary){
+        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
+        border-color:${t.line2}!important;
+        color:${t.bg}!important;
+        box-shadow:0 12px 26px rgba(0,0,0,.30),0 0 20px ${t.line}!important;
+      }
+
+      #rw-payout-helper :where(button.danger,.danger),
+      #rw-pay-all-panel :where(button.danger,.danger),
+      .rw-pay-all-panel :where(button.danger,.danger),
+      #rwph-xanax-send-status :where(button.danger,.danger,#rwph-close-helper),
+      .rwph-floating-panel :where(button.danger,.danger),
+      .rwph-results-loading-panel :where(button.danger,.danger),
+      .rw-results-panel :where(button.danger,.danger),
+      .rwph-panel-theme-picker :where(button.danger,.danger){
+        background:linear-gradient(180deg, ${t.danger}, ${t.bg})!important;
+        border-color:rgba(248,113,113,.55)!important;
+        color:#fee2e2!important;
+      }
+
+      #rw-payout-helper :where(button.success,.success),
+      #rw-pay-all-panel :where(button.success,.success),
+      .rw-pay-all-panel :where(button.success,.success),
+      #rwph-xanax-send-status :where(button.success,.success),
+      .rwph-floating-panel :where(button.success,.success),
+      .rwph-results-loading-panel :where(button.success,.success),
+      .rw-results-panel :where(button.success,.success),
+      .rwph-panel-theme-picker :where(button.success,.success){
+        background:linear-gradient(180deg, ${t.good}, ${t.panel})!important;
+        border-color:${t.good}!important;
+        color:${t.bg}!important;
+      }
+
+      #rw-payout-helper :where(button:hover,a.btn:hover,.btn:hover,.rw-button:hover,.rw-tab:hover),
+      #rw-pay-all-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rw-pay-all-panel :where(button:hover,a.btn:hover,.btn:hover),
+      #rwph-xanax-send-status :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-floating-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-results-loading-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-results-html-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rw-results-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-panel-theme-picker :where(button:hover,a.btn:hover,.btn:hover){
+        border-color:${t.accent}!important;
+        filter:brightness(1.12)!important;
+      }
+
+      #rw-payout-helper :where(button:disabled,.btn[aria-disabled="true"],.btn:disabled),
+      #rw-pay-all-panel :where(button:disabled,.btn:disabled),
+      .rw-pay-all-panel :where(button:disabled,.btn:disabled),
+      .rwph-floating-panel :where(button:disabled,.btn:disabled),
+      .rwph-results-loading-panel :where(button:disabled,.btn:disabled),
+      .rw-results-panel :where(button:disabled,.btn:disabled){
+        opacity:.58!important;
+        filter:saturate(.65)!important;
+        cursor:not-allowed!important;
       }
 
       #rw-payout-helper ::-webkit-scrollbar-thumb,
@@ -2141,7 +2299,7 @@
         <button id="rwph-theme-picker-close" class="danger" type="button" title="Close">×</button>
       </div>
       <div class="rwph-panel-theme-picker-body">
-        <div class="rw-small">Choose a theme below. It changes the colours of all RWPH script panels and helpers, but it does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
+        <div class="rw-small">Choose a theme below. It changes the colours of all RWPH script panels, helpers, dropdowns and buttons, but it does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
         <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
         <div class="rwph-panel-theme-grid">
           ${Object.entries(presets).map(([key, theme]) => `
@@ -6725,7 +6883,7 @@
     .rwph-results-html-preview table{max-width:100%!important;}
     @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
 
-    /* v1.1.384 unified RWPH panel palette for results/newsletter page */
+    /* v1.1.385 unified RWPH panel palette for results/newsletter page */
     :root{
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
@@ -7989,7 +8147,7 @@
       }
     }, true);
 
-    // v1.1.384: newsletter raw HTML selection uses PC triple-click, or phone/PDA hold-click browser menu.
+    // v1.1.385: newsletter raw HTML selection uses PC triple-click, or phone/PDA hold-click browser menu.
 
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
@@ -8053,7 +8211,7 @@
       --rw-red:#7f1d1d;
       --rw-shadow:0 18px 55px rgba(0,0,0,.56);
 
-      /* v1.1.384 unified RWPH loading panel palette */
+      /* v1.1.385 unified RWPH loading panel palette */
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
       --rwph-theme-panel2:#2b1d18;
@@ -8652,7 +8810,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.384: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.385: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -8794,7 +8952,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.384: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.385: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -8867,7 +9025,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.384: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.385: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -9868,7 +10026,7 @@
   }
 
 
-  // v1.1.384: Basic  removed.
+  // v1.1.385: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
@@ -13438,7 +13596,7 @@
         }
 
 
-        /* v1.1.384: Stronger Basic/Advanced calculation dropdown cards */
+        /* v1.1.385: Stronger Basic/Advanced calculation dropdown cards */
         #rw-payout-helper details.rw-per-hit-settings,
         #rw-payout-helper details.rw-points-settings{
           position:relative !important;
