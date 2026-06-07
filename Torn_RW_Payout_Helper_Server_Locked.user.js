@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.391
+// @version      1.1.392
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.392: admin panel tools now stay hidden until a valid ADMIN_KEY is saved/verified, and bonus edits remain admin-key protected.
   // v1.1.391: updated default bonus lists and confirmed admin-added bonuses appear as new dropdown buttons after save.
   // v1.1.389: locked screen payment heading now correctly says each Xanax gives 15 licence days.
   // v1.1.388: Admin panel can add or change purchase bonus milestone schedules for new licence payments.
@@ -3209,6 +3210,99 @@
     return result;
   }
 
+  function rwphFindAdminSection(root) {
+    const scope = root && root.querySelector ? root : document;
+    return scope.querySelector("#rw-paywall-admin-section, #rw-admin-tab-section") || document.querySelector("#rw-paywall-admin-section, #rw-admin-tab-section");
+  }
+
+  function rwphEnsureAdminGateNote(adminSection) {
+    if (!adminSection) return null;
+    let note = adminSection.querySelector("#rw-admin-gate-note");
+    if (note) return note;
+    note = document.createElement("div");
+    note.id = "rw-admin-gate-note";
+    note.className = "rw-muted rw-admin-gate-note";
+    note.textContent = "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.";
+    const saveBtn = adminSection.querySelector("#rw-admin-save-key");
+    const row = saveBtn?.closest?.(".rw-actions") || adminSection.querySelector("#rw-admin-key")?.closest?.("label");
+    if (row?.parentNode) row.insertAdjacentElement("afterend", note);
+    else adminSection.prepend(note);
+    return note;
+  }
+
+  function rwphSetAdminToolsVisible(root, visible, message = "") {
+    const adminSection = rwphFindAdminSection(root);
+    if (!adminSection) return;
+    const unlocked = !!visible;
+    adminSection.dataset.rwphAdminUnlocked = unlocked ? "1" : "0";
+
+    const note = rwphEnsureAdminGateNote(adminSection);
+    if (note) {
+      note.hidden = unlocked;
+      note.textContent = message || (unlocked
+        ? "Admin tools unlocked."
+        : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
+    }
+
+    adminSection.querySelectorAll([
+      "#rw-admin-list",
+      "#rw-admin-status-load",
+      "#rw-move-launcher-admin",
+      "#rw-admin-grant",
+      "#rw-admin-extend",
+      "#rw-admin-revoke",
+      ".rw-admin-advanced-box",
+      "#rw-admin-results"
+    ].join(",")).forEach((el) => { el.hidden = !unlocked; });
+
+    ["#rw-admin-torn-id", "#rw-admin-name", "#rw-admin-days"].forEach((selector) => {
+      const label = adminSection.querySelector(selector)?.closest?.("label");
+      if (label) label.hidden = !unlocked;
+    });
+
+    const status = adminSection.querySelector("#rw-admin-status");
+    if (status && !unlocked && !String(status.textContent || "").trim()) {
+      status.textContent = "Admin tools are hidden until a valid admin key is saved.";
+    }
+  }
+
+  function rwphAdminToolsAreVisible(root) {
+    return rwphFindAdminSection(root)?.dataset?.rwphAdminUnlocked === "1";
+  }
+
+  async function rwphSaveAdminKeyAndRevealTools(root, options = {}) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    rwphSetAdminToolsVisible(root, false, "Checking admin key with the server...");
+    if (status) status.textContent = "Checking admin key with the server...";
+
+    const serverStatus = await adminRequest("POST", "/api/admin/status", adminKey);
+    rwphSetAdminToolsVisible(root, true);
+    const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
+    if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(serverStatus);
+    rwphUpdateAdminBonusBox(root, serverStatus.purchaseBonuses || {});
+
+    if (options.grantOwner !== false) {
+      try {
+        await grantOwnerLicenseFromAdminKey(adminKey, status);
+      } catch (e) {
+        rwphToastPanelInfo(status, `Admin key verified. Owner licence auto-grant was skipped: ${e.message}`, "warn", "RWPH Admin");
+      }
+    } else {
+      rwphToastPanelInfo(status, "Admin key verified. Admin tools unlocked.", "info", "RWPH Admin");
+    }
+
+    if (options.refreshLicenses !== false) {
+      try {
+        await rwphRefreshAdminLicensesFromPanel(root);
+      } catch (e) {
+        rwphToastPanelInfo(status, `Admin tools unlocked, but licence list could not load: ${e.message}`, "warn", "RWPH Admin");
+      }
+    }
+    return serverStatus;
+  }
+
   function rwphBindAdminControls(root) {
     const panelRoot = root && root.addEventListener ? root : document;
     if (panelRoot.__rwphAdminDelegatedBound) return;
@@ -3223,6 +3317,9 @@
       event.stopPropagation();
       event.stopImmediatePropagation?.();
       try {
+        if (adminAction.id !== "rw-admin-save-key" && !rwphAdminToolsAreVisible(rootScope)) {
+          throw new Error("Save a valid admin key first. Admin tools are hidden until the server accepts the key.");
+        }
         if (adminAction.classList?.contains("rw-admin-fill-revoke")) {
           const filledId = adminAction.dataset.tornId || "";
           const filledName = adminAction.dataset.name || (filledId ? `User ${filledId}` : "");
@@ -3295,11 +3392,7 @@
         }
 
         if (adminAction.id === "rw-admin-save-key") {
-          const adminKey = rwphGetAdminKeyFromPanel(rootScope);
-          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-          if (status) status.textContent = "Admin key saved. Granting owner 10,000 day licence...";
-          await grantOwnerLicenseFromAdminKey(adminKey, status);
-          await rwphRefreshAdminLicensesFromPanel(rootScope);
+          await rwphSaveAdminKeyAndRevealTools(rootScope, { grantOwner: true, refreshLicenses: true });
           return;
         }
 
@@ -6007,6 +6100,14 @@
       }
       #rw-payout-helper .rw-admin-unified-panel .rw-actions {
         padding-bottom:2px !important;
+      }
+      #rw-payout-helper .rw-admin-gate-note {
+        padding: 9px 10px !important;
+        border-radius: 12px !important;
+        border: 1px dashed rgba(251,191,36,.34) !important;
+        background: rgba(2,6,23,.34) !important;
+        color: #fde68a !important;
+        font-weight: 900 !important;
       }
       #rw-payout-helper #rw-admin-results,
       #rw-payout-helper #rw-admin-status,
@@ -12424,7 +12525,7 @@
               <li><b>Buy Licence:</b> creates a Xanax payment code and opens the payment helper.</li>
               <li><b>Extend Licence:</b> creates an extension payment code. Existing active pending codes are reused where possible.</li>
               <li><b>Your Expiration:</b> checks your current licence expiry.</li>
-              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and turn new-purchase bonus days on/off when the server admin routes are enabled.</li>
+              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and edit/toggle new-purchase bonus days after a valid ADMIN_KEY is saved and verified by the server.</li>
               <li><b>Keep admin secrets private:</b> never share ADMIN_KEY, PAYWALL_SECRET, private server URLs, or licence tokens with untrusted people.</li>
             </ul>
           </div>
@@ -12481,6 +12582,7 @@
     attachMoveLauncherButton();
     attachPanelThemeButton();
     rwphBindAdminControls(panel);
+    rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
@@ -12688,18 +12790,12 @@
 
     document.getElementById("rw-admin-save-key").addEventListener("click", async () => {
       const status = document.getElementById("rw-admin-status");
-
       try {
-        const adminKey = document.getElementById("rw-admin-key").value.trim();
-        if (!adminKey) return alert("Enter your admin key first.");
-
-        GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-        status.textContent = "Admin key saved. Granting owner 10,000 day license...";
-
-        await grantOwnerLicenseFromAdminKey(adminKey, status);
-        await refreshAdminLicenses();
+        await rwphSaveAdminKeyAndRevealTools(panel, { grantOwner: true, refreshLicenses: true });
       } catch (e) {
-        rwphToastPanelError(status, "Admin key saved, but owner license grant failed: " + e.message, "RWPH Admin");
+        GM_setValue(ADMIN_KEY_STORAGE_KEY, "");
+        rwphSetAdminToolsVisible(panel, false, "Invalid admin key. Admin tools are still hidden.");
+        rwphToastPanelError(status, "Admin key check failed: " + e.message, "RWPH Admin");
       }
     });
 
@@ -13097,7 +13193,7 @@
               <li><b>Buy Licence:</b> creates a Xanax payment code and opens the payment helper.</li>
               <li><b>Extend Licence:</b> creates an extension payment code. Existing active pending codes are reused where possible.</li>
               <li><b>Your Expiration:</b> checks your current licence expiry.</li>
-              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and turn new-purchase bonus days on/off when the server admin routes are enabled.</li>
+              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and edit/toggle new-purchase bonus days after a valid ADMIN_KEY is saved and verified by the server.</li>
               <li><b>Keep admin secrets private:</b> never share ADMIN_KEY, PAYWALL_SECRET, private server URLs, or licence tokens with untrusted people.</li>
             </ul>
           </div>
@@ -13181,6 +13277,7 @@
     switchTab(rwphGetActiveTab("main", "payout"));
 
     rwphBindAdminControls(panel);
+    rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
@@ -13649,18 +13746,12 @@
 
     document.getElementById("rw-admin-save-key").addEventListener("click", async () => {
       const status = document.getElementById("rw-admin-status");
-
       try {
-        const adminKey = document.getElementById("rw-admin-key").value.trim();
-        if (!adminKey) return alert("Enter your admin key first.");
-
-        GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-        status.textContent = "Admin key saved. Granting owner 10,000 day license...";
-
-        await grantOwnerLicenseFromAdminKey(adminKey, status);
-        await refreshAdminLicenses();
+        await rwphSaveAdminKeyAndRevealTools(panel, { grantOwner: true, refreshLicenses: true });
       } catch (e) {
-        rwphToastPanelError(status, "Admin key saved, but owner license grant failed: " + e.message, "RWPH Admin");
+        GM_setValue(ADMIN_KEY_STORAGE_KEY, "");
+        rwphSetAdminToolsVisible(panel, false, "Invalid admin key. Admin tools are still hidden.");
+        rwphToastPanelError(status, "Admin key check failed: " + e.message, "RWPH Admin");
       }
     });
 

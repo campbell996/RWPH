@@ -1178,3 +1178,12 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Saving bonus edits updates the backend database and attempts to write the new bonus config to the server `.env` file.
 - `.env` bonus rules now support optional `:off` entries, for example `50:30:off`.
 - Existing licence days are not recalculated or removed by changing bonus rules.
+
+
+## v1.1.392 - Admin panel hidden until valid admin key
+
+- Admin panel now only shows the Admin Key field, Save Admin Key button, and status message until the backend accepts the ADMIN_KEY.
+- Licence tools, server status, force refresh, purchase bonus dropdown, bonus add/edit/delete/save buttons, and licence list stay hidden for non-admin users.
+- Save Admin Key now verifies against `/api/admin/status` before showing any admin tools.
+- Bonus add/change/delete/save actions still require the valid admin key on the backend and can save to `.env` only after admin verification.
+
