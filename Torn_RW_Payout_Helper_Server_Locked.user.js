@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.379
+// @version      1.1.381
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.379: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
+  // v1.1.381: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
   // v1.1.307: compacted the visible API Key Notice under the locked and main API key fields.
@@ -1537,8 +1537,22 @@
     return presets[String(key || rwphGetPanelThemeKey()).toLowerCase()] || presets.bronze;
   }
 
-  function rwphPanelThemeCss(theme, styleId = "rwph-panel-theme-choice-v1379") {
+  function rwphPanelThemeCss(theme, includeStandalonePage = false) {
     const t = theme || rwphGetPanelThemePreset();
+    const standaloneScope = includeStandalonePage ? `
+      body,
+      .app,
+      .hero,
+      .topbar,
+      .side,
+      .summary-card,
+      .result-card,
+      .pay-all-panel,
+      .rwph-loading-shell,
+      .rwph-status-card,
+      .rwph-side-card,
+      .mini,
+      .wait-note,` : "";
     return `
       :root{
         --rwph-theme-bg:${t.bg};
@@ -1557,7 +1571,7 @@
         --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 34px ${t.line};
       }
 
-      body,
+      ${standaloneScope}
       #rw-payout-helper,
       #rw-pay-all-panel,
       .rw-pay-all-panel,
@@ -1565,18 +1579,6 @@
       .rwph-results-loading-panel,
       .rwph-results-html-panel,
       .rw-results-panel,
-      .app,
-      .hero,
-      .topbar,
-      .side,
-      .summary-card,
-      .result-card,
-      .pay-all-panel,
-      .rwph-loading-shell,
-      .rwph-status-card,
-      .rwph-side-card,
-      .mini,
-      .wait-note,
       .rw-main-panel,
       .rw-locked-panel,
       .rw-admin-panel,
@@ -1598,7 +1600,7 @@
       [id^="rwph-"][class*="panel"],
       [class^="rwph-"][class*="panel"],
       [class*="rwph-"][class*="panel"],
-      [class*="rw-"][class*="panel"]{
+      .rwph-panel-theme-picker{
         background:
           radial-gradient(circle at 18% 0%, ${t.line2}, transparent 32%),
           radial-gradient(circle at 86% 8%, ${t.line}, transparent 30%),
@@ -1668,13 +1670,7 @@
         color:${t.bg}!important;
       }
 
-      h1,
-      h2,
-      h3,
-      .title-text,
-      .results-side-title,
-      .summary-card span,
-      .result-name,
+      ${includeStandalonePage ? "body h1, body h2, body h3, body .title-text, body .results-side-title, body .summary-card span, body .result-name," : ""}
       #rw-payout-helper h1,
       #rw-payout-helper h2,
       #rw-payout-helper h3,
@@ -1744,12 +1740,7 @@
         color:${t.text}!important;
       }
 
-      .summary-card,
-      .result-card,
-      .rwph-status-card,
-      .rwph-side-card,
-      .mini,
-      .wait-note,
+      ${includeStandalonePage ? "body .summary-card, body .result-card, body .rwph-status-card, body .rwph-side-card, body .mini, body .wait-note," : ""}
       #rw-payout-helper .card,
       #rw-payout-helper .rw-card,
       #rw-payout-helper .rw-box,
@@ -1787,6 +1778,135 @@
         background:linear-gradient(135deg, ${t.line2}, ${t.line}),linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
         color:${t.accent}!important;
         border-bottom-color:${t.line}!important;
+      }
+
+
+      /* v1.1.381: make every RWPH panel interior follow the chosen theme */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-licence-control-grid,
+      #rw-payout-helper #rw-paywall-unlock-section,
+      #rw-payout-helper #rw-paywall-admin-section,
+      #rw-payout-helper #rw-paywall-how-section,
+      #rw-payout-helper #rw-payout-tab,
+      #rw-payout-helper #rw-admin-tab-section,
+      #rw-payout-helper #rw-how-tab-section,
+      #rw-payout-helper #rw-results-panel,
+      #rw-payout-helper .rw-admin-unified-panel,
+      #rw-payout-helper .rw-help-section-card,
+      #rw-payout-helper .rw-help-dropdown-content,
+      #rw-payout-helper .rw-api-visible-card,
+      #rw-payout-helper .rw-admin-advanced-box,
+      #rw-payout-helper .rw-cache-tools,
+      #rw-payout-helper .rw-mode-cache-tools,
+      #rw-payout-helper .rw-compact-check-grid,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions,
+      #rw-payout-helper #rw-main-payment-code,
+      #rw-payout-helper #rw-paywall-code,
+      #rw-payout-helper #rw-admin-results,
+      #rw-payout-helper #rw-results,
+      #rw-payout-helper #rw-results-placeholder,
+      #rw-pay-all-panel,
+      #rw-pay-all-panel .rw-pay-all-body,
+      #rw-pay-all-panel .rw-pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-row,
+      .rw-pay-all-panel,
+      .rw-pay-all-panel .rw-pay-all-body,
+      .rw-pay-all-panel .rw-pay-all-list,
+      .rw-pay-all-panel .rw-pay-all-row,
+      .rwph-floating-panel,
+      .rwph-floating-panel-body,
+      .rwph-panel-theme-picker,
+      .rwph-panel-theme-picker-body,
+      .rwph-panel-theme-grid,
+      .rwph-panel-theme-current,
+      .rwph-results-loading-panel,
+      .rwph-results-loading-panel .rwph-loading-shell,
+      .rwph-results-loading-panel .rwph-status-card,
+      .rwph-results-loading-panel .rwph-side-card,
+      .rwph-results-html-panel,
+      .rwph-results-html-panel .rwph-results-html-preview-wrap,
+      .rwph-results-html-panel .rwph-results-html-preview,
+      .rwph-results-html-panel .rwph-select-raw-html-row,
+      .rwph-results-html-panel .rwph-results-html-box,
+      .rw-results-panel,
+      .rw-results-panel .summary,
+      .rw-results-panel .summary-card,
+      .rw-results-panel .result-card{
+        background:
+          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      #rw-payout-helper .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper #rw-payout-tab,
+      #rw-payout-helper #rw-admin-tab-section,
+      #rw-payout-helper #rw-how-tab-section,
+      #rw-payout-helper #rw-paywall-unlock-section,
+      #rw-payout-helper #rw-paywall-admin-section,
+      #rw-payout-helper #rw-paywall-how-section,
+      .rwph-panel-theme-picker-body,
+      .rwph-floating-panel-body,
+      .rwph-results-html-panel .rwph-results-html-preview,
+      .rwph-results-html-panel .rwph-results-html-box{
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;
+      }
+
+      #rw-payout-helper .rw-small,
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list,
+      #rw-payout-helper .rw-help-dropdown-content,
+      #rw-payout-helper .rw-api-visible-summary,
+      #rw-payout-helper .rw-cache-status,
+      #rw-payout-helper .rw-compact-cache-status,
+      #rw-payout-helper #rw-status,
+      #rw-payout-helper #rw-paywall-status,
+      #rw-payout-helper #rw-admin-status,
+      #rw-payout-helper #rw-admin-status-summary,
+      .rwph-panel-theme-picker .rw-small,
+      .rwph-panel-theme-picker span,
+      .rwph-results-html-panel span{
+        color:${t.soft}!important;
+      }
+
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-api-visible-head,
+      #rw-payout-helper .rw-help-dropdown-summary,
+      #rw-payout-helper .rw-api-tos-title,
+      #rw-payout-helper details > summary,
+      #rw-pay-all-panel .rw-pay-all-head,
+      .rw-pay-all-panel .rw-pay-all-head,
+      .rwph-panel-theme-picker-head,
+      .rwph-floating-panel-head,
+      .rwph-results-html-head{
+        background:
+          radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
+          linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
+        border-color:${t.line2}!important;
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper .rw-api-visible-badge,
+      #rw-payout-helper .rw-api-visible-dot,
+      #rw-payout-helper b,
+      .rwph-panel-theme-picker b,
+      .rwph-results-html-panel b{
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper input[type="checkbox"],
+      #rw-payout-helper input[type="radio"]{
+        accent-color:${t.accent}!important;
       }
 
       #rw-payout-helper ::-webkit-scrollbar-thumb,
@@ -6208,7 +6328,7 @@
       --green:#86efac;
     }
     * { box-sizing:border-box; }
-    ${rwphPanelThemeCss(rwphGetPanelThemePreset())}
+    ${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}
     body {
       margin:0;
       min-height:100vh;
@@ -6422,7 +6542,7 @@
     .rwph-results-html-preview table{max-width:100%!important;}
     @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
 
-    /* v1.1.379 unified RWPH panel palette for results/newsletter page */
+    /* v1.1.381 unified RWPH panel palette for results/newsletter page */
     :root{
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
@@ -7718,7 +7838,7 @@
       setTimeout(function(){ rwphSelectRawHtmlBox(box); }, 0);
     }, true);
 
-    // v1.1.379: newsletter raw HTML boxes auto-select on focus/click/right-click, with a Select All Raw HTML helper button.
+    // v1.1.381: newsletter raw HTML boxes auto-select on focus/click/right-click, with a Select All Raw HTML helper button.
 
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
@@ -7765,7 +7885,7 @@
   <title>RWPH Loading Results</title>
   <style>
     * { box-sizing:border-box; }
-    ${rwphPanelThemeCss(rwphGetPanelThemePreset())}
+    ${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}
     :root{
       --rw-bg:#130b07;
       --rw-bg2:#21110b;
@@ -7782,7 +7902,7 @@
       --rw-red:#7f1d1d;
       --rw-shadow:0 18px 55px rgba(0,0,0,.56);
 
-      /* v1.1.379 unified RWPH loading panel palette */
+      /* v1.1.381 unified RWPH loading panel palette */
       --rwph-theme-bg:#130b07;
       --rwph-theme-panel:#211714;
       --rwph-theme-panel2:#2b1d18;
@@ -8351,7 +8471,7 @@
         }
         if (tab.closed) {
           closedTicks += 1;
-          // v1.1.379: mobile/PDA can briefly report popup tabs as closed while backgrounded.
+          // v1.1.381: mobile/PDA can briefly report popup tabs as closed while backgrounded.
           // Do not kill the parent timer unless it has looked closed for a long time.
           if (closedTicks > 60 && timer) clearInterval(timer);
           return;
@@ -8493,7 +8613,7 @@
             try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
             return;
           }
-          // v1.1.379: do not cancel just because a phone/PDA browser temporarily pauses
+          // v1.1.381: do not cancel just because a phone/PDA browser temporarily pauses
           // or misreports a background loading tab. Only treat it as closed after a long,
           // repeated closed state while the main Torn tab is visible again.
           if (document.visibilityState === "hidden") return;
@@ -8566,7 +8686,7 @@
         closedChecks = 0;
         return;
       }
-      // v1.1.379: background tab pauses should not cancel calculations. Only cancel after
+      // v1.1.381: background tab pauses should not cancel calculations. Only cancel after
       // the loading window has looked closed repeatedly, with a grace period, while the main tab is visible.
       if (document.visibilityState === "hidden") return;
       if (!closedSince) closedSince = Date.now();
@@ -9452,7 +9572,7 @@
   }
 
 
-  // v1.1.379: Basic  removed.
+  // v1.1.381: Basic  removed.
 
   function rwphEnsureCacheState(mode) {
     const safeMode = rwphNormalizeCalculationMode(mode);
@@ -13022,7 +13142,7 @@
         }
 
 
-        /* v1.1.379: Stronger Basic/Advanced calculation dropdown cards */
+        /* v1.1.381: Stronger Basic/Advanced calculation dropdown cards */
         #rw-payout-helper details.rw-per-hit-settings,
         #rw-payout-helper details.rw-points-settings{
           position:relative !important;
