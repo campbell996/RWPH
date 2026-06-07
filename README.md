@@ -277,11 +277,12 @@ Default single-order bonuses:
 | 50 | +365 |
 | 100 | +730 |
 
-These values are controlled in `.env` with:
+These values start from `.env` defaults and can also be changed later from the Admin panel without editing the server file:
 
 ```env
 BONUS_MILESTONES=15:20,30:50,60:100,100:250
 SINGLE_ORDER_BONUS_MILESTONES=50:365,100:730
+PURCHASE_BONUSES_ENABLED=true
 ```
 
 Bonuses are calculated per Torn user. Another user's payments do not count toward someone else's cumulative milestone progress.
@@ -297,6 +298,8 @@ Admin features:
 - Grant a licence to a Torn ID.
 - Extend an existing licence by adding days.
 - Remove licence days from a user.
+- Enable or disable purchase bonuses for new Xanax purchases.
+- Add or change purchase bonus rules for new purchases.
 - Auto-grant the owner account a long licence when the admin key is saved.
 - Fill a selected licence into the admin form from the licence list.
 
@@ -1104,7 +1107,7 @@ RWPH is built to make ranked-war payout work faster and cleaner, but the faction
 The old Include Left Members / automatic left-member removal system has been removed. RWPH now removes members only when they are typed or pasted into the Basic/Advanced **Exclude member from results** box. The existing Removed Member Hits result stat now counts hits removed by that manual exclude system.
 
 
-## v1.1.386
+## v1.1.387
 
 - Fixed results loading dots and progress bar so they follow the same live backend stage/percent state.
 - Loading dots now show previous stages as done and the current backend stage as active instead of jumping ahead.
@@ -1113,8 +1116,27 @@ The old Include Left Members / automatic left-member removal system has been rem
 
 
 
-## v1.1.386 - 15 day Xanax licence
+## v1.1.387 - 15 day Xanax licence
 
 - Changed default licence credit from **20 days per Xanax** to **15 days per Xanax**.
 - Updated the payment helper to show **15 days per Xanax**.
 - Updated `.env.example` so `LICENSE_DAYS` defaults to `15` when present.
+
+
+## v1.1.387 - Admin purchase bonus toggle
+
+- Added a Purchase Bonus Control section to the Admin panel.
+- Admins can refresh, enable, or disable licence bonus days for new Xanax purchases from the panel.
+- Existing licences are not changed when bonuses are toggled.
+- When disabled, new purchases still receive the normal 15 licence days per Xanax, but bonus days and bonus milestone progress are not added.
+- Added `/api/admin/bonus-settings` so the userscript can read and update the persisted server setting.
+
+## v1.1.388 - Admin editable purchase bonuses
+
+- Added admin editing for purchase bonus rules.
+- Admins can now change the cumulative user milestone bonus list from the Admin panel.
+- Admins can now change the single-order bonus list from the Admin panel.
+- Bonus rules are saved in the backend database settings and apply only to new purchases after the change.
+- Existing licences and previously recorded payments are not recalculated or reduced.
+- The `.env` bonus values still act as startup/default rules when the database has no admin-edited rules saved.
+

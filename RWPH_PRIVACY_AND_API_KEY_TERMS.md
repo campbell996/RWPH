@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.386**
+Version: **1.1.388**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -193,11 +193,21 @@ By using RWPH, you accept that:
 - RWPH is provided as a manual helper with no guarantee of uninterrupted service or perfect results.
 
 
-## v1.1.386 note
+## v1.1.387 note
 
 This update renames This page HTML to Export Html and fixes the local results-page HTML export path. API key usage and storage terms are unchanged.
 
 
-## v1.1.386 note - 15 day Xanax licence
+## v1.1.387 note - 15 day Xanax licence
 
 This update changes licence credit from 20 days per Xanax to **15 days per Xanax**. API key usage and backend terms are unchanged.
+
+
+## v1.1.387 note - admin purchase bonus toggle
+
+Admins can enable or disable bonus licence days for new Xanax purchases from the Admin panel. Toggling this setting does not remove existing licence time. When disabled, new purchases still receive the configured base licence days per Xanax, but no bonus days or bonus milestone progress are added.
+
+## v1.1.388 note - admin editable purchase bonuses
+
+Admins can add or change the purchase bonus milestone rules from the Admin panel. These saved backend settings apply only to new Xanax licence purchases made after the change. Existing licence time is not removed or recalculated by editing bonus rules. API key usage and backend data handling are unchanged.
+

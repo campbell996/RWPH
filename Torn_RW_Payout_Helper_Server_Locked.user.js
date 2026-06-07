@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.386
+// @version      1.1.388
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,8 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.388: Admin panel can add or change purchase bonus milestone schedules for new licence payments.
+  // v1.1.387: Admin panel can enable/disable purchase bonus days for new licence payments.
   // v1.1.386: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
@@ -2925,8 +2927,112 @@
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Torn cache</div><div class="rw-admin-status-value">${Number(cache.tornMemoryEntries || 0)} live</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Purchase bonuses</div><div class="rw-admin-status-value">${result.purchaseBonuses?.purchaseBonusesEnabled === false ? "Off" : "On"}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Storage</div><div class="rw-admin-status-value">${esc(result.storage?.mode || "json")}</div></div>
       </div>`;
+  }
+
+  function rwphFormatMilestoneSchedule(schedule) {
+    const list = Array.isArray(schedule) ? schedule : [];
+    if (!list.length) return "None set";
+    return list.map((item) => `${esc(item.xanax)} Xanax = +${esc(item.days)} days`).join(" · ");
+  }
+
+  function rwphFormatMilestoneScheduleInput(schedule, fallbackText = "") {
+    const list = Array.isArray(schedule) ? schedule : [];
+    if (list.length) {
+      return list
+        .map((item) => `${Number(item?.xanax || 0)}:${Number(item?.days || 0)}`)
+        .filter((entry) => !entry.startsWith("0:") && !entry.endsWith(":0"))
+        .join(",");
+    }
+    return String(fallbackText || "");
+  }
+
+  function rwphUpdateAdminBonusInputs(root, settings) {
+    const data = settings || {};
+    const milestoneInput = rwphAdminQuery(root, "#rw-admin-bonus-milestones");
+    const singleOrderInput = rwphAdminQuery(root, "#rw-admin-single-order-bonuses");
+    if (milestoneInput && document.activeElement !== milestoneInput) {
+      milestoneInput.value = String(data.bonusScheduleText || data.milestoneScheduleText || rwphFormatMilestoneScheduleInput(data.bonusSchedule || data.milestoneSchedule));
+    }
+    if (singleOrderInput && document.activeElement !== singleOrderInput) {
+      singleOrderInput.value = String(data.singleOrderBonusScheduleText || data.rapidBonusScheduleText || rwphFormatMilestoneScheduleInput(data.singleOrderBonusSchedule || data.rapidBonusSchedule));
+    }
+  }
+
+  function rwphBonusInputValues(root) {
+    return {
+      bonusScheduleText: rwphAdminInputValue(root, "#rw-admin-bonus-milestones"),
+      singleOrderBonusScheduleText: rwphAdminInputValue(root, "#rw-admin-single-order-bonuses"),
+    };
+  }
+
+  function rwphRenderPurchaseBonusSettings(settings) {
+    const data = settings || {};
+    const enabled = data.purchaseBonusesEnabled !== false && data.enabled !== false;
+    const statusColor = enabled ? "#bbf7d0" : "#fecaca";
+    const statusText = enabled ? "Enabled" : "Disabled";
+    const note = enabled
+      ? "New purchases receive base licence days plus any matching bonus days."
+      : "New purchases receive base licence days only. No bonus days or bonus progress are added while disabled.";
+    const updated = data.updatedAt ? ` Last toggled: ${formatUnixDate(data.updatedAt)}.` : "";
+    const schedulesUpdated = data.schedulesUpdatedAt ? ` Last bonus edit: ${formatUnixDate(data.schedulesUpdatedAt)}.` : "";
+    const scheduleSource = data.scheduleSource === "admin" ? "admin settings" : ".env defaults";
+    return `
+      <div class="rw-small"><b>Status:</b> <span style="color:${statusColor};font-weight:950;">${statusText}</span>. ${esc(note)}${esc(updated)}</div>
+      <div class="rw-small"><b>Base:</b> ${esc(data.daysPerItem || 15)} licence day(s) per Xanax.</div>
+      <div class="rw-small"><b>Bonus source:</b> ${esc(scheduleSource)}.${esc(schedulesUpdated)}</div>
+      <div class="rw-small"><b>User milestones:</b> ${rwphFormatMilestoneSchedule(data.bonusSchedule || data.milestoneSchedule)}</div>
+      <div class="rw-small"><b>Single-order bonuses:</b> ${rwphFormatMilestoneSchedule(data.singleOrderBonusSchedule || data.rapidBonusSchedule)}</div>`;
+  }
+
+  function rwphUpdateAdminBonusBox(root, settings) {
+    const box = rwphAdminQuery(root, "#rw-admin-bonus-summary");
+    if (box) box.innerHTML = rwphRenderPurchaseBonusSettings(settings || {});
+    rwphUpdateAdminBonusInputs(root, settings || {});
+  }
+
+  async function rwphRefreshAdminBonusSettingsFromPanel(root) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    if (status) status.textContent = "Loading purchase bonus settings...";
+    const result = await adminRequest("POST", "/api/admin/bonus-settings", adminKey);
+    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || result.settings || {});
+    const enabled = (result.purchaseBonuses || result.settings || {}).purchaseBonusesEnabled !== false;
+    rwphToastPanelInfo(status, `Purchase bonuses are currently ${enabled ? "enabled" : "disabled"}.`, enabled ? "info" : "warn", "RWPH Admin");
+    return result;
+  }
+
+  async function rwphSetAdminPurchaseBonusesFromPanel(root, enabled) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    if (status) status.textContent = `${enabled ? "Enabling" : "Disabling"} purchase bonuses for new payments...`;
+    const result = await adminRequest("POST", "/api/admin/bonus-settings", adminKey, { purchaseBonusesEnabled: !!enabled });
+    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || result.settings || {});
+    rwphToastPanelInfo(
+      status,
+      enabled
+        ? "Purchase bonuses enabled. New purchases can receive matching bonus days again."
+        : "Purchase bonuses disabled. New purchases will only receive base licence days until you enable bonuses again.",
+      enabled ? "info" : "warn",
+      "RWPH Admin"
+    );
+    return result;
+  }
+
+  async function rwphSaveAdminBonusRulesFromPanel(root) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    const payload = rwphBonusInputValues(root);
+    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    if (status) status.textContent = "Saving purchase bonus rules for new payments...";
+    const result = await adminRequest("POST", "/api/admin/bonus-settings", adminKey, payload);
+    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || result.settings || {});
+    rwphToastPanelInfo(status, "Purchase bonus rules saved. New purchases will use the updated bonus lists.", "info", "RWPH Admin");
+    return result;
   }
 
   function rwphGetAdminKeyFromPanel(root) {
@@ -2956,6 +3062,7 @@
     if (status) status.textContent = "Loading server status...";
     const result = await adminRequest("POST", "/api/admin/status", adminKey);
     if (box) box.innerHTML = rwphRenderAdminStatusSummary(result);
+    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || {});
     rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     return result;
   }
@@ -2966,7 +3073,7 @@
     panelRoot.__rwphAdminDelegatedBound = true;
     panelRoot.addEventListener("click", async (event) => {
       const target = event.target;
-      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-bonus-refresh, #rw-admin-bonus-save, #rw-admin-bonus-enable, #rw-admin-bonus-disable, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
       if (!adminAction || !panelRoot.contains?.(adminAction)) return;
       const rootScope = rwphFindAdminRoot(adminAction);
       const status = rwphAdminQuery(rootScope, "#rw-admin-status");
@@ -2987,6 +3094,26 @@
 
         if (adminAction.id === "rw-admin-status-load") {
           await rwphLoadAdminServerStatusFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-bonus-refresh") {
+          await rwphRefreshAdminBonusSettingsFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-bonus-save") {
+          await rwphSaveAdminBonusRulesFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-bonus-enable") {
+          await rwphSetAdminPurchaseBonusesFromPanel(rootScope, true);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-bonus-disable") {
+          await rwphSetAdminPurchaseBonusesFromPanel(rootScope, false);
           return;
         }
 
@@ -3030,7 +3157,7 @@
           if (result) await rwphRefreshAdminLicensesFromPanel(rootScope);
         }
       } catch (e) {
-        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
+        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-bonus-refresh" ? "Bonus status" : adminAction.id === "rw-admin-bonus-save" ? "Save bonus rules" : adminAction.id === "rw-admin-bonus-enable" ? "Enable bonuses" : adminAction.id === "rw-admin-bonus-disable" ? "Disable bonuses" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
         rwphToastPanelError(status, `${actionName} error: ${e.message}`, "RWPH Admin");
       }
     }, true);
@@ -11905,6 +12032,25 @@
               <button id="rw-move-launcher-admin" class="secondary">Launcher Movement</button>
             </div>
 
+            <div class="rw-admin-advanced-box rw-admin-bonus-box">
+              <div class="rw-small"><b>Purchase bonus control:</b> enable, disable, add, or change bonus days for new Xanax licence purchases. Base licence days still apply either way.</div>
+              <div id="rw-admin-bonus-summary" class="rw-small">Click Refresh Bonus Status to load the current bonus setting.</div>
+              <label>User milestone bonuses
+                <textarea id="rw-admin-bonus-milestones" rows="2" placeholder="15:20,30:50,60:100,100:250"></textarea>
+              </label>
+              <div class="rw-small">Format: <b>Xanax:bonus days</b>, separated by commas. Example: 15:20,30:50. Leave blank for no milestone bonuses.</div>
+              <label>Single-order bonuses
+                <textarea id="rw-admin-single-order-bonuses" rows="2" placeholder="50:365,100:730"></textarea>
+              </label>
+              <div class="rw-small">Single-order bonuses use the amount sent in one payment. The highest matching entry applies once.</div>
+              <div class="rw-actions">
+                <button id="rw-admin-bonus-refresh" class="secondary" type="button">Refresh Bonus Status</button>
+                <button id="rw-admin-bonus-save" type="button">Save Bonus Rules</button>
+                <button id="rw-admin-bonus-enable" type="button">Enable Bonuses</button>
+                <button id="rw-admin-bonus-disable" class="danger" type="button">Disable Bonuses</button>
+              </div>
+            </div>
+
             <label>Player Torn ID
               <input id="rw-admin-torn-id" type="text" placeholder="Example: 1234567">
             </label>
@@ -11999,7 +12145,7 @@
               <li><b>Buy Licence:</b> creates a Xanax payment code and opens the payment helper.</li>
               <li><b>Extend Licence:</b> creates an extension payment code. Existing active pending codes are reused where possible.</li>
               <li><b>Your Expiration:</b> checks your current licence expiry.</li>
-              <li><b>Admin panel:</b> admins can grant, extend, list, fill, and remove licence days when the server admin routes are enabled.</li>
+              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and turn new-purchase bonus days on/off when the server admin routes are enabled.</li>
               <li><b>Keep admin secrets private:</b> never share ADMIN_KEY, PAYWALL_SECRET, private server URLs, or licence tokens with untrusted people.</li>
             </ul>
           </div>
@@ -12545,6 +12691,25 @@
               <div id="rw-admin-status-summary" class="rw-small">Server status will appear here.</div>
             </div>
 
+            <div class="rw-admin-advanced-box rw-admin-bonus-box">
+              <div class="rw-small"><b>Purchase bonus control:</b> enable, disable, add, or change bonus days for new Xanax licence purchases. Base licence days still apply either way.</div>
+              <div id="rw-admin-bonus-summary" class="rw-small">Click Refresh Bonus Status to load the current bonus setting.</div>
+              <label>User milestone bonuses
+                <textarea id="rw-admin-bonus-milestones" rows="2" placeholder="15:20,30:50,60:100,100:250"></textarea>
+              </label>
+              <div class="rw-small">Format: <b>Xanax:bonus days</b>, separated by commas. Example: 15:20,30:50. Leave blank for no milestone bonuses.</div>
+              <label>Single-order bonuses
+                <textarea id="rw-admin-single-order-bonuses" rows="2" placeholder="50:365,100:730"></textarea>
+              </label>
+              <div class="rw-small">Single-order bonuses use the amount sent in one payment. The highest matching entry applies once.</div>
+              <div class="rw-actions">
+                <button id="rw-admin-bonus-refresh" class="secondary" type="button">Refresh Bonus Status</button>
+                <button id="rw-admin-bonus-save" type="button">Save Bonus Rules</button>
+                <button id="rw-admin-bonus-enable" type="button">Enable Bonuses</button>
+                <button id="rw-admin-bonus-disable" class="danger" type="button">Disable Bonuses</button>
+              </div>
+            </div>
+
             <label>Player Torn ID
               <input id="rw-admin-torn-id" type="text" placeholder="Example: 1234567">
             </label>
@@ -12639,7 +12804,7 @@
               <li><b>Buy Licence:</b> creates a Xanax payment code and opens the payment helper.</li>
               <li><b>Extend Licence:</b> creates an extension payment code. Existing active pending codes are reused where possible.</li>
               <li><b>Your Expiration:</b> checks your current licence expiry.</li>
-              <li><b>Admin panel:</b> admins can grant, extend, list, fill, and remove licence days when the server admin routes are enabled.</li>
+              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and turn new-purchase bonus days on/off when the server admin routes are enabled.</li>
               <li><b>Keep admin secrets private:</b> never share ADMIN_KEY, PAYWALL_SECRET, private server URLs, or licence tokens with untrusted people.</li>
             </ul>
           </div>
