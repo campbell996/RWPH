@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.392
+// @version      1.1.393
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.393: single-order purchase bonuses award only the highest matching single-order tier; cumulative user milestones still stack from that Torn ID's lifetime Xanax purchases.
   // v1.1.392: admin panel tools now stay hidden until a valid ADMIN_KEY is saved/verified, and bonus edits remain admin-key protected.
   // v1.1.391: updated default bonus lists and confirmed admin-added bonuses appear as new dropdown buttons after save.
   // v1.1.389: locked screen payment heading now correctly says each Xanax gives 15 licence days.

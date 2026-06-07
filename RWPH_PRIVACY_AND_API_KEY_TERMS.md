@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.392**
+Version: **1.1.393**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -230,3 +230,8 @@ This update changes the default cumulative user milestone bonuses to `25:30,50:3
 
 The userscript now hides admin-only controls until the server verifies a saved ADMIN_KEY. Bonus add/edit/delete/save requests are still protected by the backend admin key check, including `.env` writes.
 
+
+
+## v1.1.393 note - purchase bonus calculation clarification
+
+Single-order bonuses now explicitly award only the highest qualifying single-order tier for a payment. Lower matching single-order tiers are skipped. Cumulative user milestone bonuses are still based on that Torn ID's total recorded Xanax purchases and can stack with the highest single-order bonus on the same purchase.

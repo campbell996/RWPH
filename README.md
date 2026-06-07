@@ -301,6 +301,8 @@ SINGLE_ORDER_BONUS_MILESTONES=10:15,25:45:off,50:100,100:200,500:1000
 
 Green bonus buttons in the Admin dropdown are enabled. Red bonus buttons are saved but skipped for new purchases. Bonuses are calculated per Torn user. Another user's payments do not count toward someone else's cumulative milestone progress.
 
+Single-order bonuses use the quantity in the one matched Xanax payment only and award only the highest qualifying tier. For example, a 25 Xanax order gets the `25:45` single-order bonus only; it does not also get the lower `10:15` single-order bonus. Cumulative user milestone bonuses use that member's total recorded Xanax purchase history and can stack with the single-order bonus from the same payment.
+
 ### Admin Tools
 
 Admin tools are available from both the locked panel and the unlocked main panel.
@@ -1143,7 +1145,7 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Added a Purchase Bonus Control section to the Admin panel.
 - Admins can refresh, enable, or disable licence bonus days for new Xanax purchases from the panel.
 - Existing licences are not changed when bonuses are toggled.
-- When disabled, new purchases still receive the normal 15 licence days per Xanax, but bonus days and bonus milestone progress are not added.
+- When disabled, new purchases still receive the normal 15 licence days per Xanax, but bonus days are not added for that purchase.
 - Added `/api/admin/bonus-settings` so the userscript can read and update the persisted server setting.
 
 ## v1.1.389 - Locked screen 15-day Xanax wording
@@ -1187,3 +1189,12 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Save Admin Key now verifies against `/api/admin/status` before showing any admin tools.
 - Bonus add/change/delete/save actions still require the valid admin key on the backend and can save to `.env` only after admin verification.
 
+
+
+## v1.1.393 - Highest single-order bonus and cumulative milestones
+
+- Single-order purchase bonuses now explicitly award only the highest qualifying single-order tier for that one payment.
+- Example: a 25 Xanax single order gets the `25:45` single-order bonus only; it does not also get the lower `10:15` single-order bonus.
+- Cumulative user milestone bonuses still use that Torn ID's total recorded Xanax purchase history.
+- Milestone bonuses can stack with the highest single-order bonus on the same purchase.
+- Example: a 50 Xanax purchase can get the highest qualifying single-order bonus and any cumulative milestone bonuses crossed by that member's total purchases.
