@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.393
+// @version      1.1.396
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,12 +23,8 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.393: single-order purchase bonuses award only the highest matching single-order tier; cumulative user milestones still stack from that Torn ID's lifetime Xanax purchases.
-  // v1.1.392: admin panel tools now stay hidden until a valid ADMIN_KEY is saved/verified, and bonus edits remain admin-key protected.
-  // v1.1.391: updated default bonus lists and confirmed admin-added bonuses appear as new dropdown buttons after save.
+  // v1.1.396: removed the purchase bonus system entirely; Xanax payments add base licence days only.
   // v1.1.389: locked screen payment heading now correctly says each Xanax gives 15 licence days.
-  // v1.1.388: Admin panel can add or change purchase bonus milestone schedules for new licence payments.
-  // v1.1.387: Admin panel can enable/disable purchase bonus days for new licence payments.
   // v1.1.386: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
   // v1.1.311: recoloured all panels/UI accents to match the ranked-war payout logo without changing layout.
   // v1.1.308: active licences unlock straight into the main panel after saved-key checks, and Basic/Advanced calculation dropdowns are compacted.
@@ -1124,7 +1120,7 @@
       GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
 
       const paidQtyText = result.qty && result.addedDays
-        ? ` ${result.qty}x Xanax detected = ${result.baseDays || result.addedDays} base day(s)${result.milestoneBonusDays ? ` + ${result.milestoneBonusDays} personal milestone bonus day(s)` : ""}${result.rapidBonusDays ? ` + ${result.rapidBonusDays} single-order bonus day(s)` : ""} = ${result.addedDays} total licence day(s).`
+        ? ` ${result.qty}x Xanax detected = ${result.addedDays} licence day(s) added.`
         : "";
 
       const paywallCode = document.getElementById("rw-paywall-code");
@@ -1135,7 +1131,7 @@
       if (mode === "extend" || document.getElementById("rw-key")) {
         const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
         rwphToastPanelInfo(status, `Licence extended.${paidQtyText}`, "info", "RWPH Payment");
-        if (status) await showLicenseDays(status, { toast: true });
+        if (status) await showLicenseDays(status, { openPanel: true });
       } else {
         rwphShowToast(`Unlocked.${paidQtyText} Loading tool...`, "info", 10000, "RWPH Payment");
         setPaymentStatus("Ready.", mode);
@@ -2773,7 +2769,6 @@
       const waitSeconds = Math.max(1, Math.ceil((windowMs - (nowMs - fresh[0])) / 1000));
       const message = `Your Expiration can only be checked ${limit} times per minute. Try again in ${waitSeconds} second${waitSeconds === 1 ? "" : "s"}.`;
       if (statusEl) statusEl.textContent = message;
-      rwphToastPanelError(statusEl, message, "RWPH Licence");
       if (buttonEl) {
         buttonEl.disabled = true;
         const originalText = buttonEl.dataset.rwphOriginalText || buttonEl.textContent || "Your Expiration";
@@ -2833,20 +2828,83 @@
     return "Under 1 hour";
   }
 
+  function rwphCloseLicenceInfoPanel() {
+    document.getElementById("rwph-licence-info-panel")?.remove();
+  }
+
+  function rwphOpenLicenceInfoPanel(info = {}) {
+    rwphCloseLicenceInfoPanel();
+    rwphEnsureFloatingPanelCss();
+
+    const valid = info.valid === true;
+    const userName = info.name || "this user";
+    const tornId = info.tornId || "unknown";
+    const expiresText = info.expiresAt ? formatUnixDate(info.expiresAt) : "No active expiry found";
+    const timeLeft = info.expiresAt ? formatLicenseDaysLeft(info.expiresAt) : "No active licence";
+
+    const panel = document.createElement("div");
+    panel.id = "rwph-licence-info-panel";
+    panel.className = "rwph-floating-panel rwph-licence-info-panel";
+    panel.style.cssText = `
+      position: fixed;
+      z-index: 1000003;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(520px, calc(100vw - 18px));
+      max-height: min(620px, calc(100vh - 18px));
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid rgba(245,158,11,.35);
+      color: #fff7ed;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    `;
+    panel.innerHTML = `
+      <style>
+        #rwph-licence-info-panel * { box-sizing: border-box; }
+        #rwph-licence-info-panel .rwph-panel-head { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none; }
+        #rwph-licence-info-panel .rwph-panel-title { display:flex;align-items:center;gap:10px;font-weight:950;font-size:16px;color:#fff; }
+        #rwph-licence-info-panel .rwph-panel-title img { width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(249,115,22,.55));pointer-events:none; }
+        #rwph-licence-info-panel .rwph-floating-panel-body { padding:14px; overflow-y:auto; overflow-x:hidden; max-height:calc(100vh - 92px); }
+        #rwph-licence-info-panel .rwph-licence-status-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px; }
+        #rwph-licence-info-panel .rw-card { border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:rgba(15,23,42,.54); }
+        #rwph-licence-info-panel .rwph-stat-label { font-size:11px;color:#b9dcff;font-weight:800;margin-bottom:3px; }
+        #rwph-licence-info-panel .rwph-stat-value { font-size:13px;color:#fff;font-weight:950;line-height:1.35; }
+        #rwph-licence-info-panel .rwph-licence-note { font-size:12px;line-height:1.45;color:#c7e8ff;margin:4px 0 8px; }
+        #rwph-licence-info-panel .rwph-licence-actions { display:flex;justify-content:flex-end;gap:8px;margin-top:12px; }
+        #rwph-licence-info-panel #rwph-licence-info-close { min-width:42px;font-size:18px;padding:6px 10px; }
+        @media (max-width:520px){ #rwph-licence-info-panel .rwph-licence-status-grid{grid-template-columns:1fr;} }
+      </style>
+      <div class="rwph-panel-head">
+        <div class="rwph-panel-title"><img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH"><span>Your Licence Info</span></div>
+        <button id="rwph-licence-info-close" class="danger" type="button" title="Close" aria-label="Close">×</button>
+      </div>
+      <div class="rwph-floating-panel-body">
+        ${valid ? "" : `<div class="rw-card" style="border-color:rgba(239,68,68,.55);margin-bottom:10px;"><b>Licence check:</b> ${esc(info.error || "No active saved licence found.")}</div>`}
+        <div class="rwph-licence-status-grid">
+          <div class="rw-card"><div class="rwph-stat-label">User</div><div class="rwph-stat-value">${esc(userName)} (${esc(tornId)})</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Base licence</div><div class="rwph-stat-value">15 days per Xanax</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Bonus system</div><div class="rwph-stat-value">Removed</div></div>
+        </div>
+        <div class="rw-card rwph-licence-note">Purchase bonuses, milestone bonuses, single-order bonuses, and the 365-day completion reward have been removed. New payments only add the normal base licence days.</div>
+        <div class="rwph-licence-actions"><button id="rwph-licence-info-close-bottom" class="secondary" type="button">Close</button></div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    panel.querySelector("#rwph-licence-info-close")?.addEventListener("click", rwphCloseLicenceInfoPanel);
+    panel.querySelector("#rwph-licence-info-close-bottom")?.addEventListener("click", rwphCloseLicenceInfoPanel);
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+  }
+
   async function showLicenseDays(statusEl, options = {}) {
     const info = await getSavedLicenseInfo();
-    const useToast = !!options.toast;
-    const writeInfo = (message, mode = "info") => {
-      if (useToast) {
-        rwphShowToast(message, mode, 10000, mode === "error" ? "RWPH Licence" : "RWPH Info");
-        if (statusEl && options.clearPanelStatus !== false) statusEl.textContent = options.readyText || "Ready.";
-      } else if (statusEl) {
-        statusEl.textContent = message;
-      }
-    };
 
     if (!info.valid) {
-      writeInfo("License check: " + (info.error || "No valid saved license found."), "error");
+      rwphOpenLicenceInfoPanel(info || {});
+      if (statusEl) statusEl.textContent = "Licence info panel opened.";
       if (document.getElementById("rw-key")) {
         const lockMsg = info.revoked
           ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again."
@@ -2856,10 +2914,8 @@
       return false;
     }
 
-    writeInfo(
-      `License active for ${info.name || "this user"} (${info.tornId || "unknown"}). ` +
-      `Time left: ${formatLicenseDaysLeft(info.expiresAt)}. Expires: ${formatUnixDate(info.expiresAt)}.`
-    );
+    rwphOpenLicenceInfoPanel(info || {});
+    if (statusEl) statusEl.textContent = "Licence info panel opened.";
     return true;
   }
 
@@ -2931,252 +2987,8 @@
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Torn cache</div><div class="rw-admin-status-value">${Number(cache.tornMemoryEntries || 0)} live</div></div>
-        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Purchase bonuses</div><div class="rw-admin-status-value">${result.purchaseBonuses?.purchaseBonusesEnabled === false ? "Off" : "On"}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Storage</div><div class="rw-admin-status-value">${esc(result.storage?.mode || "json")}</div></div>
       </div>`;
-  }
-
-  function rwphClientParseBonusEnabled(raw, fallback = true) {
-    if (typeof raw === "undefined" || raw === null || String(raw).trim() === "") return !!fallback;
-    return !["false", "0", "off", "no", "disabled"].includes(String(raw).trim().toLowerCase());
-  }
-
-  function rwphNormalizeClientBonusEntry(raw) {
-    let xanax = 0;
-    let days = 0;
-    let enabled = true;
-    if (raw && typeof raw === "object") {
-      xanax = Number(raw.xanax || raw.qty || raw.amount || 0);
-      days = Number(raw.days || raw.bonusDays || 0);
-      enabled = rwphClientParseBonusEnabled(raw.enabled, true);
-    } else {
-      const pieces = String(raw || "").split(":").map((part) => String(part || "").trim());
-      if (pieces.length < 2 || pieces.length > 3) return null;
-      xanax = Number(pieces[0]);
-      days = Number(pieces[1]);
-      enabled = rwphClientParseBonusEnabled(pieces[2], true);
-    }
-    if (!Number.isFinite(xanax) || !Number.isFinite(days) || xanax <= 0 || days <= 0) return null;
-    return { xanax: Math.floor(xanax), days: Math.floor(days), enabled: enabled !== false };
-  }
-
-  function rwphParseMilestoneScheduleInput(input) {
-    if (Array.isArray(input)) {
-      return input.map(rwphNormalizeClientBonusEntry).filter(Boolean).sort((a, b) => a.xanax - b.xanax || a.days - b.days);
-    }
-    const output = new Map();
-    String(input || "").split(",").map((part) => part.trim()).filter(Boolean).forEach((part) => {
-      const entry = rwphNormalizeClientBonusEntry(part);
-      if (entry) output.set(entry.xanax, entry);
-    });
-    return Array.from(output.values()).sort((a, b) => a.xanax - b.xanax || a.days - b.days);
-  }
-
-  function rwphFormatMilestoneSchedule(schedule) {
-    const list = rwphParseMilestoneScheduleInput(schedule || []);
-    if (!list.length) return "None set";
-    return list.map((item) => `${esc(item.xanax)} Xanax = +${esc(item.days)} days ${item.enabled === false ? "(disabled)" : "(enabled)"}`).join(" · ");
-  }
-
-  function rwphFormatMilestoneScheduleInput(schedule, fallbackText = "") {
-    const list = rwphParseMilestoneScheduleInput(Array.isArray(schedule) ? schedule : fallbackText || schedule || []);
-    if (list.length) {
-      return list
-        .map((item) => `${Number(item?.xanax || 0)}:${Number(item?.days || 0)}${item?.enabled === false ? ":off" : ""}`)
-        .filter((entry) => !entry.startsWith("0:") && !entry.includes(":0"))
-        .join(",");
-    }
-    return String(fallbackText || "");
-  }
-
-  function rwphBonusInputValues(root) {
-    return {
-      bonusScheduleText: rwphAdminInputValue(root, "#rw-admin-bonus-milestones"),
-      singleOrderBonusScheduleText: rwphAdminInputValue(root, "#rw-admin-single-order-bonuses"),
-      saveToEnv: true,
-    };
-  }
-
-  function rwphReadAdminBonusSchedules(root) {
-    return {
-      milestone: rwphParseMilestoneScheduleInput(rwphAdminInputValue(root, "#rw-admin-bonus-milestones")),
-      single: rwphParseMilestoneScheduleInput(rwphAdminInputValue(root, "#rw-admin-single-order-bonuses")),
-    };
-  }
-
-  function rwphWriteAdminBonusSchedules(root, schedules) {
-    const milestoneInput = rwphAdminQuery(root, "#rw-admin-bonus-milestones");
-    const singleOrderInput = rwphAdminQuery(root, "#rw-admin-single-order-bonuses");
-    if (milestoneInput) milestoneInput.value = rwphFormatMilestoneScheduleInput(schedules?.milestone || []);
-    if (singleOrderInput) singleOrderInput.value = rwphFormatMilestoneScheduleInput(schedules?.single || []);
-  }
-
-  function rwphUpdateAdminBonusInputs(root, settings) {
-    const data = settings || {};
-    const milestoneInput = rwphAdminQuery(root, "#rw-admin-bonus-milestones");
-    const singleOrderInput = rwphAdminQuery(root, "#rw-admin-single-order-bonuses");
-    if (milestoneInput) {
-      milestoneInput.value = String(data.bonusScheduleText || data.milestoneScheduleText || rwphFormatMilestoneScheduleInput(data.bonusSchedule || data.milestoneSchedule));
-    }
-    if (singleOrderInput) {
-      singleOrderInput.value = String(data.singleOrderBonusScheduleText || data.rapidBonusScheduleText || rwphFormatMilestoneScheduleInput(data.singleOrderBonusSchedule || data.rapidBonusSchedule));
-    }
-  }
-
-  function rwphRenderBonusButtons(schedule, type, emptyText) {
-    const list = rwphParseMilestoneScheduleInput(schedule || []);
-    if (!list.length) return `<div class="rw-small rw-muted">${esc(emptyText || "No bonus rules set.")}</div>`;
-    return `<div class="rw-admin-bonus-button-grid">${list.map((item, index) => {
-      const enabled = item.enabled !== false;
-      const css = enabled ? "rw-admin-bonus-enabled" : "rw-admin-bonus-disabled";
-      const state = enabled ? "Enabled" : "Disabled";
-      return `<button type="button" class="rw-admin-bonus-entry-btn ${css}" data-bonus-type="${esc(type)}" data-bonus-index="${index}" data-xanax="${esc(item.xanax)}" data-days="${esc(item.days)}" data-enabled="${enabled ? "true" : "false"}">${esc(item.xanax)} Xanax → +${esc(item.days)} days<br><span>${esc(state)} · click to edit</span></button>`;
-    }).join("")}</div>`;
-  }
-
-  function rwphRenderPurchaseBonusSettings(settings) {
-    const data = settings || {};
-    const enabled = data.purchaseBonusesEnabled !== false && data.enabled !== false;
-    const statusColor = enabled ? "#bbf7d0" : "#fecaca";
-    const statusText = enabled ? "Master Enabled" : "Master Disabled";
-    const note = enabled
-      ? "Green bonus buttons can apply to new purchases. Red bonus buttons are skipped."
-      : "All bonus buttons are skipped while the master switch is disabled. Base licence days still apply.";
-    const updated = data.updatedAt ? ` Last toggled: ${formatUnixDate(data.updatedAt)}.` : "";
-    const schedulesUpdated = data.schedulesUpdatedAt ? ` Last bonus edit: ${formatUnixDate(data.schedulesUpdatedAt)}.` : "";
-    const scheduleSource = data.scheduleSource === "admin" ? "admin / .env settings" : ".env defaults";
-    const envWrite = data.envWrite?.ok ? ` Saved to .env.` : data.envWrite?.error ? ` .env save warning: ${data.envWrite.error}` : "";
-    return `
-      <div class="rw-small"><b>Status:</b> <span style="color:${statusColor};font-weight:950;">${statusText}</span>. ${esc(note)}${esc(updated)}</div>
-      <div class="rw-small"><b>Base:</b> ${esc(data.daysPerItem || 15)} licence day(s) per Xanax.</div>
-      <div class="rw-small"><b>Bonus source:</b> ${esc(scheduleSource)}.${esc(schedulesUpdated)}${esc(envWrite)}</div>
-      <details class="rw-admin-bonus-dropdown" open>
-        <summary>Purchase Bonus Dropdown</summary>
-        <div class="rw-small"><b>User milestone bonuses</b> — total Xanax paid by the user crosses this amount.</div>
-        ${rwphRenderBonusButtons(data.bonusSchedule || data.milestoneSchedule, "milestone", "No user milestone bonuses set.")}
-        <div class="rw-actions rw-admin-bonus-mini-actions">
-          <button id="rw-admin-bonus-add-milestone" class="secondary" type="button">Add User Milestone Bonus</button>
-        </div>
-        <div class="rw-small"><b>Single-order bonuses</b> — Xanax amount sent in one payment. Highest matching enabled bonus applies once.</div>
-        ${rwphRenderBonusButtons(data.singleOrderBonusSchedule || data.rapidBonusSchedule, "single", "No single-order bonuses set.")}
-        <div class="rw-actions rw-admin-bonus-mini-actions">
-          <button id="rw-admin-bonus-add-single-order" class="secondary" type="button">Add Single-Order Bonus</button>
-        </div>
-      </details>`;
-  }
-
-  function rwphUpdateAdminBonusBox(root, settings) {
-    rwphUpdateAdminBonusInputs(root, settings || {});
-    const box = rwphAdminQuery(root, "#rw-admin-bonus-summary");
-    if (box) box.innerHTML = rwphRenderPurchaseBonusSettings(settings || {});
-  }
-
-  function rwphSetBonusEditorMessage(root, message) {
-    const msg = rwphAdminQuery(root, "#rw-admin-bonus-editor-note");
-    if (msg) msg.textContent = message || "";
-  }
-
-  function rwphOpenAdminBonusEditor(root, type, index = -1) {
-    const editor = rwphAdminQuery(root, "#rw-admin-bonus-editor");
-    const schedules = rwphReadAdminBonusSchedules(root);
-    const key = type === "single" ? "single" : "milestone";
-    const list = schedules[key] || [];
-    const item = index >= 0 ? list[index] : { xanax: "", days: "", enabled: true };
-    if (!editor) return;
-    const typeInput = rwphAdminQuery(root, "#rw-admin-bonus-edit-type");
-    const indexInput = rwphAdminQuery(root, "#rw-admin-bonus-edit-index");
-    const xanaxInput = rwphAdminQuery(root, "#rw-admin-bonus-edit-xanax");
-    const daysInput = rwphAdminQuery(root, "#rw-admin-bonus-edit-days");
-    const enabledInput = rwphAdminQuery(root, "#rw-admin-bonus-edit-enabled");
-    const title = rwphAdminQuery(root, "#rw-admin-bonus-editor-title");
-    if (typeInput) typeInput.value = key;
-    if (indexInput) indexInput.value = String(Number(index));
-    if (xanaxInput) xanaxInput.value = item?.xanax || "";
-    if (daysInput) daysInput.value = item?.days || "";
-    if (enabledInput) enabledInput.checked = item?.enabled !== false;
-    if (title) title.textContent = `${index >= 0 ? "Edit" : "Add"} ${key === "single" ? "Single-Order" : "User Milestone"} Bonus`;
-    editor.hidden = false;
-    rwphSetBonusEditorMessage(root, "Green means enabled for new purchases. Red/disabled bonus rules stay saved but are skipped.");
-    xanaxInput?.focus?.();
-  }
-
-  function rwphCloseAdminBonusEditor(root) {
-    const editor = rwphAdminQuery(root, "#rw-admin-bonus-editor");
-    if (editor) editor.hidden = true;
-  }
-
-  async function rwphSaveAdminBonusEditorFromPanel(root, remove = false) {
-    const status = rwphAdminQuery(root, "#rw-admin-status");
-    const type = String(rwphAdminQuery(root, "#rw-admin-bonus-edit-type")?.value || "milestone") === "single" ? "single" : "milestone";
-    const index = Number(rwphAdminQuery(root, "#rw-admin-bonus-edit-index")?.value || -1);
-    const xanax = Math.floor(Number(rwphAdminQuery(root, "#rw-admin-bonus-edit-xanax")?.value || 0));
-    const days = Math.floor(Number(rwphAdminQuery(root, "#rw-admin-bonus-edit-days")?.value || 0));
-    const enabled = rwphAdminQuery(root, "#rw-admin-bonus-edit-enabled")?.checked !== false;
-    const schedules = rwphReadAdminBonusSchedules(root);
-    const list = [...(schedules[type] || [])];
-    if (!remove) {
-      if (!xanax || xanax <= 0) return rwphSetBonusEditorMessage(root, "Enter a valid Xanax amount.");
-      if (!days || days <= 0) return rwphSetBonusEditorMessage(root, "Enter valid bonus days.");
-      const nextEntry = { xanax, days, enabled };
-      if (index >= 0 && index < list.length) list[index] = nextEntry;
-      else list.push(nextEntry);
-    } else if (index >= 0 && index < list.length) {
-      list.splice(index, 1);
-    }
-    schedules[type] = list.sort((a, b) => a.xanax - b.xanax || a.days - b.days);
-    rwphWriteAdminBonusSchedules(root, schedules);
-    rwphCloseAdminBonusEditor(root);
-    const result = await rwphSaveAdminBonusRulesFromPanel(root);
-    if (status && result?.envWrite?.ok) status.textContent = `Bonus rules saved to database and .env (${result.envWrite.file || ".env"}).`;
-    return result;
-  }
-
-  async function rwphRefreshAdminBonusSettingsFromPanel(root) {
-    const status = rwphAdminQuery(root, "#rw-admin-status");
-    const adminKey = rwphGetAdminKeyFromPanel(root);
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-    if (status) status.textContent = "Loading purchase bonus settings...";
-    const result = await adminRequest("POST", "/api/admin/bonus-settings", adminKey);
-    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || result.settings || {});
-    const enabled = (result.purchaseBonuses || result.settings || {}).purchaseBonusesEnabled !== false;
-    rwphToastPanelInfo(status, `Purchase bonuses are currently ${enabled ? "enabled" : "disabled"}.`, enabled ? "info" : "warn", "RWPH Admin");
-    return result;
-  }
-
-  async function rwphSetAdminPurchaseBonusesFromPanel(root, enabled) {
-    const status = rwphAdminQuery(root, "#rw-admin-status");
-    const adminKey = rwphGetAdminKeyFromPanel(root);
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-    if (status) status.textContent = `${enabled ? "Enabling" : "Disabling"} purchase bonuses for new payments...`;
-    const result = await adminRequest("POST", "/api/admin/bonus-settings", adminKey, { purchaseBonusesEnabled: !!enabled, saveToEnv: true });
-    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || result.settings || {});
-    rwphToastPanelInfo(
-      status,
-      enabled
-        ? "Purchase bonuses enabled and saved. New purchases can receive matching enabled bonus days again."
-        : "Purchase bonuses disabled and saved. New purchases will only receive base licence days until you enable bonuses again.",
-      enabled ? "info" : "warn",
-      "RWPH Admin"
-    );
-    return result;
-  }
-
-  async function rwphSaveAdminBonusRulesFromPanel(root) {
-    const status = rwphAdminQuery(root, "#rw-admin-status");
-    const adminKey = rwphGetAdminKeyFromPanel(root);
-    const payload = rwphBonusInputValues(root);
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
-    if (status) status.textContent = "Saving purchase bonus rules to database and .env...";
-    const result = await adminRequest("POST", "/api/admin/bonus-settings", adminKey, payload);
-    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || result.settings || {});
-    const envWrite = result.envWrite || result.purchaseBonuses?.envWrite || result.settings?.envWrite;
-    const msg = envWrite?.ok
-      ? "Purchase bonus rules saved to the backend database and .env file. New purchases will use the updated bonus lists."
-      : envWrite?.error
-        ? `Purchase bonus rules saved to the database, but .env could not be written: ${envWrite.error}`
-        : "Purchase bonus rules saved. New purchases will use the updated bonus lists.";
-    rwphToastPanelInfo(status, msg, envWrite?.error ? "warn" : "info", "RWPH Admin");
-    return result;
   }
 
   function rwphGetAdminKeyFromPanel(root) {
@@ -3206,7 +3018,6 @@
     if (status) status.textContent = "Loading server status...";
     const result = await adminRequest("POST", "/api/admin/status", adminKey);
     if (box) box.innerHTML = rwphRenderAdminStatusSummary(result);
-    rwphUpdateAdminBonusBox(root, result.purchaseBonuses || {});
     rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
     return result;
   }
@@ -3282,7 +3093,6 @@
     rwphSetAdminToolsVisible(root, true);
     const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
     if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(serverStatus);
-    rwphUpdateAdminBonusBox(root, serverStatus.purchaseBonuses || {});
 
     if (options.grantOwner !== false) {
       try {
@@ -3310,7 +3120,7 @@
     panelRoot.__rwphAdminDelegatedBound = true;
     panelRoot.addEventListener("click", async (event) => {
       const target = event.target;
-      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-bonus-refresh, #rw-admin-bonus-save, #rw-admin-bonus-enable, #rw-admin-bonus-disable, #rw-admin-bonus-add-milestone, #rw-admin-bonus-add-single-order, #rw-admin-bonus-editor-save, #rw-admin-bonus-editor-delete, #rw-admin-bonus-editor-cancel, .rw-admin-bonus-entry-btn, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
       if (!adminAction || !panelRoot.contains?.(adminAction)) return;
       const rootScope = rwphFindAdminRoot(adminAction);
       const status = rwphAdminQuery(rootScope, "#rw-admin-status");
@@ -3334,56 +3144,6 @@
 
         if (adminAction.id === "rw-admin-status-load") {
           await rwphLoadAdminServerStatusFromPanel(rootScope);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-refresh") {
-          await rwphRefreshAdminBonusSettingsFromPanel(rootScope);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-save") {
-          await rwphSaveAdminBonusRulesFromPanel(rootScope);
-          return;
-        }
-
-        if (adminAction.classList?.contains("rw-admin-bonus-entry-btn")) {
-          rwphOpenAdminBonusEditor(rootScope, adminAction.dataset.bonusType || "milestone", Number(adminAction.dataset.bonusIndex || -1));
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-add-milestone") {
-          rwphOpenAdminBonusEditor(rootScope, "milestone", -1);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-add-single-order") {
-          rwphOpenAdminBonusEditor(rootScope, "single", -1);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-editor-save") {
-          await rwphSaveAdminBonusEditorFromPanel(rootScope, false);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-editor-delete") {
-          await rwphSaveAdminBonusEditorFromPanel(rootScope, true);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-editor-cancel") {
-          rwphCloseAdminBonusEditor(rootScope);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-enable") {
-          await rwphSetAdminPurchaseBonusesFromPanel(rootScope, true);
-          return;
-        }
-
-        if (adminAction.id === "rw-admin-bonus-disable") {
-          await rwphSetAdminPurchaseBonusesFromPanel(rootScope, false);
           return;
         }
 
@@ -3423,7 +3183,7 @@
           if (result) await rwphRefreshAdminLicensesFromPanel(rootScope);
         }
       } catch (e) {
-        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-bonus-refresh" ? "Bonus status" : adminAction.id === "rw-admin-bonus-save" ? "Save bonus rules" : adminAction.id === "rw-admin-bonus-enable" ? "Enable bonuses" : adminAction.id === "rw-admin-bonus-disable" ? "Disable bonuses" : String(adminAction.id || "").includes("bonus") || adminAction.classList?.contains("rw-admin-bonus-entry-btn") ? "Bonus editor" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
+        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
         rwphToastPanelError(status, `${actionName} error: ${e.message}`, "RWPH Admin");
       }
     }, true);
@@ -6644,99 +6404,7 @@
         font-size: 12px !important;
         font-weight: 1000 !important;
       }
-      #rw-payout-helper .rw-admin-bonus-dropdown {
-        margin-top: 8px !important;
-        padding: 8px !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(251,191,36,.18) !important;
-        background: rgba(2,6,23,.30) !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-dropdown > summary {
-        cursor: pointer !important;
-        list-style: none !important;
-        border-radius: 10px !important;
-        padding: 9px 10px !important;
-        margin: -2px 0 8px !important;
-        font-weight: 1000 !important;
-        color: #fef3c7 !important;
-        background: linear-gradient(135deg, rgba(245,158,11,.30), rgba(14,165,233,.16)) !important;
-        border: 1px solid rgba(251,191,36,.26) !important;
-        box-shadow: 0 0 16px rgba(245,158,11,.12) !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-dropdown > summary::-webkit-details-marker { display: none !important; }
-      #rw-payout-helper .rw-admin-bonus-dropdown > summary::after {
-        content: "▼" !important;
-        float: right !important;
-        opacity: .82 !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-dropdown:not([open]) > summary::after { content: "▶" !important; }
-      #rw-payout-helper .rw-admin-bonus-button-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 7px !important;
-        margin: 7px 0 9px !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-entry-btn {
-        width: 100% !important;
-        min-height: 48px !important;
-        text-align: left !important;
-        justify-content: flex-start !important;
-        white-space: normal !important;
-        line-height: 1.15 !important;
-        border-radius: 12px !important;
-        font-size: 12px !important;
-        padding: 8px 9px !important;
-        box-shadow: 0 10px 22px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.08) inset !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-entry-btn span {
-        display: inline-block !important;
-        margin-top: 3px !important;
-        font-size: 9px !important;
-        font-weight: 900 !important;
-        letter-spacing: .03em !important;
-        text-transform: uppercase !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-enabled {
-        background: linear-gradient(135deg, rgba(22,163,74,.95), rgba(21,128,61,.72)) !important;
-        border-color: rgba(187,247,208,.72) !important;
-        color: #f0fdf4 !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-disabled {
-        background: linear-gradient(135deg, rgba(220,38,38,.95), rgba(127,29,29,.80)) !important;
-        border-color: rgba(254,202,202,.72) !important;
-        color: #fff1f2 !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-editor {
-        margin-top: 9px !important;
-        padding: 10px !important;
-        border-radius: 13px !important;
-        border: 1px solid rgba(251,191,36,.24) !important;
-        background: linear-gradient(180deg, rgba(15,23,42,.84), rgba(2,6,23,.62)) !important;
-        box-shadow: 0 12px 26px rgba(0,0,0,.28) !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-editor-title {
-        color: #fde68a !important;
-        font-size: 13px !important;
-        font-weight: 1000 !important;
-        margin-bottom: 7px !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-toggle-line {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-        margin-top: 6px !important;
-        font-weight: 900 !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-toggle-line input {
-        width: auto !important;
-        margin: 0 !important;
-      }
-      #rw-payout-helper .rw-admin-bonus-mini-actions {
-        margin-bottom: 8px !important;
-      }
-      @media (max-width: 520px) {
-        #rw-payout-helper .rw-admin-bonus-button-grid { grid-template-columns: 1fr !important; }
-      }
+
 
 
     `;
@@ -12399,39 +12067,6 @@
               <button id="rw-move-launcher-admin" class="secondary">Launcher Movement</button>
             </div>
 
-            <div class="rw-admin-advanced-box rw-admin-bonus-box">
-              <div class="rw-small"><b>Purchase bonus dropdown:</b> each bonus has its own green/red button. Click a bonus button to edit, enable, disable, delete, or save it back to the server .env file.</div>
-              <textarea id="rw-admin-bonus-milestones" rows="2" placeholder="25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30" hidden></textarea>
-              <textarea id="rw-admin-single-order-bonuses" rows="2" placeholder="10:15,25:45,50:100,100:200,500:1000" hidden></textarea>
-              <div id="rw-admin-bonus-summary" class="rw-small">Click Refresh Bonus Status to load the current bonus dropdown.</div>
-              <div id="rw-admin-bonus-editor" class="rw-admin-bonus-editor" hidden>
-                <div id="rw-admin-bonus-editor-title" class="rw-admin-bonus-editor-title">Edit Bonus</div>
-                <input id="rw-admin-bonus-edit-type" type="hidden" value="milestone">
-                <input id="rw-admin-bonus-edit-index" type="hidden" value="-1">
-                <div class="rw-row">
-                  <label>Xanax amount
-                    <input id="rw-admin-bonus-edit-xanax" type="number" min="1" step="1" placeholder="25">
-                  </label>
-                  <label>Bonus licence days
-                    <input id="rw-admin-bonus-edit-days" type="number" min="1" step="1" placeholder="30">
-                  </label>
-                </div>
-                <label class="rw-admin-bonus-toggle-line"><input id="rw-admin-bonus-edit-enabled" type="checkbox" checked> Enable this bonus for new purchases</label>
-                <div id="rw-admin-bonus-editor-note" class="rw-small rw-muted"></div>
-                <div class="rw-actions">
-                  <button id="rw-admin-bonus-editor-save" type="button">Save Bonus To .env</button>
-                  <button id="rw-admin-bonus-editor-delete" class="danger" type="button">Delete Bonus</button>
-                  <button id="rw-admin-bonus-editor-cancel" class="secondary" type="button">Cancel</button>
-                </div>
-              </div>
-              <div class="rw-actions">
-                <button id="rw-admin-bonus-refresh" class="secondary" type="button">Refresh Bonus Dropdown</button>
-                <button id="rw-admin-bonus-save" type="button">Save All Bonuses To .env</button>
-                <button id="rw-admin-bonus-enable" type="button">Enable All Bonus Payments</button>
-                <button id="rw-admin-bonus-disable" class="danger" type="button">Disable All Bonus Payments</button>
-              </div>
-            </div>
-
             <label>Player Torn ID
               <input id="rw-admin-torn-id" type="text" placeholder="Example: 1234567">
             </label>
@@ -12525,8 +12160,8 @@
             <ul class="rw-how-list">
               <li><b>Buy Licence:</b> creates a Xanax payment code and opens the payment helper.</li>
               <li><b>Extend Licence:</b> creates an extension payment code. Existing active pending codes are reused where possible.</li>
-              <li><b>Your Expiration:</b> checks your current licence expiry.</li>
-              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and edit/toggle new-purchase bonus days after a valid ADMIN_KEY is saved and verified by the server.</li>
+              <li><b>Your Expiration:</b> opens a licence info panel with the current expiry and time left.</li>
+              <li><b>Admin panel:</b> admins can grant, extend, list, fill, and remove licence days after a valid ADMIN_KEY is saved and verified by the server.</li>
               <li><b>Keep admin secrets private:</b> never share ADMIN_KEY, PAYWALL_SECRET, private server URLs, or licence tokens with untrusted people.</li>
             </ul>
           </div>
@@ -12716,7 +12351,7 @@
       const button = event.currentTarget;
       if (!rwphTryUseManualLicenseCheck(status, button)) return;
       if (status) status.textContent = "Checking saved license...";
-      await showLicenseDays(status, { toast: true });
+      await showLicenseDays(status, { openPanel: true });
       if (button?.isConnected) button.disabled = false;
     });
 
@@ -13067,39 +12702,6 @@
               <div id="rw-admin-status-summary" class="rw-small">Server status will appear here.</div>
             </div>
 
-            <div class="rw-admin-advanced-box rw-admin-bonus-box">
-              <div class="rw-small"><b>Purchase bonus dropdown:</b> each bonus has its own green/red button. Click a bonus button to edit, enable, disable, delete, or save it back to the server .env file.</div>
-              <textarea id="rw-admin-bonus-milestones" rows="2" placeholder="25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30" hidden></textarea>
-              <textarea id="rw-admin-single-order-bonuses" rows="2" placeholder="10:15,25:45,50:100,100:200,500:1000" hidden></textarea>
-              <div id="rw-admin-bonus-summary" class="rw-small">Click Refresh Bonus Status to load the current bonus dropdown.</div>
-              <div id="rw-admin-bonus-editor" class="rw-admin-bonus-editor" hidden>
-                <div id="rw-admin-bonus-editor-title" class="rw-admin-bonus-editor-title">Edit Bonus</div>
-                <input id="rw-admin-bonus-edit-type" type="hidden" value="milestone">
-                <input id="rw-admin-bonus-edit-index" type="hidden" value="-1">
-                <div class="rw-row">
-                  <label>Xanax amount
-                    <input id="rw-admin-bonus-edit-xanax" type="number" min="1" step="1" placeholder="25">
-                  </label>
-                  <label>Bonus licence days
-                    <input id="rw-admin-bonus-edit-days" type="number" min="1" step="1" placeholder="30">
-                  </label>
-                </div>
-                <label class="rw-admin-bonus-toggle-line"><input id="rw-admin-bonus-edit-enabled" type="checkbox" checked> Enable this bonus for new purchases</label>
-                <div id="rw-admin-bonus-editor-note" class="rw-small rw-muted"></div>
-                <div class="rw-actions">
-                  <button id="rw-admin-bonus-editor-save" type="button">Save Bonus To .env</button>
-                  <button id="rw-admin-bonus-editor-delete" class="danger" type="button">Delete Bonus</button>
-                  <button id="rw-admin-bonus-editor-cancel" class="secondary" type="button">Cancel</button>
-                </div>
-              </div>
-              <div class="rw-actions">
-                <button id="rw-admin-bonus-refresh" class="secondary" type="button">Refresh Bonus Dropdown</button>
-                <button id="rw-admin-bonus-save" type="button">Save All Bonuses To .env</button>
-                <button id="rw-admin-bonus-enable" type="button">Enable All Bonus Payments</button>
-                <button id="rw-admin-bonus-disable" class="danger" type="button">Disable All Bonus Payments</button>
-              </div>
-            </div>
-
             <label>Player Torn ID
               <input id="rw-admin-torn-id" type="text" placeholder="Example: 1234567">
             </label>
@@ -13193,8 +12795,8 @@
             <ul class="rw-how-list">
               <li><b>Buy Licence:</b> creates a Xanax payment code and opens the payment helper.</li>
               <li><b>Extend Licence:</b> creates an extension payment code. Existing active pending codes are reused where possible.</li>
-              <li><b>Your Expiration:</b> checks your current licence expiry.</li>
-              <li><b>Admin panel:</b> admins can grant, extend, list, fill, remove licence days, and edit/toggle new-purchase bonus days after a valid ADMIN_KEY is saved and verified by the server.</li>
+              <li><b>Your Expiration:</b> opens a licence info panel with the current expiry and time left.</li>
+              <li><b>Admin panel:</b> admins can grant, extend, list, fill, and remove licence days after a valid ADMIN_KEY is saved and verified by the server.</li>
               <li><b>Keep admin secrets private:</b> never share ADMIN_KEY, PAYWALL_SECRET, private server URLs, or licence tokens with untrusted people.</li>
             </ul>
           </div>
@@ -13395,7 +12997,7 @@
       const button = event.currentTarget;
       if (!rwphTryUseManualLicenseCheck(status, button)) return;
       if (status) status.textContent = "Checking saved license...";
-      await showLicenseDays(status, { toast: true });
+      await showLicenseDays(status, { openPanel: true });
       if (button?.isConnected) button.disabled = false;
     });
 

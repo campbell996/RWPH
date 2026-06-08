@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.330**  
+Current package version: **1.1.396**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -230,7 +230,7 @@ Licence features include:
 - Extend licence with additional item payments.
 - One-time 7-day free trial per Torn account.
 - Existing licence check.
-- Licence expiry display with **Your Expiration**.
+- Licence expiry display with **Your Expiration** in a separate info panel.
 - Admin grant, extend, remove, and list tools.
 - Server-side signed licence token verification.
 - Licence data stored in the backend database file.
@@ -257,51 +257,15 @@ When the user clicks **Buy Licence** or **Extend Licence**, RWPH:
 
 The payment code expires after a short time. Users must send the item manually inside Torn and include the exact code.
 
-### Bonus Licence Milestones
+### Purchase Bonus System Removed
 
-The backend supports bonus licence days for item payments.
-
-Default cumulative per-user milestones:
-
-| Total Xanax paid by that Torn ID | Bonus days |
-| ---: | ---: |
-| 25 | +30 |
-| 50 | +30 |
-| 75 | +30 |
-| 100 | +30 |
-| 150 | +30 |
-| 200 | +30 |
-| 250 | +30 |
-| 300 | +30 |
-
-Default single-order bonuses:
-
-| Xanax sent in one order | Bonus days |
-| ---: | ---: |
-| 10 | +15 |
-| 25 | +45 |
-| 50 | +100 |
-| 100 | +200 |
-| 500 | +1000 |
-
-These values start from `.env` defaults and can also be changed later from the Admin panel bonus dropdown. Saving from the bonus editor writes the updated bonus values back to the server `.env` file when the host allows file writes:
+The purchase bonus system has been removed. New licence purchases now add only the base configured licence days:
 
 ```env
-BONUS_MILESTONES=25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30
-SINGLE_ORDER_BONUS_MILESTONES=10:15,25:45,50:100,100:200,500:1000
-PURCHASE_BONUSES_ENABLED=true
+LICENSE_DAYS=15
 ```
 
-Individual bonus entries can also be disabled without deleting them by adding `:off`:
-
-```env
-BONUS_MILESTONES=25:30,50:30:off,75:30,100:30,150:30,200:30,250:30,300:30
-SINGLE_ORDER_BONUS_MILESTONES=10:15,25:45:off,50:100,100:200,500:1000
-```
-
-Green bonus buttons in the Admin dropdown are enabled. Red bonus buttons are saved but skipped for new purchases. Bonuses are calculated per Torn user. Another user's payments do not count toward someone else's cumulative milestone progress.
-
-Single-order bonuses use the quantity in the one matched Xanax payment only and award only the highest qualifying tier. For example, a 25 Xanax order gets the `25:45` single-order bonus only; it does not also get the lower `10:15` single-order bonus. Cumulative user milestone bonuses use that member's total recorded Xanax purchase history and can stack with the single-order bonus from the same payment.
+There are no cumulative milestone bonuses, single-order bonuses, bonus dropdown controls, or 365-day completion reward. Existing licence time in the database is not removed.
 
 ### Admin Tools
 
@@ -314,9 +278,6 @@ Admin features:
 - Grant a licence to a Torn ID.
 - Extend an existing licence by adding days.
 - Remove licence days from a user.
-- Enable or disable purchase bonuses for new Xanax purchases.
-- Add, change, enable, disable, or delete individual purchase bonus rules for new purchases.
-- Save bonus dropdown edits back to the backend database and server `.env` file where the host allows writes.
 - Auto-grant the owner account a long licence when the admin key is saved.
 - Fill a selected licence into the admin form from the licence list.
 
@@ -341,7 +302,7 @@ Inputs:
 Useful buttons:
 
 - **Save Key** saves the Torn API key locally.
-- **Your Expiration** checks remaining licence time.
+- **Your Expiration** opens the licence info panel with remaining licence time and expiry date.
 - **Lock Panel** returns to the locked panel.
 - **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
 - **Calculate** inside Basic Calculations runs the normal backend payout calculation for the last finished ranked war only.
@@ -1185,10 +1146,9 @@ The old Include Left Members / automatic left-member removal system has been rem
 ## v1.1.392 - Admin panel hidden until valid admin key
 
 - Admin panel now only shows the Admin Key field, Save Admin Key button, and status message until the backend accepts the ADMIN_KEY.
-- Licence tools, server status, force refresh, purchase bonus dropdown, bonus add/edit/delete/save buttons, and licence list stay hidden for non-admin users.
+- Licence tools, server status, force refresh, licence list stay hidden for non-admin users.
 - Save Admin Key now verifies against `/api/admin/status` before showing any admin tools.
-- Bonus add/change/delete/save actions still require the valid admin key on the backend and can save to `.env` only after admin verification.
-
+- 
 
 
 ## v1.1.393 - Highest single-order bonus and cumulative milestones
@@ -1198,3 +1158,31 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Cumulative user milestone bonuses still use that Torn ID's total recorded Xanax purchase history.
 - Milestone bonuses can stack with the highest single-order bonus on the same purchase.
 - Example: a 50 Xanax purchase can get the highest qualifying single-order bonus and any cumulative milestone bonuses crossed by that member's total purchases.
+
+
+## v1.1.396 - Purchase bonus system removed
+
+- Removed cumulative licence milestone bonuses.
+- Removed single-order licence bonuses.
+- Removed Admin bonus dropdown/add/edit/delete/save controls and `/api/admin/bonus-settings`.
+- Removed bonus progress ticks from the Licence Info panel.
+- Removed the one-time 365 day completion reward and `/api/paywall/claim-completion-bonus`.
+- New Xanax payments now add only the configured base licence days, currently 15 days per Xanax.
+- Existing licence expiry time is not reduced or recalculated.
+
+
+## v1.1.395 - Locked 365 day completion reward
+
+- Added a locked **365 Day Completion Bonus** button to the Licence Info panel.
+- The button unlocks only after the user has completed every enabled user milestone bonus and every enabled single-order bonus.
+- Claiming the reward adds **365 days** onto the current licence expiry. It does not replace or reset the existing licence time.
+- The reward is server-tracked as one-time per Torn ID so it cannot be claimed repeatedly.
+
+## v1.1.394 - Licence info panel and bonus completion ticks
+
+- Changed the **Your Expiration** button so it opens a movable/resizable licence info panel instead of showing the expiry details in popup/toast messages.
+- The new panel shows the active licence status, expiry date, time left, lifetime Xanax paid, largest single order, and last recorded payment.
+- Added all configured user milestone bonuses to the panel with tick marks for completed milestones.
+- Added all configured single-order bonuses to the panel with tick marks only for the highest single-order tier completed by a past payment.
+- The panel explains that milestone bonuses use bonus-eligible lifetime Xanax total, while single-order bonuses use the highest qualifying tier per payment.
+- Added bonus completion data to the normal licence verification response so users can see their own progress without admin access.
