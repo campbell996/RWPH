@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.400
+// @version      1.1.403
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,9 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.403: first-time users automatically see the tutorial panel on supported Torn faction pages.
+  // v1.1.402: added a built-in step-by-step tutorial to the Help tab.
+  // v1.1.401: cleaned Licence Info panel wording so it no longer mentions the removed bonus system.
   // v1.1.400: launcher now mounts to the left of the top Faction Warfare button with logo and full text.
   // v1.1.399: launcher now anchors beside the actual Areas text and war-report URL detection is broader.
   // v1.1.398: fixed Areas launcher mounting with stronger Torn sidebar selectors and a faction-page fallback position.
@@ -61,6 +64,7 @@
   const LAST_RESULTS_HTML_OPEN_STORAGE_KEY = "rw_payout_helper_last_results_html_open";
   const RESULTS_LOADING_PANEL_STATE_STORAGE_KEY = "rw_payout_helper_results_loading_panel_state";
   const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
+  const FIRST_TUTORIAL_SHOWN_STORAGE_KEY = "rw_payout_helper_first_tutorial_shown";
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
 
@@ -1218,6 +1222,68 @@
     return rwphIsTornFactionPage() || rwphIsFactionWarReportPage();
   }
 
+
+  function rwphOpenTutorialInPanel(panel = null) {
+    try {
+      const root = panel || document.getElementById("rw-payout-helper");
+      if (!root) return false;
+
+      const lockedHowBtn = root.querySelector("#rw-paywall-tab-how");
+      const mainHowBtn = root.querySelector("#rw-tab-how");
+      const howBtn = lockedHowBtn || mainHowBtn;
+      if (howBtn && typeof howBtn.click === "function") howBtn.click();
+
+      setTimeout(() => {
+        try {
+          const tutorialCard = root.querySelector("#rw-paywall-how-section .rw-tutorial-card, #rw-how-tab-section .rw-tutorial-card, .rw-tutorial-card");
+          if (tutorialCard) {
+            if (String(tutorialCard.tagName || "").toLowerCase() === "details") tutorialCard.open = true;
+            tutorialCard.classList.add("rw-tutorial-first-open-highlight");
+            tutorialCard.scrollIntoView?.({ block: "start", behavior: "smooth" });
+          }
+        } catch (_) {}
+      }, 80);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphHasFirstRunTutorialBeenShown() {
+    try { return String(GM_getValue(FIRST_TUTORIAL_SHOWN_STORAGE_KEY, "")) === "1"; }
+    catch (_) { return false; }
+  }
+
+  function rwphMarkFirstRunTutorialShown() {
+    try { GM_setValue(FIRST_TUTORIAL_SHOWN_STORAGE_KEY, "1"); } catch (_) {}
+  }
+
+  function rwphScheduleFirstRunTutorialAutoOpen(delayMs = 700) {
+    try {
+      if (window.__rwphFirstRunTutorialOpening) return;
+      if (rwphHasFirstRunTutorialBeenShown()) return;
+      if (!rwphShouldShowLauncherOnThisPage()) return;
+      window.__rwphFirstRunTutorialOpening = true;
+      setTimeout(() => {
+        try {
+          window.__rwphFirstRunTutorialOpening = false;
+          if (rwphHasFirstRunTutorialBeenShown()) return;
+          if (!rwphShouldShowLauncherOnThisPage()) return;
+
+          const existingPanel = document.getElementById("rw-payout-helper");
+          rwphMarkFirstRunTutorialShown();
+          if (existingPanel) {
+            rwphOpenTutorialInPanel(existingPanel);
+          } else {
+            createPanel({ openTutorial: true });
+          }
+        } catch (_) {
+          window.__rwphFirstRunTutorialOpening = false;
+        }
+      }, Math.max(100, Number(delayMs) || 700));
+    } catch (_) {}
+  }
+
   function rwphIsElementVisible(el) {
     try {
       if (!el || el.nodeType !== 1) return false;
@@ -1651,6 +1717,7 @@
       lastPageKey = currentPageKey;
       rwphCloseAllPanelsForPageChange(previousPageKey, currentPageKey);
       syncLauncherButtonVisibility();
+      rwphScheduleFirstRunTutorialAutoOpen(900);
     };
 
     const wrapHistoryMethod = (methodName) => {
@@ -3115,9 +3182,7 @@
           <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Base licence</div><div class="rwph-stat-value">15 days per Xanax</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Bonus system</div><div class="rwph-stat-value">Removed</div></div>
         </div>
-        <div class="rw-card rwph-licence-note">Purchase bonuses, milestone bonuses, single-order bonuses, and the 365-day completion reward have been removed. New payments only add the normal base licence days.</div>
         <div class="rwph-licence-actions"><button id="rwph-licence-info-close-bottom" class="secondary" type="button">Close</button></div>
       </div>
     `;
@@ -5957,6 +6022,10 @@
         box-sizing: border-box !important;
       }
 
+
+      #rw-payout-helper .rw-tutorial-first-open-highlight {
+        box-shadow: 0 0 0 2px rgba(251,191,36,.75), 0 0 18px rgba(249,115,22,.35) !important;
+      }
 
       /* v1.1.177: every Help card now uses the exact same card shell as API ToS / Usage Table cards */
       #rw-payout-helper .rw-how-box,
@@ -12346,6 +12415,24 @@
             </p>
           </div>
 
+
+
+          <div class="rw-how-box rw-help-api-card rw-help-section-card rw-tutorial-card">
+            <div class="rw-how-title">Step-by-Step Tutorial</div>
+            <ul class="rw-how-list">
+              <li><b>1. Open RWPH:</b> go to a Torn faction page and click the Ranked War Payout Helper launcher beside Faction Warfare.</li>
+              <li><b>2. Save your API key:</b> paste your Torn limited API key, then click <b>Save Key</b>. It is saved only on this browser/PDA.</li>
+              <li><b>3. Unlock or buy:</b> click <b>Unlock Panel</b> if you already have a licence, or <b>Buy Licence</b> to create a Xanax payment code.</li>
+              <li><b>4. Choose payout mode:</b> use <b>Basic Calculations</b> for simple per-hit payouts, or <b>Advanced Calculations</b> for weighted points.</li>
+              <li><b>5. Fill war times:</b> click <b>Auto-fill Last Finished War</b> when available, then check the start and finish times before calculating.</li>
+              <li><b>6. Enter payout amount:</b> add the member payout pool you want split across eligible members.</li>
+              <li><b>7. Exclude members if needed:</b> paste Torn IDs or names into the exclude box before calculating.</li>
+              <li><b>8. Calculate:</b> press the Calculate button inside the mode you picked. The loading panel shows each stage.</li>
+              <li><b>9. Review results:</b> check stats, members, payout amounts, and excluded members before using payment tools.</li>
+              <li><b>10. Pay and post manually:</b> use the Payments and Newsletter tools to copy/prefill details, then manually confirm everything in Torn yourself.</li>
+            </ul>
+          </div>
+
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Fast Start</div>
             <ul class="rw-how-list">
@@ -12978,6 +13065,24 @@
             <p class="rw-how-intro">
               Ranked War Payout Helper is a manual payout calculator for Torn ranked wars. It reads the war/report data you ask it to use, builds Basic or Advanced results, and gives you payment/newsletter helper panels. You still review every result and manually complete every Torn action yourself.
             </p>
+          </div>
+
+
+
+          <div class="rw-how-box rw-help-api-card rw-help-section-card rw-tutorial-card">
+            <div class="rw-how-title">Step-by-Step Tutorial</div>
+            <ul class="rw-how-list">
+              <li><b>1. Open RWPH:</b> go to a Torn faction page and click the Ranked War Payout Helper launcher beside Faction Warfare.</li>
+              <li><b>2. Save your API key:</b> paste your Torn limited API key, then click <b>Save Key</b>. It is saved only on this browser/PDA.</li>
+              <li><b>3. Unlock or buy:</b> click <b>Unlock Panel</b> if you already have a licence, or <b>Buy Licence</b> to create a Xanax payment code.</li>
+              <li><b>4. Choose payout mode:</b> use <b>Basic Calculations</b> for simple per-hit payouts, or <b>Advanced Calculations</b> for weighted points.</li>
+              <li><b>5. Fill war times:</b> click <b>Auto-fill Last Finished War</b> when available, then check the start and finish times before calculating.</li>
+              <li><b>6. Enter payout amount:</b> add the member payout pool you want split across eligible members.</li>
+              <li><b>7. Exclude members if needed:</b> paste Torn IDs or names into the exclude box before calculating.</li>
+              <li><b>8. Calculate:</b> press the Calculate button inside the mode you picked. The loading panel shows each stage.</li>
+              <li><b>9. Review results:</b> check stats, members, payout amounts, and excluded members before using payment tools.</li>
+              <li><b>10. Pay and post manually:</b> use the Payments and Newsletter tools to copy/prefill details, then manually confirm everything in Torn yourself.</li>
+            </ul>
           </div>
 
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
@@ -13658,7 +13763,7 @@
   }
 
 
-  async function createPanel() {
+  async function createPanel(options = {}) {
     if (document.getElementById("rw-payout-helper")) return;
 
     const panel = document.createElement("div");
@@ -13679,10 +13784,12 @@
         const status = document.getElementById("rw-paywall-status");
         if (status) status.textContent = licenseState.message || "Licence check failed. Unlock Panel when your licence is active.";
       }, 0);
+      if (options && options.openTutorial) setTimeout(() => rwphOpenTutorialInPanel(panel), 140);
       return;
     }
 
     showMainScreen(panel);
+    if (options && options.openTutorial) setTimeout(() => rwphOpenTutorialInPanel(panel), 140);
   }
 
   rwphInstallPageNavigationAutoClose();
@@ -13694,6 +13801,7 @@
   if (rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);
   }
+  rwphScheduleFirstRunTutorialAutoOpen(900);
   function rwphInjectUnifiedPanelThemeV1375() {
     try {
       if (document.getElementById("rwph-unified-panel-theme-v1375")) return;

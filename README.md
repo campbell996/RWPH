@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.400**  
+Current package version: **1.1.403**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1160,6 +1160,13 @@ The old Include Left Members / automatic left-member removal system has been rem
 
 
 
+## v1.1.401 - Licence Info panel cleanup
+
+- Cleaned the **Your Expiration / Licence Info** panel.
+- Removed the **Bonus system: Removed** card.
+- Removed the bottom note explaining that bonuses were removed.
+- The panel now only shows current licence details and the base 15 days per Xanax licence rate.
+
 ## v1.1.400 - Faction Warfare header launcher
 
 - Moved the RWPH launcher away from Torn's left **Areas** sidebar.
@@ -1210,3 +1217,17 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Added all configured single-order bonuses to the panel with tick marks only for the highest single-order tier completed by a past payment.
 - The panel explains that milestone bonuses use bonus-eligible lifetime Xanax total, while single-order bonuses use the highest qualifying tier per payment.
 - Added bonus completion data to the normal licence verification response so users can see their own progress without admin access.
+
+## v1.1.403 - First-open tutorial panel
+
+- Added first-time tutorial auto-open on supported Torn faction pages.
+- When a user opens a faction page after installing/updating with no prior tutorial marker, RWPH opens the panel automatically.
+- The panel switches to the Help tab and expands the **Step-by-Step Tutorial** dropdown.
+- A local browser/PDA flag prevents the tutorial from popping up repeatedly after it has been shown once.
+- Updated package version to **1.1.403**.
+
+## v1.1.402 - Built-in tutorial
+
+- Added a new **Step-by-Step Tutorial** dropdown inside the Help tab.
+- Tutorial covers opening RWPH, saving the API key, unlocking/buying a licence, choosing Basic/Advanced calculations, setting war times, calculating, reviewing results, and manually using payment/newsletter tools.
+- Updated package version to **1.1.402**.

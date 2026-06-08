@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.400**
+Version: **1.1.403**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -210,6 +210,10 @@ The userscript now hides admin-only controls until the server verifies a saved A
 
 
 
+## v1.1.401 note - Licence Info panel cleanup
+
+The Licence Info panel no longer displays the removed bonus-system card or removed-bonus note. This is a display-only cleanup; API key usage and backend data handling are unchanged.
+
 ## v1.1.400 note - Faction Warfare header launcher
 
 The userscript launcher now mounts to the left of Torn's top **Faction Warfare** button on supported faction pages and shows the RWPH logo plus **Ranked War Payout Helper** text. This is a display/location change only; API key usage and backend data handling are unchanged.
@@ -227,3 +231,14 @@ The userscript launcher is now mounted beside Torn's **Areas** text in the left 
 ## v1.1.396 note - purchase bonus system removed
 
 The purchase bonus system has been removed. New Xanax licence payments add only the configured base licence days. The admin bonus manager routes and controls, user bonus progress display, and the one-time 365 day completion reward route have been removed. Existing licence expiry time is not reduced or recalculated by this update. API key usage is unchanged.
+
+## v1.1.403 note - First-open tutorial panel
+
+- RWPH can now automatically open the panel once on supported Torn faction pages to show the built-in tutorial.
+- The tutorial marker is stored locally in the user's browser/PDA userscript storage.
+- This does not change API key permissions or backend data handling.
+
+## v1.1.402 note - Built-in tutorial
+
+- Added a Help-tab tutorial explaining the manual workflow from unlocking through calculation, result review, payments, and newsletters.
+- The tutorial reinforces that RWPH helps prepare reports and helper copy/prefill steps only; users still manually review and confirm Torn actions.
