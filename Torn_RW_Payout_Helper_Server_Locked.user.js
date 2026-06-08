@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.407
+// @version      1.1.408
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,6 +24,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.408: added a phone/Torn PDA launcher fallback on supported faction/report pages when the Faction Warfare header button is unavailable.
   // v1.1.407: fixed theme picker scrolling/move/resize and added distinct theme styles.
   // v1.1.406: added more panel theme/colour presets to the theme picker.
   // v1.1.405: fixed Results Export HTML downloads with parent-window/download fallbacks and themed RWPH popups.
@@ -1228,9 +1229,15 @@
     try {
       const href = String(window.location?.href || "").toLowerCase();
       const path = String(window.location?.pathname || "").toLowerCase();
+      const searchHash = `${String(window.location?.search || "")} ${String(window.location?.hash || "")}`.toLowerCase();
       if (path === "/factions.php" || path.endsWith("/factions.php")) return true;
-      // Torn/PDA wrappers can sometimes preserve the page inside a longer URL.
-      return /(?:^|[/?#&])factions\.php(?:$|[?#&=\/])/.test(href);
+      // Torn/PDA wrappers can preserve the Torn page inside query/hash routing instead of a clean pathname.
+      if (/(?:^|[/?#&])factions\.php(?:$|[?#&=\/])/.test(href)) return true;
+      if (/(?:sid|page|screen|route|name)=factions?\b/.test(searchHash)) return true;
+      if (/(?:faction|factions)(?:main|home|profile|members|chains|armory|news|controls)?/.test(searchHash) && /torn|faction/.test(href)) return true;
+      const titleText = String(document.title || "").toLowerCase();
+      if (/\bfaction\b/.test(titleText) && /torn/.test(href)) return true;
+      return false;
     } catch (_) {
       return false;
     }
@@ -1262,6 +1269,22 @@
     // v1.1.397+: keep the launcher off general Torn pages. Show it only on
     // faction pages and faction/ranked-war report pages.
     return rwphIsTornFactionPage() || rwphIsFactionWarReportPage();
+  }
+
+  function rwphIsMobileOrPdaView() {
+    try {
+      const ua = String(navigator.userAgent || "").toLowerCase();
+      if (/(torn\s*pda|tornpda|android|iphone|ipad|ipod|mobile|phone|wv\))/i.test(ua)) return true;
+      const width = Math.max(
+        Number(window.innerWidth || 0),
+        Number(document.documentElement?.clientWidth || 0),
+        Number(document.body?.clientWidth || 0),
+        0
+      );
+      return width > 0 && width <= 820;
+    } catch (_) {
+      return false;
+    }
   }
 
 
@@ -1448,9 +1471,64 @@
     }
   }
 
+  function rwphMountLauncherMobileFallback(btn) {
+    try {
+      if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
+      if (btn.parentNode !== document.body) document.body.appendChild(btn);
+      btn.classList.remove("rwph-faction-header-launcher");
+      btn.classList.add("rwph-mobile-launcher-fallback");
+      btn.style.display = "inline-flex";
+      applyStyle(btn, {
+        position: "fixed",
+        zIndex: "2147483647",
+        right: "10px",
+        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+        left: "auto",
+        top: "auto",
+        width: "auto",
+        minWidth: "0",
+        maxWidth: "calc(100vw - 20px)",
+        height: "42px",
+        minHeight: "42px",
+        maxHeight: "42px",
+        margin: "0",
+        padding: "0 12px",
+        borderRadius: "var(--rwph-theme-button-radius, 999px)",
+        border: "var(--rwph-theme-border-width, 1px) var(--rwph-theme-border-style, solid) var(--rwph-theme-line2, rgba(251,191,36,.42))",
+        background: "linear-gradient(135deg, var(--rwph-theme-panel2, #211714), var(--rwph-theme-panel3, #3a241c))",
+        color: "var(--rwph-theme-text, #fff2dd)",
+        boxShadow: "0 14px 34px rgba(0,0,0,.55), 0 0 22px var(--rwph-theme-line, rgba(251,191,36,.24))",
+        font: "800 12px Arial, Helvetica, sans-serif",
+        fontWeight: "800",
+        lineHeight: "1",
+        letterSpacing: ".01em",
+        textShadow: "0 1px 0 rgba(0,0,0,.55)",
+        cursor: "pointer",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "7px",
+        verticalAlign: "middle",
+        textAlign: "center",
+        whiteSpace: "nowrap",
+        backdropFilter: "blur(8px)",
+        overflow: "hidden",
+        appearance: "none",
+        WebkitAppearance: "none",
+      });
+      btn.title = "Open Ranked War Payout Helper";
+      updateLauncherCornerButtonLabels();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function rwphMountLauncherFallback(btn) {
-    // No page-corner fallback. If Torn has not rendered the Faction Warfare
-    // button yet, hide/remove the launcher and let the observer retry.
+    // Desktop keeps the strict Faction Warfare placement. Phone/Torn PDA pages
+    // often hide or rename that header button, so they get a small safe fallback
+    // launcher that still only appears on faction/report pages.
+    if (rwphMountLauncherMobileFallback(btn)) return true;
     try {
       if (btn) btn.remove();
     } catch (_) {}
@@ -1462,7 +1540,7 @@
     const target = rwphFindFactionWarfareTarget();
     if (!target || !target.el || !target.rect) return rwphMountLauncherFallback(btn);
 
-    btn.classList.remove("rwph-nav-launcher-fallback");
+    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
     btn.classList.add("rwph-faction-header-launcher");
     btn.style.display = "inline-flex";
 
@@ -1513,12 +1591,11 @@
     window.__rwphLauncherNavObserverInstalled = true;
     try {
       const obs = new MutationObserver(() => {
-        if (!rwphShouldShowLauncherOnThisPage()) return;
         rwphScheduleLauncherSync();
       });
       obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
       window.addEventListener("resize", rwphScheduleLauncherSync, { passive: true });
-      [250, 750, 1500, 3000].forEach((delay) => setTimeout(rwphScheduleLauncherSync, delay));
+      [250, 750, 1500, 3000, 6000, 10000].forEach((delay) => setTimeout(rwphScheduleLauncherSync, delay));
     } catch (_) {}
   }
 
@@ -1533,9 +1610,9 @@
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = "Launcher fixed beside Faction Warfare";
-      btn.title = "The launcher is now a static faction-header button beside Faction Warfare.";
-      btn.setAttribute("aria-label", "Launcher fixed beside Faction Warfare");
+      btn.textContent = "Launcher fixed beside Faction Warfare / PDA fallback";
+      btn.title = "The launcher is fixed beside Faction Warfare on desktop and uses a safe phone/PDA fallback when the header button is hidden.";
+      btn.setAttribute("aria-label", "Launcher fixed beside Faction Warfare / PDA fallback");
       btn.disabled = true;
     });
   }
@@ -1620,7 +1697,7 @@
       return;
     }
 
-    btn.classList.remove("rwph-nav-launcher-fallback");
+    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
     btn.classList.add("rwph-faction-header-launcher");
     applyStyle(btn, getLauncherPositionStyle("faction-warfare", anchorTarget));
     btn.title = "Open Ranked War Payout Helper";
@@ -1628,7 +1705,8 @@
   }
 
   function rwphLauncherLogoHtml() {
-    return `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:20px;height:20px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" /><span style="pointer-events:none;display:inline-block;line-height:1;">Ranked War Payout Helper</span>`;
+    const mobileShortText = rwphIsMobileOrPdaView() ? "RW Payout Helper" : "Ranked War Payout Helper";
+    return `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:20px;height:20px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" /><span style="pointer-events:none;display:inline-block;line-height:1;">${mobileShortText}</span>`;
   }
 
   function setLauncherOpenState(isOpen) {
@@ -1661,7 +1739,7 @@
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "Launcher is now fixed beside the Faction Warfare button on faction pages.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "Launcher is fixed beside the Faction Warfare button on desktop and uses a phone/PDA fallback when Torn hides that header button.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
