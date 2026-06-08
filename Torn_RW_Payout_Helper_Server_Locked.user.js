@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.397
+// @version      1.1.398
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.398: fixed Areas launcher mounting with stronger Torn sidebar selectors and a faction-page fallback position.
   // v1.1.397: launcher is now a static Torn left-nav button beside Areas, shown only on faction and faction war report pages.
   // v1.1.396: removed the purchase bonus system entirely; Xanax payments add base licence days only.
   // v1.1.389: locked screen payment heading now correctly says each Xanax gives 15 licence days.
@@ -1177,8 +1178,11 @@
 
   function rwphIsTornFactionPage() {
     try {
+      const href = String(window.location?.href || "").toLowerCase();
       const path = String(window.location?.pathname || "").toLowerCase();
-      return path === "/factions.php" || path.endsWith("/factions.php");
+      if (path === "/factions.php" || path.endsWith("/factions.php")) return true;
+      // Torn/PDA wrappers can sometimes preserve the page inside a longer URL.
+      return /(?:^|[/?#&])factions\.php(?:$|[?#&=\/])/.test(href);
     } catch (_) {
       return false;
     }
@@ -1188,8 +1192,8 @@
     try {
       const href = String(window.location?.href || "").toLowerCase();
       const path = String(window.location?.pathname || "").toLowerCase();
-      const looksLikeWarReport = /(rankedwarreport|ranked-war-report|ranked_war_report|warreport|war-report|war_report)/.test(href);
-      const looksFactionRelated = href.includes("faction") || path.includes("faction") || href.includes("ranked");
+      const looksLikeWarReport = /(rankedwarreport|ranked-war-report|ranked_war_report|warreport|war-report|war_report|rankedwar|ranked-war|ranked_war)/.test(href);
+      const looksFactionRelated = href.includes("faction") || path.includes("faction") || href.includes("ranked") || href.includes("warreport");
       return looksLikeWarReport && looksFactionRelated;
     } catch (_) {
       return false;
@@ -1216,42 +1220,96 @@
     }
   }
 
+  function rwphTextLooksLikeAreas(text) {
+    const clean = String(text || "").replace(/\s+/g, " ").trim();
+    if (!clean) return false;
+    return clean === "Areas" || /^areas$/i.test(clean) || /^areas\b/i.test(clean) || /\bareas\b/i.test(clean);
+  }
+
   function rwphFindAreasNavTarget() {
     try {
-      const nodes = Array.from(document.querySelectorAll("a,button,span,div,li"));
+      const selectors = [
+        "[aria-label*='Areas' i]",
+        "[title*='Areas' i]",
+        "[data-title*='Areas' i]",
+        "a[href*='areas' i]",
+        "button",
+        "a",
+        "span",
+        "div",
+        "li"
+      ];
+      const seen = new Set();
+      const nodes = [];
+      selectors.forEach((selector) => {
+        try {
+          document.querySelectorAll(selector).forEach((el) => {
+            if (!seen.has(el)) {
+              seen.add(el);
+              nodes.push(el);
+            }
+          });
+        } catch (_) {}
+      });
+
+      const viewportHeight = Math.max(window.innerHeight || 900, 900);
       const matches = nodes
-        .filter((el) => {
-          if (!rwphIsElementVisible(el)) return false;
-          const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
-          if (text !== "Areas") return false;
+        .map((el) => {
+          if (!rwphIsElementVisible(el)) return null;
           const rect = el.getBoundingClientRect();
           // Torn's left navigation is near the left edge. This avoids matching page content.
-          return rect.left >= 0 && rect.left < 320 && rect.top >= 0 && rect.top < Math.max(window.innerHeight || 900, 900);
+          if (rect.left < -20 || rect.left > 380 || rect.top < 0 || rect.top > viewportHeight) return null;
+          const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
+          const label = String(el.getAttribute?.("aria-label") || el.getAttribute?.("title") || el.getAttribute?.("data-title") || "").replace(/\s+/g, " ").trim();
+          const combined = `${text} ${label}`.trim();
+          if (!rwphTextLooksLikeAreas(combined)) return null;
+          const exactScore = /^areas$/i.test(text) || /^areas$/i.test(label) ? 0 : 1;
+          const lengthScore = Math.min((text || label || combined).length, 200);
+          return { el, rect, exactScore, lengthScore };
         })
+        .filter(Boolean)
         .sort((a, b) => {
-          const ar = a.getBoundingClientRect();
-          const br = b.getBoundingClientRect();
-          return (ar.left - br.left) || (ar.top - br.top);
+          return (a.exactScore - b.exactScore)
+            || (a.lengthScore - b.lengthScore)
+            || (a.rect.left - b.rect.left)
+            || (a.rect.top - b.rect.top);
         });
-      return matches[0] || null;
+      return matches[0]?.el || null;
     } catch (_) {
       return null;
     }
   }
 
-  function rwphMountLauncherBesideAreas(btn) {
-    const target = rwphFindAreasNavTarget();
-    if (!btn || !target || !target.parentNode) return false;
-    btn.classList.add("rwph-nav-launcher");
-    btn.style.display = "inline-flex";
+  function rwphMountLauncherFallback(btn) {
+    if (!btn || !rwphShouldShowLauncherOnThisPage()) return false;
     try {
-      if (btn.parentNode !== target.parentNode || btn.previousSibling !== target) {
-        target.parentNode.insertBefore(btn, target.nextSibling);
-      }
+      btn.classList.remove("rwph-nav-launcher");
+      btn.classList.add("rwph-nav-launcher-fallback");
+      if (btn.parentNode !== document.body) document.body.appendChild(btn);
+      updateLauncherButtonPosition(true);
+      return true;
     } catch (_) {
       return false;
     }
-    updateLauncherButtonPosition();
+  }
+
+  function rwphMountLauncherBesideAreas(btn) {
+    const target = rwphFindAreasNavTarget();
+    if (!btn || !target || !target.parentNode) return rwphMountLauncherFallback(btn);
+    btn.classList.remove("rwph-nav-launcher-fallback");
+    btn.classList.add("rwph-nav-launcher");
+    btn.style.display = "inline-flex";
+    try {
+      // Prefer placing directly after the visible Areas text. If Torn wraps the text
+      // inside an anchor, this still leaves the launcher beside the word instead of
+      // disappearing while the sidebar finishes rendering.
+      if (btn.parentNode !== target.parentNode || btn.previousElementSibling !== target) {
+        target.parentNode.insertBefore(btn, target.nextSibling);
+      }
+    } catch (_) {
+      return rwphMountLauncherFallback(btn);
+    }
+    updateLauncherButtonPosition(false);
     return true;
   }
 
@@ -1320,16 +1378,17 @@
   }
 
   function getLauncherPositionStyle(corner) {
+    const fallback = corner === "areas-nav-fallback";
     return {
-      position: "static",
-      zIndex: "auto",
+      position: fallback ? "fixed" : "static",
+      zIndex: fallback ? "2147483647" : "auto",
       width: "28px",
       height: "28px",
       minWidth: "28px",
       minHeight: "28px",
       maxWidth: "28px",
       maxHeight: "28px",
-      margin: "0 0 0 6px",
+      margin: fallback ? "0" : "0 0 0 6px",
       padding: "0",
       borderRadius: "8px",
       border: "0",
@@ -1350,6 +1409,7 @@
       overflow: "visible",
       appearance: "none",
       WebkitAppearance: "none",
+      ...(fallback ? { left: "134px", top: "86px" } : {}),
     };
   }
 
@@ -1363,12 +1423,19 @@
     Object.assign(el.style, styleObj);
   }
 
-  function updateLauncherButtonPosition() {
+  function updateLauncherButtonPosition(useFallback = false) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
 
-    btn.classList.add("rwph-nav-launcher");
-    applyStyle(btn, getLauncherPositionStyle("areas-nav"));
+    if (useFallback || btn.classList.contains("rwph-nav-launcher-fallback")) {
+      btn.classList.remove("rwph-nav-launcher");
+      btn.classList.add("rwph-nav-launcher-fallback");
+      applyStyle(btn, getLauncherPositionStyle("areas-nav-fallback"));
+    } else {
+      btn.classList.remove("rwph-nav-launcher-fallback");
+      btn.classList.add("rwph-nav-launcher");
+      applyStyle(btn, getLauncherPositionStyle("areas-nav"));
+    }
     btn.title = "Open Ranked War Payout Helper";
     updateLauncherCornerButtonLabels();
   }
@@ -1405,11 +1472,7 @@
       btn.addEventListener("click", togglePanel);
     }
 
-    if (!rwphMountLauncherBesideAreas(btn)) {
-      // The Torn left-nav can render after the userscript starts. Keep hidden until
-      // the Areas button exists instead of falling back to the old floating launcher.
-      if (btn.parentNode) btn.remove();
-    }
+    rwphMountLauncherBesideAreas(btn);
   }
 
   function cycleLauncherCorner() {
@@ -5219,6 +5282,25 @@
         margin:0 0 0 6px !important;
         padding:0 !important;
         vertical-align:middle !important;
+        align-items:center !important;
+        justify-content:center !important;
+        line-height:1 !important;
+        cursor:pointer !important;
+      }
+      #rw-payout-launcher.rwph-nav-launcher-fallback {
+        position:fixed !important;
+        left:134px !important;
+        top:86px !important;
+        z-index:2147483647 !important;
+        display:inline-flex !important;
+        width:28px !important;
+        height:28px !important;
+        min-width:28px !important;
+        min-height:28px !important;
+        max-width:28px !important;
+        max-height:28px !important;
+        margin:0 !important;
+        padding:0 !important;
         align-items:center !important;
         justify-content:center !important;
         line-height:1 !important;
