@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.403
+// @version      1.1.404
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.404: made the RWPH logo much larger in the header/top area of all script panels.
   // v1.1.403: first-time users automatically see the tutorial panel on supported Torn faction pages.
   // v1.1.402: added a built-in step-by-step tutorial to the Help tab.
   // v1.1.401: cleaned Licence Info panel wording so it no longer mentions the removed bonus system.
@@ -1075,7 +1076,7 @@
     `;
     panel.innerHTML = `
       <div class="rwph-floating-panel-head" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-weight:950;font-size:16px;color:#fff;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">
-        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(249,115,22,.55));pointer-events:none;" />
+        <img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(249,115,22,.70));pointer-events:none;" />
         <span>Payment Needs Manual Review</span>
       </div>
       <div class="rwph-floating-panel-body" style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;overflow-y:auto;overflow-x:hidden;min-height:0;">
@@ -3158,8 +3159,8 @@
       <style>
         #rwph-licence-info-panel * { box-sizing: border-box; }
         #rwph-licence-info-panel .rwph-panel-head { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none; }
-        #rwph-licence-info-panel .rwph-panel-title { display:flex;align-items:center;gap:10px;font-weight:950;font-size:16px;color:#fff; }
-        #rwph-licence-info-panel .rwph-panel-title img { width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(249,115,22,.55));pointer-events:none; }
+        #rwph-licence-info-panel .rwph-panel-title { display:flex;align-items:center;gap:14px;font-weight:950;font-size:18px;color:#fff; }
+        #rwph-licence-info-panel .rwph-panel-title img { width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(249,115,22,.70));pointer-events:none; }
         #rwph-licence-info-panel .rwph-floating-panel-body { padding:14px; overflow-y:auto; overflow-x:hidden; max-height:calc(100vh - 92px); }
         #rwph-licence-info-panel .rwph-licence-status-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px; }
         #rwph-licence-info-panel .rw-card { border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:rgba(15,23,42,.54); }
@@ -3807,7 +3808,7 @@
       #rw-payout-helper .rw-head::before, #rw-payout-helper .rw-head::after { width: 12px; }
       #rw-payout-helper .rw-head::after { right: 30px; }
       #rw-payout-helper .rw-head span::before,
-      #rwph-payment-helper-title::before { width: 14px; height: 14px; flex-basis: 14px; }
+      #rwph-payment-helper-title::before { width: 38px; height: 38px; flex-basis: 38px; }
       #rw-payout-helper > .rw-body { padding: 12px 8px 8px; }
       #rw-payout-helper label { margin-top: 6px; font-size: 10px; }
       #rw-payout-helper input { margin-top: 3px; padding: 5px 6px; border-radius: 8px; font-size: 10px; }
@@ -4274,13 +4275,13 @@
       #rw-payout-helper .rw-head span {
         display: inline-flex !important;
         align-items: center;
-        gap: 8px;
+        gap: 13px;
       }
       #rw-payout-helper .rw-head span::before {
         content: "";
-        width: 18px;
-        height: 18px;
-        flex: 0 0 18px;
+        width: 46px;
+        height: 46px;
+        flex: 0 0 46px;
         border-radius: 6px;
         background: url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center / contain no-repeat;
         filter: drop-shadow(0 0 8px rgba(245,158,11,.24));
@@ -4289,13 +4290,13 @@
         display: flex !important;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 13px;
       }
       #rwph-payment-helper-title::before {
         content: "";
-        width: 18px;
-        height: 18px;
-        flex: 0 0 18px;
+        width: 46px;
+        height: 46px;
+        flex: 0 0 46px;
         border-radius: 6px;
         background: url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center / contain no-repeat;
         filter: drop-shadow(0 0 8px rgba(245,158,11,.24));
@@ -4858,8 +4859,8 @@
       #rw-payout-helper::before,
       #rw-payout-helper::after { display:none !important; }
       #rw-payout-helper .rw-head {
-        min-height: 58px !important;
-        padding: 14px 58px 14px 18px !important;
+        min-height: 86px !important;
+        padding: 16px 64px 16px 20px !important;
         border-radius: 28px 28px 0 0 !important;
         background:
           linear-gradient(135deg, rgba(14,165,233,.20), rgba(245,158,11,.20)),
@@ -4876,9 +4877,9 @@
       #rw-payout-helper #rw-close {
         position: absolute !important;
         right: 12px !important;
-        top: 10px !important;
-        width: 36px !important;
-        height: 36px !important;
+        top: 16px !important;
+        width: 40px !important;
+        height: 40px !important;
         padding: 0 !important;
         border-radius: 14px !important;
       }
@@ -4888,7 +4889,7 @@
         grid-template-columns: 1fr !important;
         gap: 12px !important;
         padding: 14px !important;
-        max-height: calc(84vh - 58px) !important;
+        max-height: calc(84vh - 86px) !important;
       }
       #rw-payout-helper .rw-small,
       #rw-payout-helper .rw-muted {
@@ -5662,6 +5663,35 @@
         background:linear-gradient(180deg, rgba(251,191,36,.96), rgba(245,158,11,.92)) !important;
       }
 
+
+      /* v1.1.404 bigger panel header logos */
+      #rw-payout-helper .rw-head {
+        min-height:86px !important;
+      }
+      #rw-payout-helper .rw-head span {
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        gap:13px !important;
+      }
+      #rw-payout-helper .rw-head span::before,
+      #rwph-payment-helper-title::before {
+        width:46px !important;
+        height:46px !important;
+        flex:0 0 46px !important;
+        border-radius:12px !important;
+        filter:drop-shadow(0 0 14px rgba(249,115,22,.68)) !important;
+      }
+      #rwph-payment-helper-title {
+        min-height:78px !important;
+        gap:13px !important;
+      }
+      .rwph-floating-panel .rwph-panel-head img,
+      #rw-wrong-payment-panel .rwph-floating-panel-head img {
+        width:54px !important;
+        height:54px !important;
+      }
+
       /* v1.1.141 scroll + corner resize polish: one inner blue scrollbar, pinned headers, four-corner resizing */
       #rw-payout-helper,
       #rw-payout-helper .rw-results-panel,
@@ -5962,9 +5992,9 @@
       .rwph-info-popup-panel .rwph-info-popup-close {
         position: absolute !important;
         right: 12px !important;
-        top: 10px !important;
-        width: 36px !important;
-        height: 36px !important;
+        top: 16px !important;
+        width: 40px !important;
+        height: 40px !important;
         min-width: 36px !important;
         min-height: 36px !important;
         max-width: 36px !important;
@@ -7723,8 +7753,8 @@
       align-items:center!important;
     }
     .results-hero-logo{
-      width:56px!important;
-      height:56px!important;
+      width:88px!important;
+      height:88px!important;
       object-fit:contain!important;
       filter:drop-shadow(0 0 16px rgba(251,191,36,.42))!important;
     }
@@ -8767,16 +8797,16 @@
     .rwph-brand{display:flex;align-items:center;gap:12px;min-width:0;}
     .rwph-logo-wrap{
       flex:0 0 auto;
-      width:52px;
-      height:52px;
-      border-radius:16px;
+      width:84px;
+      height:84px;
+      border-radius:22px;
       display:grid;
       place-items:center;
       border:1px solid rgba(251,191,36,.25);
       background:linear-gradient(180deg,rgba(63,29,23,.92),rgba(20,15,13,.96));
       box-shadow:0 12px 28px rgba(0,0,0,.34),0 0 18px rgba(251,191,36,.12),inset 0 1px 0 rgba(255,255,255,.06);
     }
-    img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 0 13px rgba(251,191,36,.35));}
+    img{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 0 18px rgba(251,191,36,.50));}
     .eyebrow{
       display:inline-flex;
       align-items:center;
