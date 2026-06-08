@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.406
+// @version      1.1.407
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,6 +24,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.407: fixed theme picker scrolling/move/resize and added distinct theme styles.
   // v1.1.406: added more panel theme/colour presets to the theme picker.
   // v1.1.405: fixed Results Export HTML downloads with parent-window/download fallbacks and themed RWPH popups.
   // v1.1.405: made the RWPH logo much larger in the header/top area of all script panels.
@@ -1875,7 +1876,7 @@
 
 
   function rwphPanelThemePresets() {
-    return {
+    const presets = {
       bronze: {
         label: "Bronze Gold",
         bg: "#130b07", bg2: "#21110b", panel: "#211714", panel2: "#2b1d18", panel3: "#3a241c",
@@ -2009,6 +2010,37 @@
         text: "#fefce8", soft: "#fef08a", accent: "#fde047", accent2: "#eab308", good: "#86efac", danger: "#7f1d1d"
       }
     };
+
+    // v1.1.407: each colour preset now carries its own visual style, not just a colour swap.
+    const styleCycle = [
+      { styleName:"Classic plated", radius:"16px", cardRadius:"14px", buttonRadius:"12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", texture:"linear-gradient(135deg, rgba(255,255,255,.045) 0 1px, transparent 1px 11px)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.10), transparent 45%)", cardTexture:"radial-gradient(circle at 100% 0%, rgba(255,255,255,.08), transparent 26%)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.10), transparent 50%)" },
+      { styleName:"Glass waves", radius:"22px", cardRadius:"18px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"radial-gradient(ellipse at 10% 10%, rgba(255,255,255,.09), transparent 28%)", headerTexture:"linear-gradient(120deg, rgba(255,255,255,.16), transparent 38%)", cardTexture:"linear-gradient(145deg, rgba(255,255,255,.08), transparent 46%)", buttonTexture:"linear-gradient(145deg, rgba(255,255,255,.16), transparent 52%)" },
+      { styleName:"Leaf panels", radius:"18px 6px 18px 6px", cardRadius:"16px 6px 16px 6px", buttonRadius:"10px 20px 10px 20px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", texture:"radial-gradient(ellipse at 0% 100%, rgba(255,255,255,.07), transparent 33%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.10), transparent 45%)", cardTexture:"repeating-linear-gradient(45deg, rgba(255,255,255,.035) 0 1px, transparent 1px 12px)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.12), transparent 55%)" },
+      { styleName:"Royal bevel", radius:"10px", cardRadius:"8px", buttonRadius:"8px", borderWidth:"2px", borderStyle:"double", buttonCase:"uppercase", buttonTracking:".06em", texture:"linear-gradient(45deg, rgba(255,255,255,.055) 25%, transparent 25% 50%, rgba(255,255,255,.035) 50% 75%, transparent 75%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.15), rgba(0,0,0,.05))", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.08), transparent 55%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.08))" },
+      { styleName:"Sharp cuts", radius:"4px", cardRadius:"4px", buttonRadius:"3px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".07em", texture:"linear-gradient(135deg, transparent 0 42%, rgba(255,255,255,.055) 42% 44%, transparent 44% 100%)", headerTexture:"linear-gradient(110deg, rgba(255,255,255,.15) 0 18%, transparent 18% 100%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.05), transparent 50%)", buttonTexture:"linear-gradient(110deg, rgba(255,255,255,.15) 0 35%, transparent 35%)" },
+      { styleName:"Scanline neon", radius:"14px", cardRadius:"12px", buttonRadius:"10px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"repeating-linear-gradient(0deg, rgba(255,255,255,.045) 0 1px, transparent 1px 7px)", headerTexture:"repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 2px, transparent 2px 12px)", cardTexture:"repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 9px)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.14), transparent 44%, rgba(255,255,255,.06))" },
+      { styleName:"Industrial steel", radius:"8px", cardRadius:"6px", buttonRadius:"6px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".05em", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 10px)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.12), transparent 50%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.06), transparent 54%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.12))" },
+      { styleName:"Bubble pop", radius:"28px", cardRadius:"24px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", texture:"radial-gradient(circle at 20% 30%, rgba(255,255,255,.11), transparent 10%), radial-gradient(circle at 82% 18%, rgba(255,255,255,.08), transparent 12%)", headerTexture:"radial-gradient(circle at 20% 50%, rgba(255,255,255,.18), transparent 22%)", cardTexture:"radial-gradient(circle at 90% 15%, rgba(255,255,255,.12), transparent 18%)", buttonTexture:"radial-gradient(circle at 15% 20%, rgba(255,255,255,.28), transparent 22%)" },
+      { styleName:"Minimal matte", radius:"12px", cardRadius:"10px", buttonRadius:"8px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", texture:"linear-gradient(180deg, rgba(255,255,255,.025), transparent 50%)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.07), transparent 45%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.035), transparent 60%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.075), transparent 60%)" },
+      { styleName:"Cracked heat", radius:"13px", cardRadius:"10px", buttonRadius:"8px 18px 8px 18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".05em", texture:"linear-gradient(35deg, transparent 0 47%, rgba(255,255,255,.07) 47% 49%, transparent 49% 100%), linear-gradient(145deg, transparent 0 63%, rgba(255,255,255,.045) 63% 65%, transparent 65%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.16), transparent 35%)", cardTexture:"linear-gradient(145deg, transparent 0 72%, rgba(255,255,255,.06) 72% 74%, transparent 74%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 48%)" },
+      { styleName:"Frosted soft", radius:"24px", cardRadius:"20px", buttonRadius:"18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", texture:"radial-gradient(circle at 30% 0%, rgba(255,255,255,.16), transparent 30%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.22), transparent 50%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.12), transparent 55%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.22), transparent 55%)" },
+      { styleName:"Hazard slashes", radius:"10px", cardRadius:"8px", buttonRadius:"6px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.08) 0 4px, transparent 4px 16px)", headerTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.13) 0 6px, transparent 6px 18px)", cardTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 3px, transparent 3px 14px)", buttonTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 5px, transparent 5px 16px)" },
+      { styleName:"Soft sunset", radius:"26px 12px 26px 12px", cardRadius:"20px 10px 20px 10px", buttonRadius:"18px 8px 18px 8px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"radial-gradient(circle at 0% 0%, rgba(255,255,255,.11), transparent 32%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.16), transparent 48%)", cardTexture:"radial-gradient(circle at 100% 100%, rgba(255,255,255,.10), transparent 30%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 54%)" },
+      { styleName:"Cyber grid", radius:"6px", cardRadius:"5px", buttonRadius:"4px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".09em", texture:"linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px)", textureSize:"18px 18px", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.14), transparent 35%)", cardTexture:"linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px)", cardTextureSize:"16px 16px", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.16), transparent 42%)" },
+      { styleName:"Gem glow", radius:"18px 18px 6px 18px", cardRadius:"16px 16px 5px 16px", buttonRadius:"12px 12px 4px 12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"linear-gradient(135deg, rgba(255,255,255,.09), transparent 30%, rgba(255,255,255,.04) 65%, transparent)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 42%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.08), transparent 55%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 54%)" },
+      { styleName:"Blade ruby", radius:"5px 20px 5px 20px", cardRadius:"4px 18px 4px 18px", buttonRadius:"3px 16px 3px 16px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".06em", texture:"linear-gradient(120deg, transparent 0 38%, rgba(255,255,255,.08) 38% 40%, transparent 40% 100%)", headerTexture:"linear-gradient(120deg, rgba(255,255,255,.17) 0 26%, transparent 26%)", cardTexture:"linear-gradient(120deg, rgba(255,255,255,.06), transparent 50%)", buttonTexture:"linear-gradient(120deg, rgba(255,255,255,.16), transparent 48%)" },
+      { styleName:"Aqua ripples", radius:"20px", cardRadius:"16px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"repeating-radial-gradient(circle at 20% 20%, rgba(255,255,255,.055) 0 2px, transparent 2px 18px)", headerTexture:"linear-gradient(100deg, rgba(255,255,255,.16), transparent 48%)", cardTexture:"repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,.045) 0 2px, transparent 2px 16px)", buttonTexture:"linear-gradient(100deg, rgba(255,255,255,.18), transparent 52%)" },
+      { styleName:"Noir plaque", radius:"7px", cardRadius:"6px", buttonRadius:"4px", borderWidth:"2px", borderStyle:"ridge", buttonCase:"uppercase", buttonTracking:".065em", texture:"linear-gradient(180deg, rgba(255,255,255,.05), transparent 45%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.14))", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.06), transparent 54%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.16))" },
+      { styleName:"Storm arcs", radius:"16px 6px 16px 6px", cardRadius:"14px 5px 14px 5px", buttonRadius:"10px 5px 10px 5px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".07em", texture:"radial-gradient(ellipse at 100% 0%, rgba(255,255,255,.10), transparent 22%), linear-gradient(150deg, transparent 0 58%, rgba(255,255,255,.06) 58% 60%, transparent 60%)", headerTexture:"linear-gradient(150deg, rgba(255,255,255,.17), transparent 46%)", cardTexture:"linear-gradient(150deg, rgba(255,255,255,.07), transparent 52%)", buttonTexture:"linear-gradient(150deg, rgba(255,255,255,.17), transparent 50%)" },
+      { styleName:"Parchment cards", radius:"12px", cardRadius:"2px 18px 2px 18px", buttonRadius:"2px 14px 2px 14px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", texture:"repeating-linear-gradient(0deg, rgba(255,255,255,.045) 0 1px, transparent 1px 13px)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.12), transparent 45%)", cardTexture:"repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 11px)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.15), transparent 48%)" },
+      { styleName:"Clean ghost", radius:"18px", cardRadius:"14px", buttonRadius:"12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".025em", texture:"linear-gradient(180deg, rgba(255,255,255,.08), transparent 55%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.14), transparent 48%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.16), transparent 56%)" },
+      { styleName:"Crown trim", radius:"14px 14px 4px 4px", cardRadius:"12px 12px 4px 4px", buttonRadius:"10px 10px 3px 3px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"linear-gradient(90deg, rgba(255,255,255,.08), transparent 28%, rgba(255,255,255,.04) 72%, transparent)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.04))", cardTexture:"linear-gradient(90deg, rgba(255,255,255,.06), transparent 52%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))" }
+    ];
+
+    Object.keys(presets).forEach((key, index) => {
+      Object.assign(presets[key], styleCycle[index % styleCycle.length]);
+    });
+    return presets;
   }
 
   function rwphGetPanelThemeKey() {
@@ -2024,6 +2056,19 @@
 
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
     const t = theme || rwphGetPanelThemePreset();
+    const themeTexture = t.texture ? `${t.texture},` : "";
+    const themeHeaderTexture = t.headerTexture ? `${t.headerTexture},` : "";
+    const themeCardTexture = t.cardTexture ? `${t.cardTexture},` : "";
+    const themeButtonTexture = t.buttonTexture ? `${t.buttonTexture},` : "";
+    const themeTextureSize = t.textureSize || "auto";
+    const themeCardTextureSize = t.cardTextureSize || themeTextureSize;
+    const themeRadius = t.radius || "16px";
+    const themeCardRadius = t.cardRadius || "14px";
+    const themeButtonRadius = t.buttonRadius || "12px";
+    const themeBorderWidth = t.borderWidth || "1px";
+    const themeBorderStyle = t.borderStyle || "solid";
+    const themeButtonCase = t.buttonCase || "none";
+    const themeButtonTracking = t.buttonTracking || ".01em";
     const standaloneScope = includeStandalonePage ? `
       body,
       .app,
@@ -2054,6 +2099,11 @@
         --rwph-theme-green:${t.good};
         --rwph-theme-red:${t.danger};
         --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 34px ${t.line};
+        --rwph-theme-radius:${themeRadius};
+        --rwph-theme-card-radius:${themeCardRadius};
+        --rwph-theme-button-radius:${themeButtonRadius};
+        --rwph-theme-border-width:${themeBorderWidth};
+        --rwph-theme-border-style:${themeBorderStyle};
       }
 
       ${standaloneScope}
@@ -2088,9 +2138,11 @@
       [class*="rwph-"][class*="panel"],
       .rwph-panel-theme-picker{
         background:
+          ${themeTexture}
           radial-gradient(circle at 18% 0%, ${t.line2}, transparent 32%),
           radial-gradient(circle at 86% 8%, ${t.line}, transparent 30%),
           linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
         border-color:${t.line}!important;
         color:${t.text}!important;
         box-shadow:var(--rwph-theme-shadow)!important;
@@ -2114,7 +2166,8 @@
       .rw-api-tos-title,
       .rw-settings-dropdown > summary,
       .rw-api-tos-dropdown > summary{
-        background:linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
+        background:${themeHeaderTexture}linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto!important;
         border-color:${t.line2}!important;
         color:${t.accent}!important;
       }
@@ -2135,7 +2188,8 @@
       .rw-results-panel a.btn,
       .rw-admin-box button,
       .rw-how-box button{
-        background:linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background:${themeButtonTexture}linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto!important;
         border-color:${t.line2}!important;
         color:${t.text}!important;
         box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
@@ -2244,7 +2298,8 @@
       .rw-results-panel .result-card,
       .rw-admin-box .rw-card,
       .rw-how-box .rw-card{
-        background:${t.panel2}!important;
+        background:${themeCardTexture}${t.panel2}!important;
+        background-size:${themeCardTextureSize}, auto!important;
         border-color:${t.line}!important;
         color:${t.text}!important;
       }
@@ -2252,7 +2307,8 @@
       #rw-payout-helper details.rw-per-hit-settings,
       #rw-payout-helper details.rw-points-settings{
         border-color:${t.line2}!important;
-        background:radial-gradient(circle at 12% 0%, ${t.line2}, transparent 32%),linear-gradient(180deg, ${t.panel3}, ${t.bg})!important;
+        background:${themeTexture}radial-gradient(circle at 12% 0%, ${t.line2}, transparent 32%),linear-gradient(180deg, ${t.panel3}, ${t.bg})!important;
+        background-size:${themeTextureSize}, auto, auto!important;
         box-shadow:0 0 0 1px rgba(255,255,255,.055) inset,0 18px 44px rgba(0,0,0,.42),0 0 28px ${t.line}!important;
       }
       #rw-payout-helper details.rw-per-hit-settings::before,
@@ -2261,7 +2317,8 @@
       }
       #rw-payout-helper details.rw-per-hit-settings > summary,
       #rw-payout-helper details.rw-points-settings > summary{
-        background:linear-gradient(135deg, ${t.line2}, ${t.line}),linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background:${themeHeaderTexture}linear-gradient(135deg, ${t.line2}, ${t.line}),linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto, auto!important;
         color:${t.accent}!important;
         border-bottom-color:${t.line}!important;
       }
@@ -2326,9 +2383,11 @@
       .rw-results-panel .summary-card,
       .rw-results-panel .result-card{
         background:
+          ${themeCardTexture}
           radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
           radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
           linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
         border-color:${t.line}!important;
         color:${t.text}!important;
       }
@@ -2376,8 +2435,10 @@
       .rwph-floating-panel-head,
       .rwph-results-html-head{
         background:
+          ${themeHeaderTexture}
           radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
           linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
+        background-size:${themeTextureSize}, auto, auto!important;
         border-color:${t.line2}!important;
         color:${t.accent}!important;
       }
@@ -2408,9 +2469,11 @@
       #rwph-xanax-send-status .rw-payment-expiry,
       #rwph-xanax-send-status .rwph-xanax-expiry-hero{
         background:
+          ${themeCardTexture}
           radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
           radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
           linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
         border-color:${t.line}!important;
         color:${t.text}!important;
         box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 16px 44px rgba(0,0,0,.34)!important;
@@ -2419,8 +2482,10 @@
       #rwph-xanax-send-status #rwph-payment-helper-title,
       #rwph-xanax-send-status .rwph-xanax-detail-title{
         background:
+          ${themeHeaderTexture}
           radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
           linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
+        background-size:${themeTextureSize}, auto, auto!important;
         border:1px solid ${t.line2}!important;
         border-radius:12px!important;
         color:${t.accent}!important;
@@ -2502,9 +2567,11 @@
       .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current),
       .rwph-results-html-panel :where(.rwph-results-html-preview-wrap,.rwph-raw-html-copy-note,.rwph-results-html-box){
         background:
+          ${themeCardTexture}
           radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
           radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
           linear-gradient(180deg, ${t.panel2}, ${t.bg})!important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
         border-color:${t.line}!important;
         color:${t.text}!important;
       }
@@ -2601,8 +2668,10 @@
       .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
       .rwph-panel-theme-picker :where(button,a.btn,.btn){
         background:
+          ${themeButtonTexture}
           radial-gradient(circle at 18% 0%, ${t.line2}, transparent 36%),
           linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto, auto!important;
         border:1px solid ${t.line2}!important;
         color:${t.text}!important;
         box-shadow:0 10px 22px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.07)!important;
@@ -2674,6 +2743,148 @@
         cursor:not-allowed!important;
       }
 
+      /* v1.1.407: theme styles now change shapes, borders, button text, and theme picker scrolling. */
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .rwph-panel-theme-picker{
+        border-radius:var(--rwph-theme-radius)!important;
+        border-width:var(--rwph-theme-border-width)!important;
+        border-style:var(--rwph-theme-border-style)!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content),
+      #rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      .rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      #rwph-xanax-send-status :where(.rwph-xanax-scroll,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
+      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current){
+        border-radius:var(--rwph-theme-card-radius)!important;
+        border-style:var(--rwph-theme-border-style)!important;
+      }
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        border-radius:var(--rwph-theme-button-radius)!important;
+        text-transform:${themeButtonCase}!important;
+        letter-spacing:${themeButtonTracking}!important;
+        border-width:var(--rwph-theme-border-width)!important;
+        border-style:var(--rwph-theme-border-style)!important;
+      }
+
+      .rwph-panel-theme-picker{
+        display:flex!important;
+        flex-direction:column!important;
+        width:min(520px, calc(100vw - 24px))!important;
+        height:min(720px, calc(100vh - 28px))!important;
+        max-width:calc(100vw - 16px)!important;
+        max-height:calc(100vh - 16px)!important;
+        min-width:min(300px, calc(100vw - 24px))!important;
+        min-height:260px!important;
+        overflow:hidden!important;
+      }
+      .rwph-panel-theme-picker-head{
+        flex:0 0 auto!important;
+        position:sticky!important;
+        top:0!important;
+        z-index:20!important;
+        cursor:move!important;
+        user-select:none!important;
+      }
+      .rwph-panel-theme-picker-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        overscroll-behavior:contain!important;
+        scrollbar-width:thin!important;
+        scrollbar-color:${t.accent} ${t.bg}!important;
+        padding-right:8px!important;
+      }
+      .rwph-panel-theme-grid{
+        display:grid!important;
+        grid-template-columns:1fr!important;
+        gap:10px!important;
+        overflow:visible!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle{
+        position:absolute!important;
+        width:18px!important;
+        height:18px!important;
+        z-index:30!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        opacity:.95!important;
+        background:rgba(2,6,23,.18)!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle-se{
+        right:7px!important;
+        bottom:7px!important;
+        cursor:nwse-resize!important;
+        border-right:2px solid ${t.accent}!important;
+        border-bottom:2px solid ${t.accent2}!important;
+        border-radius:0 0 8px 0!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle-sw{
+        left:7px!important;
+        bottom:7px!important;
+        cursor:nesw-resize!important;
+        border-left:2px solid ${t.accent}!important;
+        border-bottom:2px solid ${t.accent2}!important;
+        border-radius:0 0 0 8px!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle-nw{
+        left:7px!important;
+        top:7px!important;
+        cursor:nwse-resize!important;
+        border-left:2px solid ${t.accent}!important;
+        border-top:2px solid ${t.accent2}!important;
+        border-radius:8px 0 0 0!important;
+      }
+
+      .rwph-theme-choice{
+        justify-content:flex-start!important;
+        min-height:48px!important;
+        border-radius:var(--rwph-theme-button-radius)!important;
+      }
+      .rwph-theme-choice small{
+        display:block!important;
+        color:${t.soft}!important;
+        font-size:10px!important;
+        font-weight:700!important;
+        margin-top:2px!important;
+        text-transform:none!important;
+        letter-spacing:0!important;
+      }
+      .rwph-panel-theme-picker-body::-webkit-scrollbar{
+        width:8px!important;
+        height:8px!important;
+      }
+      .rwph-panel-theme-picker-body::-webkit-scrollbar-track{
+        background:${t.bg}!important;
+        border-radius:999px!important;
+      }
+      .rwph-panel-theme-picker-body::-webkit-scrollbar-thumb{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+        border:2px solid ${t.bg}!important;
+        border-radius:999px!important;
+      }
+
       #rw-payout-helper ::-webkit-scrollbar-thumb,
       #rw-pay-all-panel ::-webkit-scrollbar-thumb,
       .rw-pay-all-panel ::-webkit-scrollbar-thumb,
@@ -2725,9 +2936,9 @@
         <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
         <div class="rwph-panel-theme-grid">
           ${Object.entries(presets).map(([key, theme]) => `
-            <button class="rwph-theme-choice ${key === currentKey ? "primary" : "secondary"}" type="button" data-rwph-theme-key="${esc(key)}" style="border-color:${esc(theme.line2)}!important;background:linear-gradient(135deg,${esc(theme.panel3)},${esc(theme.bg)})!important;color:${esc(theme.text)}!important;">
+            <button class="rwph-theme-choice ${key === currentKey ? "primary" : "secondary"}" type="button" data-rwph-theme-key="${esc(key)}" style="border-color:${esc(theme.line2)}!important;border-radius:${esc(theme.buttonRadius || "12px")}!important;background:${esc(theme.buttonTexture ? `${theme.buttonTexture},` : "")}linear-gradient(135deg,${esc(theme.panel3)},${esc(theme.bg)})!important;color:${esc(theme.text)}!important;">
               <span class="rwph-theme-swatch" style="background:linear-gradient(135deg,${esc(theme.accent)},${esc(theme.accent2)});"></span>
-              <span>${esc(theme.label)}</span>
+              <span>${esc(theme.label)}<small>${esc(theme.styleName || "Custom style")}</small></span>
             </button>`).join("")}
         </div>
         <button id="rwph-theme-reset" class="secondary" type="button">Reset to Bronze Gold</button>
