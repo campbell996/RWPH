@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.396**
+Version: **1.1.397**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -207,6 +207,11 @@ This update changes licence credit from 20 days per Xanax to **15 days per Xanax
 
 The userscript now hides admin-only controls until the server verifies a saved ADMIN_KEY. Admin write requests are protected by the backend admin key check.
 
+
+
+## v1.1.397 note - static faction-page launcher
+
+The userscript launcher is now mounted beside Torn's **Areas** text in the left navigation and is only shown on faction pages and faction/ranked-war report pages. This is a display/location change only; API key usage and backend data handling are unchanged.
 
 
 ## v1.1.396 note - purchase bonus system removed

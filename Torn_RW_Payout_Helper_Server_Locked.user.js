@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.396
+// @version      1.1.397
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.397: launcher is now a static Torn left-nav button beside Areas, shown only on faction and faction war report pages.
   // v1.1.396: removed the purchase bonus system entirely; Xanax payments add base licence days only.
   // v1.1.389: locked screen payment heading now correctly says each Xanax gives 15 licence days.
   // v1.1.386: loading tab keeps a smoother live progress display, closing the loading tab cancels the backend calculation, and war time fields moved into Basic/Advanced dropdowns.
@@ -1183,17 +1184,110 @@
     }
   }
 
+  function rwphIsFactionWarReportPage() {
+    try {
+      const href = String(window.location?.href || "").toLowerCase();
+      const path = String(window.location?.pathname || "").toLowerCase();
+      const looksLikeWarReport = /(rankedwarreport|ranked-war-report|ranked_war_report|warreport|war-report|war_report)/.test(href);
+      const looksFactionRelated = href.includes("faction") || path.includes("faction") || href.includes("ranked");
+      return looksLikeWarReport && looksFactionRelated;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphShouldShowLauncherOnThisPage() {
+    // v1.1.397: keep the launcher off general Torn pages. Show it only on
+    // faction pages and faction/ranked-war report pages.
+    return rwphIsTornFactionPage() || rwphIsFactionWarReportPage();
+  }
+
+  function rwphIsElementVisible(el) {
+    try {
+      if (!el || el.nodeType !== 1) return false;
+      if (el.closest && (el.closest("#rw-payout-helper") || el.closest("#rw-pay-all-panel") || el.closest("#rw-payout-launcher"))) return false;
+      const rect = el.getBoundingClientRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphFindAreasNavTarget() {
+    try {
+      const nodes = Array.from(document.querySelectorAll("a,button,span,div,li"));
+      const matches = nodes
+        .filter((el) => {
+          if (!rwphIsElementVisible(el)) return false;
+          const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
+          if (text !== "Areas") return false;
+          const rect = el.getBoundingClientRect();
+          // Torn's left navigation is near the left edge. This avoids matching page content.
+          return rect.left >= 0 && rect.left < 320 && rect.top >= 0 && rect.top < Math.max(window.innerHeight || 900, 900);
+        })
+        .sort((a, b) => {
+          const ar = a.getBoundingClientRect();
+          const br = b.getBoundingClientRect();
+          return (ar.left - br.left) || (ar.top - br.top);
+        });
+      return matches[0] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphMountLauncherBesideAreas(btn) {
+    const target = rwphFindAreasNavTarget();
+    if (!btn || !target || !target.parentNode) return false;
+    btn.classList.add("rwph-nav-launcher");
+    btn.style.display = "inline-flex";
+    try {
+      if (btn.parentNode !== target.parentNode || btn.previousSibling !== target) {
+        target.parentNode.insertBefore(btn, target.nextSibling);
+      }
+    } catch (_) {
+      return false;
+    }
+    updateLauncherButtonPosition();
+    return true;
+  }
+
   function removeLauncherButton() {
     const btn = document.getElementById("rw-payout-launcher");
     if (btn) btn.remove();
   }
 
   function syncLauncherButtonVisibility() {
-    if (rwphIsTornFactionPage()) {
+    if (rwphShouldShowLauncherOnThisPage()) {
       createLauncherButton();
     } else {
       removeLauncherButton();
     }
+  }
+
+  function rwphScheduleLauncherSync() {
+    if (window.__rwphLauncherSyncTimer) return;
+    window.__rwphLauncherSyncTimer = setTimeout(() => {
+      window.__rwphLauncherSyncTimer = null;
+      syncLauncherButtonVisibility();
+    }, 120);
+  }
+
+  function rwphInstallLauncherNavObserver() {
+    if (window.__rwphLauncherNavObserverInstalled) return;
+    window.__rwphLauncherNavObserverInstalled = true;
+    try {
+      const obs = new MutationObserver(() => {
+        if (!rwphShouldShowLauncherOnThisPage()) return;
+        rwphScheduleLauncherSync();
+      });
+      obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+      window.addEventListener("resize", rwphScheduleLauncherSync, { passive: true });
+      [250, 750, 1500, 3000].forEach((delay) => setTimeout(rwphScheduleLauncherSync, delay));
+    } catch (_) {}
   }
 
   function launcherCornerLabel(corner) {
@@ -1204,14 +1298,13 @@
   }
 
   function updateLauncherCornerButtonLabels() {
-    const label = launcherCornerLabel(getLauncherCorner());
-    const displayLabel = "Launcher Movement";
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = displayLabel;
-      btn.title = `Launcher is currently at ${label}. Click to move it to the next corner.`;
-      btn.setAttribute("aria-label", `Launcher corner: ${displayLabel}`);
+      btn.textContent = "Launcher fixed beside Areas";
+      btn.title = "The launcher is now a static Torn navigation button beside Areas.";
+      btn.setAttribute("aria-label", "Launcher fixed beside Areas");
+      btn.disabled = true;
     });
   }
 
@@ -1227,44 +1320,37 @@
   }
 
   function getLauncherPositionStyle(corner) {
-    const base = {
-      position: "fixed",
-      zIndex: "999998",
-      width: "54px",
-      height: "54px",
+    return {
+      position: "static",
+      zIndex: "auto",
+      width: "28px",
+      height: "28px",
+      minWidth: "28px",
+      minHeight: "28px",
+      maxWidth: "28px",
+      maxHeight: "28px",
+      margin: "0 0 0 6px",
       padding: "0",
-      borderRadius: "0",
+      borderRadius: "8px",
       border: "0",
       background: "transparent",
       color: "#fff7ed",
       boxShadow: "none",
-      font: "950 28px Inter, Segoe UI, Arial, sans-serif",
+      font: "950 22px Inter, Segoe UI, Arial, sans-serif",
+      lineHeight: "1",
       letterSpacing: ".3px",
       textShadow: "0 2px 8px rgba(0,0,0,.8), 0 0 12px rgba(245,158,11,.42)",
       cursor: "pointer",
-      display: "flex",
+      display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
+      verticalAlign: "middle",
       textAlign: "center",
       backdropFilter: "none",
       overflow: "visible",
       appearance: "none",
       WebkitAppearance: "none",
     };
-
-    if (corner.includes("bottom")) {
-      base.bottom = corner === "bottom-right" ? "92px" : "18px";
-    } else {
-      base.top = "90px";
-    }
-
-    if (corner.includes("right")) {
-      base.right = "18px";
-    } else {
-      base.left = "18px";
-    }
-
-    return base;
   }
 
   function applyStyle(el, styleObj) {
@@ -1281,9 +1367,9 @@
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
 
-    const corner = getLauncherCorner();
-    applyStyle(btn, getLauncherPositionStyle(corner));
-    btn.title = `Open Ranked War Payout Helper (${launcherCornerLabel(corner)})`;
+    btn.classList.add("rwph-nav-launcher");
+    applyStyle(btn, getLauncherPositionStyle("areas-nav"));
+    btn.title = "Open Ranked War Payout Helper";
     updateLauncherCornerButtonLabels();
   }
 
@@ -1304,28 +1390,31 @@
   }
 
   function createLauncherButton() {
-    if (!rwphIsTornFactionPage()) return;
-    if (document.getElementById("rw-payout-launcher")) return;
+    if (!rwphShouldShowLauncherOnThisPage()) {
+      removeLauncherButton();
+      return;
+    }
 
-    const btn = document.createElement("button");
-    btn.id = "rw-payout-launcher";
-    btn.type = "button";
-    btn.innerHTML = rwphLauncherLogoHtml();
-    btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
-    btn.addEventListener("click", togglePanel);
+    let btn = document.getElementById("rw-payout-launcher");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "rw-payout-launcher";
+      btn.type = "button";
+      btn.innerHTML = rwphLauncherLogoHtml();
+      btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
+      btn.addEventListener("click", togglePanel);
+    }
 
-    document.body.appendChild(btn);
-    updateLauncherButtonPosition();
+    if (!rwphMountLauncherBesideAreas(btn)) {
+      // The Torn left-nav can render after the userscript starts. Keep hidden until
+      // the Areas button exists instead of falling back to the old floating launcher.
+      if (btn.parentNode) btn.remove();
+    }
   }
 
   function cycleLauncherCorner() {
-    const current = getLauncherCorner();
-    const index = LAUNCHER_CORNERS.indexOf(current);
-    const next = LAUNCHER_CORNERS[(index + 1) % LAUNCHER_CORNERS.length];
-    setLauncherCorner(next);
-
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, `Panel button moved to ${launcherCornerLabel(next)}.`, "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "Launcher is now fixed beside Areas on faction and faction war report pages.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
@@ -5117,6 +5206,23 @@
         outline:none !important;
         appearance:none !important;
         -webkit-appearance:none !important;
+      }
+      #rw-payout-launcher.rwph-nav-launcher {
+        position:static !important;
+        display:inline-flex !important;
+        width:28px !important;
+        height:28px !important;
+        min-width:28px !important;
+        min-height:28px !important;
+        max-width:28px !important;
+        max-height:28px !important;
+        margin:0 0 0 6px !important;
+        padding:0 !important;
+        vertical-align:middle !important;
+        align-items:center !important;
+        justify-content:center !important;
+        line-height:1 !important;
+        cursor:pointer !important;
       }
       #rw-payout-launcher:hover,
       #rw-payout-launcher:focus,
@@ -12045,7 +12151,6 @@
             <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
-            <button id="rw-move-launcher" class="secondary">Launcher Movement</button>
           </div>
           <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock Panel if you already have a licence, or Buy Licence to start a new payment.</div>
           <div id="rw-paywall-code"></div>
@@ -12064,7 +12169,6 @@
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
-              <button id="rw-move-launcher-admin" class="secondary">Launcher Movement</button>
             </div>
 
             <label>Player Torn ID
@@ -12671,7 +12775,6 @@
             </div>
           </details>
           <div class="rw-actions" id="rw-last-results-actions">
-            <button id="rw-move-launcher" class="secondary">Launcher Movement</button>
             <button id="rw-open-theme-picker" class="secondary" type="button">Panel Theme / Colours</button>
           </div>
           <div id="rw-main-payment-code"></div>
@@ -13440,11 +13543,12 @@
   }
 
   rwphInstallPageNavigationAutoClose();
+  rwphInstallLauncherNavObserver();
   setupXanaxPaymentButtonHandler();
   syncLauncherButtonVisibility();
   rwphScheduleXanaxPaymentHelperOpen();
   rwphMaybeOpenPayAllFromFactionControlsUrl();
-  if (rwphIsTornFactionPage() && rwphGetPanelOpenState()) {
+  if (rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);
   }
   function rwphInjectUnifiedPanelThemeV1375() {

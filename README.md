@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.396**  
+Current package version: **1.1.397**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -163,15 +163,14 @@ Important owner note: `paywall-db.json` is created by the backend when it runs. 
 
 ## Main Features
 
-### Floating Torn Launcher
+### Torn Areas Launcher
 
-RWPH adds a floating **RWPH** launcher logo in Torn. The launcher:
+RWPH adds a small **RWPH** launcher logo beside Torn's **Areas** text in the left navigation. The launcher:
 
-- Only appears on Torn faction pages, such as `https://www.torn.com/factions.php`.
+- Only appears on Torn faction pages and faction/ranked-war report pages.
 - Opens the Ranked War Payout Helper panel.
-- Can be moved between corners with **Launcher Movement**.
-- Uses a clean floating-logo style without a heavy button background.
-- Saves launcher position locally in the userscript storage.
+- Stays fixed beside **Areas** instead of moving between screen corners.
+- Uses a clean logo style without a heavy button background.
 
 ### Locked and Unlocked Panels
 
@@ -310,7 +309,7 @@ Useful buttons:
 - **Use Cached Report** inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when it exists.
 - **Delete Cache** inside Basic Calculations or Advanced Calculations removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
 - Browser-saved report fallback is disabled.
-- **Launcher Movement** moves the floating launcher.
+- The RWPH launcher is fixed beside Torn's **Areas** text on supported faction/report pages.
 
 ### Auto-Fill War Times
 
@@ -931,8 +930,8 @@ When updating RWPH:
 
 ### v1.1.220
 
-- Moved the cached report card/section under **Fetch + Calculate** and above **Launcher Movement**.
-- Renamed **Button Movements** to **Launcher Movement** across the panel and README.
+- Moved the cached report card/section under **Fetch + Calculate** and above the launcher controls used at that time.
+- Renamed **Button Movements** to **Launcher Movement** across the panel and README at that time.
 
 ### v1.1.219
 
@@ -1158,6 +1157,15 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Cumulative user milestone bonuses still use that Torn ID's total recorded Xanax purchase history.
 - Milestone bonuses can stack with the highest single-order bonus on the same purchase.
 - Example: a 50 Xanax purchase can get the highest qualifying single-order bonus and any cumulative milestone bonuses crossed by that member's total purchases.
+
+
+## v1.1.397 - Static faction-page launcher beside Areas
+
+- Changed the RWPH launcher from the old movable floating logo into a static Torn left-navigation button beside the **Areas** text.
+- The launcher is only shown on Torn faction pages and faction/ranked-war report pages.
+- The launcher is removed from other Torn pages.
+- Added a navigation MutationObserver so the button reappears beside **Areas** after Torn page changes or sidebar reloads.
+- Removed the visible Launcher Movement buttons because the launcher position is now fixed.
 
 
 ## v1.1.396 - Purchase bonus system removed
