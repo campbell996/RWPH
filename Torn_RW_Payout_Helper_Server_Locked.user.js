@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.405
+// @version      1.1.406
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,6 +24,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.406: added more panel theme/colour presets to the theme picker.
   // v1.1.405: fixed Results Export HTML downloads with parent-window/download fallbacks and themed RWPH popups.
   // v1.1.405: made the RWPH logo much larger in the header/top area of all script panels.
   // v1.1.403: first-time users automatically see the tutorial panel on supported Torn faction pages.
@@ -1922,6 +1923,90 @@
         bg: "#19020b", bg2: "#500724", panel: "#500724", panel2: "#831843", panel3: "#be185d",
         line: "rgba(249,168,212,.48)", line2: "rgba(251,207,232,.42)",
         text: "#fff1f2", soft: "#f9a8d4", accent: "#fbcfe8", accent2: "#f472b6", good: "#bbf7d0", danger: "#7f1d1d"
+      },
+      midnight: {
+        label: "Midnight Black",
+        bg: "#020207", bg2: "#080b16", panel: "#09090f", panel2: "#151625", panel3: "#202337",
+        line: "rgba(148,163,184,.42)", line2: "rgba(226,232,240,.32)",
+        text: "#f8fafc", soft: "#cbd5e1", accent: "#e2e8f0", accent2: "#64748b", good: "#22c55e", danger: "#7f1d1d"
+      },
+      lava: {
+        label: "Lava Orange",
+        bg: "#150504", bg2: "#3b0a04", panel: "#2a0905", panel2: "#7c2d12", panel3: "#9a3412",
+        line: "rgba(251,146,60,.50)", line2: "rgba(254,215,170,.42)",
+        text: "#fff7ed", soft: "#fed7aa", accent: "#fb923c", accent2: "#ef4444", good: "#86efac", danger: "#450a0a"
+      },
+      ice: {
+        label: "Arctic Ice",
+        bg: "#03111d", bg2: "#0c4a6e", panel: "#082f49", panel2: "#0369a1", panel3: "#0284c7",
+        line: "rgba(186,230,253,.50)", line2: "rgba(224,242,254,.48)",
+        text: "#f0f9ff", soft: "#dbeafe", accent: "#e0f2fe", accent2: "#7dd3fc", good: "#bbf7d0", danger: "#7f1d1d"
+      },
+      toxic: {
+        label: "Toxic Lime",
+        bg: "#040b02", bg2: "#143000", panel: "#0f1f07", panel2: "#365314", panel3: "#4d7c0f",
+        line: "rgba(163,230,53,.50)", line2: "rgba(217,249,157,.45)",
+        text: "#f7fee7", soft: "#d9f99d", accent: "#bef264", accent2: "#84cc16", good: "#22c55e", danger: "#7f1d1d"
+      },
+      sunset: {
+        label: "Sunset Glow",
+        bg: "#190816", bg2: "#431407", panel: "#36111b", panel2: "#9f1239", panel3: "#c2410c",
+        line: "rgba(251,113,133,.48)", line2: "rgba(253,186,116,.44)",
+        text: "#fff7ed", soft: "#fecdd3", accent: "#fdba74", accent2: "#fb7185", good: "#bbf7d0", danger: "#7f1d1d"
+      },
+      cyberpunk: {
+        label: "Cyberpunk Pink",
+        bg: "#080617", bg2: "#1e1b4b", panel: "#111027", panel2: "#701a75", panel3: "#0e7490",
+        line: "rgba(217,70,239,.48)", line2: "rgba(103,232,249,.46)",
+        text: "#fdf4ff", soft: "#f0abfc", accent: "#f0abfc", accent2: "#22d3ee", good: "#bef264", danger: "#7f1d1d"
+      },
+      emerald: {
+        label: "Emerald Glow",
+        bg: "#02130e", bg2: "#064e3b", panel: "#052e2b", panel2: "#047857", panel3: "#059669",
+        line: "rgba(52,211,153,.48)", line2: "rgba(167,243,208,.42)",
+        text: "#ecfdf5", soft: "#a7f3d0", accent: "#34d399", accent2: "#10b981", good: "#facc15", danger: "#7f1d1d"
+      },
+      ruby: {
+        label: "Ruby Blood",
+        bg: "#130308", bg2: "#3f0713", panel: "#2a0710", panel2: "#881337", panel3: "#be123c",
+        line: "rgba(244,63,94,.50)", line2: "rgba(254,205,211,.40)",
+        text: "#fff1f2", soft: "#fda4af", accent: "#fb7185", accent2: "#e11d48", good: "#86efac", danger: "#450a0a"
+      },
+      aqua: {
+        label: "Aqua Teal",
+        bg: "#021012", bg2: "#134e4a", panel: "#0f2f32", panel2: "#0f766e", panel3: "#14b8a6",
+        line: "rgba(45,212,191,.48)", line2: "rgba(153,246,228,.44)",
+        text: "#f0fdfa", soft: "#99f6e4", accent: "#5eead4", accent2: "#2dd4bf", good: "#facc15", danger: "#7f1d1d"
+      },
+      amber: {
+        label: "Amber Noir",
+        bg: "#090604", bg2: "#1c1207", panel: "#15100b", panel2: "#78350f", panel3: "#92400e",
+        line: "rgba(245,158,11,.46)", line2: "rgba(252,211,77,.42)",
+        text: "#fffbeb", soft: "#fde68a", accent: "#fcd34d", accent2: "#d97706", good: "#86efac", danger: "#7f1d1d"
+      },
+      violetstorm: {
+        label: "Violet Storm",
+        bg: "#080510", bg2: "#2e1065", panel: "#1b1035", panel2: "#5b21b6", panel3: "#7c3aed",
+        line: "rgba(139,92,246,.50)", line2: "rgba(216,180,254,.42)",
+        text: "#faf5ff", soft: "#d8b4fe", accent: "#d8b4fe", accent2: "#8b5cf6", good: "#86efac", danger: "#7f1d1d"
+      },
+      desert: {
+        label: "Desert Sand",
+        bg: "#120b05", bg2: "#3b2f1f", panel: "#24180d", panel2: "#7c5b2b", panel3: "#a16207",
+        line: "rgba(217,119,6,.44)", line2: "rgba(253,230,138,.40)",
+        text: "#fef3c7", soft: "#fde68a", accent: "#facc15", accent2: "#a16207", good: "#86efac", danger: "#7f1d1d"
+      },
+      ghost: {
+        label: "Ghost White",
+        bg: "#0b1018", bg2: "#1f2937", panel: "#111827", panel2: "#334155", panel3: "#64748b",
+        line: "rgba(203,213,225,.48)", line2: "rgba(248,250,252,.36)",
+        text: "#ffffff", soft: "#e5e7eb", accent: "#f8fafc", accent2: "#cbd5e1", good: "#86efac", danger: "#7f1d1d"
+      },
+      royalgold: {
+        label: "Royal Gold",
+        bg: "#0f0a02", bg2: "#2f2106", panel: "#1d1506", panel2: "#854d0e", panel3: "#ca8a04",
+        line: "rgba(234,179,8,.52)", line2: "rgba(254,240,138,.44)",
+        text: "#fefce8", soft: "#fef08a", accent: "#fde047", accent2: "#eab308", good: "#86efac", danger: "#7f1d1d"
       }
     };
   }
