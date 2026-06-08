@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.404
+// @version      1.1.405
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -10,6 +10,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
+// @grant        GM_download
 // @grant        GM_setClipboard
 // @connect      api.torn.com
 // @connect      gooey-eagle-rentable.ngrok-free.dev
@@ -23,7 +24,8 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
-  // v1.1.404: made the RWPH logo much larger in the header/top area of all script panels.
+  // v1.1.405: fixed Results Export HTML downloads with parent-window/download fallbacks and themed RWPH popups.
+  // v1.1.405: made the RWPH logo much larger in the header/top area of all script panels.
   // v1.1.403: first-time users automatically see the tutorial panel on supported Torn faction pages.
   // v1.1.402: added a built-in step-by-step tutorial to the Help tab.
   // v1.1.401: cleaned Licence Info panel wording so it no longer mentions the removed bonus system.
@@ -276,9 +278,9 @@
         position: relative !important;
         overflow: hidden !important;
         border-radius: 16px !important;
-        border: 1px solid rgba(245, 158, 11, .42) !important;
-        background: linear-gradient(135deg, rgba(3, 7, 18, .98), rgba(15, 23, 42, .97), rgba(8, 47, 73, .94)) !important;
-        box-shadow: 0 18px 50px rgba(0, 0, 0, .52), 0 0 28px rgba(245, 158, 11, .2) !important;
+        border: 1px solid var(--rwph-popup-border, rgba(245, 158, 11, .42)) !important;
+        background: var(--rwph-popup-bg, linear-gradient(135deg, rgba(3, 7, 18, .98), rgba(15, 23, 42, .97), rgba(8, 47, 73, .94))) !important;
+        box-shadow: var(--rwph-popup-shadow, 0 18px 50px rgba(0, 0, 0, .52), 0 0 28px rgba(245, 158, 11, .2)) !important;
         color: #fff7ed !important;
         padding: 11px 34px 13px 14px !important;
         transform: translateY(-4px) scale(.985) !important;
@@ -356,12 +358,45 @@
     document.head.appendChild(style);
   }
 
+
+  function rwphPopupThemeForMode(mode = "info") {
+    try {
+      const t = rwphGetPanelThemePreset(rwphGetPanelThemeKey());
+      const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
+      const accent = safeMode === "error" ? "#fb7185" : (safeMode === "warn" ? "#facc15" : t.accent);
+      const accent2 = safeMode === "error" ? "#f97316" : (safeMode === "warn" ? t.accent2 : t.accent2);
+      return {
+        ...t,
+        accent,
+        accent2,
+        background: `linear-gradient(135deg, ${t.bg}, ${t.panel}, ${t.panel2})`,
+        buttonBg: `linear-gradient(180deg, ${t.panel3}, ${t.panel})`,
+        border: safeMode === "error" ? "rgba(248,113,113,.72)" : (safeMode === "warn" ? "rgba(250,204,21,.72)" : t.line2),
+        title: t.text || "#ffffff",
+        message: t.soft || t.text || "#ffffff",
+        text: t.text || "#ffffff",
+        shadow: `0 18px 55px rgba(0,0,0,.62), 0 0 32px ${accent}33`,
+      };
+    } catch (_) {
+      return {
+        bg: "#130b07", panel: "#211714", panel2: "#2b1d18", panel3: "#3a241c",
+        line: "rgba(184,136,89,.46)", line2: "rgba(251,191,36,.40)",
+        text: "#fff2dd", soft: "#cfaa8e", accent: "#fbbf24", accent2: "#f97316",
+        background: "linear-gradient(135deg,#130b07,#211714,#2b1d18)",
+        buttonBg: "linear-gradient(180deg,#3a241c,#211714)",
+        border: "rgba(251,191,36,.40)", title: "#fff2dd", message: "#cfaa8e",
+        shadow: "0 18px 55px rgba(0,0,0,.62), 0 0 32px rgba(251,191,36,.22)",
+      };
+    }
+  }
+
   function rwphShowToast(message, mode = "info", ttlMs = 30000, title = "RWPH Info", anchorEl = null) {
     try {
       rwphEnsureInfoPopupStyle();
       const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
       const ttl = Math.max(30000, Number(ttlMs) || 30000);
-      const accent = safeMode === "error" ? "#fb7185" : safeMode === "warn" ? "#facc15" : "#f59e0b";
+      const popupTheme = rwphPopupThemeForMode(safeMode);
+      const accent = popupTheme.accent;
       const popupId = "rwph-info-popup-panel-live";
       const oldPopup = document.getElementById(popupId);
       if (oldPopup) {
@@ -389,17 +424,21 @@
       popup.style.setProperty("overflow", "hidden", "important");
       popup.style.setProperty("border-radius", "16px", "important");
       popup.style.setProperty("padding", "12px 38px 15px 16px", "important");
-      popup.style.setProperty("background", "linear-gradient(135deg, rgba(3,7,18,.99), rgba(15,23,42,.98), rgba(8,47,73,.96))", "important");
-      popup.style.setProperty("border", `1px solid ${safeMode === "error" ? "rgba(248,113,113,.68)" : safeMode === "warn" ? "rgba(250,204,21,.68)" : "rgba(245,158,11,.64)"}`, "important");
-      popup.style.setProperty("box-shadow", "0 18px 55px rgba(0,0,0,.62), 0 0 30px rgba(245,158,11,.24)", "important");
-      popup.style.setProperty("color", "#fff7ed", "important");
+      popup.style.setProperty("background", popupTheme.background, "important");
+      popup.style.setProperty("--rwph-popup-bg", popupTheme.background);
+      popup.style.setProperty("border", `1px solid ${popupTheme.border}`, "important");
+      popup.style.setProperty("--rwph-popup-border", popupTheme.border);
+      popup.style.setProperty("box-shadow", popupTheme.shadow, "important");
+      popup.style.setProperty("--rwph-popup-shadow", popupTheme.shadow);
+      popup.style.setProperty("color", popupTheme.text, "important");
+      popup.style.setProperty("--rwph-popup-text", popupTheme.text);
       popup.style.setProperty("font-family", "Inter, Arial, sans-serif", "important");
 
       const leftBar = document.createElement("div");
       leftBar.style.setProperty("position", "absolute", "important");
       leftBar.style.setProperty("inset", "0 auto 0 0", "important");
       leftBar.style.setProperty("width", "4px", "important");
-      leftBar.style.setProperty("background", `linear-gradient(180deg, ${accent}, #22c55e)`, "important");
+      leftBar.style.setProperty("background", `linear-gradient(180deg, ${accent}, ${popupTheme.accent2})`, "important");
       leftBar.style.setProperty("box-shadow", `0 0 14px ${accent}66`, "important");
 
       const close = document.createElement("button");
@@ -415,11 +454,11 @@
       close.style.setProperty("min-height", "36px", "important");
       close.style.setProperty("display", "grid", "important");
       close.style.setProperty("place-items", "center", "important");
-      close.style.setProperty("border", "1px solid rgba(251,191,36,.24)", "important");
-      close.style.setProperty("border-left", "4px solid rgba(245,158,11,.66)", "important");
+      close.style.setProperty("border", `1px solid ${popupTheme.line2 || popupTheme.border}`, "important");
+      close.style.setProperty("border-left", `4px solid ${accent}`, "important");
       close.style.setProperty("border-radius", "14px", "important");
-      close.style.setProperty("background", "linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88))", "important");
-      close.style.setProperty("color", "#fff7ed", "important");
+      close.style.setProperty("background", popupTheme.buttonBg, "important");
+      close.style.setProperty("color", popupTheme.text, "important");
       close.style.setProperty("cursor", "pointer", "important");
       close.style.setProperty("font", "950 20px/1 Arial,Helvetica,sans-serif", "important");
       close.style.setProperty("z-index", "2", "important");
@@ -427,7 +466,7 @@
       const titleEl = document.createElement("div");
       titleEl.textContent = String(title || "RWPH Info");
       titleEl.style.setProperty("margin", "0 0 6px 0", "important");
-      titleEl.style.setProperty("color", "#fff", "important");
+      titleEl.style.setProperty("color", popupTheme.title, "important");
       titleEl.style.setProperty("font-size", "12px", "important");
       titleEl.style.setProperty("line-height", "1.15", "important");
       titleEl.style.setProperty("font-weight", "950", "important");
@@ -437,7 +476,7 @@
       const msgEl = document.createElement("div");
       msgEl.textContent = String(message || "Done.");
       msgEl.style.setProperty("margin", "0", "important");
-      msgEl.style.setProperty("color", "#bdefff", "important");
+      msgEl.style.setProperty("color", popupTheme.message, "important");
       msgEl.style.setProperty("font-size", "12px", "important");
       msgEl.style.setProperty("line-height", "1.38", "important");
       msgEl.style.setProperty("font-weight", "800", "important");
@@ -5664,7 +5703,7 @@
       }
 
 
-      /* v1.1.404 bigger panel header logos */
+      /* v1.1.405 bigger panel header logos */
       #rw-payout-helper .rw-head {
         min-height:86px !important;
       }
@@ -6951,6 +6990,97 @@
     }
   }
 
+
+  function rwphSafeDownloadFilename(name, fallback = "rwph-results-page.html") {
+    const raw = String(name || fallback || "rwph-results-page.html").trim();
+    const cleaned = raw.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-").replace(/\s+/g, " ").slice(0, 160).trim();
+    return cleaned || fallback;
+  }
+
+  function rwphTriggerDownloadAnchor(url, filename) {
+    try {
+      const a = document.createElement("a");
+      a.href = String(url || "");
+      a.download = rwphSafeDownloadFilename(filename);
+      a.rel = "noopener";
+      a.style.setProperty("display", "none", "important");
+      (document.body || document.documentElement).appendChild(a);
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+      a.dispatchEvent(clickEvent);
+      setTimeout(() => { try { a.remove(); } catch (_) {} }, 250);
+      return true;
+    } catch (e) {
+      console.warn("RWPH anchor download failed:", e);
+      return false;
+    }
+  }
+
+  function rwphDownloadTextFileStrong(filename, text, mime = "text/html;charset=utf-8") {
+    const safeName = rwphSafeDownloadFilename(filename);
+    const value = String(text || "");
+    const type = String(mime || "text/html;charset=utf-8");
+
+    try {
+      if (typeof GM_download === "function") {
+        const dataUrl = "data:" + type + "," + encodeURIComponent(value);
+        if (dataUrl.length < 1900000) {
+          GM_download({ url: dataUrl, name: safeName, saveAs: false });
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("RWPH GM_download data-url export failed:", e);
+    }
+
+    try {
+      const blob = new Blob([value], { type });
+      const url = URL.createObjectURL(blob);
+      const ok = rwphTriggerDownloadAnchor(url, safeName);
+      setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 15000);
+      if (ok) return true;
+    } catch (e) {
+      console.warn("RWPH Blob export failed:", e);
+    }
+
+    try {
+      const dataUrl = "data:" + type + "," + encodeURIComponent(value);
+      if (dataUrl.length < 1900000 && rwphTriggerDownloadAnchor(dataUrl, safeName)) return true;
+    } catch (e) {
+      console.warn("RWPH data-url export failed:", e);
+    }
+
+    return false;
+  }
+
+  function rwphHandleResultsHtmlDownloadMessage(event) {
+    try {
+      const data = event && event.data;
+      if (!data || data.rwphType !== "rwph-results-html-download-request") return;
+      const filename = rwphSafeDownloadFilename(data.filename || "rwph-results-page.html");
+      const html = String(data.html || "");
+      if (!html) return;
+      const ok = rwphDownloadTextFileStrong(filename, html, "text/html;charset=utf-8");
+      try {
+        event.source && event.source.postMessage({
+          rwphType: "rwph-results-html-download-ack",
+          requestId: data.requestId || "",
+          ok: !!ok,
+        }, "*");
+      } catch (_) {}
+      if (ok) rwphShowToast(`Export HTML download started: ${filename}`, "info", 30000, "RWPH Export");
+      else rwphShowToast("Export HTML could not start automatically. Use the fallback HTML box and save the code as an .html file.", "warn", 30000, "RWPH Export");
+    } catch (e) {
+      console.warn("RWPH parent export download handler failed:", e);
+    }
+  }
+
+  try {
+    if (!window.__rwphResultsHtmlDownloadBridgeReady) {
+      window.__rwphResultsHtmlDownloadBridgeReady = true;
+      window.addEventListener("message", rwphHandleResultsHtmlDownloadMessage, false);
+    }
+  } catch (_) {}
+
   function buildFullscreenResultsHtml(rows, summary) {
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
     const list = (rows || []).map((r, index) => ({
@@ -8142,14 +8272,39 @@
       return "$" + Math.round(Number(n || 0)).toLocaleString();
     }
 
+    function rwphTriggerDirectDownload(url, filename) {
+      try {
+        const a = document.createElement("a");
+        a.href = String(url || "");
+        a.download = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
+        a.rel = "noopener";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+        setTimeout(() => { try { a.remove(); } catch (_) {} }, 250);
+        return true;
+      } catch (e) {
+        console.warn("RWPH direct download failed:", e);
+        return false;
+      }
+    }
+
     function downloadText(filename, text, type) {
-      const blob = new Blob([text], { type });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const safeName = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
+      const mime = String(type || "text/plain;charset=utf-8");
+      const value = String(text || "");
+      try {
+        const blob = new Blob([value], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const ok = rwphTriggerDirectDownload(url, safeName);
+        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 15000);
+        if (ok) return true;
+      } catch (e) { console.warn("RWPH Blob download failed:", e); }
+      try {
+        const dataUrl = "data:" + mime + "," + encodeURIComponent(value);
+        if (dataUrl.length < 1900000 && rwphTriggerDirectDownload(dataUrl, safeName)) return true;
+      } catch (e) { console.warn("RWPH data-url download failed:", e); }
+      return false;
     }
 
     function exportCsv() {
@@ -8459,6 +8614,48 @@
       return "rwph-results-page-" + stamp + ".html";
     }
 
+
+    function rwphRequestParentHtmlDownload(filename, html, fallbackFn) {
+      var requestId = "rwph-export-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+      var sent = false;
+      var finished = false;
+      function fallback(reason) {
+        if (finished) return;
+        finished = true;
+        try { window.removeEventListener("message", onAck, false); } catch (_) {}
+        try { fallbackFn && fallbackFn(reason || "Parent download bridge did not respond."); } catch (_) {}
+      }
+      function onAck(ev) {
+        try {
+          var data = ev && ev.data;
+          if (!data || data.rwphType !== "rwph-results-html-download-ack" || data.requestId !== requestId) return;
+          finished = true;
+          try { window.removeEventListener("message", onAck, false); } catch (_) {}
+          if (!data.ok) fallback("Parent download bridge could not start the download.");
+        } catch (_) {}
+      }
+      try { window.addEventListener("message", onAck, false); } catch (_) {}
+      var payload = { rwphType: "rwph-results-html-download-request", requestId: requestId, filename: filename, html: String(html || "") };
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(payload, "*");
+          sent = true;
+        }
+      } catch (_) {}
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(payload, "*");
+          sent = true;
+        }
+      } catch (_) {}
+      if (sent) {
+        setTimeout(function() { fallback("Parent download bridge did not respond, so the local fallback is open below."); }, 900);
+        return true;
+      }
+      try { window.removeEventListener("message", onAck, false); } catch (_) {}
+      return false;
+    }
+
     function rwphOpenExportHtmlFallbackPanel(html, filename, reason) {
       try {
         var old = document.getElementById("rwph-export-html-panel");
@@ -8490,36 +8687,37 @@
           panel.remove();
         });
       } catch (e) {
-        alert("Could not export or show the HTML fallback panel.");
         console.warn("RWPH export HTML fallback failed:", e);
       }
     }
 
-    function rwphDownloadHtmlWithoutBlob(filename, html) {
+    function rwphDownloadHtmlWithoutBlob(filename, html, reason) {
       var value = String(html || "");
-      var safeName = String(filename || "rwph-results-page.html");
+      var safeName = String(filename || "rwph-results-page.html").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
 
-      // Use data: download first. This avoids blob: URLs, which Torn PDA/phone browsers can refuse.
+      // v1.1.405: try Blob first, then data URL. The parent-page bridge uses the same logic outside the iframe.
+      try {
+        const blob = new Blob([value], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const ok = rwphTriggerDirectDownload(url, safeName);
+        setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 15000);
+        if (ok) return true;
+      } catch (e) {
+        console.warn("RWPH Blob HTML export failed:", e);
+      }
+
       try {
         var href = "data:text/html;charset=utf-8," + encodeURIComponent(value);
-        if (href.length < 1900000) {
-          var a = document.createElement("a");
-          a.href = href;
-          a.download = safeName;
-          a.rel = "noopener";
-          a.style.display = "none";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          return true;
+        if (href.length < 1900000 && rwphTriggerDirectDownload(href, safeName)) return true;
+        if (href.length >= 1900000) {
+          rwphOpenExportHtmlFallbackPanel(value, safeName, reason || "HTML is too large for a safe data-link download.");
+          return false;
         }
-        rwphOpenExportHtmlFallbackPanel(value, safeName, "HTML is too large for a safe data-link download.");
-        return false;
       } catch (e) {
         console.warn("RWPH data-link HTML export failed:", e);
       }
 
-      rwphOpenExportHtmlFallbackPanel(value, safeName, "Download was blocked by this browser/PDA.");
+      rwphOpenExportHtmlFallbackPanel(value, safeName, reason || "Download was blocked by this browser/PDA.");
       return false;
     }
 
@@ -8532,10 +8730,11 @@
         }
         var html = getCurrentResultsPageHtml();
         var filename = rwphExportHtmlFilename();
-        rwphDownloadHtmlWithoutBlob(filename, html);
+        var localFallback = function(reason) { rwphDownloadHtmlWithoutBlob(filename, html, reason); };
+        if (!rwphRequestParentHtmlDownload(filename, html, localFallback)) localFallback();
         return false;
       } catch (e) {
-        alert("Could not export this results page HTML.");
+        try { rwphOpenExportHtmlFallbackPanel("", "rwph-results-page.html", "Could not export this results page HTML."); } catch (_) {}
         console.warn("RWPH result page HTML export failed:", e);
         return false;
       }
@@ -8601,7 +8800,6 @@
           if (ev && ev.key === "Escape") closeResultsHtmlPanel();
         });
 } catch (e) {
-        alert("Could not open the results HTML panel.");
         console.warn("RWPH results HTML panel failed:", e);
       }
     }
