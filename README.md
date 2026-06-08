@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.398**  
+Current package version: **1.1.399**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1159,7 +1159,7 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Example: a 50 Xanax purchase can get the highest qualifying single-order bonus and any cumulative milestone bonuses crossed by that member's total purchases.
 
 
-## v1.1.398 - Fixed Areas launcher visibility
+## v1.1.399 - Fixed Areas launcher visibility
 
 - Improved Torn left-navigation detection so the launcher can find **Areas** even when Torn wraps it in different sidebar elements.
 - Added stronger faction and ranked-war report URL checks.

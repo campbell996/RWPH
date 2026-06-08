@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.398
+// @version      1.1.399
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.399: launcher now anchors beside the actual Areas text and war-report URL detection is broader.
   // v1.1.398: fixed Areas launcher mounting with stronger Torn sidebar selectors and a faction-page fallback position.
   // v1.1.397: launcher is now a static Torn left-nav button beside Areas, shown only on faction and faction war report pages.
   // v1.1.396: removed the purchase bonus system entirely; Xanax payments add base licence days only.
@@ -1192,16 +1193,26 @@
     try {
       const href = String(window.location?.href || "").toLowerCase();
       const path = String(window.location?.pathname || "").toLowerCase();
-      const looksLikeWarReport = /(rankedwarreport|ranked-war-report|ranked_war_report|warreport|war-report|war_report|rankedwar|ranked-war|ranked_war)/.test(href);
-      const looksFactionRelated = href.includes("faction") || path.includes("faction") || href.includes("ranked") || href.includes("warreport");
-      return looksLikeWarReport && looksFactionRelated;
+      const searchHash = `${String(window.location?.search || "")} ${String(window.location?.hash || "")}`.toLowerCase();
+
+      // Torn has used a few different ranked-war/report URL shapes in desktop,
+      // PDA, and hash-routed pages. Keep this broad enough for faction war
+      // reports, but do not treat every normal Torn page as valid.
+      if (/(ranked\s*war\s*report|faction\s*war\s*report)/.test(String(document.title || "").toLowerCase())) return true;
+      if (/(rankedwarreport|ranked-war-report|ranked_war_report|rankreport|rankedreport|warreport|war-report|war_report|rwreport)/.test(href)) return true;
+      if (/(rankedwarid|ranked_war_id|ranked-war-id|ranked_war|ranked-war|rankedwar|rankedwars|ranked_wars|ranked-wars)/.test(href) && /(report|war|faction|rank)/.test(href)) return true;
+      if ((path === "/war.php" || path.endsWith("/war.php")) && /(rank|ranked|report|warreport|faction)/.test(searchHash)) return true;
+      if ((path === "/factions.php" || path.endsWith("/factions.php")) && /(rank|ranked|war|report|rankreport|warreport)/.test(searchHash)) return true;
+
+      const pageText = String(document.querySelector("h1,h2,[class*='title' i],[class*='header' i]")?.textContent || "").toLowerCase();
+      return /(ranked\s*war\s*report|faction\s*war\s*report|war\s*report)/.test(pageText);
     } catch (_) {
       return false;
     }
   }
 
   function rwphShouldShowLauncherOnThisPage() {
-    // v1.1.397: keep the launcher off general Torn pages. Show it only on
+    // v1.1.397+: keep the launcher off general Torn pages. Show it only on
     // faction pages and faction/ranked-war report pages.
     return rwphIsTornFactionPage() || rwphIsFactionWarReportPage();
   }
@@ -1220,18 +1231,67 @@
     }
   }
 
-  function rwphTextLooksLikeAreas(text) {
-    const clean = String(text || "").replace(/\s+/g, " ").trim();
-    if (!clean) return false;
-    return clean === "Areas" || /^areas$/i.test(clean) || /^areas\b/i.test(clean) || /\bareas\b/i.test(clean);
+  function rwphNormalizeNavText(text) {
+    return String(text || "").replace(/\s+/g, " ").trim();
+  }
+
+  function rwphTextLooksExactlyLikeAreas(text) {
+    return /^areas$/i.test(rwphNormalizeNavText(text));
+  }
+
+  function rwphRectLooksLikeLeftNav(rect) {
+    try {
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      const viewportHeight = Math.max(window.innerHeight || 900, 900);
+      // Torn's left navigation is near the left edge. This avoids matching page content.
+      if (rect.left < -20 || rect.left > 380 || rect.top < 0 || rect.top > viewportHeight) return false;
+      if (rect.width > 260 || rect.height > 90) return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphTextNodeRect(node) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rect = range.getBoundingClientRect();
+      range.detach?.();
+      return rect;
+    } catch (_) {
+      return null;
+    }
   }
 
   function rwphFindAreasNavTarget() {
     try {
+      const matches = [];
+      const addMatch = (el, rect, score, source) => {
+        if (!el || !rwphIsElementVisible(el) || !rwphRectLooksLikeLeftNav(rect)) return;
+        matches.push({ el, rect, score, source });
+      };
+
+      // Best case: find the actual rendered text node that says exactly "Areas".
+      // Using the text-node range lets RWPH sit to the right of the word itself,
+      // instead of after a large sidebar container.
+      try {
+        const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (!rwphTextLooksExactlyLikeAreas(node.nodeValue)) continue;
+          const parent = node.parentElement;
+          if (!parent) continue;
+          const rect = rwphTextNodeRect(node) || parent.getBoundingClientRect();
+          addMatch(parent, rect, 0, "text-node");
+        }
+      } catch (_) {}
+
+      // Fallback: exact visible element text or exact accessibility label.
       const selectors = [
-        "[aria-label*='Areas' i]",
-        "[title*='Areas' i]",
-        "[data-title*='Areas' i]",
+        "[aria-label]",
+        "[title]",
+        "[data-title]",
         "a[href*='areas' i]",
         "button",
         "a",
@@ -1240,76 +1300,57 @@
         "li"
       ];
       const seen = new Set();
-      const nodes = [];
       selectors.forEach((selector) => {
         try {
           document.querySelectorAll(selector).forEach((el) => {
-            if (!seen.has(el)) {
-              seen.add(el);
-              nodes.push(el);
-            }
+            if (seen.has(el)) return;
+            seen.add(el);
+            if (!rwphIsElementVisible(el)) return;
+            const text = rwphNormalizeNavText(el.textContent || "");
+            const label = rwphNormalizeNavText(`${el.getAttribute?.("aria-label") || ""} ${el.getAttribute?.("title") || ""} ${el.getAttribute?.("data-title") || ""}`);
+            if (!rwphTextLooksExactlyLikeAreas(text) && !rwphTextLooksExactlyLikeAreas(label)) return;
+            addMatch(el, el.getBoundingClientRect(), rwphTextLooksExactlyLikeAreas(text) ? 1 : 2, "element");
           });
         } catch (_) {}
       });
 
-      const viewportHeight = Math.max(window.innerHeight || 900, 900);
-      const matches = nodes
-        .map((el) => {
-          if (!rwphIsElementVisible(el)) return null;
-          const rect = el.getBoundingClientRect();
-          // Torn's left navigation is near the left edge. This avoids matching page content.
-          if (rect.left < -20 || rect.left > 380 || rect.top < 0 || rect.top > viewportHeight) return null;
-          const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
-          const label = String(el.getAttribute?.("aria-label") || el.getAttribute?.("title") || el.getAttribute?.("data-title") || "").replace(/\s+/g, " ").trim();
-          const combined = `${text} ${label}`.trim();
-          if (!rwphTextLooksLikeAreas(combined)) return null;
-          const exactScore = /^areas$/i.test(text) || /^areas$/i.test(label) ? 0 : 1;
-          const lengthScore = Math.min((text || label || combined).length, 200);
-          return { el, rect, exactScore, lengthScore };
-        })
-        .filter(Boolean)
-        .sort((a, b) => {
-          return (a.exactScore - b.exactScore)
-            || (a.lengthScore - b.lengthScore)
-            || (a.rect.left - b.rect.left)
-            || (a.rect.top - b.rect.top);
-        });
-      return matches[0]?.el || null;
+      matches.sort((a, b) => {
+        return (a.score - b.score)
+          || (a.rect.left - b.rect.left)
+          || (a.rect.top - b.rect.top)
+          || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
+      });
+      return matches[0] || null;
     } catch (_) {
       return null;
     }
   }
 
   function rwphMountLauncherFallback(btn) {
-    if (!btn || !rwphShouldShowLauncherOnThisPage()) return false;
+    // v1.1.399: no visible page-corner fallback. If Torn has not rendered the
+    // Areas label yet, hide/remove the launcher and let the observer retry. This
+    // prevents the button from appearing in the top-left corner of the page.
     try {
-      btn.classList.remove("rwph-nav-launcher");
-      btn.classList.add("rwph-nav-launcher-fallback");
-      if (btn.parentNode !== document.body) document.body.appendChild(btn);
-      updateLauncherButtonPosition(true);
-      return true;
-    } catch (_) {
-      return false;
-    }
+      if (btn) btn.remove();
+    } catch (_) {}
+    return false;
   }
 
   function rwphMountLauncherBesideAreas(btn) {
+    if (!btn || !rwphShouldShowLauncherOnThisPage()) return rwphMountLauncherFallback(btn);
     const target = rwphFindAreasNavTarget();
-    if (!btn || !target || !target.parentNode) return rwphMountLauncherFallback(btn);
+    if (!target || !target.rect) return rwphMountLauncherFallback(btn);
+
     btn.classList.remove("rwph-nav-launcher-fallback");
     btn.classList.add("rwph-nav-launcher");
     btn.style.display = "inline-flex";
+
     try {
-      // Prefer placing directly after the visible Areas text. If Torn wraps the text
-      // inside an anchor, this still leaves the launcher beside the word instead of
-      // disappearing while the sidebar finishes rendering.
-      if (btn.parentNode !== target.parentNode || btn.previousElementSibling !== target) {
-        target.parentNode.insertBefore(btn, target.nextSibling);
-      }
+      if (btn.parentNode !== document.body) document.body.appendChild(btn);
+      updateLauncherButtonPosition(false, target.rect);
     } catch (_) {
       return rwphMountLauncherFallback(btn);
     }
-    updateLauncherButtonPosition(false);
     return true;
   }
 
@@ -1377,18 +1418,21 @@
     updateLauncherCornerButtonLabels();
   }
 
-  function getLauncherPositionStyle(corner) {
+  function getLauncherPositionStyle(corner, anchorRect = null) {
+    const anchored = corner === "areas-nav" && anchorRect;
     const fallback = corner === "areas-nav-fallback";
+    const top = anchored ? Math.round(anchorRect.top + Math.max(0, (anchorRect.height - 28) / 2)) : 86;
+    const left = anchored ? Math.round(anchorRect.right + 7) : 134;
     return {
-      position: fallback ? "fixed" : "static",
-      zIndex: fallback ? "2147483647" : "auto",
+      position: "fixed",
+      zIndex: "2147483647",
       width: "28px",
       height: "28px",
       minWidth: "28px",
       minHeight: "28px",
       maxWidth: "28px",
       maxHeight: "28px",
-      margin: fallback ? "0" : "0 0 0 6px",
+      margin: "0",
       padding: "0",
       borderRadius: "8px",
       border: "0",
@@ -1409,7 +1453,8 @@
       overflow: "visible",
       appearance: "none",
       WebkitAppearance: "none",
-      ...(fallback ? { left: "134px", top: "86px" } : {}),
+      left: `${Math.max(0, left)}px`,
+      top: `${Math.max(0, top)}px`,
     };
   }
 
@@ -1423,18 +1468,18 @@
     Object.assign(el.style, styleObj);
   }
 
-  function updateLauncherButtonPosition(useFallback = false) {
+  function updateLauncherButtonPosition(useFallback = false, anchorRect = null) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
 
     if (useFallback || btn.classList.contains("rwph-nav-launcher-fallback")) {
-      btn.classList.remove("rwph-nav-launcher");
-      btn.classList.add("rwph-nav-launcher-fallback");
-      applyStyle(btn, getLauncherPositionStyle("areas-nav-fallback"));
+      // Hidden fallback only. Do not place it in a random page corner.
+      btn.remove();
+      return;
     } else {
       btn.classList.remove("rwph-nav-launcher-fallback");
       btn.classList.add("rwph-nav-launcher");
-      applyStyle(btn, getLauncherPositionStyle("areas-nav"));
+      applyStyle(btn, getLauncherPositionStyle("areas-nav", anchorRect));
     }
     btn.title = "Open Ranked War Payout Helper";
     updateLauncherCornerButtonLabels();
@@ -5271,26 +5316,7 @@
         -webkit-appearance:none !important;
       }
       #rw-payout-launcher.rwph-nav-launcher {
-        position:static !important;
-        display:inline-flex !important;
-        width:28px !important;
-        height:28px !important;
-        min-width:28px !important;
-        min-height:28px !important;
-        max-width:28px !important;
-        max-height:28px !important;
-        margin:0 0 0 6px !important;
-        padding:0 !important;
-        vertical-align:middle !important;
-        align-items:center !important;
-        justify-content:center !important;
-        line-height:1 !important;
-        cursor:pointer !important;
-      }
-      #rw-payout-launcher.rwph-nav-launcher-fallback {
         position:fixed !important;
-        left:134px !important;
-        top:86px !important;
         z-index:2147483647 !important;
         display:inline-flex !important;
         width:28px !important;
@@ -5301,10 +5327,14 @@
         max-height:28px !important;
         margin:0 !important;
         padding:0 !important;
+        vertical-align:middle !important;
         align-items:center !important;
         justify-content:center !important;
         line-height:1 !important;
         cursor:pointer !important;
+      }
+      #rw-payout-launcher.rwph-nav-launcher-fallback {
+        display:none !important;
       }
       #rw-payout-launcher:hover,
       #rw-payout-launcher:focus,

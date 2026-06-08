@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.398**
+Version: **1.1.399**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -209,7 +209,7 @@ The userscript now hides admin-only controls until the server verifies a saved A
 
 
 
-## v1.1.398 note - launcher visibility fix
+## v1.1.399 note - launcher visibility fix
 
 The userscript launcher now uses stronger Torn sidebar detection and a faction-page-only fallback position so it remains visible on faction pages and faction/ranked-war report pages even if Torn changes or delays the left navigation markup. API key usage and backend data handling are unchanged.
 
