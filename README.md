@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.399**  
+Current package version: **1.1.400**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -163,14 +163,14 @@ Important owner note: `paywall-db.json` is created by the backend when it runs. 
 
 ## Main Features
 
-### Torn Areas Launcher
+### Faction Header Launcher
 
-RWPH adds a small **RWPH** launcher logo beside Torn's **Areas** text in the left navigation. The launcher:
+RWPH adds a **Ranked War Payout Helper** button in the top faction header, immediately to the left of Torn's **Faction Warfare** button. The launcher:
 
-- Only appears on Torn faction pages and faction/ranked-war report pages.
+- Only appears on Torn faction pages and faction/ranked-war report pages where the Faction Warfare header button is available.
 - Opens the Ranked War Payout Helper panel.
-- Stays fixed beside **Areas** instead of moving between screen corners.
-- Uses a clean logo style without a heavy button background.
+- Uses the RWPH logo on the left and the text **Ranked War Payout Helper**.
+- Copies the nearby Faction Warfare button styling so it looks like part of the faction header.
 
 ### Locked and Unlocked Panels
 
@@ -1158,6 +1158,14 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Milestone bonuses can stack with the highest single-order bonus on the same purchase.
 - Example: a 50 Xanax purchase can get the highest qualifying single-order bonus and any cumulative milestone bonuses crossed by that member's total purchases.
 
+
+
+## v1.1.400 - Faction Warfare header launcher
+
+- Moved the RWPH launcher away from Torn's left **Areas** sidebar.
+- The launcher now mounts directly to the left of the top **Faction Warfare** button on supported faction pages.
+- The launcher now shows the RWPH logo plus **Ranked War Payout Helper** text and copies the nearby Faction Warfare button styling.
+- Removed the visible page-corner fallback so the launcher will not jump to the wrong corner if Torn renders the header late.
 
 ## v1.1.399 - Fixed Areas launcher visibility
 

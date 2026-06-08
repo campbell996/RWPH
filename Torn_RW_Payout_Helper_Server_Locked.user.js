@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.399
+// @version      1.1.400
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.400: launcher now mounts to the left of the top Faction Warfare button with logo and full text.
   // v1.1.399: launcher now anchors beside the actual Areas text and war-report URL detection is broader.
   // v1.1.398: fixed Areas launcher mounting with stronger Torn sidebar selectors and a faction-page fallback position.
   // v1.1.397: launcher is now a static Torn left-nav button beside Areas, shown only on faction and faction war report pages.
@@ -1235,21 +1236,8 @@
     return String(text || "").replace(/\s+/g, " ").trim();
   }
 
-  function rwphTextLooksExactlyLikeAreas(text) {
-    return /^areas$/i.test(rwphNormalizeNavText(text));
-  }
-
-  function rwphRectLooksLikeLeftNav(rect) {
-    try {
-      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
-      const viewportHeight = Math.max(window.innerHeight || 900, 900);
-      // Torn's left navigation is near the left edge. This avoids matching page content.
-      if (rect.left < -20 || rect.left > 380 || rect.top < 0 || rect.top > viewportHeight) return false;
-      if (rect.width > 260 || rect.height > 90) return false;
-      return true;
-    } catch (_) {
-      return false;
-    }
+  function rwphTextLooksExactlyLikeFactionWarfare(text) {
+    return /^faction\s+warfare$/i.test(rwphNormalizeNavText(text));
   }
 
   function rwphTextNodeRect(node) {
@@ -1264,22 +1252,48 @@
     }
   }
 
-  function rwphFindAreasNavTarget() {
+  function rwphRectLooksLikeTopFactionButton(rect) {
+    try {
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      const viewportWidth = Math.max(window.innerWidth || 1000, 320);
+      // The real Faction Warfare button is near the top faction header, not down in page content.
+      if (rect.left < -20 || rect.left > viewportWidth - 20) return false;
+      if (rect.top < -10 || rect.top > 260) return false;
+      if (rect.width < 40 || rect.width > 360) return false;
+      if (rect.height < 18 || rect.height > 72) return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphClosestFactionWarfareButton(el) {
+    try {
+      if (!el || el.nodeType !== 1) return null;
+      return el.closest("a,button,[role='button'],[class*='button' i],[class*='btn' i]") || el;
+    } catch (_) {
+      return el || null;
+    }
+  }
+
+  function rwphFindFactionWarfareTarget() {
     try {
       const matches = [];
       const addMatch = (el, rect, score, source) => {
-        if (!el || !rwphIsElementVisible(el) || !rwphRectLooksLikeLeftNav(rect)) return;
-        matches.push({ el, rect, score, source });
+        const targetEl = rwphClosestFactionWarfareButton(el);
+        if (!targetEl || !rwphIsElementVisible(targetEl)) return;
+        const targetRect = targetEl.getBoundingClientRect?.() || rect;
+        const usableRect = rwphRectLooksLikeTopFactionButton(targetRect) ? targetRect : rect;
+        if (!rwphRectLooksLikeTopFactionButton(usableRect)) return;
+        matches.push({ el: targetEl, rect: usableRect, score, source });
       };
 
-      // Best case: find the actual rendered text node that says exactly "Areas".
-      // Using the text-node range lets RWPH sit to the right of the word itself,
-      // instead of after a large sidebar container.
+      // Best case: find the actual text node reading exactly "Faction Warfare".
       try {
         const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
         let node;
         while ((node = walker.nextNode())) {
-          if (!rwphTextLooksExactlyLikeAreas(node.nodeValue)) continue;
+          if (!rwphTextLooksExactlyLikeFactionWarfare(node.nodeValue)) continue;
           const parent = node.parentElement;
           if (!parent) continue;
           const rect = rwphTextNodeRect(node) || parent.getBoundingClientRect();
@@ -1289,12 +1303,12 @@
 
       // Fallback: exact visible element text or exact accessibility label.
       const selectors = [
+        "a",
+        "button",
+        "[role='button']",
         "[aria-label]",
         "[title]",
         "[data-title]",
-        "a[href*='areas' i]",
-        "button",
-        "a",
         "span",
         "div",
         "li"
@@ -1308,16 +1322,16 @@
             if (!rwphIsElementVisible(el)) return;
             const text = rwphNormalizeNavText(el.textContent || "");
             const label = rwphNormalizeNavText(`${el.getAttribute?.("aria-label") || ""} ${el.getAttribute?.("title") || ""} ${el.getAttribute?.("data-title") || ""}`);
-            if (!rwphTextLooksExactlyLikeAreas(text) && !rwphTextLooksExactlyLikeAreas(label)) return;
-            addMatch(el, el.getBoundingClientRect(), rwphTextLooksExactlyLikeAreas(text) ? 1 : 2, "element");
+            if (!rwphTextLooksExactlyLikeFactionWarfare(text) && !rwphTextLooksExactlyLikeFactionWarfare(label)) return;
+            addMatch(el, el.getBoundingClientRect(), rwphTextLooksExactlyLikeFactionWarfare(text) ? 1 : 2, "element");
           });
         } catch (_) {}
       });
 
       matches.sort((a, b) => {
         return (a.score - b.score)
-          || (a.rect.left - b.rect.left)
           || (a.rect.top - b.rect.top)
+          || (a.rect.left - b.rect.left)
           || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
       });
       return matches[0] || null;
@@ -1327,29 +1341,40 @@
   }
 
   function rwphMountLauncherFallback(btn) {
-    // v1.1.399: no visible page-corner fallback. If Torn has not rendered the
-    // Areas label yet, hide/remove the launcher and let the observer retry. This
-    // prevents the button from appearing in the top-left corner of the page.
+    // No page-corner fallback. If Torn has not rendered the Faction Warfare
+    // button yet, hide/remove the launcher and let the observer retry.
     try {
       if (btn) btn.remove();
     } catch (_) {}
     return false;
   }
 
-  function rwphMountLauncherBesideAreas(btn) {
+  function rwphMountLauncherBesideFactionWarfare(btn) {
     if (!btn || !rwphShouldShowLauncherOnThisPage()) return rwphMountLauncherFallback(btn);
-    const target = rwphFindAreasNavTarget();
-    if (!target || !target.rect) return rwphMountLauncherFallback(btn);
+    const target = rwphFindFactionWarfareTarget();
+    if (!target || !target.el || !target.rect) return rwphMountLauncherFallback(btn);
 
     btn.classList.remove("rwph-nav-launcher-fallback");
-    btn.classList.add("rwph-nav-launcher");
+    btn.classList.add("rwph-faction-header-launcher");
     btn.style.display = "inline-flex";
 
     try {
-      if (btn.parentNode !== document.body) document.body.appendChild(btn);
-      updateLauncherButtonPosition(false, target.rect);
+      const parent = target.el.parentNode;
+      if (parent && btn.parentNode !== parent) {
+        parent.insertBefore(btn, target.el);
+      } else if (parent && btn.nextSibling !== target.el) {
+        parent.insertBefore(btn, target.el);
+      } else if (!parent) {
+        document.body.appendChild(btn);
+      }
+      updateLauncherButtonPosition(false, target);
     } catch (_) {
-      return rwphMountLauncherFallback(btn);
+      try {
+        if (btn.parentNode !== document.body) document.body.appendChild(btn);
+        updateLauncherButtonPosition(false, target);
+      } catch (_) {
+        return rwphMountLauncherFallback(btn);
+      }
     }
     return true;
   }
@@ -1400,9 +1425,9 @@
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = "Launcher fixed beside Areas";
-      btn.title = "The launcher is now a static Torn navigation button beside Areas.";
-      btn.setAttribute("aria-label", "Launcher fixed beside Areas");
+      btn.textContent = "Launcher fixed beside Faction Warfare";
+      btn.title = "The launcher is now a static faction-header button beside Faction Warfare.";
+      btn.setAttribute("aria-label", "Launcher fixed beside Faction Warfare");
       btn.disabled = true;
     });
   }
@@ -1418,43 +1443,53 @@
     updateLauncherCornerButtonLabels();
   }
 
-  function getLauncherPositionStyle(corner, anchorRect = null) {
-    const anchored = corner === "areas-nav" && anchorRect;
-    const fallback = corner === "areas-nav-fallback";
-    const top = anchored ? Math.round(anchorRect.top + Math.max(0, (anchorRect.height - 28) / 2)) : 86;
-    const left = anchored ? Math.round(anchorRect.right + 7) : 134;
+  function getLauncherPositionStyle(corner, anchorTarget = null) {
+    const targetEl = anchorTarget && anchorTarget.el ? anchorTarget.el : null;
+    const anchorRect = anchorTarget && anchorTarget.rect ? anchorTarget.rect : null;
+    let computed = null;
+    try { computed = targetEl && window.getComputedStyle ? window.getComputedStyle(targetEl) : null; } catch (_) { computed = null; }
+
+    const height = anchorRect ? Math.max(28, Math.min(46, Math.round(anchorRect.height))) : 34;
+    const fallbackFont = `${Math.max(12, Math.min(15, height - 18))}px Arial, Helvetica, sans-serif`;
+    const fallbackBackground = "linear-gradient(180deg,#2f2f2f,#181818)";
+
     return {
-      position: "fixed",
+      position: "static",
       zIndex: "2147483647",
-      width: "28px",
-      height: "28px",
-      minWidth: "28px",
-      minHeight: "28px",
-      maxWidth: "28px",
-      maxHeight: "28px",
-      margin: "0",
-      padding: "0",
-      borderRadius: "8px",
-      border: "0",
-      background: "transparent",
-      color: "#fff7ed",
-      boxShadow: "none",
-      font: "950 22px Inter, Segoe UI, Arial, sans-serif",
-      lineHeight: "1",
-      letterSpacing: ".3px",
-      textShadow: "0 2px 8px rgba(0,0,0,.8), 0 0 12px rgba(245,158,11,.42)",
+      width: "auto",
+      height: `${height}px`,
+      minWidth: "0",
+      minHeight: `${height}px`,
+      maxWidth: "none",
+      maxHeight: "none",
+      margin: computed?.margin ? computed.margin : "0 6px 0 0",
+      padding: computed?.padding && computed.padding !== "0px" ? computed.padding : "0 11px",
+      borderRadius: computed?.borderRadius && computed.borderRadius !== "0px" ? computed.borderRadius : "6px",
+      border: computed?.border && computed.border !== "0px none rgb(0, 0, 0)" ? computed.border : "1px solid rgba(255,255,255,.18)",
+      background: computed?.background && computed.background !== "rgba(0, 0, 0, 0)" ? computed.background : fallbackBackground,
+      color: computed?.color || "#f2f2f2",
+      boxShadow: computed?.boxShadow && computed.boxShadow !== "none" ? computed.boxShadow : "none",
+      font: computed?.font || fallbackFont,
+      fontWeight: computed?.fontWeight || "700",
+      lineHeight: computed?.lineHeight || "1",
+      letterSpacing: computed?.letterSpacing || "normal",
+      textShadow: computed?.textShadow && computed.textShadow !== "none" ? computed.textShadow : "none",
       cursor: "pointer",
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
+      gap: "6px",
       verticalAlign: "middle",
       textAlign: "center",
-      backdropFilter: "none",
-      overflow: "visible",
+      whiteSpace: "nowrap",
+      backdropFilter: computed?.backdropFilter || "none",
+      overflow: "hidden",
       appearance: "none",
       WebkitAppearance: "none",
-      left: `${Math.max(0, left)}px`,
-      top: `${Math.max(0, top)}px`,
+      top: "",
+      right: "",
+      bottom: "",
+      left: "",
     };
   }
 
@@ -1468,37 +1503,33 @@
     Object.assign(el.style, styleObj);
   }
 
-  function updateLauncherButtonPosition(useFallback = false, anchorRect = null) {
+  function updateLauncherButtonPosition(useFallback = false, anchorTarget = null) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
 
     if (useFallback || btn.classList.contains("rwph-nav-launcher-fallback")) {
-      // Hidden fallback only. Do not place it in a random page corner.
       btn.remove();
       return;
-    } else {
-      btn.classList.remove("rwph-nav-launcher-fallback");
-      btn.classList.add("rwph-nav-launcher");
-      applyStyle(btn, getLauncherPositionStyle("areas-nav", anchorRect));
     }
+
+    btn.classList.remove("rwph-nav-launcher-fallback");
+    btn.classList.add("rwph-faction-header-launcher");
+    applyStyle(btn, getLauncherPositionStyle("faction-warfare", anchorTarget));
     btn.title = "Open Ranked War Payout Helper";
     updateLauncherCornerButtonLabels();
   }
 
   function rwphLauncherLogoHtml() {
-    return `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" draggable="false" style="width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 6px rgba(249,115,22,.62));" />`;
+    return `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:20px;height:20px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" /><span style="pointer-events:none;display:inline-block;line-height:1;">Ranked War Payout Helper</span>`;
   }
 
   function setLauncherOpenState(isOpen) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
-    if (isOpen) {
-      btn.textContent = "×";
-      btn.style.color = "#fff7ed";
-    } else {
-      btn.innerHTML = rwphLauncherLogoHtml();
-    }
+    btn.innerHTML = rwphLauncherLogoHtml();
+    btn.dataset.rwphOpen = isOpen ? "1" : "0";
     btn.title = isOpen ? "Close Ranked War Payout Helper" : "Open Ranked War Payout Helper";
+    btn.setAttribute("aria-label", btn.title);
   }
 
   function createLauncherButton() {
@@ -1517,12 +1548,12 @@
       btn.addEventListener("click", togglePanel);
     }
 
-    rwphMountLauncherBesideAreas(btn);
+    rwphMountLauncherBesideFactionWarfare(btn);
   }
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "Launcher is now fixed beside Areas on faction and faction war report pages.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "Launcher is now fixed beside the Faction Warfare button on faction pages.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
