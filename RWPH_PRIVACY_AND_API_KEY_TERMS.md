@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.408**
+Version: **1.1.410**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -233,10 +233,13 @@ The userscript launcher is now mounted beside Torn's **Areas** text in the left 
 The purchase bonus system has been removed. New Xanax licence payments add only the configured base licence days. The admin bonus manager routes and controls, user bonus progress display, and the one-time 365 day completion reward route have been removed. Existing licence expiry time is not reduced or recalculated by this update. API key usage is unchanged.
 
 
-## v1.1.408 note - Phone/PDA launcher fallback
+## v1.1.410 note - Buy/Extend current-tab navigation
 
-- RWPH now includes a phone/Torn PDA launcher fallback on supported faction and report pages when Torn does not render the desktop Faction Warfare header button.
-- The launcher remains hidden on normal Torn pages.
+Buy Licence and Extend Licence now change the current Torn tab to the Xanax item-send page instead of opening a new tab.
+
+## v1.1.409 note - Phone/PDA launcher text
+
+The phone/Torn PDA launcher uses a compact logo-only button. Desktop keeps the full logo and **Ranked War Payout Helper** text launcher. Launcher visibility remains limited to supported faction and faction-war report pages.
 
 ## v1.1.407 note - Theme picker scroll and unique styles
 

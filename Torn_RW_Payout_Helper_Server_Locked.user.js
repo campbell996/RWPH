@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.408
+// @version      1.1.410
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -24,6 +24,8 @@
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
+  // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
+  // v1.1.409: phone/Torn PDA launcher now shows logo-only while desktop keeps the full text launcher.
   // v1.1.408: added a phone/Torn PDA launcher fallback on supported faction/report pages when the Faction Warfare header button is unavailable.
   // v1.1.407: fixed theme picker scrolling/move/resize and added distinct theme styles.
   // v1.1.406: added more panel theme/colour presets to the theme picker.
@@ -920,31 +922,23 @@
     copyText(`Send ${PAYMENT_ITEM_NAME} to ${PAYMENT_RECEIVER_TEXT} with message: ${code}`).catch(() => false);
     const url = buildXanaxPaymentUrl(code);
 
-    if (preOpenedTab && !preOpenedTab.closed) {
-      try {
-        preOpenedTab.location.href = url;
-        try { preOpenedTab.focus(); } catch (_) {}
-        return true;
-      } catch (e) {
-        console.warn("Could not redirect pre-opened payment helper tab:", e);
-      }
-    }
-
+    // v1.1.410: Buy/Extend should not open a popup or new tab. Navigate the current Torn tab.
     try {
-      if (typeof GM_openInTab === "function") {
-        GM_openInTab(url, {
-          active: true,
-          insert: true,
-          setParent: true,
-        });
-        return true;
+      if (window.location && typeof window.location.assign === "function") {
+        window.location.assign(url);
+      } else {
+        window.location.href = url;
       }
+      return true;
     } catch (e) {
-      console.warn("GM_openInTab failed for payment helper:", e);
+      console.warn("Could not navigate current tab to Xanax payment page:", e);
+      try {
+        window.location.href = url;
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
-
-    const tab = window.open(url, "_blank", "noopener,noreferrer");
-    return !!tab;
   }
 
   function rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, mode = "unlock") {
@@ -955,8 +949,8 @@
 
     const pending = getPendingPayment();
     const existingText = result.existingPending
-      ? "Existing pending payment code found. Reopening your Xanax Payment Helper instead of creating a new code."
-      : "Payment code ready. Xanax Payment Helper opened. RWPH will check automatically after you send the Xanax.";
+      ? "Existing pending payment code found. Opening the Xanax Payment Helper in this tab instead of creating a new code."
+      : "Payment code ready. Opening the Xanax send page in this tab. RWPH will check automatically after you send the Xanax.";
     const helperMessage = result.instructions || existingText;
 
     rwphQueueCrossTabPopup("xanax-payment", helperMessage, "info", "RWPH Payment");
@@ -973,9 +967,9 @@
     const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
     if (!openedPaymentHelper) {
       rwphClearCrossTabPopup("xanax-payment");
-      rwphToastPanelInfo(status, "Payment code is ready, but the Xanax helper tab was blocked. Allow popups or click the helper button in the payment card.", "warn", "RWPH Payment");
+      rwphToastPanelInfo(status, "Payment code is ready, but RWPH could not navigate to the Xanax send page. Click the helper button in the payment card.", "warn", "RWPH Payment");
     } else if (status) {
-      status.textContent = result.existingPending ? "Existing Xanax Payment Helper opened in the new tab." : "Xanax Payment Helper opened in the new tab.";
+      status.textContent = result.existingPending ? "Existing Xanax Payment Helper is opening in this tab." : "Xanax Payment Helper is opening in this tab.";
     }
 
     updatePendingPaymentUi();
@@ -1485,14 +1479,14 @@
         bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
         left: "auto",
         top: "auto",
-        width: "auto",
-        minWidth: "0",
-        maxWidth: "calc(100vw - 20px)",
-        height: "42px",
-        minHeight: "42px",
-        maxHeight: "42px",
+        width: "46px",
+        minWidth: "46px",
+        maxWidth: "46px",
+        height: "46px",
+        minHeight: "46px",
+        maxHeight: "46px",
         margin: "0",
-        padding: "0 12px",
+        padding: "0",
         borderRadius: "var(--rwph-theme-button-radius, 999px)",
         border: "var(--rwph-theme-border-width, 1px) var(--rwph-theme-border-style, solid) var(--rwph-theme-line2, rgba(251,191,36,.42))",
         background: "linear-gradient(135deg, var(--rwph-theme-panel2, #211714), var(--rwph-theme-panel3, #3a241c))",
@@ -1507,7 +1501,7 @@
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "7px",
+        gap: "0",
         verticalAlign: "middle",
         textAlign: "center",
         whiteSpace: "nowrap",
@@ -1517,6 +1511,8 @@
         WebkitAppearance: "none",
       });
       btn.title = "Open Ranked War Payout Helper";
+      btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
+      btn.innerHTML = rwphLauncherLogoHtml();
       updateLauncherCornerButtonLabels();
       return true;
     } catch (_) {
@@ -1701,12 +1697,16 @@
     btn.classList.add("rwph-faction-header-launcher");
     applyStyle(btn, getLauncherPositionStyle("faction-warfare", anchorTarget));
     btn.title = "Open Ranked War Payout Helper";
+    btn.innerHTML = rwphLauncherLogoHtml();
     updateLauncherCornerButtonLabels();
   }
 
   function rwphLauncherLogoHtml() {
-    const mobileShortText = rwphIsMobileOrPdaView() ? "RW Payout Helper" : "Ranked War Payout Helper";
-    return `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:20px;height:20px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" /><span style="pointer-events:none;display:inline-block;line-height:1;">${mobileShortText}</span>`;
+    const isMobileLauncher = rwphIsMobileOrPdaView();
+    const logoSize = isMobileLauncher ? 30 : 20;
+    const imgHtml = `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:${logoSize}px;height:${logoSize}px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" />`;
+    if (isMobileLauncher) return imgHtml;
+    return `${imgHtml}<span style="pointer-events:none;display:inline-block;line-height:1;">Ranked War Payout Helper</span>`;
   }
 
   function setLauncherOpenState(isOpen) {
@@ -13222,11 +13222,11 @@
       const codeBox = document.getElementById("rw-paywall-code");
       const userKey = document.getElementById("rw-paywall-key").value.trim();
       if (!userKey) return alert("Enter your Torn API key first.");
-      const paymentTab = preOpenXanaxPaymentTab();
+      const paymentTab = null;
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
-        status.textContent = "Creating payment code and opening Xanax send page...";
+        status.textContent = "Creating payment code and changing this tab to the Xanax send page...";
         codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey });
@@ -13959,11 +13959,11 @@
       const codeBox = document.getElementById("rw-main-payment-code");
       const userKey = document.getElementById("rw-key").value.trim();
       if (!userKey) return alert("Enter your Torn API key first.");
-      const paymentTab = preOpenXanaxPaymentTab();
+      const paymentTab = null;
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
-        status.textContent = "Creating extension payment code and opening Xanax send page...";
+        status.textContent = "Creating extension payment code and changing this tab to the Xanax send page...";
         if (codeBox) codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });

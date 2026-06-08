@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.408**  
+Current package version: **1.1.410**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -249,7 +249,7 @@ When the user clicks **Buy Licence** or **Extend Licence**, RWPH:
 
 1. Creates a unique payment code.
 2. Shows the receiver, item requirement, and code.
-3. Opens the Xanax Payment Helper page/tab where possible.
+3. Changes the current Torn tab to the Xanax Payment Helper/item-send page.
 4. Provides **Copy Receiver** and **Copy Code** helpers.
 5. Checks the backend for payment confirmation.
 6. Unlocks or extends the licence after a valid matching payment is detected.
@@ -1219,13 +1219,20 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Added bonus completion data to the normal licence verification response so users can see their own progress without admin access.
 
 
-## v1.1.408 - Phone/PDA launcher fallback
+## v1.1.410 - Buy/Extend current-tab Xanax navigation
 
-- Added a phone/Torn PDA launcher fallback for supported faction and faction-war report pages.
-- Desktop still tries to place the launcher beside the top Faction Warfare button.
-- If Torn PDA hides or renames that header button, RWPH now shows a safe fixed launcher button instead of disappearing.
-- The mobile fallback only appears on faction/report pages, not normal Torn pages.
-- Updated package version to **1.1.408**.
+- Changed **Buy Licence** and **Extend Licence** so they no longer open a new tab.
+- The current Torn tab now changes to the Xanax item-send page after the payment code is created.
+- Existing pending payment codes still reopen the Xanax helper flow, but in the current tab.
+- Updated package version to **1.1.410**.
+
+## v1.1.409 - Phone/PDA logo-only launcher
+
+- Phone/Torn PDA launcher now shows the RWPH logo only, with no text beside it.
+- PC/desktop launcher still shows the logo plus **Ranked War Payout Helper** text.
+- Mobile launcher fallback is now a compact round logo button.
+- Launcher visibility rules are unchanged: it only appears on supported faction and faction-war report pages.
+- Updated package version to **1.1.409**.
 
 ## v1.1.407 - Theme picker scroll, move/resize, and unique styles
 
