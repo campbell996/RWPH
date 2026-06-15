@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.410**  
+Current package version: **1.1.412**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1201,6 +1201,22 @@ The old Include Left Members / automatic left-member removal system has been rem
 - New Xanax payments now add only the configured base licence days, currently 15 days per Xanax.
 - Existing licence expiry time is not reduced or recalculated.
 
+
+## v1.1.412 - Decimal billion/trillion shorthand hardening
+
+- Hardened shorthand parsing so decimal billion/trillion payout entries convert exactly before calculation.
+- Confirmed examples: `346.1b` -> `$346,100,000,000`, `346.21b` -> `$346,210,000,000`, and `346.99b` -> `$346,990,000,000`.
+- Confirmed examples: `346.1t` -> `$346,100,000,000,000`, `346.21t` -> `$346,210,000,000,000`, and `346.99t` -> `$346,990,000,000,000`.
+- Kept the existing **Member Payout** label unchanged.
+- Updated package version to **1.1.412**.
+
+## v1.1.411 - Money shorthand payout inputs
+
+- Basic and Advanced **Member Payout** and **Total Payout** fields now accept shorthand money values.
+- Supported examples include `346m`, `346.1m`, `346.21m`, `346.99m`, `346b`, and `346t`.
+- Payout inputs now format as `$` values with commas, such as `$346,000,000`.
+- Kept the existing **Member Payout** label unchanged.
+- Updated package version to **1.1.411**.
 
 ## v1.1.395 - Locked 365 day completion reward
 

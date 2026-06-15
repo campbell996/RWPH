@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.410**
+Version: **1.1.412**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -232,6 +232,16 @@ The userscript launcher is now mounted beside Torn's **Areas** text in the left 
 
 The purchase bonus system has been removed. New Xanax licence payments add only the configured base licence days. The admin bonus manager routes and controls, user bonus progress display, and the one-time 365 day completion reward route have been removed. Existing licence expiry time is not reduced or recalculated by this update. API key usage is unchanged.
 
+
+## v1.1.412 note - Decimal shorthand parsing
+
+Decimal shorthand money inputs for billion and trillion values are parsed locally before calculation, including `346.1b`, `346.21b`, `346.99b`, `346.1t`, `346.21t`, and `346.99t`. This is still only a local display/input helper and does not add extra Torn API permissions or change backend data collection.
+
+## v1.1.411 note - Money shorthand payout inputs
+
+- Basic and Advanced Member Payout / Total Payout fields can now accept shorthand values such as `346m`, `346.21m`, `346b`, and `346t`.
+- These values are converted locally in the userscript to normal numeric payout totals before calculation requests are sent to the backend.
+- This is a display/input helper only and does not add extra Torn API permissions or change backend data collection.
 
 ## v1.1.410 note - Buy/Extend current-tab navigation
 

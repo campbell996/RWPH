@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.410
+// @version      1.1.412
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,6 +25,8 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
+  // v1.1.412: hardened decimal shorthand parsing for million/billion/trillion payout inputs.
+  // v1.1.411: payout inputs accept shorthand like 346m/346.21m/346b/346t and format as $ with commas.
   // v1.1.409: phone/Torn PDA launcher now shows logo-only while desktop keeps the full text launcher.
   // v1.1.408: added a phone/Torn PDA launcher fallback on supported faction/report pages when the Faction Warfare header button is unavailable.
   // v1.1.407: fixed theme picker scrolling/move/resize and added distinct theme styles.
@@ -203,6 +205,93 @@
 
   function money(n) {
     return "$" + Math.round(Number(n || 0)).toLocaleString();
+  }
+
+  function rwphParseMoneyInput(raw) {
+    const original = String(raw ?? "").trim();
+    if (!original) return 0;
+    const compact = original
+      .toLowerCase()
+      .replace(/[,\$\s_]/g, "");
+
+    const match = compact.match(/^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(k|m|b|t)?$/);
+    if (!match) {
+      const fallback = Number(compact.replace(/[^0-9+\-.]/g, ""));
+      return Number.isFinite(fallback) ? Math.round(fallback) : 0;
+    }
+
+    const sign = match[1] === "-" ? -1n : 1n;
+    const wholeDigits = String(match[2] || "0").replace(/^0+(?=\d)/, "") || "0";
+    const fractionDigits = String(match[3] ?? match[4] ?? "").replace(/\D/g, "");
+    const suffix = match[5] || "";
+    const multipliers = {
+      k: 1000n,
+      m: 1000000n,
+      b: 1000000000n,
+      t: 1000000000000n
+    };
+    const multiplier = multipliers[suffix] || 1n;
+    const scale = BigInt("1" + "0".repeat(fractionDigits.length));
+    const whole = BigInt(wholeDigits || "0");
+    const fraction = BigInt(fractionDigits || "0");
+    const rawScaled = (whole * scale) + fraction;
+    const rounded = ((rawScaled * multiplier) + (scale / 2n)) / scale;
+    const signed = rounded * sign;
+    const asNumber = Number(signed);
+    return Number.isFinite(asNumber) ? asNumber : 0;
+  }
+
+  function rwphFormatMoneyInputValue(raw) {
+    return money(rwphParseMoneyInput(raw));
+  }
+
+  function rwphFormatMoneyInputElement(el) {
+    if (!el) return 0;
+    const value = rwphParseMoneyInput(el.value);
+    el.value = money(value);
+    return value;
+  }
+
+  function rwphGetMoneyInputNumber(el) {
+    if (!el) return 0;
+    return rwphParseMoneyInput(el.value);
+  }
+
+  function rwphPayoutMoneyInputIds() {
+    return ["rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall"];
+  }
+
+  function rwphAttachMoneyInputFormatting() {
+    for (const id of rwphPayoutMoneyInputIds()) {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.rwphMoneyReady === "1") continue;
+      el.dataset.rwphMoneyReady = "1";
+      el.setAttribute("inputmode", "decimal");
+      el.setAttribute("autocomplete", "off");
+      el.setAttribute("spellcheck", "false");
+      el.setAttribute("placeholder", "$100,000,000 or 100m");
+      const formatAndSave = () => {
+        rwphFormatMoneyInputElement(el);
+        rwphSavePayoutFormState();
+        rwphScheduleAutoCacheCheck?.(700);
+      };
+      el.addEventListener("blur", formatAndSave);
+      el.addEventListener("change", formatAndSave);
+      el.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          formatAndSave();
+          try { el.blur(); } catch (_) {}
+        }
+      });
+    }
+  }
+
+  function rwphFormatPayoutMoneyInputs() {
+    for (const id of rwphPayoutMoneyInputIds()) {
+      const el = document.getElementById(id);
+      if (el) rwphFormatMoneyInputElement(el);
+    }
   }
 
   function esc(s) {
@@ -11029,7 +11118,7 @@
   function rwphGetTotalPayoutForMode(mode) {
     const preferred = document.getElementById(rwphTotalPayoutInputId(mode));
     const fallback = document.getElementById("rw-total") || document.getElementById("rw-points-total");
-    return Number((preferred || fallback)?.value || 0);
+    return rwphGetMoneyInputNumber(preferred || fallback);
   }
 
   function rwphOverallTotalPayoutInputId(mode) {
@@ -11039,7 +11128,7 @@
   function rwphGetOverallTotalPayoutForMode(mode) {
     const preferred = document.getElementById(rwphOverallTotalPayoutInputId(mode));
     const fallback = document.getElementById(rwphTotalPayoutInputId(mode));
-    const value = Number((preferred || fallback)?.value || 0);
+    const value = rwphGetMoneyInputNumber(preferred || fallback);
     return Number.isFinite(value) && value > 0 ? value : rwphGetTotalPayoutForMode(mode);
   }
 
@@ -13504,10 +13593,10 @@
               </div>
               <div class="rw-row">
                 <label>Member Payout
-                  <input id="rw-total" type="number" value="100000000" min="0">
+                  <input id="rw-total" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                 </label>
                 <label>Total Payout
-                  <input id="rw-total-overall" type="number" value="100000000" min="0">
+                  <input id="rw-total-overall" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                 </label>
               </div>
               <div class="rw-calc-brief">Tick hit types to include. Each checked type counts as <b>1</b>.</div>
@@ -13553,10 +13642,10 @@
               </div>
               <div class="rw-row">
                 <label>Member Payout
-                  <input id="rw-points-total" type="number" value="100000000" min="0">
+                  <input id="rw-points-total" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                 </label>
                 <label>Total Payout
-                  <input id="rw-points-total-overall" type="number" value="100000000" min="0">
+                  <input id="rw-points-total-overall" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                 </label>
               </div>
               <label>Exclude member from results
@@ -13829,6 +13918,8 @@
     adminTabBtn.addEventListener("click", () => switchTab("admin"));
     howTabBtn.addEventListener("click", () => switchTab("how"));
     rwphRestorePayoutFormState();
+    rwphAttachMoneyInputFormatting();
+    rwphFormatPayoutMoneyInputs();
     rwphAttachPayoutFormPersistence();
     switchTab(rwphGetActiveTab("main", "payout"));
 
@@ -14025,6 +14116,7 @@
     });
 
     async function rwphRunCalculation(calculationMode = "standard", runOptions = {}) {
+      rwphFormatPayoutMoneyInputs();
       rwphSavePayoutFormState();
       const status = document.getElementById("rw-status");
       const results = document.getElementById("rw-results");
