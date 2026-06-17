@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.418
+// @version      1.1.419
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,6 +25,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
+  // v1.1.419: PDA/phone launcher now uses a compact logo-only header/action-row placement before any fixed fallback, without relying on visible Faction Warfare text.
   // v1.1.418: Member Management panel cards now use a cleaner responsive layout and the Refresh/Save/Clear controls stay sticky while scrolling.
   // v1.1.418 fit patch: Member Management scroll area now has a fixed flex body, opaque sticky controls, and bottom padding so the last member card is not clipped.
   // v1.1.418 PDA launcher patch: PC header placement stays unchanged, while PDA/phone uses compact logo-only header icon/link detection before the fixed fallback.
@@ -1761,13 +1762,174 @@
     }
   }
 
+  function rwphRectLooksLikePdaHeaderIcon(rect) {
+    try {
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      const viewportWidth = Math.max(window.innerWidth || 360, document.documentElement?.clientWidth || 360, 320);
+      if (rect.left < -12 || rect.left > viewportWidth - 8) return false;
+      if (rect.top < -8 || rect.top > 230) return false;
+      if (rect.width < 18 || rect.width > Math.min(190, viewportWidth)) return false;
+      if (rect.height < 18 || rect.height > 76) return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphFindPdaHeaderActionRowTarget() {
+    try {
+      if (!rwphIsMobileOrPdaView()) return null;
+      const candidates = [];
+      const seen = new Set();
+      const selectors = [
+        "a[href]",
+        "button",
+        "[role='button']",
+        "[aria-label]",
+        "[title]",
+        "[data-title]",
+        "[data-tooltip]",
+        "[onclick]",
+        "li",
+        "span[class*='icon' i]",
+        "div[class*='icon' i]"
+      ];
+
+      const addCandidate = (el, source) => {
+        try {
+          if (!el || seen.has(el) || !rwphIsElementVisible(el)) return;
+          seen.add(el);
+          const clickable = rwphClosestFactionWarfareButton(el);
+          const targetEl = clickable && rwphIsElementVisible(clickable) ? clickable : el;
+          const rect = targetEl.getBoundingClientRect?.() || el.getBoundingClientRect?.();
+          if (!rwphRectLooksLikePdaHeaderIcon(rect)) return;
+
+          const hint = `${rwphElementTextAndAttrs(targetEl)} ${rwphElementTextAndAttrs(el)}`.toLowerCase();
+          const mediaHint = Array.from(targetEl.querySelectorAll?.("img,svg,use,title") || [])
+            .map((node) => [
+              node.textContent || "",
+              node.getAttribute?.("alt") || "",
+              node.getAttribute?.("title") || "",
+              node.getAttribute?.("aria-label") || "",
+              node.getAttribute?.("src") || "",
+              node.getAttribute?.("href") || "",
+              node.getAttribute?.("xlink:href") || "",
+              typeof node.className === "string" ? node.className : (node.getAttribute?.("class") || "")
+            ].join(" "))
+            .join(" ")
+            .toLowerCase();
+          const allHint = `${hint} ${mediaHint}`;
+
+          // Strong match: actual hidden/link metadata for the faction warfare/ranked war icon.
+          const strongWar = /(faction\s*warfare|ranked\s*war|rankedwar|ranked-war|warfare|war_icon|war-?tab)/i.test(allHint);
+          const factionLink = /(factions?\.php|sid=war|step=war|tab=war|war\b|faction)/i.test(allHint);
+          if (!strongWar && !factionLink) return;
+
+          // Insert before the visual item in the row when possible, not inside the icon itself.
+          let insertBeforeEl = targetEl;
+          try {
+            const item = targetEl.closest?.("li,[class*='item' i],[class*='link' i],[class*='tab' i],[class*='button' i]");
+            if (item && item.parentNode && rwphRectLooksLikePdaHeaderIcon(item.getBoundingClientRect?.())) insertBeforeEl = item;
+          } catch (_) {}
+          const parentEl = insertBeforeEl.parentNode || targetEl.parentNode;
+          if (!parentEl || parentEl === document.body || parentEl === document.documentElement) return;
+
+          const rowRect = parentEl.getBoundingClientRect?.();
+          const rowLooksHeader = rowRect && rowRect.top >= -12 && rowRect.top <= 230 && rowRect.height >= 20 && rowRect.height <= 120;
+          if (!rowLooksHeader) return;
+
+          const score =
+            (strongWar ? 0 : 40) +
+            (/faction\s*warfare/i.test(allHint) ? 0 : 8) +
+            (/ranked\s*war|rankedwar/i.test(allHint) ? 1 : 6) +
+            (/factions?\.php/i.test(allHint) ? 1 : 8) +
+            Math.abs((rect.height || 34) - 34) / 4 +
+            Math.max(0, rect.top || 0) / 20 +
+            Math.max(0, rect.left || 0) / 500;
+          candidates.push({ el: targetEl, rect, score, source, insertBeforeEl, parentEl });
+        } catch (_) {}
+      };
+
+      selectors.forEach((selector) => {
+        try { document.querySelectorAll(selector).forEach((el) => addCandidate(el, `pda-header-${selector}`)); } catch (_) {}
+      });
+
+      candidates.sort((a, b) => {
+        return (a.score - b.score)
+          || (a.rect.top - b.rect.top)
+          || (a.rect.left - b.rect.left);
+      });
+      return candidates[0] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphFindPdaTopActionRowFallbackTarget() {
+    try {
+      if (!rwphIsMobileOrPdaView()) return null;
+      const rowCandidates = [];
+      const selectors = [
+        "header",
+        "nav",
+        "[class*='header' i]",
+        "[class*='tabs' i]",
+        "[class*='nav' i]",
+        "[class*='menu' i]",
+        "[class*='action' i]",
+        "ul",
+        "ol"
+      ];
+      const seen = new Set();
+
+      selectors.forEach((selector) => {
+        try {
+          document.querySelectorAll(selector).forEach((row) => {
+            if (!row || seen.has(row) || !rwphIsElementVisible(row)) return;
+            seen.add(row);
+            const rowRect = row.getBoundingClientRect?.();
+            if (!rowRect || rowRect.top < -12 || rowRect.top > 230 || rowRect.height < 22 || rowRect.height > 140) return;
+            if (rowRect.width < 120) return;
+
+            const actions = Array.from(row.querySelectorAll?.("a[href],button,[role='button'],li") || [])
+              .filter((el) => {
+                try {
+                  if (el.id === "rw-payout-launcher") return false;
+                  if (!rwphIsElementVisible(el)) return false;
+                  const rect = el.getBoundingClientRect?.();
+                  return rwphRectLooksLikePdaHeaderIcon(rect) && Math.abs((rect.top || 0) - (rowRect.top || 0)) < 80;
+                } catch (_) {
+                  return false;
+                }
+              });
+            if (!actions.length) return;
+            const joined = `${rwphElementTextAndAttrs(row)} ${actions.map(rwphElementTextAndAttrs).join(" ")}`.toLowerCase();
+            if (!/(faction|factions?\.php|war|ranked|territory|armory|members|news)/i.test(joined)) return;
+            const bestAction = actions.find((el) => /(warfare|ranked\s*war|rankedwar|war\b)/i.test(rwphElementTextAndAttrs(el))) || actions[0];
+            const rect = bestAction.getBoundingClientRect?.();
+            const score =
+              (/warfare|ranked\s*war|rankedwar/i.test(joined) ? 0 : 30) +
+              (/factions?\.php|faction/i.test(joined) ? 2 : 20) +
+              Math.max(0, rowRect.top || 0) / 15 +
+              Math.max(0, rect?.left || 0) / 500;
+            rowCandidates.push({ el: bestAction, rect, score, source: "pda-top-row", insertBeforeEl: bestAction, parentEl: bestAction.parentNode || row });
+          });
+        } catch (_) {}
+      });
+      rowCandidates.sort((a, b) => (a.score - b.score) || (a.rect.top - b.rect.top) || (a.rect.left - b.rect.left));
+      return rowCandidates[0] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function rwphFindLauncherAnchorTarget() {
     try {
-      // Keep PC exactly as before. Only PDA/phone gets extra icon/link detection
-      // because Torn PDA can hide the visible "Faction Warfare" wording.
+      // Keep PC exactly as before. PDA/phone can hide the visible
+      // "Faction Warfare" text, so mobile gets icon/link/header-row detection.
       const textTarget = rwphFindFactionWarfareTarget();
       if (textTarget || !rwphIsMobileOrPdaView()) return textTarget;
-      return rwphFindPdaFactionWarfareIconTarget();
+      return rwphFindPdaFactionWarfareIconTarget() || rwphFindPdaHeaderActionRowTarget() || rwphFindPdaTopActionRowFallbackTarget();
     } catch (_) {
       return null;
     }
@@ -1809,8 +1971,27 @@
   function rwphMountLauncherMobileFallback(btn) {
     try {
       if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
+
+      // PDA/phone should stay in the faction header/icon row when possible.
+      // Only use the old fixed bubble if Torn does not expose any usable row.
+      const headerTarget = rwphFindPdaHeaderActionRowTarget() || rwphFindPdaTopActionRowFallbackTarget();
+      if (headerTarget && headerTarget.parentEl && headerTarget.insertBeforeEl) {
+        try {
+          if (btn.parentNode !== headerTarget.parentEl || btn.nextSibling !== headerTarget.insertBeforeEl) {
+            headerTarget.parentEl.insertBefore(btn, headerTarget.insertBeforeEl);
+          }
+          btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
+          btn.classList.add("rwph-faction-header-launcher", "rwph-pda-header-row-launcher");
+          rwphSetPdaLogoOnlyLauncher(btn, true);
+          btn.style.display = "inline-flex";
+          btn.innerHTML = rwphLauncherLogoHtml();
+          updateLauncherButtonPosition(false, headerTarget);
+          return true;
+        } catch (_) {}
+      }
+
       if (btn.parentNode !== document.body) document.body.appendChild(btn);
-      btn.classList.remove("rwph-faction-header-launcher");
+      btn.classList.remove("rwph-faction-header-launcher", "rwph-pda-header-row-launcher");
       btn.classList.add("rwph-mobile-launcher-fallback");
       rwphSetPdaLogoOnlyLauncher(btn, true);
       btn.style.display = "inline-flex";
@@ -1818,15 +1999,15 @@
         position: "fixed",
         zIndex: "2147483647",
         right: "10px",
-        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+        top: "calc(62px + env(safe-area-inset-top, 0px))",
+        bottom: "auto",
         left: "auto",
-        top: "auto",
-        width: "46px",
-        minWidth: "46px",
-        maxWidth: "46px",
-        height: "46px",
-        minHeight: "46px",
-        maxHeight: "46px",
+        width: "44px",
+        minWidth: "44px",
+        maxWidth: "44px",
+        height: "44px",
+        minHeight: "44px",
+        maxHeight: "44px",
         margin: "0",
         padding: "0",
         borderRadius: "var(--rwph-theme-button-radius, 999px)",
@@ -1884,11 +2065,12 @@
     btn.style.display = "inline-flex";
 
     try {
-      const parent = target.el.parentNode;
+      const insertBeforeEl = target.insertBeforeEl || target.el;
+      const parent = target.parentEl || insertBeforeEl.parentNode || target.el.parentNode;
       if (parent && btn.parentNode !== parent) {
-        parent.insertBefore(btn, target.el);
-      } else if (parent && btn.nextSibling !== target.el) {
-        parent.insertBefore(btn, target.el);
+        parent.insertBefore(btn, insertBeforeEl);
+      } else if (parent && btn.nextSibling !== insertBeforeEl) {
+        parent.insertBefore(btn, insertBeforeEl);
       } else if (!parent) {
         document.body.appendChild(btn);
       }

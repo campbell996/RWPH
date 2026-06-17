@@ -10,10 +10,19 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.418**  
+Current package version: **1.1.419**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
+
+
+### v1.1.419 PDA/phone launcher fix
+
+- PC launcher/header placement is unchanged.
+- PDA/phone launcher is forced to a compact logo-only button.
+- PDA/phone placement now checks faction header icons, links, hidden labels, image/SVG hints, and top action rows instead of depending only on visible “Faction Warfare” text.
+- The old fixed mobile fallback only runs if no usable PDA header/action row can be found.
+- This build continues from the v1.1.418 Member Management card-fit patch.
 
 
 ### v1.1.330 manual time/faction-member fixes
@@ -1298,6 +1307,14 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Tutorial covers opening RWPH, saving the API key, unlocking/buying a licence, choosing Basic/Advanced calculations, setting war times, calculating, reviewing results, and manually using payment/newsletter tools.
 - Updated package version to **1.1.402**.
 
+
+## v1.1.419 - PDA/phone logo-only launcher header fix
+- PC launcher/header placement remains unchanged.
+- PDA/phone launcher is forced to a compact logo-only button.
+- PDA/phone placement now searches visible and hidden faction header icons, faction/war links, image/SVG hints, and top action rows instead of depending only on visible “Faction Warfare” text.
+- The old fixed mobile fallback only runs if no usable PDA header/action row can be found.
+- Continued from the v1.1.418 Member Management card-fit fixes.
+- Updated package version to **1.1.419**.
 
 ## v1.1.418 - Member Management card layout and sticky controls
 - Reworked Member Management member cards so names, IDs, stats, remove checkbox, payable-hit removal, and respect removal fit cleanly inside the panel.
