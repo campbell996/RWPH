@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.413**  
+Current package version: **1.1.415**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1297,6 +1297,22 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Added a new **Step-by-Step Tutorial** dropdown inside the Help tab.
 - Tutorial covers opening RWPH, saving the API key, unlocking/buying a licence, choosing Basic/Advanced calculations, setting war times, calculating, reviewing results, and manually using payment/newsletter tools.
 - Updated package version to **1.1.402**.
+
+
+## v1.1.415 - Payments tab and compact panel patch
+
+- Payments opened from Results now force a copy-panel-only Torn faction-control tab so the main/results RWPH panel does not restore in the new tab.
+- Member Management default size and cards are more compact again.
+- Payment Copy Panel header spacing was adjusted so the top helper text is not blocked by the close button.
+- Updated package version to **1.1.415**.
+
+## v1.1.414 - Member Management panel display and compact layout
+
+- Fixed the Member Management panel so it opens as a solid themed panel instead of appearing transparent.
+- Forced the Member Management panel above the main RWPH panel when opened.
+- Made the default Member Management panel size smaller.
+- Tightened the panel spacing and member card layout so the panel is more compact.
+- Updated package version to **1.1.414**.
 
 
 ## v1.1.413 - Member Management and Respect Controls

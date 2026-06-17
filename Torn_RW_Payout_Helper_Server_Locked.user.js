@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.413
+// @version      1.1.415
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,6 +25,8 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
+  // v1.1.415: Payments tab now opens copy-panel-only without restoring the Results/main panel, tightened Member Management cards further, and fixed Payment Copy header overlap.
+  // v1.1.414: fixed Member Management panel opacity/layering and made its default layout smaller and more compact.
   // v1.1.413: added Member Management panel, 20-minute saved member adjustments, payable-hit/respect removal, Basic respect toggle, and Advanced respect score settings.
   // v1.1.412: hardened decimal shorthand parsing for million/billion/trillion payout inputs.
   // v1.1.411: payout inputs accept shorthand like 346m/346.21m/346b/346t and format as $ with commas.
@@ -5210,12 +5212,15 @@
       #rw-payout-helper .rw-pay-all-panel[hidden] { display:none !important; }
       #rw-payout-helper .rw-pay-all-head {
         display:flex;
-        justify-content:center;
+        justify-content:flex-start;
         align-items:center;
         gap:8px;
-        margin-bottom:10px;
+        min-height:34px;
+        margin-bottom:8px;
+        padding-right:50px;
         cursor: move;
         touch-action: none;
+        text-align:left;
       }
       #rw-payout-helper .rw-pay-all-title {
         font-size: 14px;
@@ -5228,14 +5233,18 @@
         position:absolute;
         top:8px;
         right:8px;
-        min-height: 26px;
-        padding: 3px 8px !important;
+        min-width:30px;
+        min-height:30px;
+        width:30px;
+        height:30px;
+        padding:0 !important;
       }
       #rw-payout-helper .rw-pay-all-note {
         color:#c7d2fe !important;
         font-size: 11px;
         line-height:1.45;
-        margin: 0 22px 10px;
+        margin: 0 50px 10px 4px;
+        text-align:left;
       }
       #rw-payout-helper .rw-pay-all-balance-warning {
         margin:0 4px 10px !important;
@@ -7417,6 +7426,23 @@
     }
   }
 
+  function rwphSetPaymentsOnlyTabRestoreState() {
+    try { rwphSetPanelOpenState(false); } catch (_) {}
+    try { setLauncherOpenState(false); } catch (_) {}
+  }
+
+  function rwphForcePaymentsOnlyTabState() {
+    rwphSetPaymentsOnlyTabRestoreState();
+    try {
+      const mainPanel = document.getElementById("rw-payout-helper");
+      if (mainPanel) mainPanel.remove();
+    } catch (_) {}
+    try {
+      const resultsPanel = document.getElementById("rw-results-panel");
+      if (resultsPanel) resultsPanel.remove();
+    } catch (_) {}
+  }
+
   function rwphGetStoredPayAllRows() {
     const sources = [];
     try { sources.push(GM_getValue(PAY_ALL_ROWS_STORAGE_KEY, "")); } catch (_) {}
@@ -7436,10 +7462,11 @@
 
   function rwphOpenPayAllInFactionControls(rows) {
     rwphStorePayAllRows(rows || []);
+    rwphSetPaymentsOnlyTabRestoreState();
     const url = rwphFactionControlsPayAllUrl();
     try {
       if (typeof GM_openInTab === "function") {
-        GM_openInTab(url, { active: true, insert: true, setParent: true });
+        GM_openInTab(url, { active: true, insert: true, setParent: false });
         setTimeout(() => closePanel(), 150);
         return true;
       }
@@ -7448,10 +7475,17 @@
     }
     try {
       const tab = window.open(url, "_blank", "noopener,noreferrer");
-      if (tab) setTimeout(() => closePanel(), 150);
-      return !!tab;
+      if (tab) {
+        setTimeout(() => closePanel(), 150);
+        return true;
+      }
+      try { rwphSetPanelOpenState(true); } catch (_) {}
+      try { setLauncherOpenState(true); } catch (_) {}
+      return false;
     } catch (e) {
       console.warn("window.open failed for Payments controls tab:", e);
+      try { rwphSetPanelOpenState(true); } catch (_) {}
+      try { setLauncherOpenState(true); } catch (_) {}
       return false;
     }
   }
@@ -11329,33 +11363,30 @@
 
   function rwphMemberManagementPanelCss() {
     return `
-      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,16px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;backdrop-filter:none!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:50px!important;padding:7px 44px 7px 10px!important;display:flex!important;align-items:center!important;gap:8px!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:34px;height:34px;flex:0 0 34px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 8px rgba(251,191,36,.35))!important;}
-      #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:1px;line-height:1.08;}
-      #rwph-member-management-panel .rwph-mm-heading b{font-size:14px;color:var(--rwph-theme-text,#fff2dd)!important;}
-      #rwph-member-management-panel .rwph-mm-body{height:calc(100% - 50px);max-height:none;overflow:auto;padding:9px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg, rgba(33,23,20,.99), rgba(11,7,5,.99))!important;}
-      #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:0;padding:7px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,10px);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;box-shadow:0 8px 18px rgba(0,0,0,.22);}
-      #rwph-member-management-panel .rwph-mm-toolbar button{padding:6px 8px!important;min-height:0!important;font-size:12px!important;line-height:1.1!important;}
-      #rwph-member-management-panel .rwph-mm-status{font-size:11px;opacity:.92;line-height:1.25;padding:7px 8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,10px);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;color:var(--rwph-theme-soft,#cfaa8e);}
-      #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:7px;}
-      #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;border-radius:var(--rwph-theme-card-radius,10px);padding:8px;display:flex;flex-direction:column;gap:5px;box-shadow:0 8px 18px rgba(0,0,0,.22);}
-      #rwph-member-management-panel .rwph-mm-title{font-weight:900;color:var(--rwph-theme-text,#fff2dd);font-size:12px;line-height:1.15;}
-      #rwph-member-management-panel .rwph-mm-sub{font-size:10px;color:var(--rwph-theme-soft,#cfaa8e);line-height:1.2;}
-      #rwph-member-management-panel .rwph-mm-card label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--rwph-theme-text,#fff2dd);line-height:1.15;}
-      #rwph-member-management-panel .rwph-mm-number-label{display:grid!important;grid-template-columns:minmax(0,1fr) 82px;align-items:center!important;gap:6px!important;}
-      #rwph-member-management-panel .rwph-mm-card input[type=number]{width:82px!important;box-sizing:border-box;margin-top:0!important;padding:4px 6px!important;font-size:12px!important;min-height:0!important;}
-      #rwph-member-management-panel .rwph-mm-card input[type=checkbox]{margin:0!important;}
-      #rwph-member-management-panel .rwph-mm-empty{padding:9px;border:1px dashed var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,10px);color:var(--rwph-theme-soft,#cfaa8e);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;font-size:12px;}
-      #rwph-member-management-panel button{border-radius:var(--rwph-theme-button-radius,9px)!important;}
-      #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:8px!important;top:8px!important;min-width:30px!important;height:30px!important;padding:0!important;display:grid!important;place-items:center!important;background:var(--rwph-theme-red,#7f1d1d)!important;color:#fff!important;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42))!important;font-size:18px!important;font-weight:1000!important;line-height:1!important;}
-      #rwph-member-management-panel .rw-resize-handle{position:absolute;width:14px;height:14px;z-index:8;touch-action:none;-webkit-user-select:none;user-select:none;opacity:.95;background:rgba(2,6,23,.28);}
-      #rwph-member-management-panel .rw-resize-handle-se{right:6px;bottom:6px;cursor:nwse-resize;border-right:2px solid var(--rwph-theme-gold,#fbbf24);border-bottom:2px solid var(--rwph-theme-gold,#fbbf24);border-radius:0 0 7px 0;}
-      #rwph-member-management-panel .rw-resize-handle-sw{left:6px;bottom:6px;cursor:nesw-resize;border-left:2px solid var(--rwph-theme-gold,#fbbf24);border-bottom:2px solid var(--rwph-theme-gold,#fbbf24);border-radius:0 0 0 7px;}
-      #rwph-member-management-panel .rw-resize-handle-nw{left:6px;top:6px;cursor:nwse-resize;border-left:2px solid var(--rwph-theme-gold,#fbbf24);border-top:2px solid var(--rwph-theme-gold,#fbbf24);border-radius:7px 0 0 0;}
-      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar{width:8px;height:8px;}
-      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-track{background:rgba(15,23,42,.50);border-radius:10px;}
-      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(245,158,11,.92),rgba(249,115,22,.82));border-radius:10px;border:2px solid rgba(15,23,42,.50);}
+      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;backdrop-filter:none!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:42px!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:28px;height:28px;flex:0 0 28px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 7px rgba(251,191,36,.35))!important;}
+      #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:0;line-height:1.04;min-width:0;}
+      #rwph-member-management-panel .rwph-mm-heading b{font-size:12px;color:var(--rwph-theme-text,#fff2dd)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      #rwph-member-management-panel .rwph-mm-body{height:calc(100% - 42px);max-height:none;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:6px;background:linear-gradient(180deg, rgba(33,23,20,.99), rgba(11,7,5,.99))!important;}
+      #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:0;padding:5px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,9px);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;box-shadow:0 6px 14px rgba(0,0,0,.20);}
+      #rwph-member-management-panel .rwph-mm-toolbar button{padding:5px 7px!important;min-height:0!important;font-size:11px!important;line-height:1.05!important;}
+      #rwph-member-management-panel .rwph-mm-status{font-size:10px;opacity:.92;line-height:1.2;padding:5px 6px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,9px);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;color:var(--rwph-theme-soft,#cfaa8e);}
+      #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:5px;}
+      #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;border-radius:var(--rwph-theme-card-radius,9px);padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 6px 14px rgba(0,0,0,.20);min-width:0;}
+      #rwph-member-management-panel .rwph-mm-title{font-weight:900;color:var(--rwph-theme-text,#fff2dd);font-size:11px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      #rwph-member-management-panel .rwph-mm-sub{font-size:9px;color:var(--rwph-theme-soft,#cfaa8e);line-height:1.15;}
+      #rwph-member-management-panel .rwph-mm-card label{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--rwph-theme-text,#fff2dd);line-height:1.1;min-width:0;}
+      #rwph-member-management-panel .rwph-mm-exclude-label{padding:3px 0 1px;}
+      #rwph-member-management-panel .rwph-mm-adjust-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
+      #rwph-member-management-panel .rwph-mm-number-label{display:grid!important;grid-template-columns:minmax(0,1fr);align-items:start!important;gap:2px!important;}
+      #rwph-member-management-panel .rwph-mm-number-label span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      #rwph-member-management-panel .rwph-mm-card input[type=number]{width:100%!important;box-sizing:border-box;margin-top:0!important;padding:3px 5px!important;font-size:11px!important;min-height:0!important;height:24px!important;}
+      #rwph-member-management-panel .rwph-mm-card input[type=checkbox]{margin:0!important;transform:scale(.92);}
+      #rwph-member-management-panel .rwph-mm-empty{padding:7px;border:1px dashed var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,9px);color:var(--rwph-theme-soft,#cfaa8e);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;font-size:11px;}
+      #rwph-member-management-panel button{border-radius:var(--rwph-theme-button-radius,8px)!important;}
+      #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:7px!important;top:7px!important;min-width:26px!important;width:26px!important;height:26px!important;min-height:26px!important;padding:0!important;display:grid!important;place-items:center!important;font-size:16px!important;line-height:1!important;}
+      @media (max-width:560px){#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr;}#rwph-member-management-panel .rwph-mm-adjust-row{grid-template-columns:repeat(2,minmax(0,1fr));}}
     `;
   }
 
@@ -11378,14 +11409,16 @@
       return `
         <div class="rwph-mm-card" data-mm-key="${rwphHtmlEscape(key)}" data-mm-id="${rwphHtmlEscape(id)}" data-mm-name="${rwphHtmlEscape(name)}">
           <div class="rwph-mm-title">${rwphHtmlEscape(name)}${id ? ` <span class="rwph-mm-sub">[${rwphHtmlEscape(id)}]</span>` : ""}</div>
-          <div class="rwph-mm-sub">Payable hits: ${rwphHtmlEscape(maxHits)} • Respect: ${rwphHtmlEscape(memberRespect)}</div>
-          <label><input type="checkbox" class="rwph-mm-exclude" ${checked}> Remove member completely</label>
-          <label class="rwph-mm-number-label"><span>Payable hits</span>
-            <input type="number" class="rwph-mm-hits" value="${rwphHtmlEscape(hitsToRemove)}" min="0" max="${rwphHtmlEscape(maxHits)}" step="1" inputmode="numeric">
-          </label>
-          <label class="rwph-mm-number-label"><span>Respect</span>
-            <input type="number" class="rwph-mm-respect" value="${rwphHtmlEscape(Number(respectToRemove.toFixed ? respectToRemove.toFixed(2) : respectToRemove))}" min="0" max="${rwphHtmlEscape(memberRespect)}" step="0.01" inputmode="decimal">
-          </label>
+          <div class="rwph-mm-sub">Hits: ${rwphHtmlEscape(maxHits)} • Respect: ${rwphHtmlEscape(memberRespect)}</div>
+          <label class="rwph-mm-exclude-label"><input type="checkbox" class="rwph-mm-exclude" ${checked}> Remove member</label>
+          <div class="rwph-mm-adjust-row">
+            <label class="rwph-mm-number-label"><span>Hits off</span>
+              <input type="number" class="rwph-mm-hits" value="${rwphHtmlEscape(hitsToRemove)}" min="0" max="${rwphHtmlEscape(maxHits)}" step="1" inputmode="numeric">
+            </label>
+            <label class="rwph-mm-number-label"><span>Respect off</span>
+              <input type="number" class="rwph-mm-respect" value="${rwphHtmlEscape(Number(respectToRemove.toFixed ? respectToRemove.toFixed(2) : respectToRemove))}" min="0" max="${rwphHtmlEscape(memberRespect)}" step="0.01" inputmode="decimal">
+            </label>
+          </div>
         </div>`;
     }).join("")}</div>`;
   }
@@ -11441,11 +11474,11 @@
     panel.style.zIndex = "2147483647";
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
-    const memberPanelWidth = Math.min(560, Math.max(300, viewportWidth - 20));
-    const memberPanelHeight = Math.min(520, Math.max(320, Math.round(viewportHeight * 0.58)));
+    const memberPanelWidth = Math.min(460, Math.max(280, viewportWidth - 20));
+    const memberPanelHeight = Math.min(440, Math.max(280, Math.round(viewportHeight * 0.50)));
     panel.style.width = `${memberPanelWidth}px`;
     panel.style.maxWidth = "calc(100vw - 20px)";
-    panel.style.height = `${Math.min(memberPanelHeight, Math.max(300, viewportHeight - 20))}px`;
+    panel.style.height = `${Math.min(memberPanelHeight, Math.max(280, viewportHeight - 20))}px`;
     panel.style.maxHeight = "calc(100vh - 20px)";
     const mainPanel = document.getElementById("rw-payout-helper");
     if (mainPanel) {
@@ -11466,11 +11499,11 @@
       </div>
       <div class="rwph-mm-body">
         <div class="rwph-mm-toolbar">
-          <button id="rwph-mm-refresh" type="button">Refresh Members</button>
-          <button id="rwph-mm-save" class="secondary" type="button">Save Changes</button>
-          <button id="rwph-mm-clear" class="danger" type="button">Clear All</button>
+          <button id="rwph-mm-refresh" type="button">Refresh</button>
+          <button id="rwph-mm-save" class="secondary" type="button">Save</button>
+          <button id="rwph-mm-clear" class="danger" type="button">Clear</button>
         </div>
-        <div class="rwph-mm-status" id="rwph-mm-status">Loading selected ranked-war report members...</div>
+        <div class="rwph-mm-status" id="rwph-mm-status">Loading members...</div>
         <div id="rwph-mm-cards"><div class="rwph-mm-empty">Loading...</div></div>
       </div>`;
     document.body.appendChild(panel);
@@ -11481,18 +11514,18 @@
     panel.querySelector("#rwph-mm-close")?.addEventListener("click", close);
     panel.querySelector("#rwph-mm-save")?.addEventListener("click", () => {
       rwphCaptureMemberManagementPanel(safeMode);
-      if (status) status.textContent = "Member Management saved. These changes will apply to calculations for 20 minutes, then reset to defaults.";
+      if (status) status.textContent = "Saved for 20 minutes.";
     });
     panel.querySelector("#rwph-mm-clear")?.addEventListener("click", () => {
       panel.querySelectorAll(".rwph-mm-exclude").forEach((el) => { el.checked = false; });
       panel.querySelectorAll(".rwph-mm-hits").forEach((el) => { el.value = "0"; });
       panel.querySelectorAll(".rwph-mm-respect").forEach((el) => { el.value = "0"; });
       rwphCaptureMemberManagementPanel(safeMode);
-      if (status) status.textContent = "All member management changes cleared. Saved defaults will apply for 20 minutes.";
+      if (status) status.textContent = "Cleared. Defaults saved for 20 minutes.";
     });
     const reload = async () => {
       try {
-        if (status) status.textContent = "Loading selected ranked-war report members...";
+        if (status) status.textContent = "Loading members...";
         const result = await rwphLoadMemberManagementMembers(safeMode, status);
         panel.rwphMemberManagementMeta = {
           factionId: result.factionId || "",
@@ -11502,7 +11535,7 @@
           to: result.to || 0,
         };
         if (cards) cards.innerHTML = rwphRenderMemberManagementCards(safeMode, result.members || []);
-        if (status) status.textContent = `Loaded ${(result.members || []).length} member card(s). Tick members to remove them fully, or type how many payable hits/respect to remove. Click Save Changes to remember the settings for 20 minutes.`;
+        if (status) status.textContent = `Loaded ${(result.members || []).length} member(s). Tick Remove member, or enter hits/respect to remove, then Save.`;
       } catch (e) {
         if (cards) cards.innerHTML = `<div class="rwph-mm-empty">${rwphHtmlEscape(e.message || e)}</div>`;
         if (status) status.textContent = "Could not load ranked-war report members.";
@@ -12015,9 +12048,9 @@
         text-align: center !important;
       }
       .rw-pay-all-panel[hidden] { display:none !important; }
-      .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:center; align-items:center; padding: 0 28px 8px; position:sticky; top:0; z-index:5; flex:0 0 auto; }
-      .rw-pay-all-title { font-weight:950; color:#fff2dd; font-size:13px; }
-      .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 18px 7px; }
+      .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:flex-start; align-items:center; min-height:34px; padding: 2px 44px 8px 4px; position:sticky; top:0; z-index:5; flex:0 0 auto; text-align:left; }
+      .rw-pay-all-title { font-weight:950; color:#fff2dd; font-size:13px; line-height:1.12; white-space:normal; overflow-wrap:anywhere; }
+      .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 44px 7px 4px; text-align:left; }
       .rw-pay-all-balance-warning { margin:0 2px 8px; padding:9px 8px; border-radius:13px; border:2px solid rgba(250,204,21,.76); border-left:6px solid rgba(249,115,22,.92); background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)); color:#fff7ed; font:950 11px/1.32 Arial,Helvetica,sans-serif; text-align:center; box-shadow:0 0 20px rgba(245,158,11,.18), inset 0 1px 0 rgba(255,255,255,.07); }
       .rw-pay-all-balance-warning b { color:#fef3c7; }
       .rw-pay-all-accept-warning { display:inline-flex !important; align-items:center !important; justify-content:center !important; width:100% !important; margin:8px 0 5px !important; padding:8px 10px !important; min-height:32px !important; border-radius:11px !important; border:2px solid rgba(254,243,199,.78) !important; background:linear-gradient(135deg, rgba(250,204,21,.96), rgba(249,115,22,.94)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; letter-spacing:.35px !important; text-transform:uppercase !important; cursor:pointer !important; box-shadow:0 0 18px rgba(245,158,11,.30), inset 0 1px 0 rgba(255,255,255,.25) !important; }
@@ -12028,7 +12061,7 @@
       .rw-pay-all-info b { color:#fff2dd; }
       .rw-pay-all-info ul { margin:5px 0 0 13px; padding:0; }
       .rw-pay-all-info li { margin:2px 0; }
-      .rw-pay-all-close { position:absolute !important; top:10px !important; right:12px !important; width:36px !important; height:36px !important; min-width:36px !important; min-height:36px !important; padding:0 !important; display:grid !important; place-items:center !important; border-radius:14px !important; border:1px solid rgba(251,191,36,.24) !important; border-left:4px solid rgba(245,158,11,.66) !important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important; color:#fff7ed !important; font:950 20px/1 Arial,Helvetica,sans-serif !important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26) !important; text-shadow:0 1px 0 rgba(0,0,0,.75) !important; cursor:pointer !important; z-index:120 !important; }
+      .rw-pay-all-close { position:absolute !important; top:8px !important; right:8px !important; width:30px !important; height:30px !important; min-width:30px !important; min-height:30px !important; padding:0 !important; display:grid !important; place-items:center !important; border-radius:12px !important; border:1px solid rgba(251,191,36,.24) !important; border-left:4px solid rgba(245,158,11,.66) !important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important; color:#fff7ed !important; font:950 17px/1 Arial,Helvetica,sans-serif !important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26) !important; text-shadow:0 1px 0 rgba(0,0,0,.75) !important; cursor:pointer !important; z-index:120 !important; }
       .rw-pay-all-undo { margin:0 0 8px; padding:6px 8px; min-height:26px; border-radius:10px; border:1px solid rgba(251,191,36,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#fff7ed; font-size:10px; font-weight:950; cursor:pointer; }
       .rw-pay-all-list { display:grid; gap:6px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.86) rgba(15,23,42,.36); }
       .rw-pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
@@ -12534,16 +12567,17 @@
   }
 
   function rwphMaybeOpenPayAllFromFactionControlsUrl() {
-    if (!(window.location.href || "").includes("/factions.php")) return false;
-    if (!(window.location.href || "").includes("rwphPayAll=1")) return false;
+    const href = window.location.href || "";
+    if (!href.includes("/factions.php")) return false;
+    if (!href.includes("rwphPayAll=1")) return false;
 
-    // In faction controls, show only the compact copy panel and keep the main RWPH panel closed.
-    rwphSetPanelOpenState(false);
-    setLauncherOpenState(false);
-    const mainPanel = document.getElementById("rw-payout-helper");
-    if (mainPanel) mainPanel.remove();
+    // In faction controls, show only the compact copy panel and keep the main/results RWPH panels closed.
+    rwphForcePaymentsOnlyTabState();
+    setTimeout(rwphForcePaymentsOnlyTabState, 50);
+    setTimeout(rwphForcePaymentsOnlyTabState, 300);
 
     setTimeout(() => {
+      rwphForcePaymentsOnlyTabState();
       closePanel();
       const rows = rwphGetStoredPayAllRows();
       openPayAllCopyPanel(rows || []);
@@ -14860,11 +14894,11 @@
   setupXanaxPaymentButtonHandler();
   syncLauncherButtonVisibility();
   rwphScheduleXanaxPaymentHelperOpen();
-  rwphMaybeOpenPayAllFromFactionControlsUrl();
-  if (rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
+  const rwphPaymentsOnlyTab = rwphMaybeOpenPayAllFromFactionControlsUrl();
+  if (!rwphPaymentsOnlyTab && rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);
   }
-  rwphScheduleFirstRunTutorialAutoOpen(900);
+  if (!rwphPaymentsOnlyTab) rwphScheduleFirstRunTutorialAutoOpen(900);
   function rwphInjectUnifiedPanelThemeV1375() {
     try {
       if (document.getElementById("rwph-unified-panel-theme-v1375")) return;
