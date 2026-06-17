@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.418
+// @version      1.1.419
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,6 +25,8 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
+  // v1.1.419: PDA/phone launcher now prefers the same Faction Warfare header/icon row position as desktop while staying logo-only and compact.
+  // v1.1.419: Member Management panel now uses a flex body and bottom scroll padding so the final member card is not clipped.
   // v1.1.418: Member Management panel cards now use a cleaner responsive layout and the Refresh/Save/Clear controls stay sticky while scrolling.
   // v1.1.417: Payments Copy tab now suppresses Results, Loading, main, and export/newsletter panels so only Payments Copy Panel opens.
   // v1.1.416: Member Management panel now explicitly shows resize handles, has a draggable header, and keeps a visible close button.
@@ -1650,12 +1652,159 @@
     }
   }
 
+  function rwphElementTextAndAttrs(el) {
+    try {
+      if (!el) return "";
+      const parts = [
+        el.textContent || "",
+        el.getAttribute?.("aria-label") || "",
+        el.getAttribute?.("title") || "",
+        el.getAttribute?.("data-title") || "",
+        el.getAttribute?.("data-tooltip") || "",
+        el.getAttribute?.("data-tip") || "",
+        el.getAttribute?.("href") || "",
+        el.getAttribute?.("onclick") || "",
+        el.id || "",
+        typeof el.className === "string" ? el.className : ""
+      ];
+      return rwphNormalizeNavText(parts.join(" ")).toLowerCase();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function rwphLooksLikeFactionWarfareIconTarget(el, rect = null) {
+    try {
+      if (!el || !rwphIsElementVisible(el)) return false;
+      const targetRect = rect || el.getBoundingClientRect?.();
+      if (!rwphRectLooksLikeTopFactionButton(targetRect)) return false;
+      const hint = rwphElementTextAndAttrs(el);
+      if (!hint) return false;
+
+      const hasFactionHint = /(factions?\.php|faction|ranked\s*war|rankedwar|warfare)/i.test(hint);
+      const hasWarHint = /(faction\s*warfare|warfare|ranked\s*war|rankedwar|ranked-war|tab[=\/:_-]*war|step[=\/:_-]*war|\/war\b|#\/?war\b|waricon|war_icon|war-?tab)/i.test(hint);
+      if (hasFactionHint && hasWarHint) return true;
+
+      // Torn PDA can render the top faction header as icon-only buttons. In that
+      // case the useful text can be hidden in an image alt/src or nested SVG/use
+      // reference rather than beside the icon.
+      const mediaHint = Array.from(el.querySelectorAll?.("img,svg,use") || [])
+        .map((node) => [
+          node.getAttribute?.("alt") || "",
+          node.getAttribute?.("title") || "",
+          node.getAttribute?.("aria-label") || "",
+          node.getAttribute?.("src") || "",
+          node.getAttribute?.("href") || "",
+          node.getAttribute?.("xlink:href") || "",
+          typeof node.className === "string" ? node.className : ""
+        ].join(" "))
+        .join(" ")
+        .toLowerCase();
+      return /(faction\s*warfare|ranked\s*war|rankedwar|warfare|war_icon|war-?tab)/i.test(mediaHint);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphFindPdaFactionWarfareIconTarget() {
+    try {
+      if (!rwphIsMobileOrPdaView()) return null;
+      const candidates = [];
+      const selectors = [
+        "a[href]",
+        "button",
+        "[role='button']",
+        "[aria-label]",
+        "[title]",
+        "[data-title]",
+        "[data-tooltip]",
+        "[onclick]"
+      ];
+      const seen = new Set();
+      selectors.forEach((selector) => {
+        try {
+          document.querySelectorAll(selector).forEach((el) => {
+            if (!el || seen.has(el)) return;
+            seen.add(el);
+            const targetEl = rwphClosestFactionWarfareButton(el);
+            if (!targetEl || seen.has(targetEl)) return;
+            seen.add(targetEl);
+            if (!rwphIsElementVisible(targetEl)) return;
+            const rect = targetEl.getBoundingClientRect?.();
+            if (!rwphRectLooksLikeTopFactionButton(rect)) return;
+            if (!rwphLooksLikeFactionWarfareIconTarget(targetEl, rect) && !rwphLooksLikeFactionWarfareIconTarget(el, rect)) return;
+            const area = Math.max(1, (rect.width || 1) * (rect.height || 1));
+            const hint = rwphElementTextAndAttrs(targetEl) + " " + rwphElementTextAndAttrs(el);
+            const score =
+              (/faction\s*warfare/i.test(hint) ? 0 : 10) +
+              (/ranked\s*war|rankedwar/i.test(hint) ? 1 : 0) +
+              (/factions?\.php/i.test(hint) ? 1 : 3) +
+              Math.abs((rect.height || 34) - 34) / 10 +
+              Math.max(0, rect.top || 0) / 1000 +
+              area / 100000;
+            candidates.push({ el: targetEl, rect, score, source: "pda-icon" });
+          });
+        } catch (_) {}
+      });
+      candidates.sort((a, b) => {
+        return (a.score - b.score)
+          || (a.rect.top - b.rect.top)
+          || (a.rect.left - b.rect.left);
+      });
+      return candidates[0] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphFindLauncherAnchorTarget() {
+    try {
+      return rwphFindFactionWarfareTarget() || rwphFindPdaFactionWarfareIconTarget();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphSetPdaLogoOnlyLauncher(btn, isPdaLogoOnly) {
+    try {
+      if (!btn) return;
+      btn.classList.toggle("rwph-pda-logo-only-launcher", !!isPdaLogoOnly);
+      btn.dataset.rwphLogoOnly = isPdaLogoOnly ? "1" : "0";
+    } catch (_) {}
+  }
+
+  function rwphApplyPdaHeaderLauncherSizing(btn, anchorTarget = null) {
+    try {
+      if (!btn || !rwphIsMobileOrPdaView()) return;
+      const rect = anchorTarget && anchorTarget.rect ? anchorTarget.rect : null;
+      const size = Math.max(28, Math.min(42, Math.round(rect?.height || 34)));
+      btn.style.setProperty("width", `${size}px`, "important");
+      btn.style.setProperty("min-width", `${size}px`, "important");
+      btn.style.setProperty("max-width", `${size}px`, "important");
+      btn.style.setProperty("height", `${size}px`, "important");
+      btn.style.setProperty("min-height", `${size}px`, "important");
+      btn.style.setProperty("max-height", `${size}px`, "important");
+      btn.style.setProperty("padding", "0", "important");
+      btn.style.setProperty("gap", "0", "important");
+      btn.style.setProperty("flex", `0 0 ${size}px`, "important");
+      btn.style.setProperty("align-items", "center", "important");
+      btn.style.setProperty("justify-content", "center", "important");
+      const img = btn.querySelector("img");
+      if (img) {
+        const logoSize = Math.max(22, Math.min(32, size - 6));
+        img.style.setProperty("width", `${logoSize}px`, "important");
+        img.style.setProperty("height", `${logoSize}px`, "important");
+      }
+    } catch (_) {}
+  }
+
   function rwphMountLauncherMobileFallback(btn) {
     try {
       if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
       if (btn.parentNode !== document.body) document.body.appendChild(btn);
       btn.classList.remove("rwph-faction-header-launcher");
       btn.classList.add("rwph-mobile-launcher-fallback");
+      rwphSetPdaLogoOnlyLauncher(btn, true);
       btn.style.display = "inline-flex";
       applyStyle(btn, {
         position: "fixed",
@@ -1718,11 +1867,12 @@
 
   function rwphMountLauncherBesideFactionWarfare(btn) {
     if (!btn || !rwphShouldShowLauncherOnThisPage()) return rwphMountLauncherFallback(btn);
-    const target = rwphFindFactionWarfareTarget();
+    const target = rwphFindLauncherAnchorTarget();
     if (!target || !target.el || !target.rect) return rwphMountLauncherFallback(btn);
 
     btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
     btn.classList.add("rwph-faction-header-launcher");
+    rwphSetPdaLogoOnlyLauncher(btn, rwphIsMobileOrPdaView());
     btn.style.display = "inline-flex";
 
     try {
@@ -1880,9 +2030,11 @@
 
     btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
     btn.classList.add("rwph-faction-header-launcher");
+    rwphSetPdaLogoOnlyLauncher(btn, rwphIsMobileOrPdaView());
     applyStyle(btn, getLauncherPositionStyle("faction-warfare", anchorTarget));
     btn.title = "Open Ranked War Payout Helper";
     btn.innerHTML = rwphLauncherLogoHtml();
+    rwphApplyPdaHeaderLauncherSizing(btn, anchorTarget);
     updateLauncherCornerButtonLabels();
   }
 
@@ -1897,7 +2049,9 @@
   function setLauncherOpenState(isOpen) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
+    rwphSetPdaLogoOnlyLauncher(btn, rwphIsMobileOrPdaView());
     btn.innerHTML = rwphLauncherLogoHtml();
+    rwphApplyPdaHeaderLauncherSizing(btn, null);
     btn.dataset.rwphOpen = isOpen ? "1" : "0";
     btn.title = isOpen ? "Close Ranked War Payout Helper" : "Open Ranked War Payout Helper";
     btn.setAttribute("aria-label", btn.title);
@@ -1915,6 +2069,7 @@
       btn.id = "rw-payout-launcher";
       btn.type = "button";
       btn.innerHTML = rwphLauncherLogoHtml();
+      rwphSetPdaLogoOnlyLauncher(btn, rwphIsMobileOrPdaView());
       btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
       btn.addEventListener("click", togglePanel);
     }
@@ -6048,6 +6203,20 @@
       }
       #rw-payout-launcher img {
         filter:drop-shadow(0 3px 8px rgba(0,0,0,.72)) drop-shadow(0 0 10px rgba(249,115,22,.65)) !important;
+      }
+      #rw-payout-launcher.rwph-pda-logo-only-launcher {
+        padding:0 !important;
+        gap:0 !important;
+        overflow:hidden !important;
+        white-space:nowrap !important;
+      }
+      #rw-payout-launcher.rwph-pda-logo-only-launcher span {
+        display:none !important;
+      }
+      #rw-payout-launcher.rwph-pda-logo-only-launcher img {
+        display:block !important;
+        margin:0 auto !important;
+        flex:0 0 auto !important;
       }
       #rw-payout-helper .rw-head span::before,
       #rwph-payment-helper-title::before { filter:drop-shadow(0 0 6px rgba(170,50,45,.45)) grayscale(.2) saturate(.85) !important; }
@@ -11464,19 +11633,19 @@
 
   function rwphMemberManagementPanelCss() {
     return `
-      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:both!important;backdrop-filter:none!important;min-width:300px!important;min-height:300px!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:40px!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:sticky!important;top:0!important;z-index:120!important;}
+      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:both!important;backdrop-filter:none!important;min-width:300px!important;min-height:300px!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:40px!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:relative!important;top:auto!important;z-index:120!important;flex:0 0 auto!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:active{cursor:grabbing!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:26px;height:26px;flex:0 0 26px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 7px rgba(251,191,36,.35))!important;}
       #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:0;line-height:1.04;min-width:0;}
       #rwph-member-management-panel .rwph-mm-heading b{font-size:12px;color:var(--rwph-theme-text,#fff2dd)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-      #rwph-member-management-panel .rwph-mm-body{height:calc(100% - 40px);max-height:none;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:6px;background:linear-gradient(180deg, rgba(33,23,20,.99), rgba(11,7,5,.99))!important;scrollbar-gutter:stable;}
+      #rwph-member-management-panel .rwph-mm-body{height:auto!important;max-height:none;overflow:auto!important;overflow-x:hidden!important;padding:6px 6px 34px!important;display:flex!important;flex-direction:column!important;gap:6px!important;background:linear-gradient(180deg, rgba(33,23,20,.99), rgba(11,7,5,.99))!important;scrollbar-gutter:stable;flex:1 1 auto!important;min-height:0!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-mm-control-stack{position:sticky!important;top:0!important;z-index:100!important;margin:-6px -6px 6px!important;padding:6px!important;background:linear-gradient(180deg, rgba(33,23,20,1), rgba(24,16,13,.99))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.28))!important;box-shadow:0 10px 18px rgba(0,0,0,.35)!important;display:flex!important;flex-direction:column!important;gap:5px!important;}
       #rwph-member-management-panel .rwph-mm-toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important;align-items:center!important;margin:0!important;padding:5px!important;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;box-shadow:0 6px 14px rgba(0,0,0,.20)!important;}
       #rwph-member-management-panel .rwph-mm-toolbar button{width:100%!important;padding:5px 6px!important;min-height:0!important;height:26px!important;font-size:11px!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
       #rwph-member-management-panel .rwph-mm-status{font-size:10px!important;opacity:.94!important;line-height:1.2!important;padding:5px 7px!important;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;color:var(--rwph-theme-soft,#cfaa8e)!important;}
-      #rwph-member-management-panel #rwph-mm-cards{min-width:0!important;}
-      #rwph-member-management-panel .rwph-mm-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:6px!important;align-items:stretch!important;min-width:0!important;}
+      #rwph-member-management-panel #rwph-mm-cards{min-width:0!important;box-sizing:border-box!important;padding-bottom:36px!important;}
+      #rwph-member-management-panel .rwph-mm-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:6px!important;align-items:stretch!important;min-width:0!important;box-sizing:border-box!important;padding-bottom:6px!important;}
       #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42))!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;border-radius:var(--rwph-theme-card-radius,10px)!important;padding:7px!important;display:flex!important;flex-direction:column!important;gap:5px!important;box-shadow:0 6px 14px rgba(0,0,0,.20)!important;min-width:0!important;box-sizing:border-box!important;overflow:hidden!important;}
       #rwph-member-management-panel .rwph-mm-card-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:6px!important;min-width:0!important;}
       #rwph-member-management-panel .rwph-mm-title{font-weight:900!important;color:var(--rwph-theme-text,#fff2dd)!important;font-size:11px!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important;}
@@ -11492,7 +11661,7 @@
       #rwph-member-management-panel .rwph-mm-number-label span{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important;}
       #rwph-member-management-panel .rwph-mm-card input[type=number]{width:78px!important;box-sizing:border-box!important;margin:0!important;padding:3px 5px!important;font-size:11px!important;min-height:0!important;height:23px!important;text-align:right!important;}
       #rwph-member-management-panel .rwph-mm-card input[type=checkbox]{margin:0!important;transform:scale(.9)!important;}
-      #rwph-member-management-panel .rwph-mm-empty{padding:8px!important;border:1px dashed var(--rwph-theme-line,rgba(184,136,89,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;color:var(--rwph-theme-soft,#cfaa8e)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;font-size:11px!important;}
+      #rwph-member-management-panel .rwph-mm-empty{padding:8px!important;margin-bottom:36px!important;border:1px dashed var(--rwph-theme-line,rgba(184,136,89,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;color:var(--rwph-theme-soft,#cfaa8e)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;font-size:11px!important;}
       #rwph-member-management-panel button{border-radius:var(--rwph-theme-button-radius,8px)!important;}
       #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:7px!important;top:7px!important;min-width:26px!important;width:26px!important;height:26px!important;min-height:26px!important;padding:0!important;display:grid!important;place-items:center!important;font-size:16px!important;line-height:1!important;z-index:130!important;}
       #rwph-member-management-panel .rw-resize-handle{position:absolute!important;width:18px!important;height:18px!important;z-index:140!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;opacity:.95!important;background:rgba(2,6,23,.18)!important;}
