@@ -1299,14 +1299,13 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Updated package version to **1.1.402**.
 
 
-## v1.1.419 - PDA logo-only header launcher fix
+## v1.1.419 - PDA logo-only header launcher restored
 
-- PC launcher/header placement stays unchanged beside Faction Warfare and still shows logo plus Ranked War Payout Helper text.
-- PDA/phone launcher is forced to a compact logo-only button.
-- PDA/phone placement no longer depends only on visible **Faction Warfare** text. It now checks faction/war links, hidden labels, icon metadata, images/SVG hints, and top header/action rows.
-- PDA/phone now tries to place the RWPH logo into the top faction icon/header row before using the old fixed fallback.
-- Kept the v1.1.418 Member Management card-fit fixes.
-- Updated package version to **1.1.419**.
+- Restored the v1.1.414 PDA/phone launcher logic into the v1.1.418 build.
+- PC launcher placement stays beside Faction Warfare and keeps the logo plus `Ranked War Payout Helper` text.
+- PDA/phone launcher is logo-only and can detect Torn layouts where Faction Warfare is rendered as an icon/link without visible text.
+- Kept the v1.1.418 Member Management card fit and sticky-control fixes.
+- Updated package, userscript, and server version numbers.
 
 ## v1.1.418 - Member Management card layout and sticky controls
 - Reworked Member Management member cards so names, IDs, stats, remove checkbox, payable-hit removal, and respect removal fit cleanly inside the panel.
@@ -1315,7 +1314,7 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Fit patch: changed the Member Management panel body to a flex scroll area with extra bottom padding so the last player card is not clipped off the bottom.
 - Fit patch: moved the Refresh, Save, Clear, and status section up into an opaque sticky strip so member cards cannot show through it while scrolling.
 - Kept the v1.1.417 Payments Copy tab isolation fix.
-- Package version was **1.1.418** for the Member Management card-fit patch before the v1.1.419 PDA launcher update.
+- Package version remains **1.1.418** as requested.
 
 ## v1.1.417 - Payments Copy tab isolation fix
 - Payments Copy tab now suppresses Results, Loading, main RWPH, export, and newsletter panels.

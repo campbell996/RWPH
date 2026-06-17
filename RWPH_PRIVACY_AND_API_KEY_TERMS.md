@@ -233,9 +233,9 @@ The userscript launcher is now mounted beside Torn's **Areas** text in the left 
 The purchase bonus system has been removed. New Xanax licence payments add only the configured base licence days. The admin bonus manager routes and controls, user bonus progress display, and the one-time 365 day completion reward route have been removed. Existing licence expiry time is not reduced or recalculated by this update. API key usage is unchanged.
 
 
-## v1.1.419 note - PDA logo-only launcher placement
+## v1.1.419 note - PDA launcher placement
 
-The PDA/phone launcher display was adjusted locally so mobile/PDA layouts use a compact logo-only RWPH launcher and can detect Torn header/icon/link rows even when the visible **Faction Warfare** text is hidden. PC launcher placement and text display are unchanged. This is a UI placement change only and does not add extra Torn API permissions or change backend data collection.
+The PDA/phone launcher placement logic from v1.1.414 was restored into the v1.1.418 codebase. This changes only the userscript launcher display behavior: desktop keeps the full text launcher beside Faction Warfare, while PDA/phone uses a logo-only launcher and can detect icon-only Torn header layouts. This does not add extra Torn API permissions or change backend data collection.
 
 ## v1.1.418 note - Member Management layout
 
