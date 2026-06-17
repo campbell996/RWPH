@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.429
+// @version      1.1.430
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.430: polished the Advanced Aurora layout so panels, buttons, controls, member cards, payments, results, and popups fit cleanly on PC/PDA/phone.
   // v1.1.429: added a safe two-layout switcher with a new advanced Aurora layout/theme that changes panel, button, card, control, popup, and payment/member layouts.
   // v1.1.428: removed the Panel Theme / Colours changer completely and forced RWPH back to the fixed default panel style.
   // v1.1.421: desktop launcher logo now uses the same larger logo style as PDA while keeping the Ranked War Payout Helper name text.
@@ -3736,6 +3737,449 @@
         }
         html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-member-management-actions{grid-template-columns:1fr!important;}
       }
+
+
+      /* v1.1.430: Aurora fit polish - keep the second layout advanced but make every panel/control fit cleanly. */
+      html[data-rwph-panel-theme="aurora"] :where(
+        #rw-payout-helper,
+        #rw-payout-helper *,
+        #rw-pay-all-panel,
+        #rw-pay-all-panel *,
+        .rw-pay-all-panel,
+        .rw-pay-all-panel *,
+        #rwph-member-management-panel,
+        #rwph-member-management-panel *,
+        .rwph-member-management-panel,
+        .rwph-member-management-panel *,
+        #rwph-xanax-send-status,
+        #rwph-xanax-send-status *,
+        .rwph-floating-panel,
+        .rwph-floating-panel *,
+        .rwph-results-loading-panel,
+        .rwph-results-loading-panel *,
+        .rwph-results-html-panel,
+        .rwph-results-html-panel *,
+        .rw-results-panel,
+        .rw-results-panel *,
+        #rwph-layout-theme-panel,
+        #rwph-layout-theme-panel *,
+        .rwph-info-popup-panel,
+        .rwph-info-popup-panel *
+      ){
+        box-sizing:border-box!important;
+        min-width:0!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper{
+        width:min(620px, calc(100vw - 18px))!important;
+        max-width:calc(100vw - 18px)!important;
+        min-width:min(340px, calc(100vw - 18px))!important;
+        max-height:calc(100vh - 18px)!important;
+        display:flex!important;
+        flex-direction:column!important;
+        overflow:hidden!important;
+        border-radius:22px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-head{
+        flex:0 0 auto!important;
+        min-height:56px!important;
+        padding:9px 12px!important;
+        gap:8px!important;
+        border-radius:22px 22px 0 0!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-head > *{min-width:0!important;}
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-head button{
+        width:auto!important;
+        min-width:34px!important;
+        flex:0 0 auto!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper > .rw-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        max-height:none!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        padding:12px!important;
+        display:grid!important;
+        gap:12px!important;
+        align-content:start!important;
+        scrollbar-gutter:stable!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-tabs{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(112px,1fr))!important;
+        gap:7px!important;
+        padding:7px!important;
+        align-items:stretch!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-tabs .rw-tab-btn,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-tab-btn{
+        width:100%!important;
+        min-width:0!important;
+        min-height:36px!important;
+        padding:8px 9px!important;
+        white-space:normal!important;
+        line-height:1.12!important;
+        text-align:center!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-tab-section,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-unified-tab-panel{
+        display:grid!important;
+        grid-template-columns:minmax(0,1fr)!important;
+        gap:12px!important;
+        align-content:start!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-tab-section[hidden],
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-unified-tab-panel[hidden]{display:none!important;}
+
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown{
+        overflow:hidden!important;
+        border-radius:18px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown > summary{
+        min-height:46px!important;
+        padding:11px 12px!important;
+        border-radius:18px 18px 0 0!important;
+        white-space:normal!important;
+        line-height:1.15!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown > .rw-api-tos-content{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;
+        gap:10px!important;
+        padding:11px!important;
+        align-items:start!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown .rw-cache-tools,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown .rw-calc-brief,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown .rw-member-management-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown .rw-primary-calc-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown .rw-settings-time-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown .rw-compact-check-grid{
+        grid-column:1 / -1!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-row{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;
+        gap:9px!important;
+        align-items:start!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-row > label,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper label{
+        display:grid!important;
+        gap:5px!important;
+        min-width:0!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper input,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper textarea,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper select,
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel input,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel input,
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel input,
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel textarea,
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel select{
+        width:100%!important;
+        max-width:100%!important;
+        min-height:36px!important;
+        padding:7px 9px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper input[type="checkbox"],
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel input[type="checkbox"]{
+        width:16px!important;
+        min-width:16px!important;
+        height:16px!important;
+        min-height:16px!important;
+        padding:0!important;
+        flex:0 0 auto!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-compact-check-grid{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(160px,1fr))!important;
+        gap:7px!important;
+        padding:8px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-compact-check-grid label{
+        display:flex!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+        gap:7px!important;
+        min-height:36px!important;
+        padding:7px 9px!important;
+        white-space:normal!important;
+        line-height:1.15!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-primary-calc-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-settings-calc-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-settings-time-actions,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-licence-control-grid,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-cache-tools,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-mode-cache-tools,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-member-management-actions{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important;
+        gap:8px!important;
+        align-items:stretch!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-settings-time-actions{
+        grid-template-columns:minmax(0,1fr)!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-member-management-actions{
+        grid-template-columns:minmax(140px,.75fr) minmax(180px,1fr)!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper button,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .btn,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper a.btn,
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel button,
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel .btn,
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel button,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel button,
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel button{
+        width:100%!important;
+        max-width:100%!important;
+        min-width:0!important;
+        min-height:36px!important;
+        padding:8px 10px!important;
+        white-space:normal!important;
+        line-height:1.12!important;
+        text-align:center!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-head button,
+      html[data-rwph-panel-theme="aurora"] .rwph-floating-panel-head button,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-head button,
+      html[data-rwph-panel-theme="aurora"] .rwph-panel-head button{
+        width:auto!important;
+        min-width:32px!important;
+        max-width:44px!important;
+        min-height:32px!important;
+        padding:0 8px!important;
+        flex:0 0 auto!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-api-visible-card,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-layout-theme-card,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-small,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-admin-box,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-how-box,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-card,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-box,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-section,
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel .summary-card,
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel .result-card{
+        border-radius:18px!important;
+        padding:11px!important;
+        overflow:hidden!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-layout-theme-card{
+        display:grid!important;
+        grid-template-columns:minmax(0,1fr) minmax(138px,.44fr)!important;
+        align-items:center!important;
+        gap:10px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-layout-theme-card #rw-open-theme-picker{
+        justify-self:stretch!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel{
+        width:min(460px, calc(100vw - 18px))!important;
+        max-width:calc(100vw - 18px)!important;
+        max-height:calc(100vh - 76px)!important;
+        overflow:hidden!important;
+        padding:0!important;
+        display:flex!important;
+        flex-direction:column!important;
+        border-radius:22px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel .rw-pay-all-head,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel .rw-pay-all-head,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel .rw-pay-all-head{
+        flex:0 0 auto!important;
+        margin:0!important;
+        padding:10px 46px 8px 12px!important;
+        min-height:48px!important;
+        align-items:center!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel .rw-pay-all-note,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel .rw-pay-all-note,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel .rw-pay-all-note{
+        margin:0!important;
+        padding:0 12px 10px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel .rw-pay-all-list,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel .rw-pay-all-list,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel .rw-pay-all-list{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(205px,1fr))!important;
+        gap:9px!important;
+        padding:0 12px 14px!important;
+        scrollbar-gutter:stable!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel .rw-pay-all-row,
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel .rw-pay-all-row,
+      html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel .rw-pay-all-row{
+        display:grid!important;
+        grid-template-columns:minmax(0,1fr) auto!important;
+        grid-template-areas:"member copy" "member copy"!important;
+        gap:7px!important;
+        align-items:center!important;
+        min-height:64px!important;
+        padding:9px!important;
+        border-radius:18px!important;
+        overflow:hidden!important;
+      }
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-row .rw-pay-all-member{grid-area:member!important;white-space:normal!important;line-height:1.16!important;}
+      html[data-rwph-panel-theme="aurora"] .rw-pay-all-row .rw-pay-all-copy{grid-area:copy!important;width:auto!important;min-width:58px!important;max-width:78px!important;white-space:normal!important;padding:7px!important;}
+
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel{
+        width:min(700px, calc(100vw - 18px))!important;
+        max-width:calc(100vw - 18px)!important;
+        max-height:calc(100vh - 18px)!important;
+        display:flex!important;
+        flex-direction:column!important;
+        overflow:hidden!important;
+        border-radius:22px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-body,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        padding:0 8px 34px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-control-stack,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-control-stack{
+        gap:7px!important;
+        padding:8px!important;
+        margin:0 -8px 9px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-toolbar,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-toolbar{
+        grid-template-columns:repeat(3,minmax(0,1fr))!important;
+        gap:7px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-toolbar button,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-toolbar button{
+        height:30px!important;
+        min-height:30px!important;
+        padding:5px 7px!important;
+        white-space:nowrap!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-grid,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-grid{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(245px,1fr))!important;
+        gap:9px!important;
+        align-items:stretch!important;
+        padding-bottom:36px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-card,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-card{
+        border-radius:18px!important;
+        padding:9px!important;
+        gap:7px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-number-label,
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-number-label{
+        grid-template-columns:minmax(0,1fr) 86px!important;
+        min-height:34px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-card input[type="number"],
+      html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-card input[type="number"]{
+        width:86px!important;
+        height:26px!important;
+        min-height:26px!important;
+      }
+
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel,
+      html[data-rwph-panel-theme="aurora"] #rw-results-panel,
+      html[data-rwph-panel-theme="aurora"] .rwph-results-loading-panel,
+      html[data-rwph-panel-theme="aurora"] .rwph-results-html-panel,
+      html[data-rwph-panel-theme="aurora"] #rwph-xanax-send-status,
+      html[data-rwph-panel-theme="aurora"] #rwph-layout-theme-panel{
+        max-width:calc(100vw - 18px)!important;
+        max-height:calc(100vh - 18px)!important;
+        overflow:hidden!important;
+        display:flex!important;
+        flex-direction:column!important;
+      }
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel .rw-body,
+      html[data-rwph-panel-theme="aurora"] #rw-results-panel .rw-body,
+      html[data-rwph-panel-theme="aurora"] .rwph-results-loading-panel .rw-body,
+      html[data-rwph-panel-theme="aurora"] .rwph-results-html-panel .rw-body,
+      html[data-rwph-panel-theme="aurora"] #rwph-layout-theme-panel .rwph-layout-theme-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+      }
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel .summary,
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel .results-list,
+      html[data-rwph-panel-theme="aurora"] .rw-results-panel .rw-results-grid{
+        display:grid!important;
+        grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;
+        gap:10px!important;
+      }
+      html[data-rwph-panel-theme="aurora"] .rwph-info-popup-panel{
+        max-width:min(420px, calc(100vw - 22px))!important;
+        border-radius:20px!important;
+        padding:13px 40px 15px 16px!important;
+        overflow:hidden!important;
+      }
+
+      @media (max-width:700px), (pointer:coarse){
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper{
+          width:calc(100vw - 14px)!important;
+          min-width:0!important;
+          left:7px!important;
+          right:7px!important;
+          max-height:calc(100vh - 14px)!important;
+        }
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper > .rw-body{padding:9px!important;gap:9px!important;}
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-tabs,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-actions,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-primary-calc-actions,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-settings-calc-actions,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-licence-control-grid,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-member-management-actions,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-layout-theme-card,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper details.rw-settings-dropdown > .rw-api-tos-content,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-row,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-compact-check-grid,
+        html[data-rwph-panel-theme="aurora"] #rwph-layout-theme-panel .rwph-layout-theme-options{
+          grid-template-columns:minmax(0,1fr)!important;
+        }
+        html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel,
+        html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel{
+          width:calc(100vw - 14px)!important;
+          left:7px!important;
+          right:7px!important;
+          max-height:calc(100vh - 72px)!important;
+        }
+        html[data-rwph-panel-theme="aurora"] #rw-pay-all-panel .rw-pay-all-list,
+        html[data-rwph-panel-theme="aurora"] .rw-pay-all-panel .rw-pay-all-list,
+        html[data-rwph-panel-theme="aurora"] #rw-payout-helper .rw-pay-all-panel .rw-pay-all-list,
+        html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-grid,
+        html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-grid{
+          grid-template-columns:minmax(0,1fr)!important;
+        }
+        html[data-rwph-panel-theme="aurora"] #rwph-member-management-panel .rwph-mm-number-label,
+        html[data-rwph-panel-theme="aurora"] .rwph-member-management-panel .rwph-mm-number-label{
+          grid-template-columns:minmax(0,1fr) 78px!important;
+        }
+      }
+
     `;
   }
 
