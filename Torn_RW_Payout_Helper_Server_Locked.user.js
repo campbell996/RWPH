@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.427
+// @version      1.1.428
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,12 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
-  // v1.1.427: added stronger per-theme feature positioning and button-colour profiles so every theme changes button/card/control placement, payment/member/result layouts and fitted panel structure.
-  // v1.1.426: rebuilt every theme/colour with real per-theme panel layout profiles, changing grids, buttons, cards, member/payment rows and popup shapes across all panels.
-  // v1.1.425: rebuilt the theme styling layer on the last working interaction-safe selectors so panels are scrollable, movable, clickable and resizable again.
-  // v1.1.424: attempted theme rebuild interaction safety layer.
-  // v1.1.423: completely rebuilt every theme/colour into its own full panel layout, style, colour system, payment-copy styling and popup notification style.
-  // v1.1.422: expanded each panel theme/colour into its own unique layout profile, card style, header treatment, spacing, shadows, and button feel.
+  // v1.1.428: removed the Panel Theme / Colours changer completely and forced RWPH back to the fixed default panel style.
   // v1.1.421: desktop launcher logo now uses the same larger logo style as PDA while keeping the Ranked War Payout Helper name text.
   // v1.1.420: anchored the PDA/phone launcher to the faction page/header position so it no longer follows the screen while scrolling.
   // v1.1.419: restored the PDA/phone logo-only header launcher from v1.1.414 while keeping the v1.1.418 Member Management fixes.
@@ -569,19 +564,13 @@
         ...t,
         accent,
         accent2,
-        background: t.popupBg || `linear-gradient(135deg, ${t.bg}, ${t.panel}, ${t.panel2})`,
-        buttonBg: t.buttonBg || `linear-gradient(180deg, ${t.panel3}, ${t.panel})`,
+        background: `linear-gradient(135deg, ${t.bg}, ${t.panel}, ${t.panel2})`,
+        buttonBg: `linear-gradient(180deg, ${t.panel3}, ${t.panel})`,
         border: safeMode === "error" ? "rgba(248,113,113,.72)" : (safeMode === "warn" ? "rgba(250,204,21,.72)" : t.line2),
-        title: safeMode === "error" ? "#fecaca" : (safeMode === "warn" ? "#fef08a" : (t.accent || t.text || "#ffffff")),
+        title: t.text || "#ffffff",
         message: t.soft || t.text || "#ffffff",
         text: t.text || "#ffffff",
-        shadow: t.panelShadow || `0 18px 55px rgba(0,0,0,.62), 0 0 32px ${accent}33`,
-        popupRadius: t.popupRadius || t.cardRadius || t.radius || "16px",
-        popupPad: t.popupPad || "12px 40px 15px 16px",
-        buttonRadius: t.buttonRadius || "12px",
-        buttonPad: t.buttonPad || "8px 12px",
-        headCase: t.headCase || "uppercase",
-        headTracking: t.headTracking || ".04em"
+        shadow: `0 18px 55px rgba(0,0,0,.62), 0 0 32px ${accent}33`,
       };
     } catch (_) {
       return {
@@ -592,11 +581,9 @@
         buttonBg: "linear-gradient(180deg,#3a241c,#211714)",
         border: "rgba(251,191,36,.40)", title: "#fff2dd", message: "#cfaa8e",
         shadow: "0 18px 55px rgba(0,0,0,.62), 0 0 32px rgba(251,191,36,.22)",
-        popupRadius: "16px", popupPad: "12px 40px 15px 16px", buttonRadius: "12px", buttonPad: "8px 12px", headCase: "uppercase", headTracking: ".04em"
       };
     }
   }
-
 
   function rwphShowToast(message, mode = "info", ttlMs = 30000, title = "RWPH Info", anchorEl = null) {
     try {
@@ -630,8 +617,8 @@
       popup.style.setProperty("opacity", "1", "important");
       popup.style.setProperty("transform", "none", "important");
       popup.style.setProperty("overflow", "hidden", "important");
-      popup.style.setProperty("border-radius", popupTheme.popupRadius || "16px", "important");
-      popup.style.setProperty("padding", popupTheme.popupPad || "12px 40px 15px 16px", "important");
+      popup.style.setProperty("border-radius", "16px", "important");
+      popup.style.setProperty("padding", "12px 38px 15px 16px", "important");
       popup.style.setProperty("background", popupTheme.background, "important");
       popup.style.setProperty("--rwph-popup-bg", popupTheme.background);
       popup.style.setProperty("border", `1px solid ${popupTheme.border}`, "important");
@@ -664,7 +651,7 @@
       close.style.setProperty("place-items", "center", "important");
       close.style.setProperty("border", `1px solid ${popupTheme.line2 || popupTheme.border}`, "important");
       close.style.setProperty("border-left", `4px solid ${accent}`, "important");
-      close.style.setProperty("border-radius", popupTheme.buttonRadius || "12px", "important");
+      close.style.setProperty("border-radius", "14px", "important");
       close.style.setProperty("background", popupTheme.buttonBg, "important");
       close.style.setProperty("color", popupTheme.text, "important");
       close.style.setProperty("cursor", "pointer", "important");
@@ -678,8 +665,8 @@
       titleEl.style.setProperty("font-size", "12px", "important");
       titleEl.style.setProperty("line-height", "1.15", "important");
       titleEl.style.setProperty("font-weight", "950", "important");
-      titleEl.style.setProperty("letter-spacing", popupTheme.headTracking || ".45px", "important");
-      titleEl.style.setProperty("text-transform", popupTheme.headCase || "uppercase", "important");
+      titleEl.style.setProperty("letter-spacing", ".45px", "important");
+      titleEl.style.setProperty("text-transform", "uppercase", "important");
 
       const msgEl = document.createElement("div");
       msgEl.textContent = String(message || "Done.");
@@ -700,7 +687,7 @@
       timerBar.style.setProperty("right", "0", "important");
       timerBar.style.setProperty("bottom", "0", "important");
       timerBar.style.setProperty("height", "3px", "important");
-      timerBar.style.setProperty("background", `linear-gradient(90deg, ${accent}, ${popupTheme.accent2})`, "important");
+      timerBar.style.setProperty("background", accent, "important");
       timerBar.style.setProperty("transform-origin", "left center", "important");
       timerBar.style.setProperty("animation", `rwph-info-popup-timer ${ttl}ms linear forwards`, "important");
 
@@ -2354,435 +2341,181 @@
 
 
   function rwphPanelThemePresets() {
-    // v1.1.423: rebuilt every theme/colour as a complete panel system instead of a colour swap.
-    // Each key keeps the same theme-picker option but now has its own palette, textures, panel density,
-    // header treatment, card accents, button shape, input styling, payment-copy styling and notification style.
-    const palettes = {
+    const presets = {
       bronze: {
-        label: "Bronze Gold", bg: "#120705", bg2: "#241008", panel: "#1d120d", panel2: "#2c1b13", panel3: "#5f341c",
-        line: "rgba(180,112,55,.55)", line2: "rgba(251,191,36,.50)", text: "#fff4df", soft: "#d9ad83", accent: "#f6b93b", accent2: "#e36b1e", good: "#38d174", danger: "#7b1414"
+        label: "Bronze Gold",
+        bg: "#130b07", bg2: "#21110b", panel: "#211714", panel2: "#2b1d18", panel3: "#3a241c",
+        line: "rgba(184,136,89,.46)", line2: "rgba(251,191,36,.40)",
+        text: "#fff2dd", soft: "#cfaa8e", accent: "#fbbf24", accent2: "#f97316", good: "#22c55e", danger: "#7f1d1d"
       },
       blue: {
-        label: "Ocean Blue", bg: "#03101f", bg2: "#06335a", panel: "#082039", panel2: "#0b4a72", panel3: "#1176a8",
-        line: "rgba(54,181,236,.58)", line2: "rgba(133,219,255,.54)", text: "#edfaff", soft: "#9edcf8", accent: "#45c7ff", accent2: "#178ee8", good: "#93f7b6", danger: "#7f1d1d"
+        label: "Ocean Blue",
+        bg: "#020617", bg2: "#082f49", panel: "#0f172a", panel2: "#0c4a6e", panel3: "#075985",
+        line: "rgba(56,189,248,.46)", line2: "rgba(125,211,252,.42)",
+        text: "#f0f9ff", soft: "#bae6fd", accent: "#38bdf8", accent2: "#0ea5e9", good: "#86efac", danger: "#7f1d1d"
       },
       green: {
-        label: "Forest Green", bg: "#031009", bg2: "#073a1e", panel: "#0b2115", panel2: "#12462a", panel3: "#1e7a42",
-        line: "rgba(58,198,103,.56)", line2: "rgba(148,245,175,.48)", text: "#effff4", soft: "#a9eec1", accent: "#70e68f", accent2: "#29b95b", good: "#f4cd4d", danger: "#661515"
+        label: "Forest Green",
+        bg: "#020f08", bg2: "#052e16", panel: "#102016", panel2: "#14532d", panel3: "#166534",
+        line: "rgba(34,197,94,.46)", line2: "rgba(134,239,172,.42)",
+        text: "#f0fdf4", soft: "#bbf7d0", accent: "#86efac", accent2: "#22c55e", good: "#facc15", danger: "#7f1d1d"
       },
       purple: {
-        label: "Royal Purple", bg: "#0d061b", bg2: "#251246", panel: "#1a1236", panel2: "#4e2186", panel3: "#7b42d8",
-        line: "rgba(167,139,250,.60)", line2: "rgba(218,202,255,.52)", text: "#fbf5ff", soft: "#d8c5ff", accent: "#c9a8ff", accent2: "#8b5cf6", good: "#8ff0b2", danger: "#731717"
+        label: "Royal Purple",
+        bg: "#0b0616", bg2: "#1e1233", panel: "#1e1b4b", panel2: "#4c1d95", panel3: "#6d28d9",
+        line: "rgba(167,139,250,.48)", line2: "rgba(196,181,253,.42)",
+        text: "#faf5ff", soft: "#ddd6fe", accent: "#c4b5fd", accent2: "#a78bfa", good: "#86efac", danger: "#7f1d1d"
       },
       crimson: {
-        label: "Crimson Red", bg: "#180505", bg2: "#3b0909", panel: "#250909", panel2: "#711a1a", panel3: "#af2424",
-        line: "rgba(248,92,92,.60)", line2: "rgba(255,190,190,.48)", text: "#fff1f1", soft: "#ffb0b0", accent: "#ffcdcd", accent2: "#ef4444", good: "#91f5b0", danger: "#450a0a"
+        label: "Crimson Red",
+        bg: "#160606", bg2: "#2a0a0a", panel: "#2a0a0a", panel2: "#7f1d1d", panel3: "#991b1b",
+        line: "rgba(248,113,113,.48)", line2: "rgba(254,202,202,.38)",
+        text: "#fff1f2", soft: "#fca5a5", accent: "#fecaca", accent2: "#f87171", good: "#86efac", danger: "#450a0a"
       },
       neon: {
-        label: "Neon Cyan", bg: "#020915", bg2: "#061c2a", panel: "#06151f", panel2: "#063f4d", panel3: "#0d7c8d",
-        line: "rgba(34,211,238,.68)", line2: "rgba(103,232,249,.62)", text: "#ecfeff", soft: "#8df6ff", accent: "#61f5ff", accent2: "#08d6ee", good: "#f0abfc", danger: "#6d1414"
+        label: "Neon Cyan",
+        bg: "#020617", bg2: "#07111f", panel: "#07111f", panel2: "#0e7490", panel3: "#155e75",
+        line: "rgba(34,211,238,.50)", line2: "rgba(103,232,249,.46)",
+        text: "#ecfeff", soft: "#a5f3fc", accent: "#67e8f9", accent2: "#22d3ee", good: "#f0abfc", danger: "#7f1d1d"
       },
       steel: {
-        label: "Steel Grey", bg: "#05070c", bg2: "#151a22", panel: "#101720", panel2: "#2b3542", panel3: "#556170",
-        line: "rgba(151,165,184,.54)", line2: "rgba(229,231,235,.40)", text: "#f8fafc", soft: "#cbd5df", accent: "#e2e8f0", accent2: "#94a3b8", good: "#8cf0aa", danger: "#701616"
+        label: "Steel Grey",
+        bg: "#030712", bg2: "#111827", panel: "#111827", panel2: "#374151", panel3: "#4b5563",
+        line: "rgba(156,163,175,.48)", line2: "rgba(229,231,235,.30)",
+        text: "#f9fafb", soft: "#d1d5db", accent: "#e5e7eb", accent2: "#9ca3af", good: "#86efac", danger: "#7f1d1d"
       },
       candy: {
-        label: "Candy Pink", bg: "#170416", bg2: "#4a0b36", panel: "#311028", panel2: "#7c1d57", panel3: "#d33f89",
-        line: "rgba(249,168,212,.62)", line2: "rgba(251,207,232,.52)", text: "#fff1fa", soft: "#f9a8d4", accent: "#ffd6ee", accent2: "#f472b6", good: "#bbf7d0", danger: "#7f1d1d"
+        label: "Candy Pink",
+        bg: "#19020b", bg2: "#500724", panel: "#500724", panel2: "#831843", panel3: "#be185d",
+        line: "rgba(249,168,212,.48)", line2: "rgba(251,207,232,.42)",
+        text: "#fff1f2", soft: "#f9a8d4", accent: "#fbcfe8", accent2: "#f472b6", good: "#bbf7d0", danger: "#7f1d1d"
       },
       midnight: {
-        label: "Midnight Black", bg: "#02030a", bg2: "#070b18", panel: "#0a0d16", panel2: "#141827", panel3: "#252a40",
-        line: "rgba(120,135,160,.50)", line2: "rgba(226,232,240,.36)", text: "#f8fafc", soft: "#b9c5d6", accent: "#e2e8f0", accent2: "#5f6f87", good: "#28c76f", danger: "#741515"
+        label: "Midnight Black",
+        bg: "#020207", bg2: "#080b16", panel: "#09090f", panel2: "#151625", panel3: "#202337",
+        line: "rgba(148,163,184,.42)", line2: "rgba(226,232,240,.32)",
+        text: "#f8fafc", soft: "#cbd5e1", accent: "#e2e8f0", accent2: "#64748b", good: "#22c55e", danger: "#7f1d1d"
       },
       lava: {
-        label: "Lava Orange", bg: "#170403", bg2: "#3c0b04", panel: "#260904", panel2: "#803012", panel3: "#c2410c",
-        line: "rgba(251,146,60,.66)", line2: "rgba(254,215,170,.54)", text: "#fff7ed", soft: "#ffd4a8", accent: "#ff9b45", accent2: "#ef3e2e", good: "#91f5b0", danger: "#450a0a"
+        label: "Lava Orange",
+        bg: "#150504", bg2: "#3b0a04", panel: "#2a0905", panel2: "#7c2d12", panel3: "#9a3412",
+        line: "rgba(251,146,60,.50)", line2: "rgba(254,215,170,.42)",
+        text: "#fff7ed", soft: "#fed7aa", accent: "#fb923c", accent2: "#ef4444", good: "#86efac", danger: "#450a0a"
       },
       ice: {
-        label: "Arctic Ice", bg: "#031320", bg2: "#0a3b5b", panel: "#0a2a43", panel2: "#0b6690", panel3: "#10a1d0",
-        line: "rgba(186,230,253,.62)", line2: "rgba(224,242,254,.58)", text: "#f0faff", soft: "#d8f3ff", accent: "#e6f8ff", accent2: "#7dd3fc", good: "#bbf7d0", danger: "#7f1d1d"
+        label: "Arctic Ice",
+        bg: "#03111d", bg2: "#0c4a6e", panel: "#082f49", panel2: "#0369a1", panel3: "#0284c7",
+        line: "rgba(186,230,253,.50)", line2: "rgba(224,242,254,.48)",
+        text: "#f0f9ff", soft: "#dbeafe", accent: "#e0f2fe", accent2: "#7dd3fc", good: "#bbf7d0", danger: "#7f1d1d"
       },
       toxic: {
-        label: "Toxic Lime", bg: "#050c02", bg2: "#183200", panel: "#101f07", panel2: "#344f14", panel3: "#5a8d11",
-        line: "rgba(163,230,53,.66)", line2: "rgba(217,249,157,.58)", text: "#f8ffe8", soft: "#d9ff8f", accent: "#c7ff5e", accent2: "#86d117", good: "#38d174", danger: "#671515"
+        label: "Toxic Lime",
+        bg: "#040b02", bg2: "#143000", panel: "#0f1f07", panel2: "#365314", panel3: "#4d7c0f",
+        line: "rgba(163,230,53,.50)", line2: "rgba(217,249,157,.45)",
+        text: "#f7fee7", soft: "#d9f99d", accent: "#bef264", accent2: "#84cc16", good: "#22c55e", danger: "#7f1d1d"
       },
       sunset: {
-        label: "Sunset Glow", bg: "#190714", bg2: "#4a1508", panel: "#32111b", panel2: "#8d1637", panel3: "#d45816",
-        line: "rgba(251,113,133,.62)", line2: "rgba(253,186,116,.54)", text: "#fff7ed", soft: "#ffc9cf", accent: "#ffc278", accent2: "#fb7185", good: "#bbf7d0", danger: "#7a1515"
+        label: "Sunset Glow",
+        bg: "#190816", bg2: "#431407", panel: "#36111b", panel2: "#9f1239", panel3: "#c2410c",
+        line: "rgba(251,113,133,.48)", line2: "rgba(253,186,116,.44)",
+        text: "#fff7ed", soft: "#fecdd3", accent: "#fdba74", accent2: "#fb7185", good: "#bbf7d0", danger: "#7f1d1d"
       },
       cyberpunk: {
-        label: "Cyberpunk Pink", bg: "#070616", bg2: "#1e1b4b", panel: "#111026", panel2: "#69116e", panel3: "#0f7891",
-        line: "rgba(217,70,239,.66)", line2: "rgba(103,232,249,.58)", text: "#fff4ff", soft: "#f0abfc", accent: "#ff8df6", accent2: "#22d3ee", good: "#d7ff55", danger: "#761515"
+        label: "Cyberpunk Pink",
+        bg: "#080617", bg2: "#1e1b4b", panel: "#111027", panel2: "#701a75", panel3: "#0e7490",
+        line: "rgba(217,70,239,.48)", line2: "rgba(103,232,249,.46)",
+        text: "#fdf4ff", soft: "#f0abfc", accent: "#f0abfc", accent2: "#22d3ee", good: "#bef264", danger: "#7f1d1d"
       },
       emerald: {
-        label: "Emerald Glow", bg: "#02120e", bg2: "#064337", panel: "#082b2a", panel2: "#056e57", panel3: "#0aa778",
-        line: "rgba(52,211,153,.62)", line2: "rgba(167,243,208,.52)", text: "#edfff8", soft: "#a7f3d0", accent: "#35e0a1", accent2: "#10b981", good: "#facc15", danger: "#6e1515"
+        label: "Emerald Glow",
+        bg: "#02130e", bg2: "#064e3b", panel: "#052e2b", panel2: "#047857", panel3: "#059669",
+        line: "rgba(52,211,153,.48)", line2: "rgba(167,243,208,.42)",
+        text: "#ecfdf5", soft: "#a7f3d0", accent: "#34d399", accent2: "#10b981", good: "#facc15", danger: "#7f1d1d"
       },
       ruby: {
-        label: "Ruby Blood", bg: "#140307", bg2: "#400713", panel: "#28070f", panel2: "#861536", panel3: "#c51a43",
-        line: "rgba(244,63,94,.64)", line2: "rgba(254,205,211,.50)", text: "#fff1f3", soft: "#fda4af", accent: "#ff7f96", accent2: "#e11d48", good: "#86efac", danger: "#450a0a"
+        label: "Ruby Blood",
+        bg: "#130308", bg2: "#3f0713", panel: "#2a0710", panel2: "#881337", panel3: "#be123c",
+        line: "rgba(244,63,94,.50)", line2: "rgba(254,205,211,.40)",
+        text: "#fff1f2", soft: "#fda4af", accent: "#fb7185", accent2: "#e11d48", good: "#86efac", danger: "#450a0a"
       },
       aqua: {
-        label: "Aqua Teal", bg: "#021013", bg2: "#104b48", panel: "#0d2d31", panel2: "#0b7069", panel3: "#18b8a8",
-        line: "rgba(45,212,191,.62)", line2: "rgba(153,246,228,.54)", text: "#f0fffd", soft: "#9ff7ea", accent: "#5df4e2", accent2: "#2dd4bf", good: "#facc15", danger: "#711515"
+        label: "Aqua Teal",
+        bg: "#021012", bg2: "#134e4a", panel: "#0f2f32", panel2: "#0f766e", panel3: "#14b8a6",
+        line: "rgba(45,212,191,.48)", line2: "rgba(153,246,228,.44)",
+        text: "#f0fdfa", soft: "#99f6e4", accent: "#5eead4", accent2: "#2dd4bf", good: "#facc15", danger: "#7f1d1d"
       },
       amber: {
-        label: "Amber Noir", bg: "#0b0703", bg2: "#241408", panel: "#17100a", panel2: "#73360e", panel3: "#a45313",
-        line: "rgba(245,158,11,.62)", line2: "rgba(252,211,77,.52)", text: "#fffbea", soft: "#ffe58d", accent: "#ffd866", accent2: "#d97706", good: "#86efac", danger: "#7a1515"
+        label: "Amber Noir",
+        bg: "#090604", bg2: "#1c1207", panel: "#15100b", panel2: "#78350f", panel3: "#92400e",
+        line: "rgba(245,158,11,.46)", line2: "rgba(252,211,77,.42)",
+        text: "#fffbeb", soft: "#fde68a", accent: "#fcd34d", accent2: "#d97706", good: "#86efac", danger: "#7f1d1d"
       },
       violetstorm: {
-        label: "Violet Storm", bg: "#080512", bg2: "#2e1263", panel: "#1a1035", panel2: "#5426a6", panel3: "#7c3aed",
-        line: "rgba(139,92,246,.66)", line2: "rgba(216,180,254,.54)", text: "#fbf5ff", soft: "#d8b4fe", accent: "#dcb7ff", accent2: "#8b5cf6", good: "#86efac", danger: "#741515"
+        label: "Violet Storm",
+        bg: "#080510", bg2: "#2e1065", panel: "#1b1035", panel2: "#5b21b6", panel3: "#7c3aed",
+        line: "rgba(139,92,246,.50)", line2: "rgba(216,180,254,.42)",
+        text: "#faf5ff", soft: "#d8b4fe", accent: "#d8b4fe", accent2: "#8b5cf6", good: "#86efac", danger: "#7f1d1d"
       },
       desert: {
-        label: "Desert Sand", bg: "#130b05", bg2: "#3a2b1a", panel: "#26180c", panel2: "#6f5128", panel3: "#a16207",
-        line: "rgba(217,119,6,.60)", line2: "rgba(253,230,138,.50)", text: "#fff5cf", soft: "#fde68a", accent: "#ffd84d", accent2: "#b8750c", good: "#86efac", danger: "#761515"
+        label: "Desert Sand",
+        bg: "#120b05", bg2: "#3b2f1f", panel: "#24180d", panel2: "#7c5b2b", panel3: "#a16207",
+        line: "rgba(217,119,6,.44)", line2: "rgba(253,230,138,.40)",
+        text: "#fef3c7", soft: "#fde68a", accent: "#facc15", accent2: "#a16207", good: "#86efac", danger: "#7f1d1d"
       },
       ghost: {
-        label: "Ghost White", bg: "#0b111b", bg2: "#1b2735", panel: "#111827", panel2: "#2d3e52", panel3: "#66778b",
-        line: "rgba(203,213,225,.60)", line2: "rgba(248,250,252,.45)", text: "#ffffff", soft: "#e5e7eb", accent: "#ffffff", accent2: "#cbd5e1", good: "#86efac", danger: "#7f1d1d"
+        label: "Ghost White",
+        bg: "#0b1018", bg2: "#1f2937", panel: "#111827", panel2: "#334155", panel3: "#64748b",
+        line: "rgba(203,213,225,.48)", line2: "rgba(248,250,252,.36)",
+        text: "#ffffff", soft: "#e5e7eb", accent: "#f8fafc", accent2: "#cbd5e1", good: "#86efac", danger: "#7f1d1d"
       },
       royalgold: {
-        label: "Royal Gold", bg: "#100902", bg2: "#2e2105", panel: "#1d1405", panel2: "#7f4a0c", panel3: "#c98a04",
-        line: "rgba(234,179,8,.66)", line2: "rgba(254,240,138,.58)", text: "#fffde8", soft: "#fff08a", accent: "#ffe768", accent2: "#eab308", good: "#86efac", danger: "#7a1515"
+        label: "Royal Gold",
+        bg: "#0f0a02", bg2: "#2f2106", panel: "#1d1506", panel2: "#854d0e", panel3: "#ca8a04",
+        line: "rgba(234,179,8,.52)", line2: "rgba(254,240,138,.44)",
+        text: "#fefce8", soft: "#fef08a", accent: "#fde047", accent2: "#eab308", good: "#86efac", danger: "#7f1d1d"
       }
     };
 
-    const profiles = {
-      bronze: { styleName:"Foundry slabs", layoutName:"heavy left-accent stacked cards", radius:"12px", cardRadius:"10px", buttonRadius:"8px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".06em", panelPad:"12px", bodyPad:"10px", headPad:"10px 14px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".08em", cardPad:"10px 12px", cardGap:"8px", sectionInset:"0", cardAccent:"left", cardAccentSize:"5px", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 18px 0 rgba(0,0,0,.20),0 30px 70px rgba(0,0,0,.65)", cardShadow:"0 9px 0 rgba(0,0,0,.22),0 18px 32px rgba(0,0,0,.28)", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 13px)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.05))", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.07), transparent 58%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.12))", themePickerWidth:"520px" },
-      blue: { styleName:"Harbour glass", layoutName:"wide centered glass dashboard", radius:"24px", cardRadius:"18px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".025em", panelPad:"18px", bodyPad:"16px", headPad:"15px 20px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".04em", cardPad:"15px", cardGap:"15px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"4px", buttonPad:"10px 18px", buttonJustify:"center", panelShadow:"0 28px 86px rgba(0,0,0,.55),0 0 44px var(--rwph-theme-line2)", cardShadow:"0 20px 45px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.08)", texture:"radial-gradient(ellipse at 10% 5%, rgba(255,255,255,.12), transparent 30%)", headerTexture:"linear-gradient(120deg, rgba(255,255,255,.18), transparent 42%)", cardTexture:"linear-gradient(145deg, rgba(255,255,255,.10), transparent 52%)", buttonTexture:"linear-gradient(145deg, rgba(255,255,255,.20), transparent 55%)", themePickerWidth:"575px" },
-      green: { styleName:"Forest ledgers", layoutName:"offset natural cards", radius:"18px 7px 22px 7px", cardRadius:"16px 6px 16px 6px", buttonRadius:"9px 18px 9px 18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", panelPad:"14px", bodyPad:"12px 15px", headPad:"11px 15px", headJustify:"flex-start", headAlign:"center", headCase:"none", headTracking:".025em", cardPad:"13px 13px 13px 17px", cardGap:"12px", sectionInset:"0", cardAccent:"left", cardAccentSize:"7px", buttonPad:"9px 14px", buttonJustify:"flex-start", panelShadow:"-12px 22px 62px rgba(0,0,0,.58),0 0 30px var(--rwph-theme-line)", cardShadow:"-7px 11px 28px rgba(0,0,0,.24)", texture:"radial-gradient(ellipse at 0% 100%, rgba(255,255,255,.08), transparent 34%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.12), transparent 48%)", cardTexture:"repeating-linear-gradient(45deg, rgba(255,255,255,.035) 0 1px, transparent 1px 14px)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.14), transparent 56%)", themePickerWidth:"510px" },
-      purple: { styleName:"Royal inlay", layoutName:"boxed centred rows", radius:"10px", cardRadius:"8px", buttonRadius:"8px", borderWidth:"3px", borderStyle:"double", buttonCase:"uppercase", buttonTracking:".08em", panelPad:"12px", bodyPad:"12px", headPad:"13px 15px", headJustify:"center", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"11px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 20px 56px rgba(0,0,0,.67), inset 0 0 0 1px var(--rwph-theme-line2)", cardShadow:"inset 0 0 0 1px rgba(255,255,255,.05),0 12px 26px rgba(0,0,0,.30)", texture:"linear-gradient(45deg, rgba(255,255,255,.06) 25%, transparent 25% 50%, rgba(255,255,255,.04) 50% 75%, transparent 75%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.10))", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.09), transparent 56%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.19), rgba(0,0,0,.08))", themePickerWidth:"500px" },
-      crimson: { styleName:"Sharp command", layoutName:"compact right-stripe panels", radius:"4px", cardRadius:"4px", buttonRadius:"3px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".085em", panelPad:"10px", bodyPad:"10px", headPad:"10px 12px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"10px", cardGap:"8px", sectionInset:"0", cardAccent:"right", cardAccentSize:"5px", buttonPad:"8px 10px", buttonJustify:"center", panelShadow:"12px 18px 0 rgba(0,0,0,.27),0 22px 58px rgba(0,0,0,.62)", cardShadow:"8px 10px 0 rgba(0,0,0,.22)", texture:"linear-gradient(135deg, transparent 0 42%, rgba(255,255,255,.065) 42% 44%, transparent 44%)", headerTexture:"linear-gradient(110deg, rgba(255,255,255,.16) 0 18%, transparent 18%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.055), transparent 52%)", buttonTexture:"linear-gradient(110deg, rgba(255,255,255,.17) 0 35%, transparent 35%)", themePickerWidth:"480px" },
-      neon: { styleName:"Neon terminal", layoutName:"scanline console cards", radius:"14px", cardRadius:"12px", buttonRadius:"10px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".095em", panelPad:"12px", bodyPad:"12px", headPad:"11px 14px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".12em", cardPad:"12px", cardGap:"10px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"2px", buttonPad:"8px 13px", buttonJustify:"center", panelShadow:"0 0 0 1px var(--rwph-theme-line2),0 0 48px var(--rwph-theme-line),0 25px 70px rgba(0,0,0,.67)", cardShadow:"0 0 25px var(--rwph-theme-line), inset 0 0 22px rgba(0,0,0,.18)", texture:"repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px)", headerTexture:"repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 2px, transparent 2px 12px)", cardTexture:"repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 9px)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.16), transparent 44%, rgba(255,255,255,.07))", themePickerWidth:"545px" },
-      steel: { styleName:"Industrial plates", layoutName:"square factory blocks", radius:"8px", cardRadius:"6px", buttonRadius:"6px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".055em", panelPad:"11px", bodyPad:"11px", headPad:"10px 13px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".08em", cardPad:"10px 12px", cardGap:"8px", sectionInset:"0", cardAccent:"outline", cardAccentSize:"1px", buttonPad:"8px 11px", buttonJustify:"center", panelShadow:"0 16px 0 rgba(0,0,0,.20),0 28px 70px rgba(0,0,0,.60)", cardShadow:"0 8px 0 rgba(0,0,0,.20),0 17px 30px rgba(0,0,0,.28)", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.055) 0 2px, transparent 2px 10px)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.13), transparent 52%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.07), transparent 56%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.12))", themePickerWidth:"500px" },
-      candy: { styleName:"Bubble pop", layoutName:"rounded playful cards", radius:"30px", cardRadius:"24px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", panelPad:"18px", bodyPad:"16px", headPad:"14px 18px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".02em", cardPad:"15px", cardGap:"14px", sectionInset:"0", cardAccent:"none", cardAccentSize:"0", buttonPad:"10px 18px", buttonJustify:"center", panelShadow:"0 30px 80px rgba(0,0,0,.50),0 0 40px var(--rwph-theme-line2)", cardShadow:"0 18px 42px rgba(0,0,0,.23), inset 0 1px 0 rgba(255,255,255,.10)", texture:"radial-gradient(circle at 20% 30%, rgba(255,255,255,.13), transparent 10%), radial-gradient(circle at 82% 18%, rgba(255,255,255,.09), transparent 12%)", headerTexture:"radial-gradient(circle at 20% 50%, rgba(255,255,255,.20), transparent 22%)", cardTexture:"radial-gradient(circle at 90% 15%, rgba(255,255,255,.13), transparent 20%)", buttonTexture:"radial-gradient(circle at 15% 20%, rgba(255,255,255,.28), transparent 22%)", themePickerWidth:"565px" },
-      midnight: { styleName:"Noir matte", layoutName:"minimal low-glow panels", radius:"12px", cardRadius:"10px", buttonRadius:"8px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", panelPad:"12px", bodyPad:"12px", headPad:"10px 12px", headJustify:"space-between", headAlign:"center", headCase:"none", headTracking:".01em", cardPad:"11px", cardGap:"9px", sectionInset:"0", cardAccent:"none", cardAccentSize:"0", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 18px 50px rgba(0,0,0,.72)", cardShadow:"0 8px 22px rgba(0,0,0,.30)", texture:"linear-gradient(180deg, rgba(255,255,255,.025), transparent 52%)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.07), transparent 45%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.035), transparent 60%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.075), transparent 60%)", themePickerWidth:"500px" },
-      lava: { styleName:"Cracked heat", layoutName:"staggered molten cards", radius:"13px", cardRadius:"10px", buttonRadius:"8px 18px 8px 18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".055em", panelPad:"13px 15px", bodyPad:"12px 15px 15px", headPad:"12px 16px", headJustify:"flex-start", headAlign:"center", headCase:"uppercase", headTracking:".07em", cardPad:"12px 14px", cardGap:"11px", sectionInset:"2px", cardAccent:"right", cardAccentSize:"5px", buttonPad:"9px 13px", buttonJustify:"flex-start", panelShadow:"10px 23px 65px rgba(0,0,0,.64),0 0 32px var(--rwph-theme-line)", cardShadow:"7px 10px 28px rgba(0,0,0,.30)", texture:"linear-gradient(35deg, transparent 0 47%, rgba(255,255,255,.075) 47% 49%, transparent 49%), linear-gradient(145deg, transparent 0 63%, rgba(255,255,255,.045) 63% 65%, transparent 65%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 36%)", cardTexture:"linear-gradient(145deg, transparent 0 72%, rgba(255,255,255,.065) 72% 74%, transparent 74%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 48%)", themePickerWidth:"520px" },
-      ice: { styleName:"Frosted soft", layoutName:"spacious frosted panels", radius:"26px", cardRadius:"20px", buttonRadius:"18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", panelPad:"18px", bodyPad:"18px", headPad:"15px 18px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".035em", cardPad:"16px", cardGap:"15px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"4px", buttonPad:"11px 17px", buttonJustify:"center", panelShadow:"0 30px 86px rgba(0,0,0,.50),0 0 42px var(--rwph-theme-line2)", cardShadow:"0 20px 48px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.13)", texture:"radial-gradient(circle at 30% 0%, rgba(255,255,255,.17), transparent 31%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.24), transparent 52%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.13), transparent 57%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.23), transparent 56%)", themePickerWidth:"580px" },
-      toxic: { styleName:"Hazard control", layoutName:"warning stripe compact controls", radius:"9px", cardRadius:"7px", buttonRadius:"6px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".085em", panelPad:"11px", bodyPad:"11px", headPad:"10px 14px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"10px 12px", cardGap:"8px", sectionInset:"0", cardAccent:"left", cardAccentSize:"7px", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 18px 0 rgba(0,0,0,.22),0 31px 70px rgba(0,0,0,.58)", cardShadow:"0 12px 0 rgba(0,0,0,.20),0 20px 36px rgba(0,0,0,.25)", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.085) 0 4px, transparent 4px 16px)", headerTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 6px, transparent 6px 18px)", cardTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 3px, transparent 3px 14px)", buttonTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.15) 0 5px, transparent 5px 16px)", themePickerWidth:"510px" },
-      sunset: { styleName:"Sunset split", layoutName:"soft split side-weight cards", radius:"26px 12px 26px 12px", cardRadius:"20px 10px 20px 10px", buttonRadius:"18px 8px 18px 8px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", panelPad:"16px", bodyPad:"15px", headPad:"13px 17px", headJustify:"flex-start", headAlign:"center", headCase:"none", headTracking:".025em", cardPad:"14px", cardGap:"13px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"5px", buttonPad:"10px 15px", buttonJustify:"flex-start", panelShadow:"-14px 24px 74px rgba(0,0,0,.56),0 0 36px var(--rwph-theme-line2)", cardShadow:"-8px 14px 34px rgba(0,0,0,.25)", texture:"radial-gradient(circle at 0% 0%, rgba(255,255,255,.12), transparent 33%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 48%)", cardTexture:"radial-gradient(circle at 100% 100%, rgba(255,255,255,.11), transparent 31%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.19), transparent 55%)", themePickerWidth:"545px" },
-      cyberpunk: { styleName:"Cyber grid", layoutName:"console grid panels", radius:"6px", cardRadius:"5px", buttonRadius:"4px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".10em", panelPad:"10px", bodyPad:"10px", headPad:"10px 12px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".12em", cardPad:"10px", cardGap:"7px", sectionInset:"0", cardAccent:"outline", cardAccentSize:"1px", buttonPad:"8px 10px", buttonJustify:"center", panelShadow:"0 0 0 1px var(--rwph-theme-line2),0 0 46px var(--rwph-theme-line),0 26px 66px rgba(0,0,0,.66)", cardShadow:"0 0 0 1px var(--rwph-theme-line),0 0 24px rgba(0,0,0,.28)", texture:"linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px)", textureSize:"18px 18px", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.15), transparent 36%)", cardTexture:"linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)", cardTextureSize:"16px 16px", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.17), transparent 42%)", themePickerWidth:"530px" },
-      emerald: { styleName:"Gem console", layoutName:"feature cards with glow left edge", radius:"18px 18px 6px 18px", cardRadius:"16px 16px 5px 16px", buttonRadius:"12px 12px 4px 12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", panelPad:"15px", bodyPad:"14px 15px 16px", headPad:"13px 16px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".03em", cardPad:"14px 15px", cardGap:"12px", sectionInset:"2px", cardAccent:"left", cardAccentSize:"5px", buttonPad:"9px 14px", buttonJustify:"center", panelShadow:"0 24px 76px rgba(0,0,0,.60),0 0 34px var(--rwph-theme-line)", cardShadow:"0 16px 38px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.08)", texture:"linear-gradient(135deg, rgba(255,255,255,.10), transparent 30%, rgba(255,255,255,.045) 65%, transparent)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 43%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.09), transparent 56%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.19), transparent 55%)", themePickerWidth:"540px" },
-      ruby: { styleName:"Ruby blade", layoutName:"angled blade panels", radius:"5px 20px 5px 20px", cardRadius:"4px 18px 4px 18px", buttonRadius:"3px 16px 3px 16px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".065em", panelPad:"10px 12px", bodyPad:"11px 12px", headPad:"10px 13px", headJustify:"flex-start", headAlign:"center", headCase:"uppercase", headTracking:".09em", cardPad:"10px 13px", cardGap:"8px", sectionInset:"0", cardAccent:"right", cardAccentSize:"6px", buttonPad:"8px 12px", buttonJustify:"flex-start", panelShadow:"14px 21px 66px rgba(0,0,0,.64),0 0 28px var(--rwph-theme-line)", cardShadow:"9px 11px 28px rgba(0,0,0,.29)", texture:"linear-gradient(120deg, transparent 0 38%, rgba(255,255,255,.085) 38% 40%, transparent 40%)", headerTexture:"linear-gradient(120deg, rgba(255,255,255,.18) 0 26%, transparent 26%)", cardTexture:"linear-gradient(120deg, rgba(255,255,255,.065), transparent 51%)", buttonTexture:"linear-gradient(120deg, rgba(255,255,255,.18) 0 34%, transparent 34%)", themePickerWidth:"505px" },
-      aqua: { styleName:"Ripple glass", layoutName:"calm ripple cards", radius:"20px", cardRadius:"15px", buttonRadius:"14px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".025em", panelPad:"15px", bodyPad:"14px", headPad:"13px 16px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".03em", cardPad:"13px 15px", cardGap:"12px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"3px", buttonPad:"9px 15px", buttonJustify:"center", panelShadow:"0 23px 70px rgba(0,0,0,.56),0 0 36px var(--rwph-theme-line2)", cardShadow:"0 15px 38px rgba(0,0,0,.23), inset 0 0 25px rgba(255,255,255,.035)", texture:"radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.10), transparent 35%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 47%)", cardTexture:"radial-gradient(ellipse at 50% 100%, rgba(255,255,255,.08), transparent 34%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 54%)", themePickerWidth:"550px" },
-      amber: { styleName:"Noir ledger", layoutName:"framed dark accounting cards", radius:"11px", cardRadius:"9px", buttonRadius:"7px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".075em", panelPad:"11px", bodyPad:"11px", headPad:"11px 13px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".08em", cardPad:"10px 12px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 21px 60px rgba(0,0,0,.70), inset 0 0 0 1px var(--rwph-theme-line2)", cardShadow:"inset 0 0 0 1px rgba(255,255,255,.07),0 14px 32px rgba(0,0,0,.32)", texture:"linear-gradient(180deg, rgba(255,255,255,.035), transparent 50%)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.12), transparent 46%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.06), transparent 54%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.13), rgba(0,0,0,.10))", themePickerWidth:"505px" },
-      violetstorm: { styleName:"Storm split", layoutName:"left-weight storm panels", radius:"16px 6px 16px 6px", cardRadius:"14px 5px 14px 5px", buttonRadius:"10px 5px 10px 5px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".09em", panelPad:"12px 15px", bodyPad:"12px 15px", headPad:"11px 15px", headJustify:"flex-start", headAlign:"center", headCase:"uppercase", headTracking:".09em", cardPad:"12px 13px", cardGap:"10px", sectionInset:"1px", cardAccent:"left", cardAccentSize:"4px", buttonPad:"8px 13px", buttonJustify:"flex-start", panelShadow:"-12px 22px 70px rgba(0,0,0,.62),0 0 32px var(--rwph-theme-line)", cardShadow:"-7px 13px 32px rgba(0,0,0,.27)", texture:"linear-gradient(135deg, rgba(255,255,255,.06), transparent 38%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 44%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.07), transparent 54%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.16), transparent 52%)", themePickerWidth:"520px" },
-      desert: { styleName:"Parchment ledger", layoutName:"warm ledger cards", radius:"15px", cardRadius:"11px", buttonRadius:"9px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", panelPad:"14px", bodyPad:"13px 14px", headPad:"12px 15px", headJustify:"space-between", headAlign:"center", headCase:"none", headTracking:".02em", cardPad:"12px 14px", cardGap:"11px", sectionInset:"2px", cardAccent:"top", cardAccentSize:"2px", buttonPad:"9px 13px", buttonJustify:"flex-start", panelShadow:"0 24px 62px rgba(0,0,0,.60),4px 4px 0 rgba(255,255,255,.035)", cardShadow:"0 10px 22px rgba(0,0,0,.24),4px 4px 0 rgba(255,255,255,.03)", texture:"repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 13px)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.12), transparent 48%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.05), transparent 55%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.06))", themePickerWidth:"515px" },
-      ghost: { styleName:"Clean bright", layoutName:"clear bright cards", radius:"18px", cardRadius:"14px", buttonRadius:"12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", panelPad:"16px", bodyPad:"15px", headPad:"13px 16px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".03em", cardPad:"14px", cardGap:"12px", sectionInset:"1px", cardAccent:"none", cardAccentSize:"0", buttonPad:"9px 14px", buttonJustify:"center", panelShadow:"0 24px 74px rgba(0,0,0,.54),0 0 28px var(--rwph-theme-line2)", cardShadow:"0 16px 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.09)", texture:"radial-gradient(circle at 16% 0%, rgba(255,255,255,.10), transparent 31%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 50%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.08), transparent 58%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.14), transparent 55%)", themePickerWidth:"545px" },
-      royalgold: { styleName:"Crown command", layoutName:"gold framed command cards", radius:"12px", cardRadius:"10px", buttonRadius:"8px", borderWidth:"3px", borderStyle:"double", buttonCase:"uppercase", buttonTracking:".10em", panelPad:"12px", bodyPad:"12px", headPad:"12px 14px", headJustify:"center", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"11px 13px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", buttonPad:"8px 13px", buttonJustify:"center", panelShadow:"0 21px 64px rgba(0,0,0,.64),0 0 34px var(--rwph-theme-line2)", cardShadow:"inset 0 1px 0 rgba(255,255,255,.09),0 12px 30px rgba(0,0,0,.30)", texture:"linear-gradient(45deg, rgba(255,255,255,.07) 25%, transparent 25% 50%, rgba(255,255,255,.045) 50% 75%, transparent 75%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.09), transparent 56%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))", themePickerWidth:"525px" }
-    };
+    // v1.1.407: each colour preset now carries its own visual style, not just a colour swap.
+    const styleCycle = [
+      { styleName:"Classic plated", radius:"16px", cardRadius:"14px", buttonRadius:"12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", texture:"linear-gradient(135deg, rgba(255,255,255,.045) 0 1px, transparent 1px 11px)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.10), transparent 45%)", cardTexture:"radial-gradient(circle at 100% 0%, rgba(255,255,255,.08), transparent 26%)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.10), transparent 50%)" },
+      { styleName:"Glass waves", radius:"22px", cardRadius:"18px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"radial-gradient(ellipse at 10% 10%, rgba(255,255,255,.09), transparent 28%)", headerTexture:"linear-gradient(120deg, rgba(255,255,255,.16), transparent 38%)", cardTexture:"linear-gradient(145deg, rgba(255,255,255,.08), transparent 46%)", buttonTexture:"linear-gradient(145deg, rgba(255,255,255,.16), transparent 52%)" },
+      { styleName:"Leaf panels", radius:"18px 6px 18px 6px", cardRadius:"16px 6px 16px 6px", buttonRadius:"10px 20px 10px 20px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", texture:"radial-gradient(ellipse at 0% 100%, rgba(255,255,255,.07), transparent 33%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.10), transparent 45%)", cardTexture:"repeating-linear-gradient(45deg, rgba(255,255,255,.035) 0 1px, transparent 1px 12px)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.12), transparent 55%)" },
+      { styleName:"Royal bevel", radius:"10px", cardRadius:"8px", buttonRadius:"8px", borderWidth:"2px", borderStyle:"double", buttonCase:"uppercase", buttonTracking:".06em", texture:"linear-gradient(45deg, rgba(255,255,255,.055) 25%, transparent 25% 50%, rgba(255,255,255,.035) 50% 75%, transparent 75%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.15), rgba(0,0,0,.05))", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.08), transparent 55%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.08))" },
+      { styleName:"Sharp cuts", radius:"4px", cardRadius:"4px", buttonRadius:"3px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".07em", texture:"linear-gradient(135deg, transparent 0 42%, rgba(255,255,255,.055) 42% 44%, transparent 44% 100%)", headerTexture:"linear-gradient(110deg, rgba(255,255,255,.15) 0 18%, transparent 18% 100%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.05), transparent 50%)", buttonTexture:"linear-gradient(110deg, rgba(255,255,255,.15) 0 35%, transparent 35%)" },
+      { styleName:"Scanline neon", radius:"14px", cardRadius:"12px", buttonRadius:"10px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"repeating-linear-gradient(0deg, rgba(255,255,255,.045) 0 1px, transparent 1px 7px)", headerTexture:"repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 2px, transparent 2px 12px)", cardTexture:"repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 9px)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.14), transparent 44%, rgba(255,255,255,.06))" },
+      { styleName:"Industrial steel", radius:"8px", cardRadius:"6px", buttonRadius:"6px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".05em", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 10px)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.12), transparent 50%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.06), transparent 54%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.12))" },
+      { styleName:"Bubble pop", radius:"28px", cardRadius:"24px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".01em", texture:"radial-gradient(circle at 20% 30%, rgba(255,255,255,.11), transparent 10%), radial-gradient(circle at 82% 18%, rgba(255,255,255,.08), transparent 12%)", headerTexture:"radial-gradient(circle at 20% 50%, rgba(255,255,255,.18), transparent 22%)", cardTexture:"radial-gradient(circle at 90% 15%, rgba(255,255,255,.12), transparent 18%)", buttonTexture:"radial-gradient(circle at 15% 20%, rgba(255,255,255,.28), transparent 22%)" },
+      { styleName:"Minimal matte", radius:"12px", cardRadius:"10px", buttonRadius:"8px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", texture:"linear-gradient(180deg, rgba(255,255,255,.025), transparent 50%)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.07), transparent 45%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.035), transparent 60%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.075), transparent 60%)" },
+      { styleName:"Cracked heat", radius:"13px", cardRadius:"10px", buttonRadius:"8px 18px 8px 18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".05em", texture:"linear-gradient(35deg, transparent 0 47%, rgba(255,255,255,.07) 47% 49%, transparent 49% 100%), linear-gradient(145deg, transparent 0 63%, rgba(255,255,255,.045) 63% 65%, transparent 65%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.16), transparent 35%)", cardTexture:"linear-gradient(145deg, transparent 0 72%, rgba(255,255,255,.06) 72% 74%, transparent 74%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 48%)" },
+      { styleName:"Frosted soft", radius:"24px", cardRadius:"20px", buttonRadius:"18px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", texture:"radial-gradient(circle at 30% 0%, rgba(255,255,255,.16), transparent 30%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.22), transparent 50%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.12), transparent 55%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.22), transparent 55%)" },
+      { styleName:"Hazard slashes", radius:"10px", cardRadius:"8px", buttonRadius:"6px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"repeating-linear-gradient(135deg, rgba(255,255,255,.08) 0 4px, transparent 4px 16px)", headerTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.13) 0 6px, transparent 6px 18px)", cardTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 3px, transparent 3px 14px)", buttonTexture:"repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 5px, transparent 5px 16px)" },
+      { styleName:"Soft sunset", radius:"26px 12px 26px 12px", cardRadius:"20px 10px 20px 10px", buttonRadius:"18px 8px 18px 8px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"radial-gradient(circle at 0% 0%, rgba(255,255,255,.11), transparent 32%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.16), transparent 48%)", cardTexture:"radial-gradient(circle at 100% 100%, rgba(255,255,255,.10), transparent 30%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 54%)" },
+      { styleName:"Cyber grid", radius:"6px", cardRadius:"5px", buttonRadius:"4px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".09em", texture:"linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px)", textureSize:"18px 18px", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.14), transparent 35%)", cardTexture:"linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px)", cardTextureSize:"16px 16px", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.16), transparent 42%)" },
+      { styleName:"Gem glow", radius:"18px 18px 6px 18px", cardRadius:"16px 16px 5px 16px", buttonRadius:"12px 12px 4px 12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"linear-gradient(135deg, rgba(255,255,255,.09), transparent 30%, rgba(255,255,255,.04) 65%, transparent)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.17), transparent 42%)", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.08), transparent 55%)", buttonTexture:"linear-gradient(135deg, rgba(255,255,255,.18), transparent 54%)" },
+      { styleName:"Blade ruby", radius:"5px 20px 5px 20px", cardRadius:"4px 18px 4px 18px", buttonRadius:"3px 16px 3px 16px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".06em", texture:"linear-gradient(120deg, transparent 0 38%, rgba(255,255,255,.08) 38% 40%, transparent 40% 100%)", headerTexture:"linear-gradient(120deg, rgba(255,255,255,.17) 0 26%, transparent 26%)", cardTexture:"linear-gradient(120deg, rgba(255,255,255,.06), transparent 50%)", buttonTexture:"linear-gradient(120deg, rgba(255,255,255,.16), transparent 48%)" },
+      { styleName:"Aqua ripples", radius:"20px", cardRadius:"16px", buttonRadius:"999px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".02em", texture:"repeating-radial-gradient(circle at 20% 20%, rgba(255,255,255,.055) 0 2px, transparent 2px 18px)", headerTexture:"linear-gradient(100deg, rgba(255,255,255,.16), transparent 48%)", cardTexture:"repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,.045) 0 2px, transparent 2px 16px)", buttonTexture:"linear-gradient(100deg, rgba(255,255,255,.18), transparent 52%)" },
+      { styleName:"Noir plaque", radius:"7px", cardRadius:"6px", buttonRadius:"4px", borderWidth:"2px", borderStyle:"ridge", buttonCase:"uppercase", buttonTracking:".065em", texture:"linear-gradient(180deg, rgba(255,255,255,.05), transparent 45%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.14))", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.06), transparent 54%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.16))" },
+      { styleName:"Storm arcs", radius:"16px 6px 16px 6px", cardRadius:"14px 5px 14px 5px", buttonRadius:"10px 5px 10px 5px", borderWidth:"1px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".07em", texture:"radial-gradient(ellipse at 100% 0%, rgba(255,255,255,.10), transparent 22%), linear-gradient(150deg, transparent 0 58%, rgba(255,255,255,.06) 58% 60%, transparent 60%)", headerTexture:"linear-gradient(150deg, rgba(255,255,255,.17), transparent 46%)", cardTexture:"linear-gradient(150deg, rgba(255,255,255,.07), transparent 52%)", buttonTexture:"linear-gradient(150deg, rgba(255,255,255,.17), transparent 50%)" },
+      { styleName:"Parchment cards", radius:"12px", cardRadius:"2px 18px 2px 18px", buttonRadius:"2px 14px 2px 14px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".015em", texture:"repeating-linear-gradient(0deg, rgba(255,255,255,.045) 0 1px, transparent 1px 13px)", headerTexture:"linear-gradient(90deg, rgba(255,255,255,.12), transparent 45%)", cardTexture:"repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 11px)", buttonTexture:"linear-gradient(90deg, rgba(255,255,255,.15), transparent 48%)" },
+      { styleName:"Clean ghost", radius:"18px", cardRadius:"14px", buttonRadius:"12px", borderWidth:"1px", borderStyle:"solid", buttonCase:"none", buttonTracking:".025em", texture:"linear-gradient(180deg, rgba(255,255,255,.08), transparent 55%)", headerTexture:"linear-gradient(135deg, rgba(255,255,255,.14), transparent 48%)", cardTexture:"linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.16), transparent 56%)" },
+      { styleName:"Crown trim", radius:"14px 14px 4px 4px", cardRadius:"12px 12px 4px 4px", buttonRadius:"10px 10px 3px 3px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"linear-gradient(90deg, rgba(255,255,255,.08), transparent 28%, rgba(255,255,255,.04) 72%, transparent)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.04))", cardTexture:"linear-gradient(90deg, rgba(255,255,255,.06), transparent 52%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))" }
+    ];
 
-    const layoutProfiles = {
-      bronze: { layoutMode:"foundryStack", mainWidth:"min(760px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"1fr", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"1fr", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"38px", paymentCols:"minmax(0,1fr) auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"row", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      blue: { layoutMode:"glassDashboard", mainWidth:"min(940px, calc(100vw - 22px))", floatingWidth:"min(700px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"16px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"42px", paymentCols:"minmax(0,1.2fr) minmax(110px,.55fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) auto", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto auto", headerFlow:"column", popupWidth:"min(460px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      green: { layoutMode:"forestLedger", mainWidth:"min(820px, calc(100vw - 22px))", floatingWidth:"min(650px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"12px", controlGridCols:"minmax(0,1fr) minmax(180px,.65fr)", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"40px", paymentCols:"minmax(0,1fr) 96px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(130px,.45fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"minmax(0,1fr) minmax(160px,.5fr)", resultCardCols:"minmax(0,1fr) minmax(150px,.45fr)", headerFlow:"row", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      purple: { layoutMode:"royalBoxes", mainWidth:"min(790px, calc(100vw - 22px))", floatingWidth:"min(610px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"10px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"38px", paymentCols:"1fr 1fr", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"1fr 1fr", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"1fr", headerFlow:"column", popupWidth:"min(410px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      crimson: { layoutMode:"commandCompact", mainWidth:"min(720px, calc(100vw - 22px))", floatingWidth:"min(560px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"7px", controlGridCols:"repeat(3,minmax(0,1fr))", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"34px", paymentCols:"minmax(0,1fr) 90px 86px", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) 96px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(4,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"row", popupWidth:"min(390px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      neon: { layoutMode:"terminalRows", mainWidth:"min(860px, calc(100vw - 22px))", floatingWidth:"min(680px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"9px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 120px 100px", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(180px,.55fr)", memberStatCols:"repeat(4,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 130px 110px", headerFlow:"row", popupWidth:"min(440px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr", layoutFont:"Consolas, 'Courier New', monospace" },
-      steel: { layoutMode:"factoryGrid", mainWidth:"min(900px, calc(100vw - 22px))", floatingWidth:"min(720px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"repeat(3,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(4,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 100px 90px 90px", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) 110px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(4,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px 100px", headerFlow:"row", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      candy: { layoutMode:"bubbleCards", mainWidth:"min(880px, calc(100vw - 22px))", floatingWidth:"min(710px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"18px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"flex", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"46px", paymentCols:"1fr", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"1fr", headerFlow:"column", popupWidth:"min(450px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      midnight: { layoutMode:"noirMinimal", mainWidth:"min(700px, calc(100vw - 22px))", floatingWidth:"min(560px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"1fr", cardDisplay:"block", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"1fr", actionJustify:"flex-end", buttonWidth:"auto", buttonMinHeight:"34px", paymentCols:"minmax(0,1fr) auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"1fr", resultCardCols:"minmax(0,1fr) auto", headerFlow:"row", popupWidth:"min(380px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      lava: { layoutMode:"moltenStagger", mainWidth:"min(830px, calc(100vw - 22px))", floatingWidth:"min(650px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"13px", controlGridCols:"minmax(0,1fr) minmax(0,1fr)", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"40px", paymentCols:"minmax(0,1fr) 120px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) 145px", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 140px", headerFlow:"row", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      ice: { layoutMode:"frostAiry", mainWidth:"min(960px, calc(100vw - 22px))", floatingWidth:"min(730px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"18px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"space-around", buttonWidth:"auto", buttonMinHeight:"44px", paymentCols:"minmax(0,1.4fr) minmax(100px,.45fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto auto", headerFlow:"column", popupWidth:"min(470px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      toxic: { layoutMode:"hazardControls", mainWidth:"min(780px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"7px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 92px 92px", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) 100px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px", headerFlow:"row", popupWidth:"min(405px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      sunset: { layoutMode:"sunsetSide", mainWidth:"min(850px, calc(100vw - 22px))", floatingWidth:"min(690px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"15px", controlGridCols:"minmax(0,.8fr) minmax(0,1.2fr)", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"42px", paymentCols:"minmax(0,1fr) minmax(100px,.45fr) auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(140px,.45fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"minmax(0,1.2fr) minmax(0,.8fr)", resultCardCols:"minmax(0,1fr) minmax(130px,.42fr)", headerFlow:"row", popupWidth:"min(445px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      cyberpunk: { layoutMode:"cyberConsole", mainWidth:"min(930px, calc(100vw - 22px))", floatingWidth:"min(720px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"7px", controlGridCols:"repeat(4,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(4,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"34px", paymentCols:"minmax(0,1fr) 90px 90px 90px", memberListCols:"repeat(3,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(4,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 110px 95px", headerFlow:"row", popupWidth:"min(440px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))", layoutFont:"Consolas, 'Courier New', monospace" },
-      emerald: { layoutMode:"gemFeature", mainWidth:"min(870px, calc(100vw - 22px))", floatingWidth:"min(680px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"14px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"40px", paymentCols:"minmax(0,1fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"column", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      ruby: { layoutMode:"bladeRows", mainWidth:"min(740px, calc(100vw - 22px))", floatingWidth:"min(590px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"minmax(0,1fr) 150px", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 100px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) 120px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px", headerFlow:"row", popupWidth:"min(405px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      aqua: { layoutMode:"ripplePanels", mainWidth:"min(900px, calc(100vw - 22px))", floatingWidth:"min(710px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"14px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"space-between", buttonWidth:"auto", buttonMinHeight:"41px", paymentCols:"minmax(0,1fr) minmax(110px,.5fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"column", popupWidth:"min(455px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      amber: { layoutMode:"accountingFrame", mainWidth:"min(800px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"9px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"37px", paymentCols:"minmax(0,1fr) 110px", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) 130px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px 96px", headerFlow:"row", popupWidth:"min(415px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      violetstorm: { layoutMode:"stormRail", mainWidth:"min(810px, calc(100vw - 22px))", floatingWidth:"min(660px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"10px", controlGridCols:"minmax(0,1fr) minmax(160px,.6fr)", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"39px", paymentCols:"minmax(0,1fr) 120px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(140px,.45fr)", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"minmax(0,1fr) minmax(170px,.55fr)", resultCardCols:"minmax(0,1fr) 140px", headerFlow:"row", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      desert: { layoutMode:"ledgerWarm", mainWidth:"min(835px, calc(100vw - 22px))", floatingWidth:"min(650px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"11px", controlGridCols:"minmax(0,1fr) minmax(0,1fr)", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"minmax(0,1fr) minmax(0,1fr)", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"39px", paymentCols:"minmax(0,1fr) 115px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 130px", headerFlow:"row", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
-      ghost: { layoutMode:"cleanCards", mainWidth:"min(920px, calc(100vw - 22px))", floatingWidth:"min(710px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"15px", controlGridCols:"repeat(3,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"42px", paymentCols:"minmax(0,1.1fr) minmax(100px,.45fr) auto", memberListCols:"repeat(3,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto auto", headerFlow:"column", popupWidth:"min(460px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
-      royalgold: { layoutMode:"crownCommand", mainWidth:"min(780px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"9px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"38px", paymentCols:"1fr 1fr", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"1fr", headerFlow:"column", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" }
-    };
-
-    Object.keys(palettes).forEach((key) => {
-      const p = palettes[key];
-      const profile = profiles[key] || profiles.bronze;
-      const layoutProfile = layoutProfiles[key] || layoutProfiles.bronze;
-      Object.assign(p, profile, layoutProfile, {
-        panelBg: `${profile.texture || ""}${profile.texture ? "," : ""}radial-gradient(circle at 16% 0%, ${p.line2}, transparent 34%),radial-gradient(circle at 92% 8%, ${p.line}, transparent 34%),linear-gradient(180deg, ${p.panel}, ${p.bg})`,
-        bodyBg: `radial-gradient(circle at 10% 0%, ${p.line2}, transparent 32%),linear-gradient(180deg, ${p.panel2}, ${p.bg})`,
-        cardBg: `${profile.cardTexture || ""}${profile.cardTexture ? "," : ""}radial-gradient(circle at 14% 0%, ${p.line2}, transparent 34%),linear-gradient(180deg, ${p.panel2}, ${p.panel})`,
-        headerBg: `${profile.headerTexture || ""}${profile.headerTexture ? "," : ""}radial-gradient(circle at 16% 0%, ${p.line2}, transparent 34%),linear-gradient(135deg, ${p.panel3}, ${p.panel})`,
-        buttonBg: `${profile.buttonTexture || ""}${profile.buttonTexture ? "," : ""}linear-gradient(180deg, ${p.panel3}, ${p.panel})`,
-        primaryBg: `linear-gradient(135deg, ${p.accent}, ${p.accent2})`,
-        inputBg: `linear-gradient(180deg, ${p.bg}, ${p.panel})`,
-        popupBg: `${profile.cardTexture || ""}${profile.cardTexture ? "," : ""}radial-gradient(circle at 20% 0%, ${p.line2}, transparent 36%),linear-gradient(135deg, ${p.bg}, ${p.panel}, ${p.panel2})`,
-        textureSize: profile.textureSize || "auto",
-        cardTextureSize: profile.cardTextureSize || profile.textureSize || "auto",
-        popupRadius: profile.cardRadius,
-        popupPad: profile.panelPad === "10px" ? "11px 38px 14px 15px" : "12px 40px 15px 16px",
-        closeRadius: profile.buttonRadius,
-        themePickerCols: layoutProfile.themePickerCols || "1fr"
-      });
+    Object.keys(presets).forEach((key, index) => {
+      Object.assign(presets[key], styleCycle[index % styleCycle.length]);
     });
-    return palettes;
+    return presets;
   }
 
   function rwphGetPanelThemeKey() {
-    const saved = String(GM_getValue(PANEL_THEME_STORAGE_KEY, "bronze") || "bronze").toLowerCase();
-    const presets = rwphPanelThemePresets();
-    return presets[saved] ? saved : "bronze";
+    // v1.1.428: theme/colour changer removed. Always use the fixed default RWPH panel style.
+    return "bronze";
   }
 
   function rwphGetPanelThemePreset(key = "") {
     const presets = rwphPanelThemePresets();
     return presets[String(key || rwphGetPanelThemeKey()).toLowerCase()] || presets.bronze;
-  }
-
-
-  function rwphAdvancedFeaturePositionCss(t) {
-    const mode = String(t?.layoutMode || "foundryStack");
-    const scope = `
-      #rw-payout-helper,
-      #rw-pay-all-panel,
-      .rw-pay-all-panel,
-      #rw-pay-all-copy-panel,
-      .rw-pay-all-copy-panel,
-      #rw-wrong-payment-panel,
-      #rwph-xanax-send-status,
-      #rwph-member-management-panel,
-      .rwph-member-management-panel,
-      .rwph-floating-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel,
-      .rw-results-panel,
-      .rwph-panel-theme-picker`;
-    const buttonScope = `
-      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-tab-btn,.rw-primary,.secondary,.danger,.success,[role="button"]),
-      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,[role="button"]),
-      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,[role="button"]),
-      #rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,.rw-pay-all-copy,[role="button"]),
-      .rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,.rw-pay-all-copy,[role="button"]),
-      #rwph-xanax-send-status :where(button,a.btn,.btn,[role="button"]),
-      #rwph-member-management-panel :where(button,a.btn,.btn,[role="button"]),
-      .rwph-floating-panel :where(button,a.btn,.btn,[role="button"]),
-      .rwph-results-loading-panel :where(button,a.btn,.btn,[role="button"]),
-      .rwph-results-html-panel :where(button,a.btn,.btn,[role="button"]),
-      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,[role="button"]),
-      .rwph-panel-theme-picker :where(button,a.btn,.btn,.rwph-theme-choice,[role="button"])`;
-
-    const fitCss = `
-      ${scope}{box-sizing:border-box!important;overflow:hidden!important;}
-      ${scope} *,
-      ${scope} *::before,
-      ${scope} *::after{box-sizing:border-box!important;}
-      ${scope} :where(.rw-body,.rw-pay-all-body,.rwph-mm-body,.rwph-xanax-scroll,.rwph-floating-panel-body,.rwph-loading-shell,.rwph-panel-theme-picker-body,.rwph-results-html-preview-wrap){
-        min-width:0!important;
-        max-width:100%!important;
-        overflow:auto!important;
-      }
-      ${scope} :where(.rw-card,.rw-box,.rw-section,details,.rw-pay-all-row,.rwph-mm-card,.rwph-xanax-detail-card,.summary-card,.result-card,.rwph-theme-choice){
-        min-width:0!important;
-        max-width:100%!important;
-      }
-      ${scope} :where(input,textarea,select){
-        max-width:100%!important;
-        min-width:0!important;
-      }
-      ${buttonScope}{
-        max-width:100%!important;
-        white-space:normal!important;
-        text-align:center!important;
-        transition:filter .12s ease, transform .12s ease, box-shadow .12s ease!important;
-      }
-      ${buttonScope}:active{transform:translateY(1px)!important;}
-
-      /* v1.1.427: button colours now come from each theme and cover normal, secondary, primary, copy, success and danger buttons. */
-      ${buttonScope}{
-        background:
-          ${t.buttonTexture ? `${t.buttonTexture},` : ""}
-          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 34%),
-          linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
-        border-color:${t.line2}!important;
-        color:${t.text}!important;
-      }
-      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.secondary,.secondary,.btn.secondary,.rw-tab-btn.secondary,.rw-pay-all-copy)')}{
-        background:
-          ${t.buttonTexture ? `${t.buttonTexture},` : ""}
-          linear-gradient(135deg, ${t.panel2}, ${t.bg2})!important;
-        border-color:${t.line}!important;
-        color:${t.soft}!important;
-      }
-      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.primary,.primary,.rw-primary,.rw-tab.active,.rw-tab-btn.active,[aria-selected="true"])')}{
-        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
-        border-color:${t.line2}!important;
-        color:${t.bg}!important;
-        box-shadow:0 12px 26px rgba(0,0,0,.30),0 0 22px ${t.line}!important;
-      }
-      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.danger,.danger,.rw-pay-all-close,#rwph-close-helper,#rwph-theme-picker-close)')}{
-        background:linear-gradient(135deg, ${t.danger}, ${t.bg})!important;
-        border-color:rgba(248,113,113,.62)!important;
-        color:#fee2e2!important;
-      }
-      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.success,.success,.rw-pay-all-accept-warning)')}{
-        background:linear-gradient(135deg, ${t.good}, ${t.panel2})!important;
-        border-color:${t.good}!important;
-        color:${t.bg}!important;
-      }
-    `;
-
-    const commonPositionCss = `
-      #rw-payout-helper .rw-tabs{order:1!important;}
-      #rw-payout-helper #rw-paywall-unlock-section{order:2!important;}
-      #rw-payout-helper details.rw-per-hit-settings{order:3!important;}
-      #rw-payout-helper details.rw-points-settings{order:4!important;}
-      #rw-payout-helper #rw-last-results-actions{order:5!important;}
-      #rw-payout-helper #rw-results-panel{order:6!important;}
-      #rw-payout-helper .rw-cache-tools{order:7!important;}
-      #rw-payout-helper .rw-mode-cache-tools{order:8!important;}
-      #rw-payout-helper .rw-settings-time-actions{order:9!important;}
-      #rw-payout-helper .rw-member-management-actions{order:10!important;}
-      #rw-payout-helper .rw-primary-calc-actions{order:11!important;}
-      #rw-payout-helper .rw-settings-calc-actions{order:12!important;}
-      #rw-payout-helper .rw-help-dropdown-content{order:20!important;}
-      #rw-payout-helper .rw-api-visible-card{order:21!important;}
-      #rw-payout-helper .rw-compact-check-grid,
-      #rw-payout-helper .rw-licence-control-grid,
-      #rw-payout-helper .rw-admin-status-grid,
-      #rw-payout-helper .rw-help-api-grid{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-control-grid-cols)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-      }
-    `;
-
-    const dashboardCss = `
-      #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper #rw-payout-tab{
-        display:grid!important;
-        grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
-        align-items:start!important;
-      }
-      #rw-payout-helper :where(.rw-tabs,.rw-actions,#rw-results-panel,#rw-last-results-actions,.rw-api-visible-card,.rw-help-dropdown-content){grid-column:1 / -1!important;}
-      #rw-payout-helper details.rw-per-hit-settings{grid-column:1!important;}
-      #rw-payout-helper details.rw-points-settings{grid-column:2!important;}
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;}
-      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1.2fr) minmax(88px,.35fr) auto!important;}
-    `;
-
-    const denseCss = `
-      #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;gap:var(--rwph-layout-section-gap)!important;}
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions,
-      #rw-payout-helper .rw-cache-tools,
-      #rw-payout-helper .rw-mode-cache-tools{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;}
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings{padding:calc(var(--rwph-theme-card-pad) - 2px)!important;}
-      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
-      #rwph-member-management-panel .rwph-mm-card{grid-template-columns:1fr!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1fr) 88px 88px 88px!important;}
-      ${buttonScope}{justify-content:center!important;}
-    `;
-
-    const stackCss = `
-      #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;}
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions{display:grid!important;grid-template-columns:1fr!important;}
-      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:1fr!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:1fr!important;}
-      ${buttonScope}{width:100%!important;justify-content:center!important;}
-    `;
-
-    const sideRailCss = `
-      #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper #rw-payout-tab{display:grid!important;grid-template-columns:minmax(180px,.42fr) minmax(0,1fr)!important;align-items:start!important;}
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-cache-tools,
-      #rw-payout-helper .rw-mode-cache-tools,
-      #rw-payout-helper .rw-settings-time-actions,
-      #rw-payout-helper .rw-member-management-actions{grid-column:1!important;}
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings,
-      #rw-payout-helper #rw-results-panel,
-      #rw-payout-helper #rw-last-results-actions{grid-column:2!important;}
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions{display:flex!important;justify-content:flex-start!important;}
-      #rwph-member-management-panel .rwph-mm-card{grid-template-columns:minmax(0,1fr) minmax(136px,.45fr)!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1fr) minmax(110px,.42fr) auto!important;}
-    `;
-
-    const centeredCss = `
-      #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;align-items:stretch!important;}
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card),
-      #rwph-member-management-panel .rwph-mm-card,
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,
-      #rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{text-align:center!important;}
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions{display:flex!important;justify-content:center!important;align-items:center!important;}
-      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:1fr!important;}
-      ${buttonScope}{width:auto!important;min-width:min(180px,100%)!important;justify-content:center!important;}
-    `;
-
-    const minimalCss = `
-      #rw-payout-helper > .rw-body,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;}
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions{display:flex!important;justify-content:flex-end!important;}
-      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:1fr!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1fr) auto!important;}
-      ${buttonScope}{width:auto!important;}
-    `;
-
-    let modeCss = stackCss;
-    if (["glassDashboard","frostAiry","cleanCards"].includes(mode)) modeCss = dashboardCss;
-    else if (["factoryGrid","commandCompact","hazardControls","cyberConsole","terminalRows"].includes(mode)) modeCss = denseCss;
-    else if (["forestLedger","sunsetSide","stormRail","ledgerWarm","moltenStagger","bladeRows"].includes(mode)) modeCss = sideRailCss;
-    else if (["bubbleCards","gemFeature","ripplePanels","crownCommand","royalBoxes"].includes(mode)) modeCss = centeredCss;
-    else if (["noirMinimal"].includes(mode)) modeCss = minimalCss;
-
-    return `${fitCss}\n${commonPositionCss}\n${modeCss}\n
-      @media (max-width: 780px){
-        #rw-payout-helper > .rw-body,
-        #rw-payout-helper .rw-unified-tab-panel,
-        #rw-payout-helper #rw-payout-tab,
-        #rw-payout-helper .rw-tabs,
-        #rw-payout-helper .rw-actions,
-        #rw-payout-helper .rw-primary-calc-actions,
-        #rw-payout-helper .rw-settings-calc-actions,
-        #rw-payout-helper .rw-settings-time-actions,
-        #rw-payout-helper .rw-cache-tools,
-        #rw-payout-helper .rw-mode-cache-tools,
-        #rwph-member-management-panel .rwph-mm-cards,
-        #rwph-member-management-panel .rwph-mm-card,
-        #rw-pay-all-panel .rw-pay-all-row,
-        .rw-pay-all-panel .rw-pay-all-row,
-        #rw-pay-all-copy-panel .rw-pay-all-row,
-        .rw-pay-all-copy-panel .rw-pay-all-row{
-          display:grid!important;
-          grid-template-columns:1fr!important;
-          grid-column:1 / -1!important;
-        }
-        ${buttonScope}{width:100%!important;min-width:0!important;}
-      }`;
   }
 
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
@@ -2800,24 +2533,6 @@
     const themeBorderStyle = t.borderStyle || "solid";
     const themeButtonCase = t.buttonCase || "none";
     const themeButtonTracking = t.buttonTracking || ".01em";
-    const themePanelPad = t.panelPad || "14px";
-    const themeBodyPad = t.bodyPad || "14px";
-    const themeHeadPad = t.headPad || "12px 14px";
-    const themeHeadJustify = t.headJustify || "space-between";
-    const themeHeadAlign = t.headAlign || "center";
-    const themeHeadCase = t.headCase || "none";
-    const themeHeadTracking = t.headTracking || ".015em";
-    const themeCardPad = t.cardPad || "12px";
-    const themeCardGap = t.cardGap || "10px";
-    const themeSectionInset = t.sectionInset || "0";
-    const themeCardAccent = t.cardAccent || "left";
-    const themeCardAccentSize = t.cardAccentSize || "4px";
-    const themeCardShadow = t.cardShadow || "0 12px 28px rgba(0,0,0,.22)";
-    const themeButtonPad = t.buttonPad || "9px 12px";
-    const themeButtonJustify = t.buttonJustify || "center";
-    const themePanelShadow = t.panelShadow || "0 22px 70px rgba(0,0,0,.62),0 0 34px var(--rwph-theme-line)";
-    const themePickerWidth = t.themePickerWidth || "520px";
-    const themePickerCols = t.themePickerCols || "1fr";
     const standaloneScope = includeStandalonePage ? `
       body,
       .app,
@@ -2847,66 +2562,19 @@
         --rwph-theme-orange:${t.accent2};
         --rwph-theme-green:${t.good};
         --rwph-theme-red:${t.danger};
-        --rwph-theme-shadow:${themePanelShadow};
+        --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 34px ${t.line};
         --rwph-theme-radius:${themeRadius};
         --rwph-theme-card-radius:${themeCardRadius};
         --rwph-theme-button-radius:${themeButtonRadius};
         --rwph-theme-border-width:${themeBorderWidth};
         --rwph-theme-border-style:${themeBorderStyle};
-        --rwph-theme-panel-pad:${themePanelPad};
-        --rwph-theme-body-pad:${themeBodyPad};
-        --rwph-theme-head-pad:${themeHeadPad};
-        --rwph-theme-head-justify:${themeHeadJustify};
-        --rwph-theme-head-align:${themeHeadAlign};
-        --rwph-theme-head-case:${themeHeadCase};
-        --rwph-theme-head-tracking:${themeHeadTracking};
-        --rwph-theme-card-pad:${themeCardPad};
-        --rwph-theme-card-gap:${themeCardGap};
-        --rwph-theme-section-inset:${themeSectionInset};
-        --rwph-theme-card-accent:${themeCardAccent};
-        --rwph-theme-card-accent-size:${themeCardAccentSize};
-        --rwph-theme-card-shadow:${themeCardShadow};
-        --rwph-theme-button-pad:${themeButtonPad};
-        --rwph-theme-button-justify:${themeButtonJustify};
-        --rwph-theme-picker-width:${themePickerWidth};
-        --rwph-theme-picker-cols:${themePickerCols};
-        --rwph-layout-mode:${t.layoutMode || "foundryStack"};
-        --rwph-layout-main-width:${t.mainWidth || "min(780px, calc(100vw - 22px))"};
-        --rwph-layout-floating-width:${t.floatingWidth || "min(620px, calc(100vw - 22px))"};
-        --rwph-layout-body-flow:${t.bodyFlow || "column"};
-        --rwph-layout-section-gap:${t.sectionGap || themeCardGap};
-        --rwph-layout-control-grid-cols:${t.controlGridCols || "repeat(2,minmax(0,1fr))"};
-        --rwph-layout-card-display:${t.cardDisplay || "flex"};
-        --rwph-layout-card-flow:${t.cardFlow || "column"};
-        --rwph-layout-card-align:${t.cardAlign || "stretch"};
-        --rwph-layout-card-text-align:${t.cardTextAlign || "left"};
-        --rwph-layout-actions-display:${t.actionsDisplay || "flex"};
-        --rwph-layout-actions-cols:${t.actionsCols || "repeat(2,minmax(0,1fr))"};
-        --rwph-layout-action-justify:${t.actionJustify || themeButtonJustify};
-        --rwph-layout-button-width:${t.buttonWidth || "auto"};
-        --rwph-layout-button-min-height:${t.buttonMinHeight || "38px"};
-        --rwph-layout-payment-cols:${t.paymentCols || "minmax(0,1fr) auto"};
-        --rwph-layout-member-list-cols:${t.memberListCols || "1fr"};
-        --rwph-layout-member-card-cols:${t.memberCardCols || "minmax(0,1fr)"};
-        --rwph-layout-member-stat-cols:${t.memberStatCols || "repeat(2,minmax(0,1fr))"};
-        --rwph-layout-result-summary-cols:${t.resultSummaryCols || "repeat(2,minmax(0,1fr))"};
-        --rwph-layout-result-card-cols:${t.resultCardCols || "minmax(0,1fr) auto"};
-        --rwph-layout-header-flow:${t.headerFlow || "row"};
-        --rwph-layout-popup-width:${t.popupWidth || "min(420px, calc(100vw - 20px))"};
-        --rwph-layout-popup-text-align:${t.popupTextAlign || "left"};
-        --rwph-layout-font:${t.layoutFont || "inherit"};
       }
 
       ${standaloneScope}
       #rw-payout-helper,
       #rw-pay-all-panel,
       .rw-pay-all-panel,
-      #rw-pay-all-copy-panel,
-      .rw-pay-all-copy-panel,
-      #rw-wrong-payment-panel,
       #rwph-xanax-send-status,
-      #rwph-member-management-panel,
-      .rwph-member-management-panel,
       .rwph-floating-panel,
       .rwph-results-loading-panel,
       .rwph-results-html-panel,
@@ -2932,8 +2600,6 @@
       [id^="rwph-"][class*="panel"],
       [class^="rwph-"][class*="panel"],
       [class*="rwph-"][class*="panel"],
-      #rwphFullPopupPanelLive,
-      .rwph-info-popup-panel,
       .rwph-panel-theme-picker{
         background:
           ${themeTexture}
@@ -2954,10 +2620,6 @@
       #rw-payout-helper .rw-tabbar,
       #rw-pay-all-panel .rw-pay-all-head,
       .rw-pay-all-panel .rw-pay-all-head,
-      #rw-pay-all-copy-panel .rw-pay-all-head,
-      .rw-pay-all-copy-panel .rw-pay-all-head,
-      #rwph-member-management-panel .rwph-mm-toolbar,
-      #rwph-member-management-panel .rwph-mm-status,
       .rwph-floating-panel .rwph-panel-head,
       .rwph-results-loading-panel .rwph-results-loading-head,
       .rwph-results-html-head,
@@ -2982,13 +2644,6 @@
       #rw-pay-all-panel a.btn,
       .rw-pay-all-panel button,
       .rw-pay-all-panel a.btn,
-      #rw-pay-all-copy-panel button,
-      #rw-pay-all-copy-panel a.btn,
-      .rw-pay-all-copy-panel button,
-      .rw-pay-all-copy-panel a.btn,
-      #rwph-member-management-panel button,
-      #rwph-member-management-panel a.btn,
-      .rwph-info-popup-close,
       .rwph-floating-panel button,
       .rwph-floating-panel a.btn,
       .rwph-results-html-panel button,
@@ -3011,8 +2666,6 @@
       #rw-payout-helper [aria-selected="true"],
       #rw-pay-all-panel .primary,
       .rw-pay-all-panel .primary,
-      #rw-pay-all-copy-panel .primary,
-      .rw-pay-all-copy-panel .primary,
       .rwph-floating-panel .primary,
       .rwph-results-html-panel .primary,
       .rw-results-panel .primary{
@@ -3032,12 +2685,6 @@
       #rw-pay-all-panel h2,
       .rw-pay-all-panel h1,
       .rw-pay-all-panel h2,
-      #rw-pay-all-copy-panel h1,
-      #rw-pay-all-copy-panel h2,
-      .rw-pay-all-copy-panel h1,
-      .rw-pay-all-copy-panel h2,
-      #rwph-member-management-panel .rwph-mm-title,
-      .rwph-info-popup-title,
       .rwph-floating-panel h1,
       .rwph-floating-panel h2,
       .rwph-results-loading-panel h1,
@@ -3060,10 +2707,6 @@
       #rw-payout-helper .rw-calc-brief,
       #rw-pay-all-panel .muted,
       .rw-pay-all-panel .muted,
-      #rw-pay-all-copy-panel .muted,
-      .rw-pay-all-copy-panel .muted,
-      #rwph-member-management-panel .rwph-mm-sub,
-      .rwph-info-popup-message,
       .rwph-floating-panel .muted,
       .rwph-results-loading-panel .muted,
       .rwph-results-html-note,
@@ -3083,15 +2726,6 @@
       .rw-pay-all-panel input,
       .rw-pay-all-panel textarea,
       .rw-pay-all-panel select,
-      #rw-pay-all-copy-panel input,
-      #rw-pay-all-copy-panel textarea,
-      #rw-pay-all-copy-panel select,
-      .rw-pay-all-copy-panel input,
-      .rw-pay-all-copy-panel textarea,
-      .rw-pay-all-copy-panel select,
-      #rwph-member-management-panel input,
-      #rwph-member-management-panel textarea,
-      #rwph-member-management-panel select,
       .rwph-floating-panel input,
       .rwph-floating-panel textarea,
       .rwph-floating-panel select,
@@ -3261,10 +2895,6 @@
       #rw-payout-helper details > summary,
       #rw-pay-all-panel .rw-pay-all-head,
       .rw-pay-all-panel .rw-pay-all-head,
-      #rw-pay-all-copy-panel .rw-pay-all-head,
-      .rw-pay-all-copy-panel .rw-pay-all-head,
-      #rwph-member-management-panel .rwph-mm-toolbar,
-      #rwph-member-management-panel .rwph-mm-status,
       .rwph-panel-theme-picker-head,
       .rwph-floating-panel-head,
       .rwph-results-html-head{
@@ -3577,166 +3207,11 @@
         cursor:not-allowed!important;
       }
 
-      /* v1.1.422: selected colour/theme now controls layout spacing, header feel, card accents and shadows too. */
-      #rw-payout-helper,
-      #rw-pay-all-panel,
-      .rw-pay-all-panel,
-      #rw-pay-all-copy-panel,
-      .rw-pay-all-copy-panel,
-      #rw-wrong-payment-panel,
-      #rwph-xanax-send-status,
-      #rwph-member-management-panel,
-      .rwph-member-management-panel,
-      .rwph-floating-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel,
-      .rw-results-panel,
-      .rwph-panel-theme-picker{
-        padding:var(--rwph-theme-panel-pad)!important;
-        box-shadow:var(--rwph-theme-shadow)!important;
-      }
-
-      #rw-payout-helper :where(.rw-body,.rw-panel-body,.rw-content,.rw-help-body),
-      #rw-pay-all-panel :where(.rw-pay-all-body),
-      .rw-pay-all-panel :where(.rw-pay-all-body),
-      #rwph-xanax-send-status :where(.rwph-xanax-scroll),
-      .rwph-floating-panel :where(.rwph-floating-panel-body),
-      .rwph-results-loading-panel :where(.rwph-loading-shell),
-      .rw-results-panel :where(.app,.side,.summary){
-        padding:var(--rwph-theme-body-pad)!important;
-      }
-
-      #rw-payout-helper :where(.rw-head,.rw-header,.rw-panel-head,.rw-titlebar),
-      #rw-pay-all-panel :where(.rw-pay-all-head,.pay-all-head),
-      .rw-pay-all-panel :where(.rw-pay-all-head,.pay-all-head),
-      #rwph-xanax-send-status :where(.rwph-xanax-head,.rwph-panel-head),
-      .rwph-floating-panel :where(.rwph-panel-head,.rwph-floating-panel-head),
-      .rwph-results-loading-panel :where(.rwph-panel-head,.rwph-loading-head),
-      .rwph-results-html-panel :where(.rwph-panel-head),
-      .rw-results-panel :where(.topbar,.rwph-panel-head),
-      .rwph-panel-theme-picker-head{
-        padding:var(--rwph-theme-head-pad)!important;
-        justify-content:var(--rwph-theme-head-justify)!important;
-        align-items:var(--rwph-theme-head-align)!important;
-        text-transform:var(--rwph-theme-head-case)!important;
-        letter-spacing:var(--rwph-theme-head-tracking)!important;
-        gap:var(--rwph-theme-card-gap)!important;
-      }
-
-      #rw-payout-helper :where(.rw-body,.rw-grid,.rw-section-list,.rw-member-grid,.rw-member-management-grid),
-      #rw-pay-all-panel :where(.rw-pay-all-list),
-      .rw-pay-all-panel :where(.rw-pay-all-list),
-      #rwph-xanax-send-status :where(.rwph-xanax-actions,.rwph-xanax-steps),
-      .rwph-floating-panel :where(.rwph-floating-panel-body),
-      .rwph-results-loading-panel :where(.rwph-loading-shell),
-      .rw-results-panel :where(.summary,.results-grid,.cards,.app){
-        gap:var(--rwph-theme-card-gap)!important;
-      }
-
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content),
-      #rw-pay-all-panel :where(.rw-pay-all-list,.rw-pay-all-row),
-      .rw-pay-all-panel :where(.rw-pay-all-list,.rw-pay-all-row),
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card),
-      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current,.rwph-theme-choice){
-        position:relative!important;
-        padding:var(--rwph-theme-card-pad)!important;
-        margin-inline:var(--rwph-theme-section-inset)!important;
-        box-shadow:var(--rwph-theme-card-shadow)!important;
-      }
-
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
-      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
-      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{
-        content:""!important;
-        position:absolute!important;
-        pointer-events:none!important;
-        background:linear-gradient(180deg, ${t.accent}, ${t.accent2})!important;
-        opacity:.82!important;
-        display:block!important;
-      }
-
-      ${themeCardAccent === "left" ? `
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
-      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
-      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{left:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);height:auto;}
-      ` : ""}
-      ${themeCardAccent === "right" ? `
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
-      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
-      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{right:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);height:auto;}
-      ` : ""}
-      ${themeCardAccent === "top" ? `
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
-      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
-      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{left:0;right:0;top:0;height:var(--rwph-theme-card-accent-size);width:auto;}
-      ` : ""}
-      ${themeCardAccent === "outline" ? `
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
-      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
-      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{inset:0;border:var(--rwph-theme-card-accent-size) solid ${t.accent};background:transparent!important;opacity:.36;}
-      ` : ""}
-      ${themeCardAccent === "none" ? `
-      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
-      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
-      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
-      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{display:none!important;}
-      ` : ""}
-
-      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
-      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rwph-xanax-send-status :where(button,a.btn,.btn),
-      .rwph-floating-panel :where(button,a.btn,.btn),
-      .rwph-results-loading-panel :where(button,a.btn,.btn),
-      .rwph-results-html-panel :where(button,a.btn,.btn),
-      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rwph-panel-theme-picker :where(button,a.btn,.btn){
-        padding:var(--rwph-theme-button-pad)!important;
-        justify-content:var(--rwph-theme-button-justify)!important;
-      }
-
       /* v1.1.407: theme styles now change shapes, borders, button text, and theme picker scrolling. */
       #rw-payout-helper,
       #rw-pay-all-panel,
       .rw-pay-all-panel,
-      #rw-pay-all-copy-panel,
-      .rw-pay-all-copy-panel,
-      #rw-wrong-payment-panel,
       #rwph-xanax-send-status,
-      #rwph-member-management-panel,
-      .rwph-member-management-panel,
       .rwph-floating-panel,
       .rwph-results-loading-panel,
       .rwph-results-html-panel,
@@ -3778,7 +3253,7 @@
       .rwph-panel-theme-picker{
         display:flex!important;
         flex-direction:column!important;
-        width:min(var(--rwph-theme-picker-width), calc(100vw - 24px))!important;
+        width:min(520px, calc(100vw - 24px))!important;
         height:min(720px, calc(100vh - 28px))!important;
         max-width:calc(100vw - 16px)!important;
         max-height:calc(100vh - 16px)!important;
@@ -3806,7 +3281,7 @@
       }
       .rwph-panel-theme-grid{
         display:grid!important;
-        grid-template-columns:var(--rwph-theme-picker-cols)!important;
+        grid-template-columns:1fr!important;
         gap:10px!important;
         overflow:visible!important;
       }
@@ -3874,314 +3349,9 @@
         border-radius:999px!important;
       }
 
-      /* v1.1.426: real per-theme layout rebuild. These rules change panel structure, not just colour. */
-      #rw-payout-helper{
-        width:var(--rwph-layout-main-width);
-        max-width:calc(100vw - 18px)!important;
-        font-family:var(--rwph-layout-font)!important;
-      }
-      .rwph-floating-panel,
-      #rw-pay-all-panel,
-      .rw-pay-all-panel,
-      #rw-pay-all-copy-panel,
-      .rw-pay-all-copy-panel,
-      #rw-wrong-payment-panel,
-      #rwph-xanax-send-status,
-      #rwph-member-management-panel,
-      .rwph-member-management-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel{
-        width:var(--rwph-layout-floating-width);
-        max-width:calc(100vw - 18px)!important;
-        font-family:var(--rwph-layout-font)!important;
-      }
-
-      #rw-payout-helper .rw-body,
-      #rw-payout-helper .rw-tab-section,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper .rw-admin-unified-panel,
-      #rw-payout-helper .rw-help-body,
-      #rw-pay-all-panel .rw-pay-all-body,
-      .rw-pay-all-panel .rw-pay-all-body,
-      #rw-pay-all-copy-panel .rw-pay-all-body,
-      .rw-pay-all-copy-panel .rw-pay-all-body,
-      #rwph-member-management-panel .rwph-mm-body,
-      #rwph-xanax-send-status .rwph-xanax-scroll,
-      .rwph-floating-panel-body,
-      .rwph-results-loading-panel .rwph-loading-shell,
-      .rwph-results-html-panel .rwph-results-html-preview-wrap{
-        display:flex!important;
-        flex-direction:var(--rwph-layout-body-flow)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-        padding:var(--rwph-theme-body-pad)!important;
-      }
-
-      #rw-payout-helper .rw-head,
-      #rw-payout-helper .rw-panel-head,
-      #rw-payout-helper .rw-api-visible-head,
-      #rw-payout-helper .rw-help-dropdown-summary,
-      #rw-payout-helper details > summary,
-      #rw-pay-all-panel .rw-pay-all-head,
-      .rw-pay-all-panel .rw-pay-all-head,
-      #rw-pay-all-copy-panel .rw-pay-all-head,
-      .rw-pay-all-copy-panel .rw-pay-all-head,
-      #rwph-member-management-panel .rwph-mm-toolbar,
-      #rwph-member-management-panel .rwph-mm-status,
-      #rwph-xanax-send-status .rwph-xanax-head,
-      .rwph-panel-theme-picker-head,
-      .rwph-floating-panel-head,
-      .rwph-results-html-head,
-      .rwph-results-loading-panel .rwph-results-loading-head{
-        display:flex!important;
-        flex-direction:var(--rwph-layout-header-flow)!important;
-        justify-content:var(--rwph-theme-head-justify)!important;
-        align-items:var(--rwph-theme-head-align)!important;
-        gap:calc(var(--rwph-theme-card-gap) + 2px)!important;
-        text-align:var(--rwph-layout-card-text-align)!important;
-        padding:var(--rwph-theme-head-pad)!important;
-      }
-
-      #rw-payout-helper .rw-grid,
-      #rw-payout-helper .rw-stat-grid,
-      #rw-payout-helper .rw-admin-status-grid,
-      #rw-payout-helper .rw-help-api-grid,
-      #rw-payout-helper .rw-licence-control-grid,
-      #rw-payout-helper .rw-member-grid,
-      #rw-payout-helper .rw-member-management-grid,
-      #rw-payout-helper .rw-compact-check-grid,
-      #rw-payout-helper .rw-card-list,
-      #rwph-xanax-send-status .rwph-licence-status-grid,
-      .rw-results-panel .summary,
-      .rwph-results-loading-panel .rwph-dashboard{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-control-grid-cols)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-        align-items:stretch!important;
-      }
-
-      #rw-payout-helper .rw-card,
-      #rw-payout-helper .rw-box,
-      #rw-payout-helper .rw-section,
-      #rw-payout-helper .rw-payment-card,
-      #rw-payout-helper .rw-admin-license-card,
-      #rw-payout-helper .rw-api-visible-card,
-      #rw-payout-helper .rw-help-section-card,
-      #rw-payout-helper .rw-calc-brief,
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings,
-      #rwph-xanax-send-status .rwph-xanax-detail-card,
-      #rwph-xanax-send-status .rwph-xanax-actions,
-      #rwph-xanax-send-status .rwph-xanax-steps,
-      #rwph-xanax-send-status .rwph-xanax-safety-note,
-      #rwph-xanax-send-status .rwph-xanax-helper-message,
-      #rwph-xanax-send-status .rwph-xanax-expiry,
-      #rwph-xanax-send-status .rw-payment-expiry,
-      #rwph-xanax-send-status .rwph-xanax-expiry-hero,
-      .rw-results-panel .summary-card,
-      .rw-results-panel .result-card,
-      .rw-results-panel .results-action-zone,
-      .rw-results-panel .side,
-      .rw-results-panel .hero,
-      .rwph-results-loading-panel .rwph-status-card,
-      .rwph-results-loading-panel .rwph-side-card,
-      .rwph-panel-theme-picker .rwph-panel-theme-current,
-      .rwph-panel-theme-picker .rwph-theme-choice{
-        display:var(--rwph-layout-card-display)!important;
-        flex-direction:var(--rwph-layout-card-flow)!important;
-        grid-template-columns:var(--rwph-layout-result-card-cols)!important;
-        align-items:var(--rwph-layout-card-align)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-        text-align:var(--rwph-layout-card-text-align)!important;
-        padding:var(--rwph-theme-card-pad)!important;
-      }
-
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-result-actions,
-      #rw-payout-helper .rw-last-results-actions,
-      #rw-payout-helper .rw-cache-tools,
-      #rw-payout-helper .rw-mode-cache-tools,
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions,
-      #rw-payout-helper .rw-member-management-actions,
-      #rw-pay-all-panel .rw-pay-all-actions,
-      .rw-pay-all-panel .rw-pay-all-actions,
-      #rw-pay-all-copy-panel .rw-pay-all-actions,
-      .rw-pay-all-copy-panel .rw-pay-all-actions,
-      #rwph-member-management-panel .rwph-mm-control-stack,
-      #rwph-xanax-send-status .rwph-xanax-actions,
-      .rwph-panel-theme-picker .rwph-panel-theme-grid,
-      .rwph-results-html-panel .rwph-select-raw-html-row{
-        display:var(--rwph-layout-actions-display)!important;
-        grid-template-columns:var(--rwph-layout-actions-cols)!important;
-        flex-wrap:wrap!important;
-        justify-content:var(--rwph-layout-action-justify)!important;
-        align-items:center!important;
-        gap:var(--rwph-layout-section-gap)!important;
-      }
-
-      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
-      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rwph-xanax-send-status :where(button,a.btn,.btn),
-      #rwph-member-management-panel :where(button,a.btn,.btn),
-      .rwph-floating-panel :where(button,a.btn,.btn),
-      .rwph-results-loading-panel :where(button,a.btn,.btn),
-      .rwph-results-html-panel :where(button,a.btn,.btn),
-      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rwph-panel-theme-picker :where(button,a.btn,.btn){
-        width:var(--rwph-layout-button-width)!important;
-        min-height:var(--rwph-layout-button-min-height)!important;
-        display:inline-flex!important;
-        align-items:center!important;
-        justify-content:var(--rwph-layout-button-justify, var(--rwph-theme-button-justify))!important;
-      }
-
-      #rw-pay-all-panel .rw-pay-all-list,
-      .rw-pay-all-panel .rw-pay-all-list,
-      #rw-pay-all-copy-panel .rw-pay-all-list,
-      .rw-pay-all-copy-panel .rw-pay-all-list{
-        display:flex!important;
-        flex-direction:column!important;
-        gap:var(--rwph-layout-section-gap)!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-row,
-      .rw-pay-all-panel .rw-pay-all-row,
-      #rw-pay-all-copy-panel .rw-pay-all-row,
-      .rw-pay-all-copy-panel .rw-pay-all-row{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-payment-cols)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-        align-items:center!important;
-        text-align:var(--rwph-layout-card-text-align)!important;
-      }
-
-      #rwph-member-management-panel .rwph-mm-cards{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-member-list-cols)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-      }
-      #rwph-member-management-panel .rwph-mm-card{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-member-card-cols)!important;
-        gap:var(--rwph-layout-section-gap)!important;
-        align-items:center!important;
-        text-align:var(--rwph-layout-card-text-align)!important;
-      }
-      #rwph-member-management-panel .rwph-mm-stats,
-      #rwph-member-management-panel .rwph-mm-adjust-row{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-member-stat-cols)!important;
-        gap:8px!important;
-      }
-
-      .rw-results-panel .summary{
-        grid-template-columns:var(--rwph-layout-result-summary-cols)!important;
-      }
-      .rw-results-panel .result-card,
-      #rw-payout-helper .rw-result-card{
-        display:grid!important;
-        grid-template-columns:var(--rwph-layout-result-card-cols)!important;
-        align-items:center!important;
-        gap:var(--rwph-layout-section-gap)!important;
-        text-align:var(--rwph-layout-card-text-align)!important;
-      }
-
-      .rwph-info-popup-panel{
-        width:var(--rwph-layout-popup-width)!important;
-        text-align:var(--rwph-layout-popup-text-align)!important;
-        border-radius:var(--rwph-theme-card-radius)!important;
-        padding:${t.popupPad || "12px 40px 15px 16px"}!important;
-      }
-
-      /* v1.1.427: advanced per-theme feature positioning and button-colour pass. */
-      ${rwphAdvancedFeaturePositionCss(t)}
-
-      @media (max-width: 720px){
-        #rw-payout-helper,
-        .rwph-floating-panel,
-        #rw-pay-all-panel,
-        .rw-pay-all-panel,
-        #rw-pay-all-copy-panel,
-        .rw-pay-all-copy-panel,
-        #rw-wrong-payment-panel,
-        #rwph-xanax-send-status,
-        #rwph-member-management-panel,
-        .rwph-member-management-panel,
-        .rwph-results-loading-panel,
-        .rwph-results-html-panel{width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;}
-        #rw-payout-helper .rw-grid,
-        #rw-payout-helper .rw-stat-grid,
-        #rw-payout-helper .rw-admin-status-grid,
-        #rw-payout-helper .rw-help-api-grid,
-        #rw-payout-helper .rw-licence-control-grid,
-        #rw-payout-helper .rw-member-grid,
-        #rw-payout-helper .rw-member-management-grid,
-        #rw-payout-helper .rw-compact-check-grid,
-        .rw-results-panel .summary,
-        .rwph-results-loading-panel .rwph-dashboard,
-        #rwph-member-management-panel .rwph-mm-cards,
-        #rwph-member-management-panel .rwph-mm-card,
-        #rw-pay-all-panel .rw-pay-all-row,
-        .rw-pay-all-panel .rw-pay-all-row,
-        #rw-pay-all-copy-panel .rw-pay-all-row,
-        .rw-pay-all-copy-panel .rw-pay-all-row,
-        .rw-results-panel .result-card,
-        #rw-payout-helper .rw-result-card{grid-template-columns:1fr!important;}
-        #rw-payout-helper .rw-actions,
-        #rw-payout-helper .rw-tabs,
-        #rw-payout-helper .rw-result-actions,
-        #rw-payout-helper .rw-cache-tools,
-        #rw-payout-helper .rw-mode-cache-tools,
-        #rw-payout-helper .rw-primary-calc-actions,
-        #rw-payout-helper .rw-settings-calc-actions,
-        #rw-payout-helper .rw-settings-time-actions,
-        #rw-pay-all-panel .rw-pay-all-actions,
-        .rw-pay-all-panel .rw-pay-all-actions,
-        #rw-pay-all-copy-panel .rw-pay-all-actions,
-        .rw-pay-all-copy-panel .rw-pay-all-actions{display:grid!important;grid-template-columns:1fr!important;}
-        #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
-        #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-        .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-        #rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-        .rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-        #rwph-xanax-send-status :where(button,a.btn,.btn),
-        #rwph-member-management-panel :where(button,a.btn,.btn),
-        .rwph-floating-panel :where(button,a.btn,.btn),
-        .rwph-results-loading-panel :where(button,a.btn,.btn),
-        .rwph-results-html-panel :where(button,a.btn,.btn),
-        .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-        .rwph-panel-theme-picker :where(button,a.btn,.btn){width:100%!important;}
-      }
-
-      /* v1.1.425: popup notifications get themed without adding any click-blocking overlay rules. */
-      .rwph-info-popup-panel{
-        background:linear-gradient(180deg, ${t.panel2}, ${t.bg})!important;
-        border-color:${t.line2}!important;
-        color:${t.text}!important;
-        box-shadow:var(--rwph-theme-shadow)!important;
-      }
-      .rwph-info-popup-panel::before{
-        background:linear-gradient(180deg, ${t.accent}, ${t.accent2})!important;
-        pointer-events:none!important;
-      }
-      .rwph-info-popup-close{
-        background:${themeButtonTexture}linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
-        border-color:${t.line2}!important;
-        color:${t.text}!important;
-      }
-      .rwph-info-popup-timer{background:linear-gradient(90deg,${t.accent},${t.accent2})!important;}
-
-
       #rw-payout-helper ::-webkit-scrollbar-thumb,
       #rw-pay-all-panel ::-webkit-scrollbar-thumb,
       .rw-pay-all-panel ::-webkit-scrollbar-thumb,
-      #rw-pay-all-copy-panel ::-webkit-scrollbar-thumb,
-      .rw-pay-all-copy-panel ::-webkit-scrollbar-thumb,
-      #rwph-member-management-panel ::-webkit-scrollbar-thumb,
       #rwph-xanax-send-status ::-webkit-scrollbar-thumb,
       .rwph-floating-panel ::-webkit-scrollbar-thumb,
       .rwph-results-loading-panel ::-webkit-scrollbar-thumb,
@@ -4193,8 +3363,10 @@
     `;
   }
 
-  function rwphApplyPanelThemeChoice(key = "") {
-    const themeKey = key || rwphGetPanelThemeKey();
+  function rwphApplyPanelThemeChoice() {
+    // v1.1.428: theme/colour changer removed. Clear any old saved choice and lock panels to the default style.
+    try { GM_deleteValue(PANEL_THEME_STORAGE_KEY); } catch (_) {}
+    const themeKey = "bronze";
     const theme = rwphGetPanelThemePreset(themeKey);
     let style = document.getElementById("rwph-panel-theme-choice-v1379");
     if (!style) {
@@ -4204,8 +3376,8 @@
     }
     style.textContent = rwphPanelThemeCss(theme);
     document.documentElement.setAttribute("data-rwph-panel-theme", themeKey);
-    const current = document.getElementById("rw-current-panel-theme-label");
-    if (current) current.textContent = theme.label;
+    const oldPicker = document.getElementById("rwph-panel-theme-picker");
+    if (oldPicker) oldPicker.remove();
   }
 
   function rwphClosePanelThemePicker() {
@@ -4214,57 +3386,15 @@
   }
 
   function rwphOpenPanelThemePicker() {
+    // v1.1.428: removed. Leave a cleanup no-op in case an older panel exists after script update.
     rwphClosePanelThemePicker();
-    const presets = rwphPanelThemePresets();
-    const currentKey = rwphGetPanelThemeKey();
-    const panel = document.createElement("section");
-    panel.id = "rwph-panel-theme-picker";
-    panel.className = "rwph-floating-panel rwph-panel-theme-picker";
-    panel.innerHTML = `
-      <div class="rwph-panel-head rwph-panel-theme-picker-head">
-        <span>Panel Theme / Colours</span>
-        <button id="rwph-theme-picker-close" class="danger" type="button" title="Close">×</button>
-      </div>
-      <div class="rwph-panel-theme-picker-body">
-        <div class="rw-small">Choose a theme below. Each theme now changes colours plus real button, card, control and feature positioning across the panels, with fitted advanced layouts for Payments Copy, Member Management, results, popups, inputs and all button colours. It does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
-        <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
-        <div class="rwph-panel-theme-grid">
-          ${Object.entries(presets).map(([key, theme]) => `
-            <button class="rwph-theme-choice ${key === currentKey ? "primary" : "secondary"}" type="button" data-rwph-theme-key="${esc(key)}" style="border-color:${esc(theme.line2)}!important;border-radius:${esc(theme.buttonRadius || "12px")}!important;background:${esc(theme.buttonTexture ? `${theme.buttonTexture},` : "")}linear-gradient(135deg,${esc(theme.panel3)},${esc(theme.bg)})!important;color:${esc(theme.text)}!important;">
-              <span class="rwph-theme-swatch" style="background:linear-gradient(135deg,${esc(theme.accent)},${esc(theme.accent2)});"></span>
-              <span>${esc(theme.label)}<small>${esc(`${theme.styleName || "Custom style"} / ${theme.layoutName || "Layout"}`)}</small></span>
-            </button>`).join("")}
-        </div>
-        <button id="rwph-theme-reset" class="secondary" type="button">Reset to Bronze Gold</button>
-      </div>
-      <div class="rwph-resize-handle" data-rwph-resize-dir="se" title="Resize"></div>
-    `;
-    document.body.appendChild(panel);
-    rwphEnablePanelMoveResize(panel, ".rwph-panel-theme-picker-head");
-    rwphApplyPanelThemeChoice(currentKey);
-
-    panel.querySelector("#rwph-theme-picker-close")?.addEventListener("click", rwphClosePanelThemePicker);
-    panel.querySelector("#rwph-theme-reset")?.addEventListener("click", () => {
-      GM_setValue(PANEL_THEME_STORAGE_KEY, "bronze");
-      rwphApplyPanelThemeChoice("bronze");
-      rwphOpenPanelThemePicker();
-    });
-    panel.querySelectorAll("[data-rwph-theme-key]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const key = btn.getAttribute("data-rwph-theme-key") || "bronze";
-        GM_setValue(PANEL_THEME_STORAGE_KEY, key);
-        rwphApplyPanelThemeChoice(key);
-        panel.querySelectorAll("[data-rwph-theme-key]").forEach((b) => b.classList.toggle("primary", b === btn));
-        panel.querySelectorAll("[data-rwph-theme-key]").forEach((b) => b.classList.toggle("secondary", b !== btn));
-      });
-    });
+    rwphApplyPanelThemeChoice();
   }
 
   function attachPanelThemeButton() {
+    // v1.1.428: removed. Delete any old Theme / Colours button if a stale panel/template created one.
     const btn = document.getElementById("rw-open-theme-picker");
-    if (!btn || btn.dataset.rwphThemeReady === "1") return;
-    btn.dataset.rwphThemeReady = "1";
-    btn.addEventListener("click", rwphOpenPanelThemePicker);
+    if (btn) btn.remove();
   }
 
 
@@ -9768,7 +8898,7 @@
     @media (max-width:1100px){
       body{padding:12px!important;}
       .app{
-        grid-template-columns:var(--rwph-theme-picker-cols)!important;
+        grid-template-columns:1fr!important;
         grid-template-areas:
           "hero"
           "actions"
@@ -14786,7 +13916,6 @@
     const lockedResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(lockedResultsPanel);
     attachMoveLauncherButton();
-    attachPanelThemeButton();
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
 
@@ -15254,9 +14383,6 @@
               </div>
             </div>
           </details>
-          <div class="rw-actions" id="rw-last-results-actions">
-            <button id="rw-open-theme-picker" class="secondary" type="button">Panel Theme / Colours</button>
-          </div>
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
           <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after you click Calculate in Basic Calculations or Advanced Calculations.</div>
@@ -15452,7 +14578,6 @@
     const mainResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(mainResultsPanel);
     attachMoveLauncherButton();
-    attachPanelThemeButton();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
     const adminTabBtn = document.getElementById("rw-tab-admin");

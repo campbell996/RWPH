@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.425**
+Version: **1.1.428**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -233,23 +233,13 @@ The userscript launcher is now mounted beside Torn's **Areas** text in the left 
 The purchase bonus system has been removed. New Xanax licence payments add only the configured base licence days. The admin bonus manager routes and controls, user bonus progress display, and the one-time 365 day completion reward route have been removed. Existing licence expiry time is not reduced or recalculated by this update. API key usage is unchanged.
 
 
+## v1.1.428 note - Theme/Colour changer removed
 
-## v1.1.425 note - Theme interaction rollback-safe rebuild
+The Panel Theme / Colours changer has been removed from the userscript UI. Old saved theme choices are cleared locally and RWPH uses the fixed default panel style. This does not change backend payment, licence, Torn API, calculation, newsletter, or admin data behaviour.
 
-- v1.1.425 fixes the panel interaction bug by moving the rebuilt theme styling back onto the last known working safe selectors. Panels should scroll, move, resize, and accept clicks/taps again while keeping the rebuilt theme visuals.
+## v1.1.421 note - PC launcher logo style
 
-## v1.1.424 note - Theme interaction safety fix
-
-- v1.1.425 fixes the v1.1.423 theme rebuild interaction layer so panels remain scrollable, movable, clickable, resizable, and usable.
-- This update does not change the privacy/API-key behavior.
-
-## v1.1.423 note - Full panel theme/layout rebuild
-
-The userscript theme/colour changer was rebuilt so each theme has its own panel layout, style, colour system, and popup notification style across RWPH panels. This is a visual/UI update only and does not change what API data is requested, stored, or sent.
-
-## v1.1.422 note - Unique panel layouts per theme/colour
-
-The Panel Theme / Colours picker now changes each RWPH panel theme with its own layout profile, spacing, header style, card style, shadows, button feel, and colours. This is a display-only change. It does not change licence checks, payout calculations, payment helper actions, generated newsletter HTML, Torn API permissions, or backend data handling.
+The PC launcher keeps the desktop name text, but its logo is now the same larger style as the PDA launcher. PDA/phone remains logo-only and page-anchored.
 
 ## v1.1.420 note - PDA launcher scroll behavior
 

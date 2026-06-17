@@ -1,11 +1,5 @@
 # Ranked War Payout Helper
 
-## v1.1.427
-
-- Added stronger per-theme feature positioning so theme/colour options move and reflow buttons, controls, cards, payment rows, member cards, result cards and popup layouts instead of only repainting panels.
-- Added wider button colour coverage so normal, secondary, primary, copy, success and danger buttons change with each selected theme.
-- Added fitted layout safety rules so advanced layouts stay inside RWPH panels on PC, phone and PDA.
-
 <p align="center">
   <a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js">
     <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download Here">
@@ -16,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.425**  
+Current package version: **1.1.428**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1305,36 +1299,15 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Updated package version to **1.1.402**.
 
 
+## v1.1.428 - Theme/Colour changer removed
 
-## v1.1.425 - Theme interaction rollback-safe rebuild
-
-- Fixed the issue where v1.1.423/v1.1.424 panels could appear like a static picture and not scroll, move, resize, or accept clicks.
-- Rebuilt the theme styling layer on the last known working interaction-safe selectors instead of styling broad generic cards/panels.
-- Kept unique theme/colour visuals across RWPH panels, Payments Copy Panel, Member Management, payment helper panels, and popup notifications.
-
-## v1.1.424 - Theme interaction safety fix
-
-- Fixed the v1.1.423 theme rebuild issue where panels could load but act like a static picture.
-- Restored scrolling on panel bodies, theme picker, Payments Copy Panel, Member Management, Xanax/payment helper, results/export areas, and newsletter dropdowns.
-- Restored click/tap behavior for buttons, inputs, checkboxes, selects, textareas, summaries/dropdowns, copy buttons, and popup close buttons.
-- Restored move/drag headers and resize handles across RWPH panels.
-- Kept the full rebuilt theme/layout/colour system from v1.1.423.
-- Kept the PC launcher logo/name fix, PDA launcher no-scroll-follow fix, and Member Management card fit fixes.
-- Updated README, terms, server version, package version, and userscript version.
-
-## v1.1.423 - Full theme/layout rebuild for all panels
-
-- Completely rebuilt every option in the Panel Theme / Colours changer so each theme has its own full visual identity, not only colour changes.
-- Each theme now controls panel shape, density, spacing, header layout, card layout, card accents, shadows, buttons, inputs, and scrollbars.
-- Extended the rebuilt theme system across all RWPH panels, including Main, Admin, Help/Tutorial, locked/licence panels, Results/Loading, Newsletter/export panels, Member Management, Xanax/payment helper, Payments Copy Panel, wrong-payment panel, and popup notifications/toasts.
-- Kept generated newsletter HTML styling separate so theme changes do not rewrite newsletter code.
-
-## v1.1.422 - Unique panel layouts per theme/colour
-
-- Expanded the Panel Theme / Colours picker so every theme now has its own panel layout profile, not just colours.
-- Each theme can now change panel spacing, header alignment/case/tracking, card padding/gaps, card accent stripe/outline style, shadows, button spacing, and theme-picker width feel.
-- Kept generated newsletter HTML colours separate from the panel theme system.
-- Kept the v1.1.421 PC launcher logo/name change, v1.1.420 PDA no-scroll-follow fix, and v1.1.418 Member Management fixes.
+- Continued from the safe **v1.1.421 PC logo match with name** base.
+- Removed the **Panel Theme / Colours** button from the main panel.
+- Removed the Theme/Colour changer panel from the active UI.
+- Cleared old saved panel-theme choices and forced RWPH back to the fixed default panel style.
+- Kept PC launcher logo/name behaviour from v1.1.421.
+- Kept PDA/phone logo-only, no-scroll-follow launcher behaviour.
+- Kept the v1.1.418 Member Management fixes.
 - Updated README, terms, server version, package version, and userscript version.
 
 ## v1.1.421 - PC launcher logo match with name
