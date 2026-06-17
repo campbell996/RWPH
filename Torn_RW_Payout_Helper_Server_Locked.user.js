@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.426
+// @version      1.1.427
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.427: added stronger per-theme feature positioning and button-colour profiles so every theme changes button/card/control placement, payment/member/result layouts and fitted panel structure.
   // v1.1.426: rebuilt every theme/colour with real per-theme panel layout profiles, changing grids, buttons, cards, member/payment rows and popup shapes across all panels.
   // v1.1.425: rebuilt the theme styling layer on the last working interaction-safe selectors so panels are scrollable, movable, clickable and resizable again.
   // v1.1.424: attempted theme rebuild interaction safety layer.
@@ -2532,6 +2533,258 @@
     return presets[String(key || rwphGetPanelThemeKey()).toLowerCase()] || presets.bronze;
   }
 
+
+  function rwphAdvancedFeaturePositionCss(t) {
+    const mode = String(t?.layoutMode || "foundryStack");
+    const scope = `
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rw-pay-all-copy-panel,
+      .rw-pay-all-copy-panel,
+      #rw-wrong-payment-panel,
+      #rwph-xanax-send-status,
+      #rwph-member-management-panel,
+      .rwph-member-management-panel,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .rwph-panel-theme-picker`;
+    const buttonScope = `
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-tab-btn,.rw-primary,.secondary,.danger,.success,[role="button"]),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,[role="button"]),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,[role="button"]),
+      #rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,.rw-pay-all-copy,[role="button"]),
+      .rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,.rw-pay-all-copy,[role="button"]),
+      #rwph-xanax-send-status :where(button,a.btn,.btn,[role="button"]),
+      #rwph-member-management-panel :where(button,a.btn,.btn,[role="button"]),
+      .rwph-floating-panel :where(button,a.btn,.btn,[role="button"]),
+      .rwph-results-loading-panel :where(button,a.btn,.btn,[role="button"]),
+      .rwph-results-html-panel :where(button,a.btn,.btn,[role="button"]),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo,[role="button"]),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn,.rwph-theme-choice,[role="button"])`;
+
+    const fitCss = `
+      ${scope}{box-sizing:border-box!important;overflow:hidden!important;}
+      ${scope} *,
+      ${scope} *::before,
+      ${scope} *::after{box-sizing:border-box!important;}
+      ${scope} :where(.rw-body,.rw-pay-all-body,.rwph-mm-body,.rwph-xanax-scroll,.rwph-floating-panel-body,.rwph-loading-shell,.rwph-panel-theme-picker-body,.rwph-results-html-preview-wrap){
+        min-width:0!important;
+        max-width:100%!important;
+        overflow:auto!important;
+      }
+      ${scope} :where(.rw-card,.rw-box,.rw-section,details,.rw-pay-all-row,.rwph-mm-card,.rwph-xanax-detail-card,.summary-card,.result-card,.rwph-theme-choice){
+        min-width:0!important;
+        max-width:100%!important;
+      }
+      ${scope} :where(input,textarea,select){
+        max-width:100%!important;
+        min-width:0!important;
+      }
+      ${buttonScope}{
+        max-width:100%!important;
+        white-space:normal!important;
+        text-align:center!important;
+        transition:filter .12s ease, transform .12s ease, box-shadow .12s ease!important;
+      }
+      ${buttonScope}:active{transform:translateY(1px)!important;}
+
+      /* v1.1.427: button colours now come from each theme and cover normal, secondary, primary, copy, success and danger buttons. */
+      ${buttonScope}{
+        background:
+          ${t.buttonTexture ? `${t.buttonTexture},` : ""}
+          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 34%),
+          linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        border-color:${t.line2}!important;
+        color:${t.text}!important;
+      }
+      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.secondary,.secondary,.btn.secondary,.rw-tab-btn.secondary,.rw-pay-all-copy)')}{
+        background:
+          ${t.buttonTexture ? `${t.buttonTexture},` : ""}
+          linear-gradient(135deg, ${t.panel2}, ${t.bg2})!important;
+        border-color:${t.line}!important;
+        color:${t.soft}!important;
+      }
+      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.primary,.primary,.rw-primary,.rw-tab.active,.rw-tab-btn.active,[aria-selected="true"])')}{
+        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
+        border-color:${t.line2}!important;
+        color:${t.bg}!important;
+        box-shadow:0 12px 26px rgba(0,0,0,.30),0 0 22px ${t.line}!important;
+      }
+      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.danger,.danger,.rw-pay-all-close,#rwph-close-helper,#rwph-theme-picker-close)')}{
+        background:linear-gradient(135deg, ${t.danger}, ${t.bg})!important;
+        border-color:rgba(248,113,113,.62)!important;
+        color:#fee2e2!important;
+      }
+      ${buttonScope.replace(/:where\(([^)]*)\)/g, ':where(button.success,.success,.rw-pay-all-accept-warning)')}{
+        background:linear-gradient(135deg, ${t.good}, ${t.panel2})!important;
+        border-color:${t.good}!important;
+        color:${t.bg}!important;
+      }
+    `;
+
+    const commonPositionCss = `
+      #rw-payout-helper .rw-tabs{order:1!important;}
+      #rw-payout-helper #rw-paywall-unlock-section{order:2!important;}
+      #rw-payout-helper details.rw-per-hit-settings{order:3!important;}
+      #rw-payout-helper details.rw-points-settings{order:4!important;}
+      #rw-payout-helper #rw-last-results-actions{order:5!important;}
+      #rw-payout-helper #rw-results-panel{order:6!important;}
+      #rw-payout-helper .rw-cache-tools{order:7!important;}
+      #rw-payout-helper .rw-mode-cache-tools{order:8!important;}
+      #rw-payout-helper .rw-settings-time-actions{order:9!important;}
+      #rw-payout-helper .rw-member-management-actions{order:10!important;}
+      #rw-payout-helper .rw-primary-calc-actions{order:11!important;}
+      #rw-payout-helper .rw-settings-calc-actions{order:12!important;}
+      #rw-payout-helper .rw-help-dropdown-content{order:20!important;}
+      #rw-payout-helper .rw-api-visible-card{order:21!important;}
+      #rw-payout-helper .rw-compact-check-grid,
+      #rw-payout-helper .rw-licence-control-grid,
+      #rw-payout-helper .rw-admin-status-grid,
+      #rw-payout-helper .rw-help-api-grid{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-control-grid-cols)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+      }
+    `;
+
+    const dashboardCss = `
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper #rw-payout-tab{
+        display:grid!important;
+        grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+        align-items:start!important;
+      }
+      #rw-payout-helper :where(.rw-tabs,.rw-actions,#rw-results-panel,#rw-last-results-actions,.rw-api-visible-card,.rw-help-dropdown-content){grid-column:1 / -1!important;}
+      #rw-payout-helper details.rw-per-hit-settings{grid-column:1!important;}
+      #rw-payout-helper details.rw-points-settings{grid-column:2!important;}
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1.2fr) minmax(88px,.35fr) auto!important;}
+    `;
+
+    const denseCss = `
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;gap:var(--rwph-layout-section-gap)!important;}
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions,
+      #rw-payout-helper .rw-cache-tools,
+      #rw-payout-helper .rw-mode-cache-tools{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings{padding:calc(var(--rwph-theme-card-pad) - 2px)!important;}
+      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+      #rwph-member-management-panel .rwph-mm-card{grid-template-columns:1fr!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1fr) 88px 88px 88px!important;}
+      ${buttonScope}{justify-content:center!important;}
+    `;
+
+    const stackCss = `
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;}
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions{display:grid!important;grid-template-columns:1fr!important;}
+      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:1fr!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:1fr!important;}
+      ${buttonScope}{width:100%!important;justify-content:center!important;}
+    `;
+
+    const sideRailCss = `
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper #rw-payout-tab{display:grid!important;grid-template-columns:minmax(180px,.42fr) minmax(0,1fr)!important;align-items:start!important;}
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-cache-tools,
+      #rw-payout-helper .rw-mode-cache-tools,
+      #rw-payout-helper .rw-settings-time-actions,
+      #rw-payout-helper .rw-member-management-actions{grid-column:1!important;}
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings,
+      #rw-payout-helper #rw-results-panel,
+      #rw-payout-helper #rw-last-results-actions{grid-column:2!important;}
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions{display:flex!important;justify-content:flex-start!important;}
+      #rwph-member-management-panel .rwph-mm-card{grid-template-columns:minmax(0,1fr) minmax(136px,.45fr)!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1fr) minmax(110px,.42fr) auto!important;}
+    `;
+
+    const centeredCss = `
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;align-items:stretch!important;}
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card),
+      #rwph-member-management-panel .rwph-mm-card,
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,
+      #rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{text-align:center!important;}
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions{display:flex!important;justify-content:center!important;align-items:center!important;}
+      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:1fr!important;}
+      ${buttonScope}{width:auto!important;min-width:min(180px,100%)!important;justify-content:center!important;}
+    `;
+
+    const minimalCss = `
+      #rw-payout-helper > .rw-body,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper #rw-payout-tab{display:flex!important;flex-direction:column!important;}
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions{display:flex!important;justify-content:flex-end!important;}
+      #rwph-member-management-panel .rwph-mm-cards{grid-template-columns:1fr!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row,#rw-pay-all-copy-panel .rw-pay-all-row,.rw-pay-all-copy-panel .rw-pay-all-row{grid-template-columns:minmax(0,1fr) auto!important;}
+      ${buttonScope}{width:auto!important;}
+    `;
+
+    let modeCss = stackCss;
+    if (["glassDashboard","frostAiry","cleanCards"].includes(mode)) modeCss = dashboardCss;
+    else if (["factoryGrid","commandCompact","hazardControls","cyberConsole","terminalRows"].includes(mode)) modeCss = denseCss;
+    else if (["forestLedger","sunsetSide","stormRail","ledgerWarm","moltenStagger","bladeRows"].includes(mode)) modeCss = sideRailCss;
+    else if (["bubbleCards","gemFeature","ripplePanels","crownCommand","royalBoxes"].includes(mode)) modeCss = centeredCss;
+    else if (["noirMinimal"].includes(mode)) modeCss = minimalCss;
+
+    return `${fitCss}\n${commonPositionCss}\n${modeCss}\n
+      @media (max-width: 780px){
+        #rw-payout-helper > .rw-body,
+        #rw-payout-helper .rw-unified-tab-panel,
+        #rw-payout-helper #rw-payout-tab,
+        #rw-payout-helper .rw-tabs,
+        #rw-payout-helper .rw-actions,
+        #rw-payout-helper .rw-primary-calc-actions,
+        #rw-payout-helper .rw-settings-calc-actions,
+        #rw-payout-helper .rw-settings-time-actions,
+        #rw-payout-helper .rw-cache-tools,
+        #rw-payout-helper .rw-mode-cache-tools,
+        #rwph-member-management-panel .rwph-mm-cards,
+        #rwph-member-management-panel .rwph-mm-card,
+        #rw-pay-all-panel .rw-pay-all-row,
+        .rw-pay-all-panel .rw-pay-all-row,
+        #rw-pay-all-copy-panel .rw-pay-all-row,
+        .rw-pay-all-copy-panel .rw-pay-all-row{
+          display:grid!important;
+          grid-template-columns:1fr!important;
+          grid-column:1 / -1!important;
+        }
+        ${buttonScope}{width:100%!important;min-width:0!important;}
+      }`;
+  }
+
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
     const t = theme || rwphGetPanelThemePreset();
     const themeTexture = t.texture ? `${t.texture},` : "";
@@ -3844,6 +4097,9 @@
         padding:${t.popupPad || "12px 40px 15px 16px"}!important;
       }
 
+      /* v1.1.427: advanced per-theme feature positioning and button-colour pass. */
+      ${rwphAdvancedFeaturePositionCss(t)}
+
       @media (max-width: 720px){
         #rw-payout-helper,
         .rwph-floating-panel,
@@ -3970,7 +4226,7 @@
         <button id="rwph-theme-picker-close" class="danger" type="button" title="Close">×</button>
       </div>
       <div class="rwph-panel-theme-picker-body">
-        <div class="rw-small">Choose a theme below. Each theme is now fully rebuilt with its own colours, panel layout, card style, header style, spacing, shadows, buttons, inputs, Payments Copy Panel styling and popup notification styling. It does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
+        <div class="rw-small">Choose a theme below. Each theme now changes colours plus real button, card, control and feature positioning across the panels, with fitted advanced layouts for Payments Copy, Member Management, results, popups, inputs and all button colours. It does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
         <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
         <div class="rwph-panel-theme-grid">
           ${Object.entries(presets).map(([key, theme]) => `

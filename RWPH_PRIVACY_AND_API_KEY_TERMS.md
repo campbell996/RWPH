@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.426**
+Version: **1.1.425**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -234,13 +234,13 @@ The purchase bonus system has been removed. New Xanax licence payments add only 
 
 
 
-## v1.1.426 note - Theme interaction rollback-safe rebuild
+## v1.1.425 note - Theme interaction rollback-safe rebuild
 
-- v1.1.426 fixes the panel interaction bug by moving the rebuilt theme styling back onto the last known working safe selectors. Panels should scroll, move, resize, and accept clicks/taps again while keeping the rebuilt theme visuals.
+- v1.1.425 fixes the panel interaction bug by moving the rebuilt theme styling back onto the last known working safe selectors. Panels should scroll, move, resize, and accept clicks/taps again while keeping the rebuilt theme visuals.
 
 ## v1.1.424 note - Theme interaction safety fix
 
-- v1.1.426 fixes the v1.1.423 theme rebuild interaction layer so panels remain scrollable, movable, clickable, resizable, and usable.
+- v1.1.425 fixes the v1.1.423 theme rebuild interaction layer so panels remain scrollable, movable, clickable, resizable, and usable.
 - This update does not change the privacy/API-key behavior.
 
 ## v1.1.423 note - Full panel theme/layout rebuild
