@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.438**
+Version: **1.1.439**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -324,3 +324,8 @@ This update adds three additional visual layout/theme options to the local users
 ## v1.1.430 note - Advanced Aurora layout fit polish
 
 This version improves the fit and spacing of the second Advanced Aurora layout/theme across RWPH panels while keeping the same licence/payment behavior.
+
+
+## v1.1.439 note - Theme / Colours restored
+
+The full Layout/Theme layout switcher was removed. RWPH now keeps the default panel layout and offers Theme / Colours choices for colour styling only. This does not change backend payment, licence, Torn API, calculation, newsletter, or admin data behaviour.
