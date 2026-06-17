@@ -16,15 +16,6 @@ Userscript namespace: **RankedWarPayoutHelper**
 Author: **Evil_Panda_420**
 
 
-### v1.1.419 PDA/phone launcher fix
-
-- PC launcher/header placement is unchanged.
-- PDA/phone launcher is forced to a compact logo-only button.
-- PDA/phone placement now checks faction header icons, links, hidden labels, image/SVG hints, and top action rows instead of depending only on visible “Faction Warfare” text.
-- The old fixed mobile fallback only runs if no usable PDA header/action row can be found.
-- This build continues from the v1.1.418 Member Management card-fit patch.
-
-
 ### v1.1.330 manual time/faction-member fixes
 
 - Manual War start/end inputs now control the calculation window instead of being overridden by the latest finished war lookup.
@@ -1308,12 +1299,13 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Updated package version to **1.1.402**.
 
 
-## v1.1.419 - PDA/phone logo-only launcher header fix
-- PC launcher/header placement remains unchanged.
+## v1.1.419 - PDA logo-only header launcher fix
+
+- PC launcher/header placement stays unchanged beside Faction Warfare and still shows logo plus Ranked War Payout Helper text.
 - PDA/phone launcher is forced to a compact logo-only button.
-- PDA/phone placement now searches visible and hidden faction header icons, faction/war links, image/SVG hints, and top action rows instead of depending only on visible “Faction Warfare” text.
-- The old fixed mobile fallback only runs if no usable PDA header/action row can be found.
-- Continued from the v1.1.418 Member Management card-fit fixes.
+- PDA/phone placement no longer depends only on visible **Faction Warfare** text. It now checks faction/war links, hidden labels, icon metadata, images/SVG hints, and top header/action rows.
+- PDA/phone now tries to place the RWPH logo into the top faction icon/header row before using the old fixed fallback.
+- Kept the v1.1.418 Member Management card-fit fixes.
 - Updated package version to **1.1.419**.
 
 ## v1.1.418 - Member Management card layout and sticky controls
@@ -1322,9 +1314,8 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Made the Refresh, Save, Clear, and status area sticky at the top of the Member Management panel while scrolling through members.
 - Fit patch: changed the Member Management panel body to a flex scroll area with extra bottom padding so the last player card is not clipped off the bottom.
 - Fit patch: moved the Refresh, Save, Clear, and status section up into an opaque sticky strip so member cards cannot show through it while scrolling.
-- PDA/phone launcher patch: PC header placement is unchanged, while PDA/phone now uses compact logo-only launcher sizing and icon/link detection before falling back to the fixed floating button.
 - Kept the v1.1.417 Payments Copy tab isolation fix.
-- Package version remains **1.1.418** as requested.
+- Package version was **1.1.418** for the Member Management card-fit patch before the v1.1.419 PDA launcher update.
 
 ## v1.1.417 - Payments Copy tab isolation fix
 - Payments Copy tab now suppresses Results, Loading, main RWPH, export, and newsletter panels.

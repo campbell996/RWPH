@@ -25,10 +25,9 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
-  // v1.1.419: PDA/phone launcher now uses a compact logo-only header/action-row placement before any fixed fallback, without relying on visible Faction Warfare text.
+  // v1.1.419: PDA/phone launcher is logo-only and uses icon/link/header-row detection when Torn hides the Faction Warfare text.
   // v1.1.418: Member Management panel cards now use a cleaner responsive layout and the Refresh/Save/Clear controls stay sticky while scrolling.
   // v1.1.418 fit patch: Member Management scroll area now has a fixed flex body, opaque sticky controls, and bottom padding so the last member card is not clipped.
-  // v1.1.418 PDA launcher patch: PC header placement stays unchanged, while PDA/phone uses compact logo-only header icon/link detection before the fixed fallback.
   // v1.1.417: Payments Copy tab now suppresses Results, Loading, main, and export/newsletter panels so only Payments Copy Panel opens.
   // v1.1.416: Member Management panel now explicitly shows resize handles, has a draggable header, and keeps a visible close button.
   // v1.1.415: Payments tab now opens copy-panel-only without restoring the Results/main panel, tightened Member Management cards further, and fixed Payment Copy header overlap.
