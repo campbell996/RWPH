@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.421**
+Version: **1.1.413**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -283,41 +283,3 @@ This update enlarges the RWPH logo in panel headers and result/loading header ar
 
 - Added a Help-tab tutorial explaining the manual workflow from unlocking through calculation, result review, payments, and newsletters.
 - The tutorial reinforces that RWPH helps prepare reports and helper copy/prefill steps only; users still manually review and confirm Torn actions.
-
-## v1.1.413 note - Payments current-tab handoff
-
-The client script saves a short-lived local report snapshot for the Payments Copy Panel so users can reopen the report for up to 10 minutes after switching to the faction controls/vault page.
-
-
-## v1.1.421 note - Member Management payable hits
-
-Member Management hit-removal boxes remove payable hits from calculation results before payouts are recalculated. The saved settings are local to the userscript and reset after the configured 20-minute window.
-
-## v1.1.417 note - Member Management
-
-RWPH can now load the selected Torn ranked-war report members into a Member Management panel. Saved exclusions and per-member hit removals are stored locally in the user browser/PDA for about 20 minutes, then reset to default automatically. The backend receives those selected member-management settings only when loading report members or calculating payout results.
-
-
-## v1.1.416 note - PDA-safe CSV and HTML exports
-
-CSV and HTML report exports can now use a temporary backend attachment route and a visible PDA-safe fallback panel with direct download links and raw copy boxes. Export files are temporary, expire automatically, and do not add any new Torn API permissions or automatic Torn actions.
-
-## v1.1.415 note - Results Export Html attachment download
-
-Results Export Html now uses a temporary backend attachment route so browsers and Torn PDA have a better chance of receiving a real `.html` file. The exported HTML is the report page content the user chooses to export. Export files are temporary and expire automatically. This does not add new Torn API permissions or change Torn API data collection.
-
-
-## v1.1.414 note - PDA logo-only launcher
-
-- PDA/phone launcher now detects icon-only faction header buttons and displays only the RWPH logo.
-- PC/desktop launcher remains the full logo plus `Ranked War Payout Helper` text.
-
-
-## v1.1.421 note
-Member Management can include saved per-member respect removal values, payable-hit removal values, and member exclusion choices. These settings are local/temporary and reset after 20 minutes in the userscript.
-
----
-
-## v1.1.421 note - Respect scoring and export hardening
-
-This version adds configurable respect-based scoring options to Basic and Advanced calculations, improves CSV/HTML export fallback links for PC and PDA, and changes generated-results Payments handoff so navigation happens from the main Torn page where possible.

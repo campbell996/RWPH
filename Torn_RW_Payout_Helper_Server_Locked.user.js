@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.421
+// @version      1.1.413
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,12 +25,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
-  // v1.1.421: fixes exports with direct server form downloads, forces Payments to the parent Torn page, adds editable Advanced respect step/score settings, and restyles Member Management.
-  // v1.1.417: replaced manual exclude text boxes with Member Management panels, saved per-member settings for 20 minutes, and added per-member hit removal support.
-  // v1.1.416: PDA-safe CSV/HTML exports use server-backed direct download links plus copy-box fallbacks.
-  // v1.1.415: hardened Results Export Html with native anchor download, server attachment fallback, and manual .html download link.
-  // v1.1.414: PDA/phone launcher now uses compact logo-only header placement with icon/link fallback detection.
-  // v1.1.413: Payments now navigate the current tab to faction vault, close other panels, and offer a 10-minute report reopen button.
+  // v1.1.413: added Member Management panel, 20-minute saved member adjustments, payable-hit/respect removal, Basic respect toggle, and Advanced respect score settings.
   // v1.1.412: hardened decimal shorthand parsing for million/billion/trillion payout inputs.
   // v1.1.411: payout inputs accept shorthand like 346m/346.21m/346b/346t and format as $ with commas.
   // v1.1.409: phone/Torn PDA launcher now shows logo-only while desktop keeps the full text launcher.
@@ -74,10 +69,6 @@
   const PAYOUT_FORM_SCHEMA_STORAGE_KEY = "rw_payout_helper_payout_form_schema_version";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
   const PAY_ALL_ROWS_FALLBACK_STORAGE_KEY = "rw_payout_helper_pay_all_rows_fallback";
-  const PAY_ALL_REPORT_REOPEN_STORAGE_KEY = "rw_payout_helper_recent_pay_all_report";
-  const MEMBER_MANAGEMENT_STORAGE_KEY = "rw_payout_helper_member_management_v1";
-  const MEMBER_MANAGEMENT_EXPIRY_MS = 20 * 60 * 1000;
-  const PAY_ALL_REPORT_REOPEN_TTL_MS = 10 * 60 * 1000;
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
@@ -85,6 +76,8 @@
   const RESULTS_LOADING_PANEL_STATE_STORAGE_KEY = "rw_payout_helper_results_loading_panel_state";
   const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
   const FIRST_TUTORIAL_SHOWN_STORAGE_KEY = "rw_payout_helper_first_tutorial_shown";
+  const MEMBER_MANAGEMENT_STORAGE_KEY = "rw_payout_helper_member_management_state";
+  const MEMBER_MANAGEMENT_EXPIRY_MS = 20 * 60 * 1000;
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
 
@@ -1464,86 +1457,6 @@
     return /^faction\s+warfare$/i.test(rwphNormalizeNavText(text));
   }
 
-  function rwphCompactLauncherHaystack(el) {
-    try {
-      if (!el || el.nodeType !== 1) return "";
-      const parts = [
-        el.textContent || "",
-        el.getAttribute?.("href") || "",
-        el.href || "",
-        el.getAttribute?.("aria-label") || "",
-        el.getAttribute?.("title") || "",
-        el.getAttribute?.("data-title") || "",
-        el.getAttribute?.("data-tab") || "",
-        el.getAttribute?.("data-page") || "",
-        el.getAttribute?.("data-action") || "",
-        el.id || "",
-        typeof el.className === "string" ? el.className : "",
-      ];
-      try {
-        const ds = el.dataset || {};
-        Object.keys(ds).forEach((key) => parts.push(`${key}:${ds[key]}`));
-      } catch (_) {}
-      return parts.join(" ").toLowerCase();
-    } catch (_) {
-      return "";
-    }
-  }
-
-  function rwphElementLooksLikeFactionWarfareIcon(el) {
-    try {
-      if (!el || !rwphIsElementVisible(el)) return false;
-      const rect = el.getBoundingClientRect?.();
-      if (!rwphRectLooksLikeTopFactionButton(rect)) return false;
-      const hay = rwphCompactLauncherHaystack(el);
-      if (!hay) return false;
-      if (/(^|[\s_\-])faction[\s_\-]*warfare($|[\s_\-])|factionwarfare/.test(hay)) return true;
-      if (/(ranked[\s_\-]*war|rankedwar|rankedwars|ranked[\s_\-]*wars)/.test(hay) && /(faction|war|report|rank)/.test(hay)) return true;
-      if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay) && /(warfare|ranked|rankedwar|rank|war)/.test(hay)) return true;
-      if (/(war\.php|\/war)/.test(hay) && /(faction|ranked|report|war|rank)/.test(hay)) return true;
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rwphFindPdaFactionHeaderIconTarget() {
-    try {
-      if (!rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return null;
-      const els = Array.from(document.querySelectorAll("a[href], button, [role='button'], [onclick], [data-title], [aria-label], [title]"));
-      const candidates = [];
-      els.forEach((el) => {
-        try {
-          if (!rwphIsElementVisible(el)) return;
-          const rect = el.getBoundingClientRect?.();
-          if (!rect || rect.width < 18 || rect.height < 18) return;
-          if (rect.top < -10 || rect.top > 320) return;
-          if (rect.left < -10 || rect.left > Math.max(window.innerWidth || 360, 360) - 5) return;
-          const hay = rwphCompactLauncherHaystack(el);
-          let score = 100;
-          if (rwphElementLooksLikeFactionWarfareIcon(el)) score = 0;
-          else if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay) && /(war|rank|ranked)/.test(hay)) score = 2;
-          else if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay)) score = 7;
-          else if (/\bfaction\b/.test(hay) && /(button|tab|menu|nav|icon|link)/.test(hay)) score = 9;
-          else return;
-
-          // Prefer compact header icons/buttons, but still allow a visible faction toolbar link.
-          if (rect.width > 190 || rect.height > 78) score += 10;
-          candidates.push({ el, rect, score, source: "pda-icon" });
-        } catch (_) {}
-      });
-      candidates.sort((a, b) => {
-        return (a.score - b.score)
-          || (a.rect.top - b.rect.top)
-          || (a.rect.left - b.rect.left)
-          || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
-      });
-      return candidates[0] || null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   function rwphTextNodeRect(node) {
     try {
       const range = document.createRange();
@@ -1559,14 +1472,12 @@
   function rwphRectLooksLikeTopFactionButton(rect) {
     try {
       if (!rect || rect.width <= 0 || rect.height <= 0) return false;
-      const compact = rwphIsMobileOrPdaView();
       const viewportWidth = Math.max(window.innerWidth || 1000, 320);
       // The real Faction Warfare button is near the top faction header, not down in page content.
-      // PDA can render this as a compact icon only, so allow smaller widths there.
       if (rect.left < -20 || rect.left > viewportWidth - 20) return false;
-      if (rect.top < -10 || rect.top > (compact ? 320 : 260)) return false;
-      if (rect.width < (compact ? 18 : 40) || rect.width > 360) return false;
-      if (rect.height < 18 || rect.height > (compact ? 82 : 72)) return false;
+      if (rect.top < -10 || rect.top > 260) return false;
+      if (rect.width < 40 || rect.width > 360) return false;
+      if (rect.height < 18 || rect.height > 72) return false;
       return true;
     } catch (_) {
       return false;
@@ -1634,18 +1545,6 @@
         } catch (_) {}
       });
 
-      // Torn PDA / mobile can render the Faction Warfare action as an icon-only
-      // link with no visible text. Use href/title/class/data attributes as an
-      // extra target source so the launcher can still sit in the same header row.
-      if (rwphIsMobileOrPdaView()) {
-        try {
-          document.querySelectorAll("a[href], button, [role='button'], [onclick], [data-title], [aria-label], [title]").forEach((el) => {
-            if (!rwphElementLooksLikeFactionWarfareIcon(el)) return;
-            addMatch(el, el.getBoundingClientRect(), 3, "pda-icon-link");
-          });
-        } catch (_) {}
-      }
-
       matches.sort((a, b) => {
         return (a.score - b.score)
           || (a.rect.top - b.rect.top)
@@ -1661,31 +1560,8 @@
   function rwphMountLauncherMobileFallback(btn) {
     try {
       if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
-
-      // First try the PDA/mobile faction header icon row. PDA often hides the
-      // Faction Warfare text and shows only icons, so this keeps RWPH beside
-      // those top faction icons instead of dropping it somewhere else.
-      const headerTarget = rwphFindPdaFactionHeaderIconTarget();
-      if (headerTarget && headerTarget.el && headerTarget.el.parentNode) {
-        const parent = headerTarget.el.parentNode;
-        if (btn.parentNode !== parent || btn.nextSibling !== headerTarget.el) {
-          parent.insertBefore(btn, headerTarget.el);
-        }
-        btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher-fallback");
-        btn.classList.add("rwph-mobile-header-launcher");
-        btn.style.display = "inline-flex";
-        applyStyle(btn, getLauncherPositionStyle("pda-header", headerTarget));
-        btn.title = "Open Ranked War Payout Helper";
-        btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
-        btn.innerHTML = rwphLauncherLogoHtml(true);
-        updateLauncherCornerButtonLabels();
-        return true;
-      }
-
-      // Last-resort PDA fallback only. This is kept logo-only and only appears
-      // on faction/report pages if Torn has not rendered a usable header row.
       if (btn.parentNode !== document.body) document.body.appendChild(btn);
-      btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher-fallback", "rwph-mobile-header-launcher");
+      btn.classList.remove("rwph-faction-header-launcher");
       btn.classList.add("rwph-mobile-launcher-fallback");
       btn.style.display = "inline-flex";
       applyStyle(btn, {
@@ -1728,7 +1604,7 @@
       });
       btn.title = "Open Ranked War Payout Helper";
       btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
-      btn.innerHTML = rwphLauncherLogoHtml(true);
+      btn.innerHTML = rwphLauncherLogoHtml();
       updateLauncherCornerButtonLabels();
       return true;
     } catch (_) {
@@ -1752,8 +1628,8 @@
     const target = rwphFindFactionWarfareTarget();
     if (!target || !target.el || !target.rect) return rwphMountLauncherFallback(btn);
 
-    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher");
-    btn.classList.add(rwphIsMobileOrPdaView() ? "rwph-mobile-header-launcher" : "rwph-faction-header-launcher");
+    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
+    btn.classList.add("rwph-faction-header-launcher");
     btn.style.display = "inline-flex";
 
     try {
@@ -1846,51 +1722,9 @@
     let computed = null;
     try { computed = targetEl && window.getComputedStyle ? window.getComputedStyle(targetEl) : null; } catch (_) { computed = null; }
 
-    const isCompactLauncher = rwphIsMobileOrPdaView();
-    const height = anchorRect ? Math.max(isCompactLauncher ? 30 : 28, Math.min(isCompactLauncher ? 44 : 46, Math.round(anchorRect.height))) : (isCompactLauncher ? 36 : 34);
+    const height = anchorRect ? Math.max(28, Math.min(46, Math.round(anchorRect.height))) : 34;
     const fallbackFont = `${Math.max(12, Math.min(15, height - 18))}px Arial, Helvetica, sans-serif`;
     const fallbackBackground = "linear-gradient(180deg,#2f2f2f,#181818)";
-
-    if (isCompactLauncher) {
-      return {
-        position: "static",
-        zIndex: "2147483647",
-        width: `${height}px`,
-        height: `${height}px`,
-        minWidth: `${height}px`,
-        minHeight: `${height}px`,
-        maxWidth: `${height}px`,
-        maxHeight: `${height}px`,
-        margin: computed?.margin ? computed.margin : "0 6px 0 0",
-        padding: "0",
-        borderRadius: computed?.borderRadius && computed.borderRadius !== "0px" ? computed.borderRadius : "7px",
-        border: computed?.border && computed.border !== "0px none rgb(0, 0, 0)" ? computed.border : "1px solid rgba(255,255,255,.18)",
-        background: computed?.background && computed.background !== "rgba(0, 0, 0, 0)" ? computed.background : fallbackBackground,
-        color: computed?.color || "#f2f2f2",
-        boxShadow: computed?.boxShadow && computed.boxShadow !== "none" ? computed.boxShadow : "none",
-        font: computed?.font || fallbackFont,
-        fontWeight: computed?.fontWeight || "700",
-        lineHeight: "1",
-        letterSpacing: computed?.letterSpacing || "normal",
-        textShadow: computed?.textShadow && computed.textShadow !== "none" ? computed.textShadow : "none",
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0",
-        verticalAlign: "middle",
-        textAlign: "center",
-        whiteSpace: "nowrap",
-        backdropFilter: computed?.backdropFilter || "none",
-        overflow: "hidden",
-        appearance: "none",
-        WebkitAppearance: "none",
-        top: "",
-        right: "",
-        bottom: "",
-        left: "",
-      };
-    }
 
     return {
       position: "static",
@@ -1951,20 +1785,20 @@
       return;
     }
 
-    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher");
-    btn.classList.add(rwphIsMobileOrPdaView() ? "rwph-mobile-header-launcher" : "rwph-faction-header-launcher");
+    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback");
+    btn.classList.add("rwph-faction-header-launcher");
     applyStyle(btn, getLauncherPositionStyle("faction-warfare", anchorTarget));
     btn.title = "Open Ranked War Payout Helper";
     btn.innerHTML = rwphLauncherLogoHtml();
     updateLauncherCornerButtonLabels();
   }
 
-  function rwphLauncherLogoHtml(forceLogoOnly = false) {
-    const isMobileLauncher = forceLogoOnly || rwphIsMobileOrPdaView();
+  function rwphLauncherLogoHtml() {
+    const isMobileLauncher = rwphIsMobileOrPdaView();
     const logoSize = isMobileLauncher ? 30 : 20;
     const imgHtml = `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:${logoSize}px;height:${logoSize}px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" />`;
     if (isMobileLauncher) return imgHtml;
-    return `${imgHtml}<span class="rwph-launcher-text" style="pointer-events:none;display:inline-block;line-height:1;">Ranked War Payout Helper</span>`;
+    return `${imgHtml}<span style="pointer-events:none;display:inline-block;line-height:1;">Ranked War Payout Helper</span>`;
   }
 
   function setLauncherOpenState(isOpen) {
@@ -6104,22 +5938,6 @@
       #rw-payout-launcher.rwph-nav-launcher-fallback {
         display:none !important;
       }
-      #rw-payout-launcher.rwph-mobile-header-launcher,
-      #rw-payout-launcher.rwph-mobile-launcher-fallback {
-        display:inline-flex !important;
-        align-items:center !important;
-        justify-content:center !important;
-        gap:0 !important;
-        padding:0 !important;
-        line-height:1 !important;
-        text-indent:0 !important;
-        white-space:nowrap !important;
-        overflow:hidden !important;
-      }
-      #rw-payout-launcher.rwph-mobile-header-launcher .rwph-launcher-text,
-      #rw-payout-launcher.rwph-mobile-launcher-fallback .rwph-launcher-text {
-        display:none !important;
-      }
       #rw-payout-launcher:hover,
       #rw-payout-launcher:focus,
       #rw-payout-launcher:active {
@@ -7528,8 +7346,7 @@
   }
 
   function rwphFactionControlsPayAllUrl() {
-    // v1.1.413: current-tab payments route points at faction controls/vault and carries the RWPH handoff flag.
-    return "https://www.torn.com/factions.php?step=your&rwphPayAll=1#/tab=controls&subtab=vault";
+    return "https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1";
   }
 
   function rwphPayAllRowAmount(row) {
@@ -7617,129 +7434,24 @@
     return rwphNormalizePayAllRows(best?.rows || []);
   }
 
-  function rwphParseRecentPayAllReportPayload(raw) {
-    if (!raw) return null;
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (!parsed || !parsed.html) return null;
-    const expiresAt = Number(parsed.expiresAt || 0);
-    const createdAt = Number(parsed.createdAt || 0);
-    if (!expiresAt || Date.now() > expiresAt) return null;
-    return {
-      html: String(parsed.html || ""),
-      filename: String(parsed.filename || "rwph-results-report.html"),
-      createdAt,
-      expiresAt,
-    };
-  }
-
-  function rwphGetRecentPayAllReport() {
-    const sources = [];
-    try { sources.push(GM_getValue(PAY_ALL_REPORT_REOPEN_STORAGE_KEY, "")); } catch (_) {}
-    try { sources.push(localStorage.getItem(PAY_ALL_REPORT_REOPEN_STORAGE_KEY) || ""); } catch (_) {}
-    let best = null;
-    for (const raw of sources) {
-      try {
-        const payload = rwphParseRecentPayAllReportPayload(raw);
-        if (payload?.html && (!best || payload.createdAt > best.createdAt)) best = payload;
-      } catch (e) {
-        console.warn("Could not load recent RWPH report reopen payload:", e);
-      }
-    }
-    if (!best) {
-      try { GM_setValue(PAY_ALL_REPORT_REOPEN_STORAGE_KEY, ""); } catch (_) {}
-      try { localStorage.removeItem(PAY_ALL_REPORT_REOPEN_STORAGE_KEY); } catch (_) {}
-    }
-    return best;
-  }
-
-  function rwphStoreRecentPayAllReport(html, filename = "rwph-results-report.html") {
-    const value = String(html || "");
-    if (!value || value.length < 1000) return false;
-    const now = Date.now();
-    const payload = JSON.stringify({
-      createdAt: now,
-      expiresAt: now + PAY_ALL_REPORT_REOPEN_TTL_MS,
-      filename: String(filename || "rwph-results-report.html"),
-      html: value,
-    });
-    let saved = false;
-    try { GM_setValue(PAY_ALL_REPORT_REOPEN_STORAGE_KEY, payload); saved = true; } catch (_) {}
-    try { localStorage.setItem(PAY_ALL_REPORT_REOPEN_STORAGE_KEY, payload); saved = true; } catch (_) {}
-    return saved;
-  }
-
-  function rwphBuildResultsReportFilename(summary = {}) {
-    const faction = String(summary?.factionName || summary?.faction?.name || "faction").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "faction";
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    return `rwph-${faction}-results-${stamp}.html`;
-  }
-
-  function rwphStoreRecentPayAllReportFromRows(rows, summary = {}) {
-    try {
-      const html = buildFullscreenResultsHtml(rows || [], summary || {});
-      return rwphStoreRecentPayAllReport(html, rwphBuildResultsReportFilename(summary || {}));
-    } catch (e) {
-      console.warn("Could not store recent RWPH report before opening Payments:", e);
-      return false;
-    }
-  }
-
-  function rwphOpenRecentPayAllReportFromStorage() {
-    const payload = rwphGetRecentPayAllReport();
-    if (!payload?.html) return false;
-    try {
-      const blob = new Blob([payload.html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const tab = window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 30000);
-      if (tab) return true;
-      window.location.href = url;
-      return true;
-    } catch (e) {
-      console.warn("Could not reopen recent RWPH report:", e);
-      return false;
-    }
-  }
-
-  function rwphRecentPayAllReportButtonHtml() {
-    const report = rwphGetRecentPayAllReport();
-    if (!report?.html) return "";
-    const minutesLeft = Math.max(1, Math.ceil((Number(report.expiresAt || 0) - Date.now()) / 60000));
-    return `<button type="button" class="secondary rw-pay-all-reopen-report" data-reopen-pay-report="1" title="Reopen the report for ${minutesLeft} more minute(s)">Reopen Report</button>`;
-  }
-
-  function rwphSchedulePayAllReportButtonExpiry(panel) {
-    if (!panel) return;
-    const refresh = () => {
-      const btn = panel.querySelector?.("[data-reopen-pay-report]");
-      if (!btn) return;
-      const report = rwphGetRecentPayAllReport();
-      const msLeft = Number(report?.expiresAt || 0) - Date.now();
-      if (!report?.html || msLeft <= 0) {
-        try { btn.remove(); } catch (_) {}
-        return;
-      }
-      try { setTimeout(refresh, Math.max(1000, Math.min(msLeft + 500, PAY_ALL_REPORT_REOPEN_TTL_MS + 500))); } catch (_) {}
-    };
-    refresh();
-  }
-
   function rwphOpenPayAllInFactionControls(rows) {
     rwphStorePayAllRows(rows || []);
-    rwphStoreRecentPayAllReportFromRows(rows || [], lastSummary || {});
     const url = rwphFactionControlsPayAllUrl();
-    try { rwphQueueCrossTabPopup("payments", "Payments opened in the current Torn tab on the faction vault/controls page. Use the copy-only panel there.", "info", "RWPH Payments"); } catch (_) {}
-    try { closePanel(); } catch (_) {}
-    try { rwphCloseAllPanelsExceptPayAll(); } catch (_) {}
     try {
-      if (window.top && window.top !== window) { window.top.location.href = url; return true; }
-    } catch (_) {}
-    try {
-      window.location.assign(url);
-      return true;
+      if (typeof GM_openInTab === "function") {
+        GM_openInTab(url, { active: true, insert: true, setParent: true });
+        setTimeout(() => closePanel(), 150);
+        return true;
+      }
     } catch (e) {
-      console.warn("Current-tab Payments faction vault navigation failed:", e);
-      try { window.location.href = url; return true; } catch (_) {}
+      console.warn("GM_openInTab failed for Payments controls tab:", e);
+    }
+    try {
+      const tab = window.open(url, "_blank", "noopener,noreferrer");
+      if (tab) setTimeout(() => closePanel(), 150);
+      return !!tab;
+    } catch (e) {
+      console.warn("window.open failed for Payments controls tab:", e);
       return false;
     }
   }
@@ -7759,8 +7471,8 @@
       a.rel = "noopener";
       a.style.setProperty("display", "none", "important");
       (document.body || document.documentElement).appendChild(a);
-      if (typeof a.click === "function") a.click();
-      else a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+      a.dispatchEvent(clickEvent);
       setTimeout(() => { try { a.remove(); } catch (_) {} }, 250);
       return true;
     } catch (e) {
@@ -7806,182 +7518,6 @@
     return false;
   }
 
-
-  function rwphSubmitMainExportDownloadForm(filename, content, mime = "text/plain;charset=utf-8", extension = "txt") {
-    try {
-      const base = String(PAYWALL_API_BASE || "").replace(/\/+$/, "");
-      if (!base) return false;
-      const ext = String(extension || "txt").replace(/[^a-z0-9]/gi, "").toLowerCase() || "txt";
-      const safeName = rwphSafeDownloadFilename(filename || (ext === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html"));
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = base + "/api/calc/download-file";
-      form.target = "_blank";
-      form.acceptCharset = "UTF-8";
-      form.style.position = "fixed";
-      form.style.left = "-9999px";
-      form.style.top = "-9999px";
-      const add = (name, value) => {
-        const input = document.createElement("textarea");
-        input.name = name;
-        input.value = String(value == null ? "" : value);
-        form.appendChild(input);
-      };
-      add("filename", safeName);
-      add("content", String(content || ""));
-      add("mime", mime || "text/plain;charset=utf-8");
-      add("extension", ext);
-      (document.body || document.documentElement).appendChild(form);
-      form.submit();
-      setTimeout(() => { try { form.remove(); } catch (_) {} }, 1000);
-      return true;
-    } catch (e) {
-      console.warn("RWPH main direct form export failed:", e);
-      return false;
-    }
-  }
-
-  function rwphOpenExportTextFallbackPanel(kind, text, filename, mime = "text/plain;charset=utf-8", reason = "Download fallback ready.", downloadUrl = "", inlineUrl = "") {
-    try {
-      const old = document.getElementById("rwph-export-text-panel");
-      if (old) old.remove();
-
-      const label = String(kind || "Export").toUpperCase();
-      const safeName = rwphSafeDownloadFilename(filename || (label === "CSV" ? "torn-rw-payouts.csv" : "rwph-results-page.html"));
-      const value = String(text || "");
-      const panel = document.createElement("section");
-      panel.id = "rwph-export-text-panel";
-      panel.className = "rwph-results-html-panel";
-      panel.style.display = "flex";
-      panel.style.visibility = "visible";
-      panel.style.opacity = "1";
-      panel.innerHTML = `
-        <div class="rwph-results-html-head">
-          <div>
-            <div class="rwph-results-html-title">Export ${esc(label)}</div>
-            <div class="rwph-results-html-note">On Torn PDA, use the download link below. If PDA blocks downloads, copy the raw ${esc(label)} box and save it manually.</div>
-          </div>
-          <a class="rwph-results-html-close" href="#" title="Close">×</a>
-        </div>
-        <div class="rwph-results-html-status">${esc(reason || "Download fallback ready.")} File name: ${esc(safeName)}</div>
-        <div class="rwph-export-html-actions" id="rwph-export-text-actions"></div>
-        <textarea class="rwph-results-html-box" id="rwph-export-text-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>
-      `;
-      (document.body || document.documentElement).appendChild(panel);
-
-      const actions = panel.querySelector("#rwph-export-text-actions");
-      const addLink = (href, textContent, isDownload = true) => {
-        if (!actions || !href) return;
-        const a = document.createElement("a");
-        a.href = href;
-        if (isDownload) a.download = safeName;
-        a.target = "_self";
-        a.textContent = textContent;
-        actions.appendChild(a);
-      };
-      addLink(downloadUrl, `Download .${safeName.split(".").pop() || "file"} File`, true);
-      addLink(inlineUrl, `Open ${label} in this tab`, false);
-      try {
-        const blob = new Blob([value], { type: mime || "text/plain;charset=utf-8" });
-        const localUrl = URL.createObjectURL(blob);
-        addLink(localUrl, downloadUrl ? "Backup Local Download" : `Download .${safeName.split(".").pop() || "file"} File`, true);
-        setTimeout(() => { try { URL.revokeObjectURL(localUrl); } catch (_) {} }, 10 * 60 * 1000);
-      } catch (_) {}
-
-      const box = panel.querySelector("#rwph-export-text-box");
-      if (box) {
-        box.value = value;
-        setTimeout(() => { try { box.focus(); box.select(); } catch (_) {} }, 80);
-      }
-      const close = panel.querySelector(".rwph-results-html-close");
-      if (close) close.addEventListener("click", (ev) => {
-        try { ev.preventDefault(); } catch (_) {}
-        try { panel.remove(); } catch (_) {}
-      });
-      try { makeDraggable(panel, ".rwph-results-html-head"); makeResizable(panel); } catch (_) {}
-      return panel;
-    } catch (e) {
-      console.warn("RWPH export fallback panel failed:", e);
-      return null;
-    }
-  }
-
-  async function rwphCreateServerExportFile(filename, text, mime = "text/plain;charset=utf-8", extension = "txt") {
-    const base = String(PAYWALL_API_BASE || "").replace(/\/+$/, "");
-    if (!base || typeof fetch !== "function") throw new Error("Server export unavailable.");
-    const res = await fetch(base + "/api/calc/export-file", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-      body: JSON.stringify({ filename, content: String(text || ""), mime, extension }),
-    });
-    const data = await res.json().catch(() => ({ ok: false, error: "Bad export response" }));
-    if (!res.ok || !data?.ok) throw new Error(data?.error || `Export failed with status ${res.status}`);
-    return data;
-  }
-
-  async function rwphExportTextPdaSafe({ kind, filename, text, mime, extension, statusEl }) {
-    const label = String(kind || "export").toUpperCase();
-    const safeName = rwphSafeDownloadFilename(filename || (extension === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html"));
-    const value = String(text || "");
-    const type = mime || "text/plain;charset=utf-8";
-    const ext = extension || "txt";
-
-    let formStarted = false;
-    try {
-      if (statusEl) statusEl.textContent = `Starting ${label} download...`;
-      // Direct POST download happens immediately from the user's click handler. This is more reliable
-      // than waiting for fetch/blob permissions, especially inside Torn PDA.
-      formStarted = rwphSubmitMainExportDownloadForm(safeName, value, type, ext);
-    } catch (_) { formStarted = false; }
-
-    let localStarted = false;
-    if (!formStarted && !(typeof rwphIsMobileOrPdaView === "function" && rwphIsMobileOrPdaView())) {
-      try { localStarted = !!rwphDownloadTextFileStrong(safeName, value, type); } catch (_) { localStarted = false; }
-    }
-
-    const panel = rwphOpenExportTextFallbackPanel(
-      label,
-      value,
-      safeName,
-      type,
-      formStarted
-        ? `${label} download was sent to the browser. If no .${ext} file appears, use the backup options below.`
-        : (localStarted ? `Local ${label} download started. If no .${ext} file appears, use the backup options below.` : `${label} automatic download was blocked. Use the backup options below.`)
-    );
-
-    // Still create a server-backed GET link where possible, but do not depend on it for the main click.
-    try {
-      const data = await rwphCreateServerExportFile(safeName, value, type, ext);
-      const downloadUrl = data.downloadUrl || "";
-      const inlineUrl = data.inlineUrl || (downloadUrl ? String(downloadUrl) + "?inline=1" : "");
-      if (downloadUrl) {
-        const boxPanel = document.getElementById("rwph-export-text-panel") || panel;
-        const actions = boxPanel?.querySelector?.("#rwph-export-text-actions");
-        if (actions && !actions.querySelector("[data-rwph-server-download]")) {
-          const a = document.createElement("a");
-          a.href = downloadUrl;
-          a.download = data.filename || safeName;
-          a.target = "_self";
-          a.textContent = `Server Download .${ext} File`;
-          a.setAttribute("data-rwph-server-download", "1");
-          actions.insertBefore(a, actions.firstChild || null);
-          if (inlineUrl) {
-            const open = document.createElement("a");
-            open.href = inlineUrl;
-            open.target = "_self";
-            open.textContent = `Open ${label} in this tab`;
-            actions.insertBefore(open, a.nextSibling);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("RWPH server export link could not be created:", e);
-    }
-
-    return !!(formStarted || localStarted || panel);
-  }
-
-
   function rwphHandleResultsHtmlDownloadMessage(event) {
     try {
       const data = event && event.data;
@@ -8004,35 +7540,10 @@
     }
   }
 
-
-  function rwphHandleResultsPaymentsNavigateMessage(event) {
-    try {
-      const data = event && event.data;
-      if (!data || data.rwphType !== "rwph-results-open-payments-request") return;
-      const rows = Array.isArray(data.rows) ? data.rows : [];
-      if (!rows.length) return;
-      rwphStorePayAllRows(rows);
-      const html = String(data.html || "");
-      if (html && html.length > 1000) rwphStoreRecentPayAllReport(html, data.filename || "rwph-results-report.html");
-      else rwphStoreRecentPayAllReportFromRows(rows, data.summary || lastSummary || {});
-      try {
-        event.source && event.source.postMessage({ rwphType: "rwph-results-open-payments-ack", requestId: data.requestId || "", ok: true }, "*");
-      } catch (_) {}
-      rwphQueueCrossTabPopup("payments", "Payments opened in the current Torn tab on the faction vault/controls page. Use the copy-only panel there.", "info", "RWPH Payments");
-      try { closePanel(); } catch (_) {}
-      try { rwphCloseAllPanelsExceptPayAll(); } catch (_) {}
-      const url = rwphFactionControlsPayAllUrl();
-      try { window.location.assign(url); } catch (_) { window.location.href = url; }
-    } catch (e) {
-      console.warn("RWPH parent Payments navigation handler failed:", e);
-    }
-  }
-
   try {
     if (!window.__rwphResultsHtmlDownloadBridgeReady) {
       window.__rwphResultsHtmlDownloadBridgeReady = true;
       window.addEventListener("message", rwphHandleResultsHtmlDownloadMessage, false);
-      window.addEventListener("message", rwphHandleResultsPaymentsNavigateMessage, false);
     }
   } catch (_) {}
 
@@ -8370,7 +7881,6 @@
     .pay-all-info ul { margin:6px 0 0 16px; padding:0; }
     .pay-all-info li { margin:3px 0; }
     .pay-all-close { position:absolute!important; top:10px!important; right:12px!important; width:36px!important; height:36px!important; min-width:36px!important; min-height:36px!important; padding:0!important; display:grid!important; place-items:center!important; border-radius:14px!important; border:1px solid rgba(251,191,36,.24)!important; border-left:4px solid rgba(245,158,11,.66)!important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88))!important; color:#fff7ed!important; font:950 20px/1 Arial,Helvetica,sans-serif!important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)!important; text-shadow:0 1px 0 rgba(0,0,0,.75)!important; cursor:pointer!important; z-index:120!important; }
-    .pay-all-reopen-report { position:absolute!important; top:10px!important; right:54px!important; min-height:36px!important; padding:0 10px!important; border-radius:14px!important; z-index:120!important; font-size:11px!important; white-space:nowrap!important; }
     .pay-all-undo { margin:0 0 10px; padding:7px 10px; font-size:11px; border-radius:10px; }
     .pay-all-list { display:grid; gap:8px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.86) rgba(15,23,42,.36); }
     .pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
@@ -8469,9 +7979,6 @@
     .rwph-results-html-title{font:950 15px/1.15 Arial,Helvetica,sans-serif;letter-spacing:.35px;text-transform:uppercase;color:#f8fafc;}
     .rwph-results-html-note{font:800 11px/1.35 Arial,Helvetica,sans-serif;color:#fde68a;margin-top:3px;}
     .rwph-results-html-close{min-width:42px;width:42px;height:42px;display:grid;place-items:center;text-decoration:none!important;border:1px solid rgba(251,191,36,.3);border-left:4px solid rgba(245,158,11,.66);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(2,6,23,.88));color:#fff7ed!important;font:950 22px/1 Arial,Helvetica,sans-serif;cursor:pointer;}
-    .rwph-export-html-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;}
-    .rwph-export-html-actions a{display:grid;place-items:center;text-decoration:none!important;color:#fff7ed!important;border:1px solid rgba(251,191,36,.30);border-left:4px solid rgba(245,158,11,.72);border-radius:14px;background:linear-gradient(180deg,rgba(30,41,59,.96),rgba(2,6,23,.90));font:950 12px/1.15 Arial,Helvetica,sans-serif;padding:11px 10px;min-height:42px;box-shadow:0 10px 22px rgba(0,0,0,.22);}
-    .rwph-export-html-actions a:hover{filter:brightness(1.12);transform:translateY(-1px);}
     .rwph-results-html-box{flex:1 1 auto;min-height:120px;width:100%;box-sizing:border-box;border-radius:14px;border:1px solid rgba(251,191,36,.28);background:#020617;color:#f8fafc;padding:10px;font:12px/1.45 Consolas,monospace;white-space:pre-wrap;overflow:auto;resize:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);-webkit-user-select:text!important;user-select:text!important;cursor:text;outline:none;margin:0;text-align:left;-webkit-touch-callout:default!important;touch-action:auto!important;}
     .rwph-results-html-box::selection{background:rgba(251,191,36,.42)!important;color:#fff!important;}
     .rwph-raw-html-copy-note{display:block;margin:0 0 6px 0;padding:8px;border:1px solid rgba(251,191,36,.22);border-radius:13px;background:rgba(2,6,23,.42);box-sizing:border-box;text-align:center;color:#fde68a;font:850 10px/1.35 Arial,Helvetica,sans-serif;}
@@ -8480,7 +7987,7 @@
     .rwph-results-html-preview-title{color:#fde68a;text-align:center;font:900 11px/1.2 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.25px;margin:0 0 5px;}
     .rwph-results-html-preview{width:100%;max-width:100%;box-sizing:border-box;overflow:auto;background:#020617;border-radius:10px;padding:3px;}
     .rwph-results-html-preview table{max-width:100%!important;}
-    @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-export-html-actions{grid-template-columns:1fr}.rwph-results-html-box{font-size:11px;}}
+    @media (max-width:760px){.rwph-results-html-panel{width:calc(100vw - 12px);height:calc(100vh - 12px);padding:8px}.rwph-results-html-preview-wrap{max-height:42%;min-height:100px}.rwph-results-html-box{font-size:11px;}}
 
     /* v1.1.386 unified RWPH panel palette for results/newsletter page */
     :root{
@@ -9135,9 +8642,9 @@
     </section>
       <div class="results-action-zone" aria-label="Results actions">
         <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, export CSV for records, use Payments, or open the Newsletter dropdown for compact themed HTML panels.</p>
-        <a class="btn secondary" id="thisPageHtmlBtn" href="#" role="button">Export Html</a>
-        <a class="btn secondary" id="csvBtn" href="#" role="button">Export CSV</a>
-        <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" onclick="return window.rwphOpenPaymentsSameTab ? window.rwphOpenPaymentsSameTab(event) : true;">Payments</a>
+        <a class="btn secondary" id="thisPageHtmlBtn" href="#" onclick="return window.rwphExportResultsHtml ? window.rwphExportResultsHtml(event) : false;">Export Html</a>
+        <a class="btn secondary" id="csvBtn" href="${esc(csvHref)}" download="torn-rw-payouts.csv">Export CSV</a>
+        <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
         ${rwphNewsletterButtonsHtml}
       </div>
       <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
@@ -9179,7 +8686,6 @@
 
   <aside class="pay-all-panel" id="payAllPanel" hidden>
     <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
-    <button class="btn secondary pay-all-reopen-report" id="payAllReopenReport" type="button" title="Reopen this report for 10 minutes after opening Payments">Reopen Report</button>
     <h2 class="pay-all-head">Payments Copy Panel</h2>
     <p class="pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</p>
     <div class="pay-all-info">
@@ -9204,10 +8710,7 @@
     const rows = ${rowsJson};
     const summary = ${summaryJson};
     const csvText = ${JSON.stringify(csvText).replaceAll("<", "\\u003c")};
-    const rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
-    const payAllReportReopenStorageKey = "rw_payout_helper_recent_pay_all_report";
-    const payAllReportReopenTtlMs = 10 * 60 * 1000;
     const rwphOpenResultsStorageKey = "rw_payout_helper_last_results_html_open";
 
     function rwphRememberStandaloneResultsOpen() {
@@ -9229,24 +8732,6 @@
       } catch (e) {}
     }
 
-    function storePayAllReportReopenSnapshot() {
-      try {
-        const html = getCurrentResultsPageHtml();
-        if (!html || html.length < 1000) return false;
-        const now = Date.now();
-        localStorage.setItem(payAllReportReopenStorageKey, JSON.stringify({
-          createdAt: now,
-          expiresAt: now + payAllReportReopenTtlMs,
-          filename: rwphExportHtmlFilename ? rwphExportHtmlFilename() : "rwph-results-report.html",
-          html: html
-        }));
-        return true;
-      } catch (e) {
-        console.warn("RWPH could not store recent report reopen snapshot:", e);
-        return false;
-      }
-    }
-
     storePayAllRowsFallback();
 
     function money(n) {
@@ -9259,11 +8744,9 @@
         a.href = String(url || "");
         a.download = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
         a.rel = "noopener";
-        a.target = "_self";
         a.style.display = "none";
         document.body.appendChild(a);
-        if (typeof a.click === "function") a.click();
-        else a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+        a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
         setTimeout(() => { try { a.remove(); } catch (_) {} }, 250);
         return true;
       } catch (e) {
@@ -9290,39 +8773,13 @@
       return false;
     }
 
-    function rwphSubmitExportDownloadForm(kind, filename, content, mime, extension, inline) {
-      try {
-        var base = String(rwphApiBase || "").replace(/\/+$/, "");
-        if (!base) return false;
-        var ext = String(extension || "txt").replace(/[^a-z0-9]/gi, "").toLowerCase() || "txt";
-        var safeName = rwphExportFileSafeName(filename, ext === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html", ext);
-        var form = document.createElement("form");
-        form.method = "POST";
-        form.action = base + "/api/calc/download-file";
-        form.target = "_blank";
-        form.acceptCharset = "UTF-8";
-        form.style.position = "fixed";
-        form.style.left = "-9999px";
-        form.style.top = "-9999px";
-        function field(name, value) {
-          var input = document.createElement("textarea");
-          input.name = name;
-          input.value = String(value == null ? "" : value);
-          form.appendChild(input);
-        }
-        field("filename", safeName);
-        field("content", String(content || ""));
-        field("mime", mime || "text/plain;charset=utf-8");
-        field("extension", ext);
-        if (inline) field("inline", "1");
-        (document.body || document.documentElement).appendChild(form);
-        form.submit();
-        setTimeout(function(){ try { form.remove(); } catch (_) {} }, 1000);
-        return true;
-      } catch (e) {
-        console.warn("RWPH direct form export failed:", e);
-        return false;
-      }
+    function exportCsv() {
+      downloadText("torn-rw-payouts.csv", csvText || "", "text/csv");
+    }
+
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
     function escapeHtml(value) {
@@ -9331,155 +8788,6 @@
       });
     }
 
-    function rwphIsPdaOrMobileExportView() {
-      try {
-        var ua = navigator.userAgent || "";
-        if (/(torn\s*pda|tornpda|android|iphone|ipad|ipod|mobile|phone|wv\))/i.test(ua)) return true;
-        if (window.matchMedia && window.matchMedia("(max-width: 760px), (pointer: coarse)").matches) return true;
-      } catch (_) {}
-      return false;
-    }
-
-    function rwphExportFileSafeName(filename, fallback, extension) {
-      var ext = String(extension || "txt").replace(/[^a-z0-9]/gi, "").toLowerCase() || "txt";
-      var name = String(filename || fallback || ("rwph-export." + ext)).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-").replace(/\s+/g, " ").slice(0, 140).trim();
-      if (!name) name = String(fallback || ("rwph-export." + ext));
-      var re = new RegExp("\\." + ext + "$", "i");
-      if (!re.test(name)) name = name.replace(/\.[a-z0-9]{1,8}$/i, "") + "." + ext;
-      return name;
-    }
-
-    function rwphCreateLocalExportUrl(content, mime) {
-      try {
-        var blob = new Blob([String(content || "")], { type: mime || "text/plain;charset=utf-8" });
-        var url = URL.createObjectURL(blob);
-        setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 10 * 60 * 1000);
-        return url;
-      } catch (e) {
-        console.warn("RWPH local export URL failed:", e);
-        return "";
-      }
-    }
-
-    function rwphOpenExportFileFallbackPanel(kind, content, filename, mime, reason, downloadUrl, inlineUrl) {
-      try {
-        var old = document.getElementById("rwph-export-html-panel") || document.getElementById("rwph-export-file-panel");
-        if (old) old.remove();
-        var label = String(kind || "Export").toUpperCase();
-        var ext = label === "CSV" ? "csv" : (label === "HTML" ? "html" : "txt");
-        var safeName = rwphExportFileSafeName(filename, ext === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html", ext);
-        var value = String(content || "");
-        var panel = document.createElement("section");
-        panel.id = "rwph-export-file-panel";
-        panel.className = "rwph-results-html-panel";
-        panel.style.display = "flex";
-        panel.style.visibility = "visible";
-        panel.style.opacity = "1";
-        panel.innerHTML = ''
-          + '<div class="rwph-results-html-head">'
-          + '<div><div class="rwph-results-html-title">Export ' + escapeHtml(label) + '</div>'
-          + '<div class="rwph-results-html-note">On Torn PDA, tap the download link below. If PDA blocks downloads, copy the raw ' + escapeHtml(label) + ' box and save it manually.</div></div>'
-          + '<a class="rwph-results-html-close" href="#" title="Close">×</a>'
-          + '</div>'
-          + '<div class="rwph-results-html-status">' + escapeHtml(reason || "Download fallback ready.") + ' File name: ' + escapeHtml(safeName) + '</div>'
-          + '<div class="rwph-export-html-actions" id="rwph-export-file-actions"></div>'
-          + '<textarea class="rwph-results-html-box" id="rwph-export-file-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>';
-        (document.body || document.documentElement).appendChild(panel);
-
-        var actions = document.getElementById("rwph-export-file-actions");
-        function addLink(href, text, shouldDownload) {
-          if (!actions || !href) return;
-          var a = document.createElement("a");
-          a.href = String(href || "");
-          if (shouldDownload) a.download = safeName;
-          a.target = "_self";
-          a.textContent = text;
-          actions.appendChild(a);
-        }
-        addLink(downloadUrl, "Download ." + ext + " File", true);
-        addLink(inlineUrl, "Open " + label + " in this tab", false);
-        var localUrl = rwphCreateLocalExportUrl(value, mime || "text/plain;charset=utf-8");
-        addLink(localUrl, downloadUrl ? "Backup Local Download" : ("Download ." + ext + " File"), true);
-
-        var box = document.getElementById("rwph-export-file-box");
-        if (box) {
-          box.value = value;
-          setTimeout(function() { try { box.focus(); box.select(); } catch (_) {} }, 60);
-        }
-        var close = panel.querySelector(".rwph-results-html-close");
-        if (close) close.addEventListener("click", function(ev) { try { ev.preventDefault(); } catch (_) {} try { panel.remove(); } catch (_) {} });
-        try { setupMoveResize(panel, ".rwph-results-html-head"); } catch (_) {}
-        return panel;
-      } catch (e) {
-        console.warn("RWPH export fallback panel failed:", e);
-        return null;
-      }
-    }
-
-    function rwphStartServerTextAttachmentDownload(kind, filename, content, mime, extension, fallbackFn) {
-      try {
-        var base = String(rwphApiBase || "").replace(/\/+$/, "");
-        if (!base || typeof fetch !== "function") return false;
-        var ext = String(extension || "txt").toLowerCase();
-        var safeName = rwphExportFileSafeName(filename, ext === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html", ext);
-        fetch(base + "/api/calc/export-file", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-          body: JSON.stringify({ filename: safeName, content: String(content || ""), mime: mime || "text/plain;charset=utf-8", extension: ext })
-        }).then(function(res) {
-          return res.json().catch(function() { return { ok: false, error: "Bad export response" }; });
-        }).then(function(data) {
-          if (data && data.ok && data.downloadUrl) {
-            var downloadUrl = String(data.downloadUrl || "");
-            var inlineUrl = String(data.inlineUrl || (downloadUrl ? downloadUrl + "?inline=1" : ""));
-            if (!rwphIsPdaOrMobileExportView()) {
-              try { rwphTriggerDirectDownload(downloadUrl, data.filename || safeName); } catch (_) {}
-              try {
-                var iframe = document.createElement("iframe");
-                iframe.style.position = "fixed";
-                iframe.style.left = "-9999px";
-                iframe.style.top = "-9999px";
-                iframe.style.width = "1px";
-                iframe.style.height = "1px";
-                iframe.src = downloadUrl;
-                (document.body || document.documentElement).appendChild(iframe);
-                setTimeout(function() { try { iframe.remove(); } catch (_) {} }, 60000);
-              } catch (_) {}
-            }
-            rwphOpenExportFileFallbackPanel(kind, content, data.filename || safeName, mime, rwphIsPdaOrMobileExportView() ? ("PDA-safe " + String(kind || "export").toUpperCase() + " export ready. Tap Download below.") : ("Server download started. If no file appears, press Download below."), downloadUrl, inlineUrl);
-            return;
-          }
-          if (fallbackFn) fallbackFn((data && (data.error || data.message)) || "Server export failed.");
-        }).catch(function(e) {
-          console.warn("RWPH server export failed:", e);
-          if (fallbackFn) fallbackFn("Server export failed or was blocked.");
-        });
-        return true;
-      } catch (e) {
-        console.warn("RWPH server export setup failed:", e);
-        return false;
-      }
-    }
-
-    function exportCsv(ev) {
-      try {
-        if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {} }
-        var filename = "torn-rw-payouts.csv";
-        var value = String(csvText || "");
-        var started = rwphSubmitExportDownloadForm("CSV", filename, value, "text/csv;charset=utf-8", "csv", false);
-        // Always open the fallback/copy panel too. PDA often blocks automatic downloads,
-        // but the visible link/text box still lets the user get the file contents.
-        rwphOpenExportFileFallbackPanel("CSV", value, filename, "text/csv;charset=utf-8", started ? "CSV download was sent to the browser. If no file appears, use the backup options below." : "CSV automatic download was blocked. Use the backup options below.");
-        if (!started && !rwphIsPdaOrMobileExportView()) downloadText(filename, value, "text/csv;charset=utf-8");
-        return false;
-      } catch (e) {
-        console.warn("RWPH CSV export failed:", e);
-        try { rwphOpenExportFileFallbackPanel("CSV", String(csvText || ""), "torn-rw-payouts.csv", "text/csv;charset=utf-8", "CSV export failed. Copy the raw CSV below."); } catch (_) {}
-        return false;
-      }
-    }
-
-    function rwphStripInlineScrollStyles(html) {
       return String(html || "")
         .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;\}"]+;?/gi, "")
         .trim();
@@ -9513,6 +8821,24 @@
         return false;
       }
     }
+
+    document.addEventListener("click", async function(ev) {
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Copying...";
+      try {
+        if (mode === "rich" || mode === "rich-rendered") {
+        } else if (mode === "plain") {
+        } else {
+        }
+      } catch (err) {
+      } finally {
+        setTimeout(function(){ btn.disabled = false; btn.textContent = oldText; }, 450);
+      }
+    });
 
     const payAllUndoStack = [];
 
@@ -9796,44 +9122,50 @@
       return false;
     }
 
-    function rwphHtmlDownloadSafeName(filename) {
-      return String(filename || "rwph-results-page.html").replace(/[\/:*?"<>|\u0000-\u001f]+/g, "-") || "rwph-results-page.html";
-    }
-
-    var rwphLastExportBlobUrl = "";
-    function rwphCreateLocalHtmlDownloadUrl(html) {
+    function rwphOpenExportHtmlFallbackPanel(html, filename, reason) {
       try {
-        if (rwphLastExportBlobUrl) {
-          try { URL.revokeObjectURL(rwphLastExportBlobUrl); } catch (_) {}
-          rwphLastExportBlobUrl = "";
-        }
-        var blob = new Blob([String(html || "")], { type: "text/html;charset=utf-8" });
-        rwphLastExportBlobUrl = URL.createObjectURL(blob);
-        setTimeout(function() {
-          try {
-            if (rwphLastExportBlobUrl) URL.revokeObjectURL(rwphLastExportBlobUrl);
-            rwphLastExportBlobUrl = "";
-          } catch (_) {}
-        }, 10 * 60 * 1000);
-        return rwphLastExportBlobUrl;
-      } catch (e) {
-        console.warn("RWPH could not create local HTML download URL:", e);
-        return "";
-      }
-    }
+        var old = document.getElementById("rwph-export-html-panel");
+        if (old) old.remove();
 
-    function rwphOpenExportHtmlFallbackPanel(html, filename, reason, downloadUrl, inlineUrl) {
-      return rwphOpenExportFileFallbackPanel("HTML", String(html || ""), filename || "rwph-results-page.html", "text/html;charset=utf-8", reason || "Download fallback ready.", downloadUrl || "", inlineUrl || ((downloadUrl || "") ? String(downloadUrl) + "?inline=1" : ""));
+        var panel = document.createElement("section");
+        panel.id = "rwph-export-html-panel";
+        panel.className = "rwph-results-html-panel";
+        panel.style.display = "flex";
+        panel.style.visibility = "visible";
+        panel.style.opacity = "1";
+        panel.innerHTML = ''
+          + '<div class="rwph-results-html-head">'
+          + '<div><div class="rwph-results-html-title">Export Html</div>'
+          + '<div class="rwph-results-html-note">The direct download was blocked or too large for this browser/PDA. Right-click or long-press inside the box, Select All, then Copy. Save it as an .html file.</div></div>'
+          + '<a class="rwph-results-html-close" href="#" title="Close">×</a>'
+          + '</div>'
+          + '<div class="rwph-results-html-status">' + escapeHtml(reason || "Manual export fallback ready.") + ' File name: ' + escapeHtml(filename || "rwph-results-page.html") + '</div>'
+          + '<textarea class="rwph-results-html-box" id="rwph-export-html-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>';
+        (document.body || document.documentElement).appendChild(panel);
+        var box = document.getElementById("rwph-export-html-box");
+        if (box) {
+          box.value = String(html || "");
+          setTimeout(function() { try { box.focus(); box.select(); } catch (_) {} }, 60);
+        }
+        var close = panel.querySelector(".rwph-results-html-close");
+        if (close) close.addEventListener("click", function(ev) {
+          try { ev.preventDefault(); } catch (_) {}
+          panel.remove();
+        });
+      } catch (e) {
+        console.warn("RWPH export HTML fallback failed:", e);
+      }
     }
 
     function rwphDownloadHtmlWithoutBlob(filename, html, reason) {
       var value = String(html || "");
-      var safeName = rwphHtmlDownloadSafeName(filename);
+      var safeName = String(filename || "rwph-results-page.html").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
 
+      // v1.1.405: try Blob first, then data URL. The parent-page bridge uses the same logic outside the iframe.
       try {
-        var blob = new Blob([value], { type: "text/html;charset=utf-8" });
-        var url = URL.createObjectURL(blob);
-        var ok = rwphTriggerDirectDownload(url, safeName);
+        const blob = new Blob([value], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const ok = rwphTriggerDirectDownload(url, safeName);
         setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 15000);
         if (ok) return true;
       } catch (e) {
@@ -9843,57 +9175,16 @@
       try {
         var href = "data:text/html;charset=utf-8," + encodeURIComponent(value);
         if (href.length < 1900000 && rwphTriggerDirectDownload(href, safeName)) return true;
+        if (href.length >= 1900000) {
+          rwphOpenExportHtmlFallbackPanel(value, safeName, reason || "HTML is too large for a safe data-link download.");
+          return false;
+        }
       } catch (e) {
         console.warn("RWPH data-link HTML export failed:", e);
       }
 
       rwphOpenExportHtmlFallbackPanel(value, safeName, reason || "Download was blocked by this browser/PDA.");
       return false;
-    }
-
-    function rwphStartServerHtmlAttachmentDownload(filename, html, fallbackFn) {
-      try {
-        var base = String(rwphApiBase || "").replace(/\/+$/, "");
-        if (!base || typeof fetch !== "function") return false;
-        var safeName = rwphHtmlDownloadSafeName(filename);
-        fetch(base + "/api/calc/export-html-file", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-          body: JSON.stringify({ filename: safeName, html: String(html || "") })
-        }).then(function(res) {
-          return res.json().catch(function() { return { ok: false, error: "Bad export response" }; });
-        }).then(function(data) {
-          if (data && data.ok && data.downloadUrl) {
-            var downloadUrl = String(data.downloadUrl || "");
-            var inlineUrl = String(data.inlineUrl || (downloadUrl ? downloadUrl + "?inline=1" : ""));
-            if (!rwphIsPdaOrMobileExportView()) {
-              try { rwphTriggerDirectDownload(downloadUrl, data.filename || safeName); } catch (_) {}
-              try {
-                var iframe = document.createElement("iframe");
-                iframe.style.position = "fixed";
-                iframe.style.left = "-9999px";
-                iframe.style.top = "-9999px";
-                iframe.style.width = "1px";
-                iframe.style.height = "1px";
-                iframe.src = downloadUrl;
-                (document.body || document.documentElement).appendChild(iframe);
-                setTimeout(function() { try { iframe.remove(); } catch (_) {} }, 60000);
-              } catch (_) {}
-            }
-            // PDA-safe: visible direct link needs a second real tap, which PDA allows more reliably than hidden iframe downloads.
-            rwphOpenExportHtmlFallbackPanel(html, safeName, rwphIsPdaOrMobileExportView() ? "PDA-safe HTML export ready. Tap Download below." : "Server download started. If no .html file appears, press Download .html File below.", downloadUrl, inlineUrl);
-            return;
-          }
-          if (fallbackFn) fallbackFn((data && (data.error || data.message)) || "Server export failed.");
-        }).catch(function(e) {
-          console.warn("RWPH server HTML export failed:", e);
-          if (fallbackFn) fallbackFn("Server export failed or was blocked.");
-        });
-        return true;
-      } catch (e) {
-        console.warn("RWPH server export setup failed:", e);
-        return false;
-      }
     }
 
     function downloadThisResultsPageHtml(ev) {
@@ -9905,9 +9196,8 @@
         }
         var html = getCurrentResultsPageHtml();
         var filename = rwphExportHtmlFilename();
-        var started = rwphSubmitExportDownloadForm("HTML", filename, html, "text/html;charset=utf-8", "html", false);
-        rwphOpenExportHtmlFallbackPanel(html, filename, started ? "HTML download was sent to the browser. If no file appears, use the backup options below." : "HTML automatic download was blocked. Use the backup options below.");
-        if (!started && !rwphIsPdaOrMobileExportView()) rwphDownloadHtmlWithoutBlob(filename, html, "Trying local browser download.");
+        var localFallback = function(reason) { rwphDownloadHtmlWithoutBlob(filename, html, reason); };
+        if (!rwphRequestParentHtmlDownload(filename, html, localFallback)) localFallback();
         return false;
       } catch (e) {
         try { rwphOpenExportHtmlFallbackPanel("", "rwph-results-page.html", "Could not export this results page HTML."); } catch (_) {}
@@ -9985,21 +9275,13 @@
     var thisPageHtmlBtn = document.getElementById("thisPageHtmlBtn");
     if (thisPageHtmlBtn) {
       thisPageHtmlBtn.addEventListener("click", downloadThisResultsPageHtml);
-    }
-    var csvBtn = document.getElementById("csvBtn");
-    if (csvBtn) {
-      csvBtn.addEventListener("click", exportCsv);
-      csvBtn.addEventListener("touchend", exportCsv, { passive: false });
+      thisPageHtmlBtn.addEventListener("touchend", downloadThisResultsPageHtml, { passive: false });
     }
     document.addEventListener("click", function(ev) {
       var target = ev && ev.target;
-      var htmlBtn = target && target.closest ? target.closest("#thisPageHtmlBtn") : null;
-      if (htmlBtn) {
-        downloadThisResultsPageHtml(ev);
-        return;
-      }
-      var csvExportBtn = target && target.closest ? target.closest("#csvBtn") : null;
-      if (csvExportBtn) exportCsv(ev);
+      var btn = target && target.closest ? target.closest("#thisPageHtmlBtn") : null;
+      if (!btn) return;
+      downloadThisResultsPageHtml(ev);
     }, true);
 
     window.rwphOpenResultsHtmlPanel = openResultsHtmlPanel;
@@ -10042,93 +9324,8 @@
     // v1.1.386: newsletter raw HTML selection uses PC triple-click, or phone/PDA hold-click browser menu.
 
 
-    function rwphOpenPaymentsSameTab(ev) {
-      try {
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        storePayAllRowsFallback();
-        storePayAllReportReopenSnapshot();
-        var requestId = "rwph-payments-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-        var html = "";
-        try { html = getCurrentResultsPageHtml(); } catch (_) { html = ""; }
-        var filename = "rwph-results-report.html";
-        try { filename = rwphExportHtmlFilename ? rwphExportHtmlFilename() : filename; } catch (_) {}
-        var payload = {
-          rwphType: "rwph-results-open-payments-request",
-          requestId: requestId,
-          rows: rows || [],
-          summary: summary || {},
-          html: html,
-          filename: filename
-        };
-        var sent = false;
-        var finished = false;
-        function fallbackNavigate() {
-          if (finished) return;
-          finished = true;
-          try { window.removeEventListener("message", onAck, false); } catch (_) {}
-          var url = "https://www.torn.com/factions.php?step=your&rwphPayAll=1#/tab=controls&subtab=vault";
-          // Do not open the vault inside the results iframe/panel. Navigate the main Torn page whenever possible.
-          try {
-            if (window.opener && !window.opener.closed) {
-              window.opener.location.href = url;
-              try { window.close(); } catch (_) {}
-              return;
-            }
-          } catch (_) {}
-          try {
-            if (window.top && window.top !== window) {
-              window.top.location.href = url;
-              return;
-            }
-          } catch (_) {}
-          try {
-            if (window.parent && window.parent !== window) {
-              window.parent.location.href = url;
-              return;
-            }
-          } catch (_) {}
-          window.location.href = url;
-        }
-        function onAck(messageEvent) {
-          try {
-            var data = messageEvent && messageEvent.data;
-            if (!data || data.rwphType !== "rwph-results-open-payments-ack" || data.requestId !== requestId) return;
-            finished = true;
-            try { window.removeEventListener("message", onAck, false); } catch (_) {}
-            try { window.close(); } catch (_) {}
-          } catch (_) {}
-        }
-        try { window.addEventListener("message", onAck, false); } catch (_) {}
-        try {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage(payload, "*");
-            sent = true;
-          }
-        } catch (_) {}
-        try {
-          if (window.parent && window.parent !== window) {
-            window.parent.postMessage(payload, "*");
-            sent = true;
-          }
-        } catch (_) {}
-        if (sent) {
-          setTimeout(fallbackNavigate, 1200);
-          return false;
-        }
-        fallbackNavigate();
-        return false;
-      } catch (e) {
-        console.warn("RWPH same-tab Payments navigation failed:", e);
-        return true;
-      }
-    }
-    window.rwphOpenPaymentsSameTab = rwphOpenPaymentsSameTab;
-
     var payAllOpenBtn = document.getElementById("payAllBtn");
-    if (payAllOpenBtn) {
-      payAllOpenBtn.addEventListener("click", rwphOpenPaymentsSameTab);
-      payAllOpenBtn.addEventListener("touchend", rwphOpenPaymentsSameTab, { passive: false });
-    }
+    if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", storePayAllRowsFallback);
 
     document.getElementById("payAllPanel").addEventListener("click", async function(e) {
       const nameBtn = e.target.closest("[data-copy-name]");
@@ -10154,17 +9351,6 @@
 
     const payAllClose = document.getElementById("payAllClose");
     if (payAllClose) payAllClose.addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
-    const payAllReopenReport = document.getElementById("payAllReopenReport");
-    if (payAllReopenReport) payAllReopenReport.addEventListener("click", function() {
-      try {
-        storePayAllReportReopenSnapshot();
-        var blob = new Blob([getCurrentResultsPageHtml()], { type: "text/html;charset=utf-8" });
-        var url = URL.createObjectURL(blob);
-        var tab = window.open(url, "_blank", "noopener,noreferrer");
-        setTimeout(function(){ try { URL.revokeObjectURL(url); } catch (_) {} }, 30000);
-        if (!tab) window.location.href = url;
-      } catch (e) { console.warn("Could not reopen RWPH report:", e); }
-    });
     const payAllUndo = document.getElementById("payAllUndo");
     if (payAllUndo) payAllUndo.addEventListener("click", function() { undoLastPayAllDisappear(); });
     setupMoveResize(document.getElementById("payAllPanel"), ".pay-all-head");
@@ -11903,6 +11089,7 @@
   function rwphModeLabel(mode) {
     return rwphNormalizeCalculationMode(mode) === "points" ? "Points System" : "Per Hit";
   }
+
   function rwphHtmlEscape(value) {
     return String(value ?? "")
       .replace(/&/g, "&amp;")
@@ -12159,6 +11346,11 @@
       #rwph-member-management-panel .rwph-mm-card input[type=number]{width:100%;box-sizing:border-box;margin-top:4px;}
       #rwph-member-management-panel .rwph-mm-empty{padding:12px;border:1px dashed var(--rw-border);border-radius:var(--rw-card-radius,12px);color:var(--rw-muted);background:var(--rw-card-bg);}
       #rwph-member-management-panel button{border-radius:var(--rw-button-radius,10px)!important;}
+      #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:10px!important;top:10px!important;min-width:34px!important;height:34px!important;padding:0!important;display:grid!important;place-items:center!important;background:var(--rw-danger-bg,rgba(127,29,29,.9))!important;color:var(--rw-danger-text,#fff)!important;border:1px solid var(--rw-border)!important;font-size:20px!important;font-weight:1000!important;line-height:1!important;}
+      #rwph-member-management-panel .rw-resize-handle{position:absolute;width:18px;height:18px;z-index:8;touch-action:none;-webkit-user-select:none;user-select:none;opacity:.95;background:rgba(2,6,23,.18);}
+      #rwph-member-management-panel .rw-resize-handle-se{right:7px;bottom:7px;cursor:nwse-resize;border-right:2px solid var(--rw-accent,#fbbf24);border-bottom:2px solid var(--rw-accent,#fbbf24);border-radius:0 0 8px 0;}
+      #rwph-member-management-panel .rw-resize-handle-sw{left:7px;bottom:7px;cursor:nesw-resize;border-left:2px solid var(--rw-accent,#fbbf24);border-bottom:2px solid var(--rw-accent,#fbbf24);border-radius:0 0 0 8px;}
+      #rwph-member-management-panel .rw-resize-handle-nw{left:7px;top:7px;cursor:nwse-resize;border-left:2px solid var(--rw-accent,#fbbf24);border-top:2px solid var(--rw-accent,#fbbf24);border-radius:8px 0 0 0;}
       #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar{width:10px;height:10px;}
       #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-track{background:var(--rw-scroll-track);border-radius:10px;}
       #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-thumb{background:var(--rw-scroll-thumb);border-radius:10px;border:2px solid var(--rw-scroll-track);}
@@ -12245,6 +11437,8 @@
     panel.className = "rwph-floating-panel rwph-member-management-panel";
     panel.style.width = "720px";
     panel.style.maxWidth = "96vw";
+    panel.style.height = "70vh";
+    panel.style.maxHeight = "90vh";
     panel.style.left = "calc(50vw - 360px)";
     panel.style.top = "80px";
     panel.innerHTML = `
@@ -12734,7 +11928,6 @@
         ${(summary?.warnings || []).length ? `<div class="rw-code">${(summary.warnings || []).map(esc).join("<br>")}</div>` : ""}
         </div>
         <div class="rw-actions">
-          <button class="secondary" data-export-html="1">Export Html</button>
           <button class="secondary" data-export-csv="1">Export CSV</button>
           <button class="secondary" data-pay-all="1">Payments</button>
         </div>
@@ -12819,7 +12012,6 @@
       .rw-pay-all-info ul { margin:5px 0 0 13px; padding:0; }
       .rw-pay-all-info li { margin:2px 0; }
       .rw-pay-all-close { position:absolute !important; top:10px !important; right:12px !important; width:36px !important; height:36px !important; min-width:36px !important; min-height:36px !important; padding:0 !important; display:grid !important; place-items:center !important; border-radius:14px !important; border:1px solid rgba(251,191,36,.24) !important; border-left:4px solid rgba(245,158,11,.66) !important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important; color:#fff7ed !important; font:950 20px/1 Arial,Helvetica,sans-serif !important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26) !important; text-shadow:0 1px 0 rgba(0,0,0,.75) !important; cursor:pointer !important; z-index:120 !important; }
-      .rw-pay-all-reopen-report { position:absolute !important; top:10px !important; right:56px !important; min-height:36px !important; padding:0 10px !important; border-radius:14px !important; z-index:120 !important; font:950 10px/1.1 Arial,Helvetica,sans-serif !important; white-space:nowrap !important; }
       .rw-pay-all-undo { margin:0 0 8px; padding:6px 8px; min-height:26px; border-radius:10px; border:1px solid rgba(251,191,36,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#fff7ed; font-size:10px; font-weight:950; cursor:pointer; }
       .rw-pay-all-list { display:grid; gap:6px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.86) rgba(15,23,42,.36); }
       .rw-pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
@@ -12912,7 +12104,6 @@
     return `
       <div id="rw-pay-all-panel" class="rw-pay-all-panel" hidden>
         <button type="button" class="danger rw-pay-all-close" data-pay-all-close="1">×</button>
-        ${rwphRecentPayAllReportButtonHtml()}
         <div class="rw-pay-all-head">
           <div class="rw-pay-all-title">Payments Copy Panel</div>
         </div>
@@ -13279,7 +12470,6 @@
     panel.hidden = false;
     rwphSetPayAllWarningAccepted(panel, false);
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
-    rwphSchedulePayAllReportButtonExpiry(panel);
     rwphConsumeCrossTabPopup("payments", panel, 550);
     const payAllUndoStack = [];
 
@@ -13287,16 +12477,6 @@
       const closeBtn = e.target.closest?.("[data-pay-all-close]");
       if (closeBtn) {
         closePayAllCopyPanel();
-        return;
-      }
-
-      const reopenReportBtn = e.target.closest?.("[data-reopen-pay-report]");
-      if (reopenReportBtn) {
-        const opened = rwphOpenRecentPayAllReportFromStorage();
-        if (!opened) {
-          try { reopenReportBtn.remove(); } catch (_) {}
-          rwphToastPanelInfo(null, "The 10-minute report reopen link has expired.", "warn", "RWPH Payments");
-        }
         return;
       }
 
@@ -13336,41 +12516,20 @@
     });
   }
 
-  function rwphCloseAllPanelsExceptPayAll() {
-    const selectors = [
-      "#rw-payout-helper",
-      "#rwph-xanax-send-status",
-      "#rw-wrong-payment-panel",
-      "#rwph-theme-picker-panel",
-      "#rwph-licence-info-panel",
-      "#rw-results-panel",
-      ".rwph-results-loading-panel",
-      ".rwph-results-html-panel",
-      "#rwph-export-html-panel"
-    ];
-    for (const selector of selectors) {
-      for (const el of Array.from(document.querySelectorAll(selector))) {
-        if (el?.id === "rw-pay-all-panel" || el?.classList?.contains("rw-pay-all-panel")) continue;
-        try { rwphSavePanelLayout(el); } catch (_) {}
-        try { el.remove(); } catch (_) {}
-      }
-    }
-    rwphSetPanelOpenState(false);
-    setLauncherOpenState(false);
-  }
-
   function rwphMaybeOpenPayAllFromFactionControlsUrl() {
     if (!(window.location.href || "").includes("/factions.php")) return false;
     if (!(window.location.href || "").includes("rwphPayAll=1")) return false;
 
-    // In faction controls/vault, show only the compact copy panel and keep every other RWPH panel closed.
-    rwphCloseAllPanelsExceptPayAll();
+    // In faction controls, show only the compact copy panel and keep the main RWPH panel closed.
+    rwphSetPanelOpenState(false);
+    setLauncherOpenState(false);
+    const mainPanel = document.getElementById("rw-payout-helper");
+    if (mainPanel) mainPanel.remove();
 
     setTimeout(() => {
-      rwphCloseAllPanelsExceptPayAll();
+      closePanel();
       const rows = rwphGetStoredPayAllRows();
       openPayAllCopyPanel(rows || []);
-      rwphCloseAllPanelsExceptPayAll();
     }, 900);
     return true;
   }
@@ -13878,49 +13037,19 @@
     }
   }
 
-  function rwphResultsExportFilename(extension = "html") {
-    const ext = String(extension || "html").replace(/[^a-z0-9]/gi, "").toLowerCase() || "html";
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    return ext === "csv" ? "torn-rw-payouts.csv" : `rwph-results-page-${stamp}.${ext}`;
-  }
-
-  async function downloadCSV(rows, statusEl = null) {
+  function downloadCSV(rows) {
     if (!rows.length) return alert("No payout rows to export yet.");
 
     const csv = buildPayoutCsvText(rows, lastSummary || {});
-    try {
-      await rwphExportTextPdaSafe({
-        kind: "CSV",
-        filename: rwphResultsExportFilename("csv"),
-        text: csv,
-        mime: "text/csv;charset=utf-8",
-        extension: "csv",
-        statusEl,
-      });
-      return true;
-    } catch (e) {
-      console.warn("RWPH CSV export fallback used:", e);
-      return false;
-    }
-  }
-
-  async function rwphExportResultsHtmlFromPanel(rows, summary, statusEl = null) {
-    if (!rows?.length) return alert("Calculate results first.");
-    const html = rwphInjectMainScrollbarCssIntoHtml(buildFullscreenResultsHtml(rows || [], summary || {}));
-    try {
-      await rwphExportTextPdaSafe({
-        kind: "HTML",
-        filename: rwphResultsExportFilename("html"),
-        text: html,
-        mime: "text/html;charset=utf-8",
-        extension: "html",
-        statusEl,
-      });
-      return true;
-    } catch (e) {
-      console.warn("RWPH HTML export fallback used:", e);
-      return false;
-    }
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "torn-rw-payouts.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function rwphGetPoint(e) {
@@ -14313,9 +13442,9 @@
               <li><b>4. Choose payout mode:</b> use <b>Basic Calculations</b> for simple per-hit payouts, or <b>Advanced Calculations</b> for weighted points.</li>
               <li><b>5. Fill war times:</b> click <b>Auto-fill Last Finished War</b> when available, then check the start and finish times before calculating.</li>
               <li><b>6. Enter payout amount:</b> add the member payout pool you want split across eligible members.</li>
-              <li><b>7. Exclude members if needed:</b> open Member Management to exclude members or remove member hits before calculating.</li>
+              <li><b>7. Member Management:</b> open Member Management to exclude members, remove payable hits, or subtract respect before calculating.</li>
               <li><b>8. Calculate:</b> press the Calculate button inside the mode you picked. The loading panel shows each stage.</li>
-              <li><b>9. Review results:</b> check stats, members, payout amounts, and managed member removals before using payment tools.</li>
+              <li><b>9. Review results:</b> check stats, members, payout amounts, and excluded members before using payment tools.</li>
               <li><b>10. Pay and post manually:</b> use the Payments and Newsletter tools to copy/prefill details, then manually confirm everything in Torn yourself.</li>
             </ul>
           </div>
@@ -14339,7 +13468,7 @@
               <li><b>Fast Mode:</b> uses ranked-war report data only. It is quicker, but skips attack-log extras like assists, outside hits, and retals.</li>
               <li><b>Member Payout:</b> the amount you want split between eligible members.</li>
               <li><b>Total Payout:</b> your overall reference total. Member Payout is the value used for the member split.</li>
-              <li><b>Member Management:</b> open the management panel to exclude members or remove specific payable hit counts before payouts are recalculated.</li>
+              <li><b>Member Management:</b> open the management panel to exclude members or remove specific payable hit/respect amounts before payouts are recalculated.</li>
             </ul>
           </div>
 
@@ -14350,7 +13479,7 @@
               <li><b>Point values:</b> set values for war hits, assists, outside hits, retals, hospital bonuses, enemy hospital bonuses, and fair-fight bonus.</li>
               <li><b>Negative enemy hospital bonus:</b> enemy war-faction hospital bonus can be negative when you want to punish that action.</li>
               <li><b>Fair-fight modifier:</b> when enabled, Avg FF over 1.00 can add bonus points per payable hit. It is capped at 3.00.</li>
-              <li><b>Member Management:</b> Advanced has its own member management settings and recalculates points payouts after exclusions or payable hit removals.</li>
+              <li><b>Member Management:</b> Advanced has its own member management settings and recalculates points payouts after exclusions or payable-hit/respect removals.</li>
             </ul>
           </div>
 
@@ -14979,9 +14108,9 @@
               <li><b>4. Choose payout mode:</b> use <b>Basic Calculations</b> for simple per-hit payouts, or <b>Advanced Calculations</b> for weighted points.</li>
               <li><b>5. Fill war times:</b> click <b>Auto-fill Last Finished War</b> when available, then check the start and finish times before calculating.</li>
               <li><b>6. Enter payout amount:</b> add the member payout pool you want split across eligible members.</li>
-              <li><b>7. Exclude members if needed:</b> open Member Management to exclude members or remove member hits before calculating.</li>
+              <li><b>7. Member Management:</b> open Member Management to exclude members, remove payable hits, or subtract respect before calculating.</li>
               <li><b>8. Calculate:</b> press the Calculate button inside the mode you picked. The loading panel shows each stage.</li>
-              <li><b>9. Review results:</b> check stats, members, payout amounts, and managed member removals before using payment tools.</li>
+              <li><b>9. Review results:</b> check stats, members, payout amounts, and excluded members before using payment tools.</li>
               <li><b>10. Pay and post manually:</b> use the Payments and Newsletter tools to copy/prefill details, then manually confirm everything in Torn yourself.</li>
             </ul>
           </div>
@@ -15005,7 +14134,7 @@
               <li><b>Fast Mode:</b> uses ranked-war report data only. It is quicker, but skips attack-log extras like assists, outside hits, and retals.</li>
               <li><b>Member Payout:</b> the amount you want split between eligible members.</li>
               <li><b>Total Payout:</b> your overall reference total. Member Payout is the value used for the member split.</li>
-              <li><b>Member Management:</b> open the management panel to exclude members or remove specific payable hit counts before payouts are recalculated.</li>
+              <li><b>Member Management:</b> open the management panel to exclude members or remove specific payable hit/respect amounts before payouts are recalculated.</li>
             </ul>
           </div>
 
@@ -15016,7 +14145,7 @@
               <li><b>Point values:</b> set values for war hits, assists, outside hits, retals, hospital bonuses, enemy hospital bonuses, and fair-fight bonus.</li>
               <li><b>Negative enemy hospital bonus:</b> enemy war-faction hospital bonus can be negative when you want to punish that action.</li>
               <li><b>Fair-fight modifier:</b> when enabled, Avg FF over 1.00 can add bonus points per payable hit. It is capped at 3.00.</li>
-              <li><b>Member Management:</b> Advanced has its own member management settings and recalculates points payouts after exclusions or payable hit removals.</li>
+              <li><b>Member Management:</b> Advanced has its own member management settings and recalculates points payouts after exclusions or payable-hit/respect removals.</li>
             </ul>
           </div>
 
@@ -15160,7 +14289,7 @@
     document.getElementById("rw-points-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("points"));
 
     const legacyCsvBtn = document.getElementById("rw-csv");
-    if (legacyCsvBtn) legacyCsvBtn.addEventListener("click", () => downloadCSV(lastRows, document.getElementById("rw-status")));
+    if (legacyCsvBtn) legacyCsvBtn.addEventListener("click", () => downloadCSV(lastRows));
 
     const resultsCloseBtn = document.getElementById("rw-results-close");
     if (resultsCloseBtn) {
@@ -15176,37 +14305,30 @@
 
     document.getElementById("rw-payout-helper").addEventListener("click", async (e) => {
       const status = document.getElementById("rw-status");
-      const exportHtmlBtn = e.target.closest("[data-export-html]");
       const exportCsvBtn = e.target.closest("[data-export-csv]");
-
-      if (exportHtmlBtn) {
-        if (!lastRows.length) return alert("Calculate results first.");
-        const htmlReady = await rwphExportResultsHtmlFromPanel(lastRows, lastSummary || {}, status);
-        rwphToastPanelInfo(status, htmlReady ? "HTML export ready. On PDA, use the download/copy panel if it opened." : "HTML automatic download was blocked. Use the export fallback panel.", htmlReady ? "info" : "warn", "RWPH Results");
-        return;
-      }
 
       if (exportCsvBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
-        const csvReady = await downloadCSV(lastRows, status);
-        rwphToastPanelInfo(status, csvReady ? "CSV export ready. On PDA, use the download/copy panel if it opened." : "CSV automatic download was blocked. Use the export fallback panel.", csvReady ? "info" : "warn", "RWPH Results");
+        downloadCSV(lastRows);
+        rwphToastPanelInfo(status, "CSV exported from the results panel.", "info", "RWPH Results");
         return;
       }
 
       const payAllBtn = e.target.closest("[data-pay-all]");
       if (payAllBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
+        rwphQueueCrossTabPopup("payments", "Payments opened in Torn faction controls. Use the copy-only panel there.", "info", "RWPH Payments");
         const opened = rwphOpenPayAllInFactionControls(lastRows);
         if (!opened) {
           rwphClearCrossTabPopup("payments");
           rwphToastPanelInfo(
             status,
-            "Could not change to the faction vault page. Payments data was saved; open faction controls and use the RWPH Payments link again.",
+            "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.",
             "warn",
             "RWPH Payments"
           );
         } else if (status) {
-          status.textContent = "Payments helper is opening on the current tab.";
+          status.textContent = "Payments helper opened in the new tab.";
         }
         return;
       }
@@ -15380,15 +14502,13 @@
       const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
       const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
       const includeLeftFactionMembers = false;
-      rwphSyncMemberManagementHiddenFields();
       const excludedMembersText = rwphGetExcludedMembersTextForMode(mode);
       const memberAdjustments = rwphGetMemberManagementPayload(mode);
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
       if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0 || respectWeight < 0) return alert("Weights cannot be negative.");
-      if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0 || pointRespectValue < 0) return alert("Advanced Calculation values cannot be negative.");
-      if (!Number.isFinite(pointRespectStep) || pointRespectStep <= 0) return alert("Advanced Respect per respect earned must be greater than 0.");
+      if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0 || pointRespectValue < 0 || pointRespectStep <= 0) return alert("Advanced Calculation values cannot be negative.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightAvgStep) || pointFairFightAvgStep <= 0)) return alert("Avg FF required per bonus step must be greater than 0.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightBonusPerStep) || pointFairFightBonusPerStep < 0)) return alert("Point bonus per payable hit per step cannot be negative.");
 
@@ -15406,10 +14526,10 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Respect Score, Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, configurable Respect Score, Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
             : (basicFastMode
               ? "Server is verifying licence, checking the report cache, then using Torn rankedwarreport only for a much faster Basic result. Attack-log extras are skipped in Fast Mode..."
-              : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying hit/respect weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."));
+              : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."));
         preOpenedResultsTab = openBlankResultsTab(progressId);
         const cancelBecauseTabClosed = () => {
           if (calculationFinished || calculationCancelledByClosedTab) return;

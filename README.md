@@ -1,15 +1,5 @@
 # Ranked War Payout Helper
 
-
-## v1.1.421 updates
-
-- Reworked Export CSV and Export Html to use direct server form downloads from the user click, with PDA-safe fallback panels and raw copy boxes.
-- Fixed the Payments button handoff so it navigates the main Torn page to faction controls/vault instead of opening inside the results panel.
-- Kept the Payments Copy Panel as the only RWPH panel on the vault page and preserved the 10-minute Reopen Report button.
-- Added editable Advanced respect settings for both the score added and the respect amount it applies to.
-- Restyled Member Management to better match the main RWPH panel theme/layout/style.
-
-
 <p align="center">
   <a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js">
     <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download Here">
@@ -20,51 +10,10 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.421**  
+Current package version: **1.1.413**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
-
-
-## v1.1.421 - Respect scoring, exports, Payments handoff and launcher cleanup
-
-- Added a **Respect** checkbox to **Basic Calculations**. When enabled, each member's payout respect is added to their Basic payout weight alongside the selected hit-type weights.
-- Added **Respect Score per 0.01 respect** to **Advanced Calculations**. The default value is `0.01`, meaning every `0.01` respect adds `0.01` score, and admins/users can change the value like the other Advanced score settings.
-- Fixed **Payments** from generated/fullscreen results so it asks the original/main RWPH page to change to the faction controls/vault page, instead of navigating inside the results panel itself.
-- Reworked **Export CSV** and **Export Html** again so PC and PDA both get a server-backed download link plus a visible fallback panel with copy boxes. PC also tries direct local download and backend download methods.
-- Removed the background/highlight from launcher logo buttons so the logo itself shows cleanly without the extra button glow/background.
-- Kept **Member Management** payable-hit and respect removal from v1.1.419.
-- Updated package version to **1.1.421**.
-
-## v1.1.417 - Member Management panel
-
-- Replaced the old manual remove-member section with a **Member Management** button in Basic and Advanced Calculations.
-- Member Management opens a movable/resizable panel with a card for each member found in the selected Torn ranked-war report.
-- Each card has a checkbox to remove that member completely from the calculation results.
-- Each card has a hit-removal number box to remove selected ranked-war report hits from that member before payouts are recalculated.
-- Added **Save Changes** so exclusions and removed-hit settings are remembered for calculations after the panel is closed.
-- Saved Member Management settings reset automatically after **20 minutes** back to default: all members unticked and 0 removed hits.
-- Added backend route `/api/calc/member-management-members` to load ranked-war report members for the selected war/time window.
-- Updated package version to **1.1.417**.
-
-
-## v1.1.416 - PDA-safe CSV and HTML exports
-
-- Fixed Torn PDA/phone export problems where **Export CSV** and **Export Html** could be blocked by Blob/data downloads.
-- Added a generic backend attachment route for exports: `/api/calc/export-file`.
-- CSV and HTML exports now open a PDA-safe export panel with direct **Download** links, **Open in this tab** links, backup local links, and raw copy boxes.
-- Added **Export Html** to the in-panel results fallback as well as the full results page.
-- Export files are temporary and expire automatically.
-- Updated package version to **1.1.416**.
-
-## v1.1.415 - Results Export Html download hardening
-
-- Reworked the results-page **Export Html** button so it creates an actual `.html` attachment through the backend.
-- Added `/api/calc/export-html-file` to temporarily store the generated report HTML and serve it with `Content-Disposition: attachment`.
-- Added a visible fallback panel with a **Download .html File** link and a backup local Blob download link for Torn PDA/browser cases that block automatic downloads.
-- Switched the local download helper from synthetic mouse events to native anchor clicks where available.
-- Export files expire automatically after a short period and are not permanent records.
-- Updated package version to **1.1.415**.
 
 
 ### v1.1.330 manual time/faction-member fixes
@@ -1349,18 +1298,11 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Tutorial covers opening RWPH, saving the API key, unlocking/buying a licence, choosing Basic/Advanced calculations, setting war times, calculating, reviewing results, and manually using payment/newsletter tools.
 - Updated package version to **1.1.402**.
 
-## v1.1.414 - PDA logo-only header launcher
 
-- Fixed PDA/phone launcher placement by adding icon/link detection for Torn layouts where the Faction Warfare button has no visible text.
-- PDA/phone launcher is now logo-only in the faction header row.
-- PC/desktop launcher still keeps the logo plus `Ranked War Payout Helper` text beside Faction Warfare.
-- Kept the last-resort PDA fallback logo-only and faction/report-page limited.
-- Updated package version to **1.1.414**.
+## v1.1.413 - Member Management and Respect Controls
 
-## v1.1.413 - Payments current-tab faction vault flow
-
-- Results **Payments** button now changes the current Torn tab to the faction controls/vault handoff page instead of opening a new tab.
-- When the faction vault/controls page opens with `rwphPayAll=1`, RWPH closes other panels and leaves only the Payments Copy Panel open.
-- Payments Copy Panel now shows a **Reopen Report** button when a recent report is available.
-- The reopen report handoff expires after 10 minutes, then the button disappears.
-- Updated package version to **1.1.413**.
+- Added Member Management buttons to Basic and Advanced calculations.
+- Member Management loads ranked-war report members for the selected war/time window.
+- Each member card can fully exclude the member, remove payable hits, or subtract respect.
+- Saved Member Management settings apply to calculations for 20 minutes, then reset to defaults.
+- Added Basic Respect checkbox and Advanced Respect Score settings.
