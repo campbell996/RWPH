@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.425
+// @version      1.1.426
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.426: rebuilt every theme/colour with real per-theme panel layout profiles, changing grids, buttons, cards, member/payment rows and popup shapes across all panels.
   // v1.1.425: rebuilt the theme styling layer on the last working interaction-safe selectors so panels are scrollable, movable, clickable and resizable again.
   // v1.1.424: attempted theme rebuild interaction safety layer.
   // v1.1.423: completely rebuilt every theme/colour into its own full panel layout, style, colour system, payment-copy styling and popup notification style.
@@ -2471,10 +2472,36 @@
       royalgold: { styleName:"Crown command", layoutName:"gold framed command cards", radius:"12px", cardRadius:"10px", buttonRadius:"8px", borderWidth:"3px", borderStyle:"double", buttonCase:"uppercase", buttonTracking:".10em", panelPad:"12px", bodyPad:"12px", headPad:"12px 14px", headJustify:"center", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"11px 13px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", buttonPad:"8px 13px", buttonJustify:"center", panelShadow:"0 21px 64px rgba(0,0,0,.64),0 0 34px var(--rwph-theme-line2)", cardShadow:"inset 0 1px 0 rgba(255,255,255,.09),0 12px 30px rgba(0,0,0,.30)", texture:"linear-gradient(45deg, rgba(255,255,255,.07) 25%, transparent 25% 50%, rgba(255,255,255,.045) 50% 75%, transparent 75%)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))", cardTexture:"linear-gradient(135deg, rgba(255,255,255,.09), transparent 56%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))", themePickerWidth:"525px" }
     };
 
+    const layoutProfiles = {
+      bronze: { layoutMode:"foundryStack", mainWidth:"min(760px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"1fr", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"1fr", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"38px", paymentCols:"minmax(0,1fr) auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"row", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      blue: { layoutMode:"glassDashboard", mainWidth:"min(940px, calc(100vw - 22px))", floatingWidth:"min(700px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"16px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"42px", paymentCols:"minmax(0,1.2fr) minmax(110px,.55fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) auto", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto auto", headerFlow:"column", popupWidth:"min(460px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      green: { layoutMode:"forestLedger", mainWidth:"min(820px, calc(100vw - 22px))", floatingWidth:"min(650px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"12px", controlGridCols:"minmax(0,1fr) minmax(180px,.65fr)", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"40px", paymentCols:"minmax(0,1fr) 96px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(130px,.45fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"minmax(0,1fr) minmax(160px,.5fr)", resultCardCols:"minmax(0,1fr) minmax(150px,.45fr)", headerFlow:"row", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      purple: { layoutMode:"royalBoxes", mainWidth:"min(790px, calc(100vw - 22px))", floatingWidth:"min(610px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"10px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"38px", paymentCols:"1fr 1fr", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"1fr 1fr", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"1fr", headerFlow:"column", popupWidth:"min(410px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      crimson: { layoutMode:"commandCompact", mainWidth:"min(720px, calc(100vw - 22px))", floatingWidth:"min(560px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"7px", controlGridCols:"repeat(3,minmax(0,1fr))", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"34px", paymentCols:"minmax(0,1fr) 90px 86px", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) 96px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(4,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"row", popupWidth:"min(390px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      neon: { layoutMode:"terminalRows", mainWidth:"min(860px, calc(100vw - 22px))", floatingWidth:"min(680px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"9px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 120px 100px", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(180px,.55fr)", memberStatCols:"repeat(4,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 130px 110px", headerFlow:"row", popupWidth:"min(440px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr", layoutFont:"Consolas, 'Courier New', monospace" },
+      steel: { layoutMode:"factoryGrid", mainWidth:"min(900px, calc(100vw - 22px))", floatingWidth:"min(720px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"repeat(3,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(4,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 100px 90px 90px", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) 110px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(4,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px 100px", headerFlow:"row", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      candy: { layoutMode:"bubbleCards", mainWidth:"min(880px, calc(100vw - 22px))", floatingWidth:"min(710px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"18px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"flex", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"46px", paymentCols:"1fr", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"1fr", headerFlow:"column", popupWidth:"min(450px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      midnight: { layoutMode:"noirMinimal", mainWidth:"min(700px, calc(100vw - 22px))", floatingWidth:"min(560px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"1fr", cardDisplay:"block", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"1fr", actionJustify:"flex-end", buttonWidth:"auto", buttonMinHeight:"34px", paymentCols:"minmax(0,1fr) auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"1fr", resultCardCols:"minmax(0,1fr) auto", headerFlow:"row", popupWidth:"min(380px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      lava: { layoutMode:"moltenStagger", mainWidth:"min(830px, calc(100vw - 22px))", floatingWidth:"min(650px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"13px", controlGridCols:"minmax(0,1fr) minmax(0,1fr)", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"40px", paymentCols:"minmax(0,1fr) 120px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) 145px", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 140px", headerFlow:"row", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      ice: { layoutMode:"frostAiry", mainWidth:"min(960px, calc(100vw - 22px))", floatingWidth:"min(730px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"18px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"space-around", buttonWidth:"auto", buttonMinHeight:"44px", paymentCols:"minmax(0,1.4fr) minmax(100px,.45fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto auto", headerFlow:"column", popupWidth:"min(470px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      toxic: { layoutMode:"hazardControls", mainWidth:"min(780px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"7px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 92px 92px", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr) 100px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px", headerFlow:"row", popupWidth:"min(405px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      sunset: { layoutMode:"sunsetSide", mainWidth:"min(850px, calc(100vw - 22px))", floatingWidth:"min(690px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"15px", controlGridCols:"minmax(0,.8fr) minmax(0,1.2fr)", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"42px", paymentCols:"minmax(0,1fr) minmax(100px,.45fr) auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(140px,.45fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"minmax(0,1.2fr) minmax(0,.8fr)", resultCardCols:"minmax(0,1fr) minmax(130px,.42fr)", headerFlow:"row", popupWidth:"min(445px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      cyberpunk: { layoutMode:"cyberConsole", mainWidth:"min(930px, calc(100vw - 22px))", floatingWidth:"min(720px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"7px", controlGridCols:"repeat(4,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(4,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"34px", paymentCols:"minmax(0,1fr) 90px 90px 90px", memberListCols:"repeat(3,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(4,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 110px 95px", headerFlow:"row", popupWidth:"min(440px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"repeat(2,minmax(0,1fr))", layoutFont:"Consolas, 'Courier New', monospace" },
+      emerald: { layoutMode:"gemFeature", mainWidth:"min(870px, calc(100vw - 22px))", floatingWidth:"min(680px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"14px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"40px", paymentCols:"minmax(0,1fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"column", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      ruby: { layoutMode:"bladeRows", mainWidth:"min(740px, calc(100vw - 22px))", floatingWidth:"min(590px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"8px", controlGridCols:"minmax(0,1fr) 150px", cardDisplay:"flex", cardFlow:"row", cardAlign:"center", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"36px", paymentCols:"minmax(0,1fr) 100px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) 120px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px", headerFlow:"row", popupWidth:"min(405px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      aqua: { layoutMode:"ripplePanels", mainWidth:"min(900px, calc(100vw - 22px))", floatingWidth:"min(710px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"14px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"space-between", buttonWidth:"auto", buttonMinHeight:"41px", paymentCols:"minmax(0,1fr) minmax(110px,.5fr) auto", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto", headerFlow:"column", popupWidth:"min(455px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      amber: { layoutMode:"accountingFrame", mainWidth:"min(800px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"9px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"37px", paymentCols:"minmax(0,1fr) 110px", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) 130px", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 120px 96px", headerFlow:"row", popupWidth:"min(415px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      violetstorm: { layoutMode:"stormRail", mainWidth:"min(810px, calc(100vw - 22px))", floatingWidth:"min(660px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"10px", controlGridCols:"minmax(0,1fr) minmax(160px,.6fr)", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"flex", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"flex-start", buttonWidth:"auto", buttonMinHeight:"39px", paymentCols:"minmax(0,1fr) 120px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr) minmax(140px,.45fr)", memberStatCols:"repeat(3,minmax(0,1fr))", resultSummaryCols:"minmax(0,1fr) minmax(170px,.55fr)", resultCardCols:"minmax(0,1fr) 140px", headerFlow:"row", popupWidth:"min(430px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      desert: { layoutMode:"ledgerWarm", mainWidth:"min(835px, calc(100vw - 22px))", floatingWidth:"min(650px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"11px", controlGridCols:"minmax(0,1fr) minmax(0,1fr)", cardDisplay:"flex", cardFlow:"column", cardAlign:"stretch", cardTextAlign:"left", actionsDisplay:"grid", actionsCols:"minmax(0,1fr) minmax(0,1fr)", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"39px", paymentCols:"minmax(0,1fr) 115px auto", memberListCols:"1fr", memberCardCols:"minmax(0,1fr)", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) 130px", headerFlow:"row", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"left", themePickerCols:"1fr" },
+      ghost: { layoutMode:"cleanCards", mainWidth:"min(920px, calc(100vw - 22px))", floatingWidth:"min(710px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"15px", controlGridCols:"repeat(3,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"row", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"flex", actionsCols:"repeat(3,minmax(0,1fr))", actionJustify:"center", buttonWidth:"auto", buttonMinHeight:"42px", paymentCols:"minmax(0,1.1fr) minmax(100px,.45fr) auto", memberListCols:"repeat(3,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(3,minmax(0,1fr))", resultCardCols:"minmax(0,1fr) auto auto", headerFlow:"column", popupWidth:"min(460px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" },
+      royalgold: { layoutMode:"crownCommand", mainWidth:"min(780px, calc(100vw - 22px))", floatingWidth:"min(620px, calc(100vw - 22px))", bodyFlow:"column", sectionGap:"9px", controlGridCols:"repeat(2,minmax(0,1fr))", cardDisplay:"grid", cardFlow:"column", cardAlign:"center", cardTextAlign:"center", actionsDisplay:"grid", actionsCols:"repeat(2,minmax(0,1fr))", actionJustify:"stretch", buttonWidth:"100%", buttonMinHeight:"38px", paymentCols:"1fr 1fr", memberListCols:"repeat(2,minmax(0,1fr))", memberCardCols:"1fr", memberStatCols:"repeat(2,minmax(0,1fr))", resultSummaryCols:"repeat(2,minmax(0,1fr))", resultCardCols:"1fr", headerFlow:"column", popupWidth:"min(420px, calc(100vw - 20px))", popupTextAlign:"center", themePickerCols:"repeat(2,minmax(0,1fr))" }
+    };
+
     Object.keys(palettes).forEach((key) => {
       const p = palettes[key];
       const profile = profiles[key] || profiles.bronze;
-      Object.assign(p, profile, {
+      const layoutProfile = layoutProfiles[key] || layoutProfiles.bronze;
+      Object.assign(p, profile, layoutProfile, {
         panelBg: `${profile.texture || ""}${profile.texture ? "," : ""}radial-gradient(circle at 16% 0%, ${p.line2}, transparent 34%),radial-gradient(circle at 92% 8%, ${p.line}, transparent 34%),linear-gradient(180deg, ${p.panel}, ${p.bg})`,
         bodyBg: `radial-gradient(circle at 10% 0%, ${p.line2}, transparent 32%),linear-gradient(180deg, ${p.panel2}, ${p.bg})`,
         cardBg: `${profile.cardTexture || ""}${profile.cardTexture ? "," : ""}radial-gradient(circle at 14% 0%, ${p.line2}, transparent 34%),linear-gradient(180deg, ${p.panel2}, ${p.panel})`,
@@ -2488,7 +2515,7 @@
         popupRadius: profile.cardRadius,
         popupPad: profile.panelPad === "10px" ? "11px 38px 14px 15px" : "12px 40px 15px 16px",
         closeRadius: profile.buttonRadius,
-        themePickerCols: "1fr"
+        themePickerCols: layoutProfile.themePickerCols || "1fr"
       });
     });
     return palettes;
@@ -2590,6 +2617,31 @@
         --rwph-theme-button-justify:${themeButtonJustify};
         --rwph-theme-picker-width:${themePickerWidth};
         --rwph-theme-picker-cols:${themePickerCols};
+        --rwph-layout-mode:${t.layoutMode || "foundryStack"};
+        --rwph-layout-main-width:${t.mainWidth || "min(780px, calc(100vw - 22px))"};
+        --rwph-layout-floating-width:${t.floatingWidth || "min(620px, calc(100vw - 22px))"};
+        --rwph-layout-body-flow:${t.bodyFlow || "column"};
+        --rwph-layout-section-gap:${t.sectionGap || themeCardGap};
+        --rwph-layout-control-grid-cols:${t.controlGridCols || "repeat(2,minmax(0,1fr))"};
+        --rwph-layout-card-display:${t.cardDisplay || "flex"};
+        --rwph-layout-card-flow:${t.cardFlow || "column"};
+        --rwph-layout-card-align:${t.cardAlign || "stretch"};
+        --rwph-layout-card-text-align:${t.cardTextAlign || "left"};
+        --rwph-layout-actions-display:${t.actionsDisplay || "flex"};
+        --rwph-layout-actions-cols:${t.actionsCols || "repeat(2,minmax(0,1fr))"};
+        --rwph-layout-action-justify:${t.actionJustify || themeButtonJustify};
+        --rwph-layout-button-width:${t.buttonWidth || "auto"};
+        --rwph-layout-button-min-height:${t.buttonMinHeight || "38px"};
+        --rwph-layout-payment-cols:${t.paymentCols || "minmax(0,1fr) auto"};
+        --rwph-layout-member-list-cols:${t.memberListCols || "1fr"};
+        --rwph-layout-member-card-cols:${t.memberCardCols || "minmax(0,1fr)"};
+        --rwph-layout-member-stat-cols:${t.memberStatCols || "repeat(2,minmax(0,1fr))"};
+        --rwph-layout-result-summary-cols:${t.resultSummaryCols || "repeat(2,minmax(0,1fr))"};
+        --rwph-layout-result-card-cols:${t.resultCardCols || "minmax(0,1fr) auto"};
+        --rwph-layout-header-flow:${t.headerFlow || "row"};
+        --rwph-layout-popup-width:${t.popupWidth || "min(420px, calc(100vw - 20px))"};
+        --rwph-layout-popup-text-align:${t.popupTextAlign || "left"};
+        --rwph-layout-font:${t.layoutFont || "inherit"};
       }
 
       ${standaloneScope}
@@ -3567,6 +3619,286 @@
         background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
         border:2px solid ${t.bg}!important;
         border-radius:999px!important;
+      }
+
+      /* v1.1.426: real per-theme layout rebuild. These rules change panel structure, not just colour. */
+      #rw-payout-helper{
+        width:var(--rwph-layout-main-width);
+        max-width:calc(100vw - 18px)!important;
+        font-family:var(--rwph-layout-font)!important;
+      }
+      .rwph-floating-panel,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rw-pay-all-copy-panel,
+      .rw-pay-all-copy-panel,
+      #rw-wrong-payment-panel,
+      #rwph-xanax-send-status,
+      #rwph-member-management-panel,
+      .rwph-member-management-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel{
+        width:var(--rwph-layout-floating-width);
+        max-width:calc(100vw - 18px)!important;
+        font-family:var(--rwph-layout-font)!important;
+      }
+
+      #rw-payout-helper .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper .rw-admin-unified-panel,
+      #rw-payout-helper .rw-help-body,
+      #rw-pay-all-panel .rw-pay-all-body,
+      .rw-pay-all-panel .rw-pay-all-body,
+      #rw-pay-all-copy-panel .rw-pay-all-body,
+      .rw-pay-all-copy-panel .rw-pay-all-body,
+      #rwph-member-management-panel .rwph-mm-body,
+      #rwph-xanax-send-status .rwph-xanax-scroll,
+      .rwph-floating-panel-body,
+      .rwph-results-loading-panel .rwph-loading-shell,
+      .rwph-results-html-panel .rwph-results-html-preview-wrap{
+        display:flex!important;
+        flex-direction:var(--rwph-layout-body-flow)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+        padding:var(--rwph-theme-body-pad)!important;
+      }
+
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-panel-head,
+      #rw-payout-helper .rw-api-visible-head,
+      #rw-payout-helper .rw-help-dropdown-summary,
+      #rw-payout-helper details > summary,
+      #rw-pay-all-panel .rw-pay-all-head,
+      .rw-pay-all-panel .rw-pay-all-head,
+      #rw-pay-all-copy-panel .rw-pay-all-head,
+      .rw-pay-all-copy-panel .rw-pay-all-head,
+      #rwph-member-management-panel .rwph-mm-toolbar,
+      #rwph-member-management-panel .rwph-mm-status,
+      #rwph-xanax-send-status .rwph-xanax-head,
+      .rwph-panel-theme-picker-head,
+      .rwph-floating-panel-head,
+      .rwph-results-html-head,
+      .rwph-results-loading-panel .rwph-results-loading-head{
+        display:flex!important;
+        flex-direction:var(--rwph-layout-header-flow)!important;
+        justify-content:var(--rwph-theme-head-justify)!important;
+        align-items:var(--rwph-theme-head-align)!important;
+        gap:calc(var(--rwph-theme-card-gap) + 2px)!important;
+        text-align:var(--rwph-layout-card-text-align)!important;
+        padding:var(--rwph-theme-head-pad)!important;
+      }
+
+      #rw-payout-helper .rw-grid,
+      #rw-payout-helper .rw-stat-grid,
+      #rw-payout-helper .rw-admin-status-grid,
+      #rw-payout-helper .rw-help-api-grid,
+      #rw-payout-helper .rw-licence-control-grid,
+      #rw-payout-helper .rw-member-grid,
+      #rw-payout-helper .rw-member-management-grid,
+      #rw-payout-helper .rw-compact-check-grid,
+      #rw-payout-helper .rw-card-list,
+      #rwph-xanax-send-status .rwph-licence-status-grid,
+      .rw-results-panel .summary,
+      .rwph-results-loading-panel .rwph-dashboard{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-control-grid-cols)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+        align-items:stretch!important;
+      }
+
+      #rw-payout-helper .rw-card,
+      #rw-payout-helper .rw-box,
+      #rw-payout-helper .rw-section,
+      #rw-payout-helper .rw-payment-card,
+      #rw-payout-helper .rw-admin-license-card,
+      #rw-payout-helper .rw-api-visible-card,
+      #rw-payout-helper .rw-help-section-card,
+      #rw-payout-helper .rw-calc-brief,
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings,
+      #rwph-xanax-send-status .rwph-xanax-detail-card,
+      #rwph-xanax-send-status .rwph-xanax-actions,
+      #rwph-xanax-send-status .rwph-xanax-steps,
+      #rwph-xanax-send-status .rwph-xanax-safety-note,
+      #rwph-xanax-send-status .rwph-xanax-helper-message,
+      #rwph-xanax-send-status .rwph-xanax-expiry,
+      #rwph-xanax-send-status .rw-payment-expiry,
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero,
+      .rw-results-panel .summary-card,
+      .rw-results-panel .result-card,
+      .rw-results-panel .results-action-zone,
+      .rw-results-panel .side,
+      .rw-results-panel .hero,
+      .rwph-results-loading-panel .rwph-status-card,
+      .rwph-results-loading-panel .rwph-side-card,
+      .rwph-panel-theme-picker .rwph-panel-theme-current,
+      .rwph-panel-theme-picker .rwph-theme-choice{
+        display:var(--rwph-layout-card-display)!important;
+        flex-direction:var(--rwph-layout-card-flow)!important;
+        grid-template-columns:var(--rwph-layout-result-card-cols)!important;
+        align-items:var(--rwph-layout-card-align)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+        text-align:var(--rwph-layout-card-text-align)!important;
+        padding:var(--rwph-theme-card-pad)!important;
+      }
+
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-result-actions,
+      #rw-payout-helper .rw-last-results-actions,
+      #rw-payout-helper .rw-cache-tools,
+      #rw-payout-helper .rw-mode-cache-tools,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions,
+      #rw-payout-helper .rw-member-management-actions,
+      #rw-pay-all-panel .rw-pay-all-actions,
+      .rw-pay-all-panel .rw-pay-all-actions,
+      #rw-pay-all-copy-panel .rw-pay-all-actions,
+      .rw-pay-all-copy-panel .rw-pay-all-actions,
+      #rwph-member-management-panel .rwph-mm-control-stack,
+      #rwph-xanax-send-status .rwph-xanax-actions,
+      .rwph-panel-theme-picker .rwph-panel-theme-grid,
+      .rwph-results-html-panel .rwph-select-raw-html-row{
+        display:var(--rwph-layout-actions-display)!important;
+        grid-template-columns:var(--rwph-layout-actions-cols)!important;
+        flex-wrap:wrap!important;
+        justify-content:var(--rwph-layout-action-justify)!important;
+        align-items:center!important;
+        gap:var(--rwph-layout-section-gap)!important;
+      }
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      #rwph-member-management-panel :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        width:var(--rwph-layout-button-width)!important;
+        min-height:var(--rwph-layout-button-min-height)!important;
+        display:inline-flex!important;
+        align-items:center!important;
+        justify-content:var(--rwph-layout-button-justify, var(--rwph-theme-button-justify))!important;
+      }
+
+      #rw-pay-all-panel .rw-pay-all-list,
+      .rw-pay-all-panel .rw-pay-all-list,
+      #rw-pay-all-copy-panel .rw-pay-all-list,
+      .rw-pay-all-copy-panel .rw-pay-all-list{
+        display:flex!important;
+        flex-direction:column!important;
+        gap:var(--rwph-layout-section-gap)!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-row,
+      .rw-pay-all-panel .rw-pay-all-row,
+      #rw-pay-all-copy-panel .rw-pay-all-row,
+      .rw-pay-all-copy-panel .rw-pay-all-row{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-payment-cols)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+        align-items:center!important;
+        text-align:var(--rwph-layout-card-text-align)!important;
+      }
+
+      #rwph-member-management-panel .rwph-mm-cards{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-member-list-cols)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+      }
+      #rwph-member-management-panel .rwph-mm-card{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-member-card-cols)!important;
+        gap:var(--rwph-layout-section-gap)!important;
+        align-items:center!important;
+        text-align:var(--rwph-layout-card-text-align)!important;
+      }
+      #rwph-member-management-panel .rwph-mm-stats,
+      #rwph-member-management-panel .rwph-mm-adjust-row{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-member-stat-cols)!important;
+        gap:8px!important;
+      }
+
+      .rw-results-panel .summary{
+        grid-template-columns:var(--rwph-layout-result-summary-cols)!important;
+      }
+      .rw-results-panel .result-card,
+      #rw-payout-helper .rw-result-card{
+        display:grid!important;
+        grid-template-columns:var(--rwph-layout-result-card-cols)!important;
+        align-items:center!important;
+        gap:var(--rwph-layout-section-gap)!important;
+        text-align:var(--rwph-layout-card-text-align)!important;
+      }
+
+      .rwph-info-popup-panel{
+        width:var(--rwph-layout-popup-width)!important;
+        text-align:var(--rwph-layout-popup-text-align)!important;
+        border-radius:var(--rwph-theme-card-radius)!important;
+        padding:${t.popupPad || "12px 40px 15px 16px"}!important;
+      }
+
+      @media (max-width: 720px){
+        #rw-payout-helper,
+        .rwph-floating-panel,
+        #rw-pay-all-panel,
+        .rw-pay-all-panel,
+        #rw-pay-all-copy-panel,
+        .rw-pay-all-copy-panel,
+        #rw-wrong-payment-panel,
+        #rwph-xanax-send-status,
+        #rwph-member-management-panel,
+        .rwph-member-management-panel,
+        .rwph-results-loading-panel,
+        .rwph-results-html-panel{width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;}
+        #rw-payout-helper .rw-grid,
+        #rw-payout-helper .rw-stat-grid,
+        #rw-payout-helper .rw-admin-status-grid,
+        #rw-payout-helper .rw-help-api-grid,
+        #rw-payout-helper .rw-licence-control-grid,
+        #rw-payout-helper .rw-member-grid,
+        #rw-payout-helper .rw-member-management-grid,
+        #rw-payout-helper .rw-compact-check-grid,
+        .rw-results-panel .summary,
+        .rwph-results-loading-panel .rwph-dashboard,
+        #rwph-member-management-panel .rwph-mm-cards,
+        #rwph-member-management-panel .rwph-mm-card,
+        #rw-pay-all-panel .rw-pay-all-row,
+        .rw-pay-all-panel .rw-pay-all-row,
+        #rw-pay-all-copy-panel .rw-pay-all-row,
+        .rw-pay-all-copy-panel .rw-pay-all-row,
+        .rw-results-panel .result-card,
+        #rw-payout-helper .rw-result-card{grid-template-columns:1fr!important;}
+        #rw-payout-helper .rw-actions,
+        #rw-payout-helper .rw-tabs,
+        #rw-payout-helper .rw-result-actions,
+        #rw-payout-helper .rw-cache-tools,
+        #rw-payout-helper .rw-mode-cache-tools,
+        #rw-payout-helper .rw-primary-calc-actions,
+        #rw-payout-helper .rw-settings-calc-actions,
+        #rw-payout-helper .rw-settings-time-actions,
+        #rw-pay-all-panel .rw-pay-all-actions,
+        .rw-pay-all-panel .rw-pay-all-actions,
+        #rw-pay-all-copy-panel .rw-pay-all-actions,
+        .rw-pay-all-copy-panel .rw-pay-all-actions{display:grid!important;grid-template-columns:1fr!important;}
+        #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+        #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+        .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+        #rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+        .rw-pay-all-copy-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+        #rwph-xanax-send-status :where(button,a.btn,.btn),
+        #rwph-member-management-panel :where(button,a.btn,.btn),
+        .rwph-floating-panel :where(button,a.btn,.btn),
+        .rwph-results-loading-panel :where(button,a.btn,.btn),
+        .rwph-results-html-panel :where(button,a.btn,.btn),
+        .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+        .rwph-panel-theme-picker :where(button,a.btn,.btn){width:100%!important;}
       }
 
       /* v1.1.425: popup notifications get themed without adding any click-blocking overlay rules. */

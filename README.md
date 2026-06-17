@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.425**  
+Current package version: **1.1.426**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1300,6 +1300,13 @@ The old Include Left Members / automatic left-member removal system has been rem
 
 
 
+## v1.1.426 - Full per-theme layout rebuild
+
+- Rebuilt the Theme/Colour changer so every theme changes the actual panel layout, not just the colours.
+- Added per-theme layout profiles for main panels, floating panels, Member Management, Payments Copy Panel, payment helper, results/loading panels, newsletter/export panels and popup notifications.
+- Themes now change grid columns, stacked vs dashboard card layouts, button widths/placement, card alignment, member card layouts, payment row layouts, header flow, spacing, popup width/alignment and control density.
+- Kept the v1.1.425 interaction-safe structure so panels remain clickable, movable, resizable and scrollable.
+
 ## v1.1.425 - Theme interaction rollback-safe rebuild
 
 - Fixed the issue where v1.1.423/v1.1.424 panels could appear like a static picture and not scroll, move, resize, or accept clicks.
@@ -1393,3 +1400,4 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Each member card can fully exclude the member, remove payable hits, or subtract respect.
 - Saved Member Management settings apply to calculations for 20 minutes, then reset to defaults.
 - Added Basic Respect checkbox and Advanced Respect Score settings.
+
