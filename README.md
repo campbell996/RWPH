@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.419**  
+Current package version: **1.1.418**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1299,20 +1299,15 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Updated package version to **1.1.402**.
 
 
-## v1.1.419 - PDA launcher and Member Management fit
-
-- PDA/phone launcher now stays logo-only and tries to mount beside the same Faction Warfare header/icon row as desktop when Torn PDA shows icon-only navigation.
-- Desktop launcher placement is unchanged and keeps the logo plus **Ranked War Payout Helper** text.
-- Member Management panel now uses a flex body with proper scroll padding so the last member card stays fully inside the panel.
-- Kept the v1.1.418 Member Management card layout and sticky controls.
-- Updated package version to **1.1.419**.
-
 ## v1.1.418 - Member Management card layout and sticky controls
 - Reworked Member Management member cards so names, IDs, stats, remove checkbox, payable-hit removal, and respect removal fit cleanly inside the panel.
 - Improved the Member Management card grid so it safely drops to one column when the panel is too narrow instead of cramping or overflowing.
 - Made the Refresh, Save, Clear, and status area sticky at the top of the Member Management panel while scrolling through members.
+- Fit patch: changed the Member Management panel body to a flex scroll area with extra bottom padding so the last player card is not clipped off the bottom.
+- Fit patch: moved the Refresh, Save, Clear, and status section up into an opaque sticky strip so member cards cannot show through it while scrolling.
+- PDA/phone launcher patch: PC header placement is unchanged, while PDA/phone now uses compact logo-only launcher sizing and icon/link detection before falling back to the fixed floating button.
 - Kept the v1.1.417 Payments Copy tab isolation fix.
-- Updated package version to **1.1.418**.
+- Package version remains **1.1.418** as requested.
 
 ## v1.1.417 - Payments Copy tab isolation fix
 - Payments Copy tab now suppresses Results, Loading, main RWPH, export, and newsletter panels.
