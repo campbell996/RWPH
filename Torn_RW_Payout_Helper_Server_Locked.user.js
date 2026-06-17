@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.420
+// @version      1.1.421
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.421: desktop launcher logo now uses the same larger logo style as PDA while keeping the Ranked War Payout Helper name text.
   // v1.1.420: anchored the PDA/phone launcher to the faction page/header position so it no longer follows the screen while scrolling.
   // v1.1.419: restored the PDA/phone logo-only header launcher from v1.1.414 while keeping the v1.1.418 Member Management fixes.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
@@ -1948,9 +1949,9 @@
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = "PC beside Faction Warfare / PDA page-anchored";
-      btn.title = "The launcher stays beside Faction Warfare on desktop. On PDA/phone it is logo-only and page-anchored so it does not follow while scrolling.";
-      btn.setAttribute("aria-label", "PC beside Faction Warfare / PDA page-anchored");
+      btn.textContent = "PC logo + name / PDA page-anchored";
+      btn.title = "Desktop shows the larger logo with the Ranked War Payout Helper name. PDA/phone stays logo-only and page-anchored so it does not follow while scrolling.";
+      btn.setAttribute("aria-label", "PC logo plus name / PDA page-anchored");
       btn.disabled = true;
     });
   }
@@ -2087,7 +2088,8 @@
 
   function rwphLauncherLogoHtml(forceLogoOnly = false) {
     const isMobileLauncher = forceLogoOnly || rwphIsMobileOrPdaView();
-    const logoSize = isMobileLauncher ? 30 : 20;
+    // Keep PDA/phone logo-only, but make the desktop logo match the same larger logo style while keeping the name text.
+    const logoSize = 30;
     const imgHtml = `<img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false" style="width:${logoSize}px;height:${logoSize}px;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 0 auto;" />`;
     if (isMobileLauncher) return imgHtml;
     return `${imgHtml}<span class="rwph-launcher-text" style="pointer-events:none;display:inline-block;line-height:1;">Ranked War Payout Helper</span>`;
@@ -2123,7 +2125,7 @@
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "Launcher stays beside the Faction Warfare button on desktop. On PDA/phone it is logo-only and page-anchored so it does not follow while scrolling.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "Desktop launcher shows the larger logo with the Ranked War Payout Helper name. PDA/phone stays logo-only and page-anchored so it does not follow while scrolling.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
