@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.423
+// @version      1.1.424
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.424: fixed theme rebuild interaction layer so panels remain scrollable, movable, clickable, resizable, and usable on PDA/phone/PC.
   // v1.1.423: completely rebuilt every theme/colour into its own full panel layout, style, colour system, payment-copy styling and popup notification style.
   // v1.1.422: expanded each panel theme/colour into its own unique layout profile, card style, header treatment, spacing, shadows, and button feel.
   // v1.1.421: desktop launcher logo now uses the same larger logo style as PDA while keeping the Ranked War Payout Helper name text.
@@ -2738,6 +2739,70 @@
       ${panelSelectors} ::-webkit-scrollbar{width:8px!important;height:8px!important;}
       ${panelSelectors} ::-webkit-scrollbar-track{background:var(--rwph-theme-bg)!important;border-radius:999px!important;}
       ${panelSelectors} ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
+
+      /* v1.1.424: interaction safety layer.
+         The full theme rebuild styles the panels heavily, but real controls must never
+         be turned into static decorative cards. These final rules keep drag headers,
+         resize handles, scroll bodies, buttons, inputs, summaries and copy rows active. */
+      ${panelSelectors}{
+        pointer-events:auto!important;
+        -webkit-user-select:auto!important;
+        user-select:auto!important;
+      }
+      ${panelSelectors} :where(.rw-body,.rw-panel-body,.rw-content,.rw-tab-section,.rw-unified-tab-panel,.rw-admin-unified-panel,.rw-help-body,.rw-pay-all-body,.rwph-floating-panel-body,.rwph-panel-theme-picker-body,.rwph-results-html-preview,.rwph-results-html-box,.rwph-mm-body,.rwph-xanax-scroll,.rw-pay-all-list,.pay-all-list,.rwph-newsletter-dropdown-menu,.rwph-results-html-preview-wrap,#rwph-mm-cards){
+        pointer-events:auto!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        -webkit-overflow-scrolling:touch!important;
+        touch-action:pan-y!important;
+      }
+      ${panelSelectors} :where(button:not(:disabled):not([aria-disabled="true"]),a[href],a.btn,input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,label,.rw-tab,.rw-tab-btn,.rw-button,.btn,.rwph-theme-choice,.rw-pay-all-copy:not(:disabled):not([aria-disabled="true"]),.rw-pay-all-undo:not(:disabled),.pay-all-undo:not(:disabled),.pay-all-close,.rwph-info-popup-close){
+        pointer-events:auto!important;
+        touch-action:manipulation!important;
+        -webkit-user-select:auto!important;
+        user-select:auto!important;
+      }
+      ${panelSelectors} :where(input:not(:disabled),textarea:not(:disabled),select:not(:disabled)){
+        touch-action:auto!important;
+        -webkit-user-select:text!important;
+        user-select:text!important;
+      }
+      ${panelSelectors} :where(button:disabled,[aria-disabled="true"],.rwph-pay-button-hidden){
+        pointer-events:none!important;
+      }
+      ${panelSelectors} :where(.rw-head,.rw-header,.rw-panel-head,.rw-titlebar,.rw-pay-all-head,.pay-all-head,.rwph-floating-panel-head,.rwph-results-loading-head,.rwph-results-html-head,.rwph-panel-theme-picker-head){
+        pointer-events:auto!important;
+        cursor:grab!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+      }
+      ${panelSelectors} :where(.rw-head:active,.rw-panel-head:active,.rw-pay-all-head:active,.pay-all-head:active,.rwph-floating-panel-head:active,.rwph-results-loading-head:active,.rwph-results-html-head:active,.rwph-panel-theme-picker-head:active){
+        cursor:grabbing!important;
+      }
+      ${panelSelectors} :where(.resize-handle,.rw-resize-handle,[class*="resize-handle"]){
+        pointer-events:auto!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        z-index:2147483647!important;
+      }
+      ${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{
+        pointer-events:none!important;
+      }
+      #rw-payout-helper .rw-body,
+      #rw-pay-all-panel .pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-list,
+      .rw-pay-all-panel .pay-all-list,
+      .rw-pay-all-panel .rw-pay-all-list,
+      #rwph-member-management-panel .rwph-mm-body,
+      #rwph-xanax-send-status .rwph-xanax-scroll,
+      .rwph-panel-theme-picker .rwph-panel-theme-picker-body{
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        -webkit-overflow-scrolling:touch!important;
+        touch-action:pan-y!important;
+      }
 
       @media (max-width:560px){
         ${panelSelectors}{padding:min(10px,var(--rwph-theme-panel-pad))!important;}
