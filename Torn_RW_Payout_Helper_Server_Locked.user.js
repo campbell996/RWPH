@@ -11329,31 +11329,33 @@
 
   function rwphMemberManagementPanelCss() {
     return `
-      #rwph-member-management-panel{background:var(--rw-panel-bg)!important;color:var(--rw-text)!important;border:1px solid var(--rw-border)!important;border-radius:var(--rw-panel-radius,16px)!important;box-shadow:var(--rw-panel-shadow,0 24px 70px rgba(0,0,0,.55))!important;overflow:hidden!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head{background:var(--rw-head-bg)!important;border-bottom:1px solid var(--rw-border)!important;min-height:58px!important;padding:10px 56px 10px 14px!important;display:flex!important;align-items:center!important;gap:10px!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:42px;height:42px;flex:0 0 42px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 8px var(--rw-accent-soft,rgba(251,191,36,.35)))!important;}
-      #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:2px;line-height:1.15;}
-      #rwph-member-management-panel .rwph-mm-heading b{font-size:16px;color:var(--rw-text)!important;}
-      #rwph-member-management-panel .rwph-mm-body{height:calc(100% - 58px);max-height:none;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--rw-body-bg,transparent)!important;}
-      #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:2px;padding:10px;border:1px solid var(--rw-border);border-radius:var(--rw-card-radius,12px);background:var(--rw-card-bg);box-shadow:var(--rw-card-shadow);}
-      #rwph-member-management-panel .rwph-mm-status{font-size:12px;opacity:.92;line-height:1.35;padding:9px 10px;border:1px solid var(--rw-border);border-radius:var(--rw-card-radius,12px);background:var(--rw-card-bg);color:var(--rw-muted);}
-      #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:10px;}
-      #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rw-border);background:var(--rw-card-bg);border-radius:var(--rw-card-radius,12px);padding:11px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--rw-card-shadow);}
-      #rwph-member-management-panel .rwph-mm-title{font-weight:900;color:var(--rw-text);font-size:13px;}
-      #rwph-member-management-panel .rwph-mm-sub{font-size:11px;color:var(--rw-muted);}
-      #rwph-member-management-panel .rwph-mm-card label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--rw-text);}
-      #rwph-member-management-panel .rwph-mm-card label:not(:has(input[type=checkbox])){display:grid;grid-template-columns:1fr;align-items:start;}
-      #rwph-member-management-panel .rwph-mm-card input[type=number]{width:100%;box-sizing:border-box;margin-top:4px;}
-      #rwph-member-management-panel .rwph-mm-empty{padding:12px;border:1px dashed var(--rw-border);border-radius:var(--rw-card-radius,12px);color:var(--rw-muted);background:var(--rw-card-bg);}
-      #rwph-member-management-panel button{border-radius:var(--rw-button-radius,10px)!important;}
-      #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:10px!important;top:10px!important;min-width:34px!important;height:34px!important;padding:0!important;display:grid!important;place-items:center!important;background:var(--rw-danger-bg,rgba(127,29,29,.9))!important;color:var(--rw-danger-text,#fff)!important;border:1px solid var(--rw-border)!important;font-size:20px!important;font-weight:1000!important;line-height:1!important;}
-      #rwph-member-management-panel .rw-resize-handle{position:absolute;width:18px;height:18px;z-index:8;touch-action:none;-webkit-user-select:none;user-select:none;opacity:.95;background:rgba(2,6,23,.18);}
-      #rwph-member-management-panel .rw-resize-handle-se{right:7px;bottom:7px;cursor:nwse-resize;border-right:2px solid var(--rw-accent,#fbbf24);border-bottom:2px solid var(--rw-accent,#fbbf24);border-radius:0 0 8px 0;}
-      #rwph-member-management-panel .rw-resize-handle-sw{left:7px;bottom:7px;cursor:nesw-resize;border-left:2px solid var(--rw-accent,#fbbf24);border-bottom:2px solid var(--rw-accent,#fbbf24);border-radius:0 0 0 8px;}
-      #rwph-member-management-panel .rw-resize-handle-nw{left:7px;top:7px;cursor:nwse-resize;border-left:2px solid var(--rw-accent,#fbbf24);border-top:2px solid var(--rw-accent,#fbbf24);border-radius:8px 0 0 0;}
-      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar{width:10px;height:10px;}
-      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-track{background:var(--rw-scroll-track);border-radius:10px;}
-      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-thumb{background:var(--rw-scroll-thumb);border-radius:10px;border:2px solid var(--rw-scroll-track);}
+      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,16px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;backdrop-filter:none!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:50px!important;padding:7px 44px 7px 10px!important;display:flex!important;align-items:center!important;gap:8px!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:34px;height:34px;flex:0 0 34px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 8px rgba(251,191,36,.35))!important;}
+      #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:1px;line-height:1.08;}
+      #rwph-member-management-panel .rwph-mm-heading b{font-size:14px;color:var(--rwph-theme-text,#fff2dd)!important;}
+      #rwph-member-management-panel .rwph-mm-body{height:calc(100% - 50px);max-height:none;overflow:auto;padding:9px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg, rgba(33,23,20,.99), rgba(11,7,5,.99))!important;}
+      #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:0;padding:7px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,10px);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;box-shadow:0 8px 18px rgba(0,0,0,.22);}
+      #rwph-member-management-panel .rwph-mm-toolbar button{padding:6px 8px!important;min-height:0!important;font-size:12px!important;line-height:1.1!important;}
+      #rwph-member-management-panel .rwph-mm-status{font-size:11px;opacity:.92;line-height:1.25;padding:7px 8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,10px);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;color:var(--rwph-theme-soft,#cfaa8e);}
+      #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:7px;}
+      #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;border-radius:var(--rwph-theme-card-radius,10px);padding:8px;display:flex;flex-direction:column;gap:5px;box-shadow:0 8px 18px rgba(0,0,0,.22);}
+      #rwph-member-management-panel .rwph-mm-title{font-weight:900;color:var(--rwph-theme-text,#fff2dd);font-size:12px;line-height:1.15;}
+      #rwph-member-management-panel .rwph-mm-sub{font-size:10px;color:var(--rwph-theme-soft,#cfaa8e);line-height:1.2;}
+      #rwph-member-management-panel .rwph-mm-card label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--rwph-theme-text,#fff2dd);line-height:1.15;}
+      #rwph-member-management-panel .rwph-mm-number-label{display:grid!important;grid-template-columns:minmax(0,1fr) 82px;align-items:center!important;gap:6px!important;}
+      #rwph-member-management-panel .rwph-mm-card input[type=number]{width:82px!important;box-sizing:border-box;margin-top:0!important;padding:4px 6px!important;font-size:12px!important;min-height:0!important;}
+      #rwph-member-management-panel .rwph-mm-card input[type=checkbox]{margin:0!important;}
+      #rwph-member-management-panel .rwph-mm-empty{padding:9px;border:1px dashed var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,10px);color:var(--rwph-theme-soft,#cfaa8e);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;font-size:12px;}
+      #rwph-member-management-panel button{border-radius:var(--rwph-theme-button-radius,9px)!important;}
+      #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:8px!important;top:8px!important;min-width:30px!important;height:30px!important;padding:0!important;display:grid!important;place-items:center!important;background:var(--rwph-theme-red,#7f1d1d)!important;color:#fff!important;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42))!important;font-size:18px!important;font-weight:1000!important;line-height:1!important;}
+      #rwph-member-management-panel .rw-resize-handle{position:absolute;width:14px;height:14px;z-index:8;touch-action:none;-webkit-user-select:none;user-select:none;opacity:.95;background:rgba(2,6,23,.28);}
+      #rwph-member-management-panel .rw-resize-handle-se{right:6px;bottom:6px;cursor:nwse-resize;border-right:2px solid var(--rwph-theme-gold,#fbbf24);border-bottom:2px solid var(--rwph-theme-gold,#fbbf24);border-radius:0 0 7px 0;}
+      #rwph-member-management-panel .rw-resize-handle-sw{left:6px;bottom:6px;cursor:nesw-resize;border-left:2px solid var(--rwph-theme-gold,#fbbf24);border-bottom:2px solid var(--rwph-theme-gold,#fbbf24);border-radius:0 0 0 7px;}
+      #rwph-member-management-panel .rw-resize-handle-nw{left:6px;top:6px;cursor:nwse-resize;border-left:2px solid var(--rwph-theme-gold,#fbbf24);border-top:2px solid var(--rwph-theme-gold,#fbbf24);border-radius:7px 0 0 0;}
+      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar{width:8px;height:8px;}
+      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-track{background:rgba(15,23,42,.50);border-radius:10px;}
+      #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(245,158,11,.92),rgba(249,115,22,.82));border-radius:10px;border:2px solid rgba(15,23,42,.50);}
     `;
   }
 
@@ -11377,11 +11379,11 @@
         <div class="rwph-mm-card" data-mm-key="${rwphHtmlEscape(key)}" data-mm-id="${rwphHtmlEscape(id)}" data-mm-name="${rwphHtmlEscape(name)}">
           <div class="rwph-mm-title">${rwphHtmlEscape(name)}${id ? ` <span class="rwph-mm-sub">[${rwphHtmlEscape(id)}]</span>` : ""}</div>
           <div class="rwph-mm-sub">Payable hits: ${rwphHtmlEscape(maxHits)} • Respect: ${rwphHtmlEscape(memberRespect)}</div>
-          <label><input type="checkbox" class="rwph-mm-exclude" ${checked}> Remove this member completely</label>
-          <label>Payable hits to remove
+          <label><input type="checkbox" class="rwph-mm-exclude" ${checked}> Remove member completely</label>
+          <label class="rwph-mm-number-label"><span>Payable hits</span>
             <input type="number" class="rwph-mm-hits" value="${rwphHtmlEscape(hitsToRemove)}" min="0" max="${rwphHtmlEscape(maxHits)}" step="1" inputmode="numeric">
           </label>
-          <label>Respect to remove
+          <label class="rwph-mm-number-label"><span>Respect</span>
             <input type="number" class="rwph-mm-respect" value="${rwphHtmlEscape(Number(respectToRemove.toFixed ? respectToRemove.toFixed(2) : respectToRemove))}" min="0" max="${rwphHtmlEscape(memberRespect)}" step="0.01" inputmode="decimal">
           </label>
         </div>`;
@@ -11435,12 +11437,27 @@
     const panel = document.createElement("div");
     panel.id = "rwph-member-management-panel";
     panel.className = "rwph-floating-panel rwph-member-management-panel";
-    panel.style.width = "720px";
-    panel.style.maxWidth = "96vw";
-    panel.style.height = "70vh";
-    panel.style.maxHeight = "90vh";
-    panel.style.left = "calc(50vw - 360px)";
-    panel.style.top = "80px";
+    panel.style.position = "fixed";
+    panel.style.zIndex = "2147483647";
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
+    const memberPanelWidth = Math.min(560, Math.max(300, viewportWidth - 20));
+    const memberPanelHeight = Math.min(520, Math.max(320, Math.round(viewportHeight * 0.58)));
+    panel.style.width = `${memberPanelWidth}px`;
+    panel.style.maxWidth = "calc(100vw - 20px)";
+    panel.style.height = `${Math.min(memberPanelHeight, Math.max(300, viewportHeight - 20))}px`;
+    panel.style.maxHeight = "calc(100vh - 20px)";
+    const mainPanel = document.getElementById("rw-payout-helper");
+    if (mainPanel) {
+      const mainRect = mainPanel.getBoundingClientRect();
+      const left = Math.max(10, Math.min(mainRect.left + ((mainRect.width - memberPanelWidth) / 2), viewportWidth - memberPanelWidth - 10));
+      const top = Math.max(10, Math.min(mainRect.top + 20, viewportHeight - 180));
+      panel.style.left = `${Math.round(left)}px`;
+      panel.style.top = `${Math.round(top)}px`;
+    } else {
+      panel.style.left = `${Math.max(10, Math.round((viewportWidth - memberPanelWidth) / 2))}px`;
+      panel.style.top = "80px";
+    }
     panel.innerHTML = `
       <style>${rwphMemberManagementPanelCss()}</style>
       <div class="rwph-floating-panel-head rwph-panel-head">
