@@ -10,12 +10,12 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.439**  
+Current package version: **1.1.440**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
 
-### v1.1.438 extra layout/theme activation fix
+### v1.1.440 extra layout/theme activation fix
 
 - Fixed the 15 extra layout/theme buttons so they actively change the panel layout, colours, button styles, control positioning, cards, inputs, dropdowns, checkboxes, floating panels, member management, payments, result panels, and popup notifications.
 - Added stronger fit rules for PC/PDA/phone across all extra themes.
@@ -1424,14 +1424,21 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Kept v1.1.421 PC launcher logo/name, PDA logo-only launcher, PDA no-scroll-follow, and Member Management fixes.
 
 
-## v1.1.439 - Theme / Colours restored, layout switcher removed
+## v1.1.440 - Theme / Colours restored, layout switcher removed
 
 - Removed the full **Layout/Theme** layout-switching system and forced RWPH back to the default layout.
 - Restored the **Theme / Colours** button and floating panel as a colour-only system.
 - Added many colour themes while keeping the default panel layout, sizing, moving, resizing, and scrolling behaviour.
 - Kept the separate Logo Selector panel and PC launcher logo-only fix.
 
-## v1.1.438 - PC launcher logo-only renderer
+## v1.1.440 - PC launcher logo-only renderer
 
 - Forced the PC launcher renderer to return only the selected logo image.
 - Added stronger launcher CSS to hide any leftover launcher title spans.
+
+## v1.1.440 - Global button colours and bigger panel logos
+
+- Theme / Colours now applies button colours to all RWPH panels, including Payment Copy, Payment Helper, Member Management, Results, Logo Selector, Theme / Colours, floating panels, and popup notifications.
+- Enlarged the selected RWPH logo across main panels, Payment Copy Panel, Payment Helper Panel, Member Management, results/loading panels, floating panels, and popup notifications.
+- Added selected logo display inside RWPH popup notifications.
+
