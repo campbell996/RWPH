@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.419
+// @version      1.1.420
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.420: anchored the PDA/phone launcher to the faction page/header position so it no longer follows the screen while scrolling.
   // v1.1.419: restored the PDA/phone logo-only header launcher from v1.1.414 while keeping the v1.1.418 Member Management fixes.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
@@ -1632,6 +1633,78 @@
     }
   }
 
+  function rwphMountPdaLauncherPageAnchored(btn, anchorTarget, options = {}) {
+    try {
+      if (!btn || !rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return false;
+      const rect = anchorTarget && anchorTarget.rect ? anchorTarget.rect : null;
+      const targetEl = anchorTarget && anchorTarget.el ? anchorTarget.el : null;
+      if (!rect && !targetEl) return false;
+      const usableRect = rect || targetEl.getBoundingClientRect?.();
+      if (!usableRect || usableRect.width <= 0 || usableRect.height <= 0) return false;
+
+      const viewportWidth = Math.max(window.innerWidth || 360, 320);
+      const scrollX = window.pageXOffset || document.documentElement?.scrollLeft || 0;
+      const scrollY = window.pageYOffset || document.documentElement?.scrollTop || 0;
+      const size = Math.max(30, Math.min(42, Math.round(options.size || usableRect.height || 36)));
+      const gap = Number.isFinite(options.gap) ? options.gap : 6;
+      let left = Math.round(scrollX + usableRect.left - size - gap);
+      if (left < scrollX + 6) left = Math.round(scrollX + usableRect.right + gap);
+      left = Math.max(Math.round(scrollX + 6), Math.min(left, Math.round(scrollX + viewportWidth - size - 6)));
+      const top = Math.max(Math.round(scrollY + 6), Math.round(scrollY + usableRect.top + ((usableRect.height - size) / 2)));
+
+      if (btn.parentNode !== document.body) document.body.appendChild(btn);
+      btn.dataset.rwphAnchorPageKey = rwphCurrentPageKey();
+      btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher", "rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher");
+      btn.classList.add("rwph-mobile-header-launcher", "rwph-mobile-page-anchored-launcher");
+      btn.style.display = "inline-flex";
+      applyStyle(btn, {
+        position: "absolute",
+        zIndex: "2147483647",
+        left: `${left}px`,
+        top: `${top}px`,
+        right: "auto",
+        bottom: "auto",
+        width: `${size}px`,
+        minWidth: `${size}px`,
+        maxWidth: `${size}px`,
+        height: `${size}px`,
+        minHeight: `${size}px`,
+        maxHeight: `${size}px`,
+        margin: "0",
+        padding: "0",
+        borderRadius: "7px",
+        border: "1px solid rgba(255,255,255,.18)",
+        background: "linear-gradient(180deg,#2f2f2f,#181818)",
+        color: "#f2f2f2",
+        boxShadow: "none",
+        font: "800 12px Arial, Helvetica, sans-serif",
+        fontWeight: "800",
+        lineHeight: "1",
+        letterSpacing: "normal",
+        textShadow: "none",
+        cursor: "pointer",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0",
+        verticalAlign: "middle",
+        textAlign: "center",
+        whiteSpace: "nowrap",
+        backdropFilter: "none",
+        overflow: "hidden",
+        appearance: "none",
+        WebkitAppearance: "none",
+      });
+      btn.title = "Open Ranked War Payout Helper";
+      btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
+      btn.innerHTML = rwphLauncherLogoHtml(true);
+      updateLauncherCornerButtonLabels();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function rwphTextNodeRect(node) {
     try {
       const range = document.createRange();
@@ -1749,76 +1822,32 @@
   function rwphMountLauncherMobileFallback(btn) {
     try {
       if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
+      if (btn.classList.contains("rwph-mobile-page-anchored-launcher") && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()) return true;
 
       // First try the PDA/mobile faction header icon row. PDA often hides the
       // Faction Warfare text and shows only icons, so this keeps RWPH beside
       // those top faction icons instead of dropping it somewhere else.
       const headerTarget = rwphFindPdaFactionHeaderIconTarget();
       if (headerTarget && headerTarget.el && headerTarget.el.parentNode) {
-        const parent = headerTarget.el.parentNode;
-        if (btn.parentNode !== parent || btn.nextSibling !== headerTarget.el) {
-          parent.insertBefore(btn, headerTarget.el);
-        }
-        btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher-fallback");
-        btn.classList.add("rwph-mobile-header-launcher");
-        btn.style.display = "inline-flex";
-        applyStyle(btn, getLauncherPositionStyle("pda-header", headerTarget));
-        btn.title = "Open Ranked War Payout Helper";
-        btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
-        btn.innerHTML = rwphLauncherLogoHtml(true);
-        updateLauncherCornerButtonLabels();
-        return true;
+        // PDA/Torn mobile headers can be sticky. Mount the logo to the page at
+        // the same visual header position instead of inside the sticky header,
+        // so it does not follow down the screen while scrolling.
+        if (rwphMountPdaLauncherPageAnchored(btn, headerTarget)) return true;
       }
 
-      // Last-resort PDA fallback only. This is kept logo-only and only appears
-      // on faction/report pages if Torn has not rendered a usable header row.
-      if (btn.parentNode !== document.body) document.body.appendChild(btn);
-      btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher-fallback", "rwph-mobile-header-launcher");
-      btn.classList.add("rwph-mobile-launcher-fallback");
-      btn.style.display = "inline-flex";
-      applyStyle(btn, {
-        position: "fixed",
-        zIndex: "2147483647",
-        right: "10px",
-        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-        left: "auto",
-        top: "auto",
-        width: "46px",
-        minWidth: "46px",
-        maxWidth: "46px",
-        height: "46px",
-        minHeight: "46px",
-        maxHeight: "46px",
-        margin: "0",
-        padding: "0",
-        borderRadius: "var(--rwph-theme-button-radius, 999px)",
-        border: "var(--rwph-theme-border-width, 1px) var(--rwph-theme-border-style, solid) var(--rwph-theme-line2, rgba(251,191,36,.42))",
-        background: "linear-gradient(135deg, var(--rwph-theme-panel2, #211714), var(--rwph-theme-panel3, #3a241c))",
-        color: "var(--rwph-theme-text, #fff2dd)",
-        boxShadow: "0 14px 34px rgba(0,0,0,.55), 0 0 22px var(--rwph-theme-line, rgba(251,191,36,.24))",
-        font: "800 12px Arial, Helvetica, sans-serif",
-        fontWeight: "800",
-        lineHeight: "1",
-        letterSpacing: ".01em",
-        textShadow: "0 1px 0 rgba(0,0,0,.55)",
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0",
-        verticalAlign: "middle",
-        textAlign: "center",
-        whiteSpace: "nowrap",
-        backdropFilter: "blur(8px)",
-        overflow: "hidden",
-        appearance: "none",
-        WebkitAppearance: "none",
-      });
-      btn.title = "Open Ranked War Payout Helper";
-      btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
-      btn.innerHTML = rwphLauncherLogoHtml(true);
-      updateLauncherCornerButtonLabels();
-      return true;
+      // Last-resort PDA fallback only. Keep it logo-only, but page-anchored
+      // instead of fixed so it does not float/follow while scrolling.
+      return rwphMountPdaLauncherPageAnchored(btn, {
+        el: document.body,
+        rect: {
+          left: Math.max(8, (window.innerWidth || 360) - 58),
+          right: Math.max(54, (window.innerWidth || 360) - 12),
+          top: 72,
+          bottom: 118,
+          width: 46,
+          height: 46
+        }
+      }, { size: 46, gap: 0 });
     } catch (_) {
       return false;
     }
@@ -1837,11 +1866,20 @@
 
   function rwphMountLauncherBesideFactionWarfare(btn) {
     if (!btn || !rwphShouldShowLauncherOnThisPage()) return rwphMountLauncherFallback(btn);
+    if (rwphIsMobileOrPdaView() && btn.classList.contains("rwph-mobile-page-anchored-launcher") && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()) return true;
     const target = rwphFindFactionWarfareTarget();
     if (!target || !target.el || !target.rect) return rwphMountLauncherFallback(btn);
 
-    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher");
-    btn.classList.add(rwphIsMobileOrPdaView() ? "rwph-mobile-header-launcher" : "rwph-faction-header-launcher");
+    if (rwphIsMobileOrPdaView()) {
+      // On PDA/phone the Torn faction header can stick to the viewport while
+      // scrolling. Anchor the RWPH logo to the page coordinates beside the
+      // matching header icon/button, not to the sticky header itself.
+      if (rwphMountPdaLauncherPageAnchored(btn, target)) return true;
+      return rwphMountLauncherFallback(btn);
+    }
+
+    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher", "rwph-mobile-page-anchored-launcher");
+    btn.classList.add("rwph-faction-header-launcher");
     btn.style.display = "inline-flex";
 
     try {
@@ -1910,9 +1948,9 @@
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = "Launcher fixed beside Faction Warfare / PDA fallback";
-      btn.title = "The launcher is fixed beside Faction Warfare on desktop and uses a safe phone/PDA fallback when the header button is hidden.";
-      btn.setAttribute("aria-label", "Launcher fixed beside Faction Warfare / PDA fallback");
+      btn.textContent = "PC beside Faction Warfare / PDA page-anchored";
+      btn.title = "The launcher stays beside Faction Warfare on desktop. On PDA/phone it is logo-only and page-anchored so it does not follow while scrolling.";
+      btn.setAttribute("aria-label", "PC beside Faction Warfare / PDA page-anchored");
       btn.disabled = true;
     });
   }
@@ -2085,7 +2123,7 @@
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "Launcher is fixed beside the Faction Warfare button on desktop and uses a phone/PDA fallback when Torn hides that header button.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "Launcher stays beside the Faction Warfare button on desktop. On PDA/phone it is logo-only and page-anchored so it does not follow while scrolling.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
@@ -6200,6 +6238,7 @@
         display:none !important;
       }
       #rw-payout-launcher.rwph-mobile-header-launcher,
+      #rw-payout-launcher.rwph-mobile-page-anchored-launcher,
       #rw-payout-launcher.rwph-mobile-launcher-fallback {
         display:inline-flex !important;
         align-items:center !important;
@@ -6212,6 +6251,7 @@
         overflow:hidden !important;
       }
       #rw-payout-launcher.rwph-mobile-header-launcher .rwph-launcher-text,
+      #rw-payout-launcher.rwph-mobile-page-anchored-launcher .rwph-launcher-text,
       #rw-payout-launcher.rwph-mobile-launcher-fallback .rwph-launcher-text {
         display:none !important;
       }
