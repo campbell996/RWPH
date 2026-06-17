@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.431
+// @version      1.1.432
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.432: added main-panel-style move, resize, scroll, and close controls to the Layout / Theme panel across every layout/theme.
   // v1.1.431: added three more safe full layout/themes with unique fitted button, tab, card, controls, payment, member, and popup layouts.
   // v1.1.430: polished the Advanced Aurora layout so panels, buttons, controls, member cards, payments, results, and popups fit cleanly on PC/PDA/phone.
   // v1.1.429: added a safe two-layout switcher with a new advanced Aurora layout/theme that changes panel, button, card, control, popup, and payment/member layouts.
@@ -3225,6 +3226,7 @@
       .rwph-results-loading-panel :where(button,a.btn,.btn),
       .rwph-results-html-panel :where(button,a.btn,.btn),
       .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-layout-theme-panel :where(button,a.btn,.btn),
       .rwph-panel-theme-picker :where(button,a.btn,.btn){
         background:
           ${themeButtonTexture}
@@ -3311,6 +3313,7 @@
       .rwph-results-loading-panel,
       .rwph-results-html-panel,
       .rw-results-panel,
+      #rwph-layout-theme-panel,
       .rwph-panel-theme-picker{
         border-radius:var(--rwph-theme-radius)!important;
         border-width:var(--rwph-theme-border-width)!important;
@@ -3324,6 +3327,7 @@
       .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
       .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
       .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      #rwph-layout-theme-panel :where(.rwph-layout-theme-body,.rwph-layout-theme-options,.rw-layout-theme-current),
       .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current){
         border-radius:var(--rwph-theme-card-radius)!important;
         border-style:var(--rwph-theme-border-style)!important;
@@ -3337,6 +3341,7 @@
       .rwph-results-loading-panel :where(button,a.btn,.btn),
       .rwph-results-html-panel :where(button,a.btn,.btn),
       .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-layout-theme-panel :where(button,a.btn,.btn),
       .rwph-panel-theme-picker :where(button,a.btn,.btn){
         border-radius:var(--rwph-theme-button-radius)!important;
         text-transform:${themeButtonCase}!important;
@@ -3345,6 +3350,7 @@
         border-style:var(--rwph-theme-border-style)!important;
       }
 
+      #rwph-layout-theme-panel,
       .rwph-panel-theme-picker{
         display:flex!important;
         flex-direction:column!important;
@@ -3356,6 +3362,7 @@
         min-height:260px!important;
         overflow:hidden!important;
       }
+      #rwph-layout-theme-panel .rwph-layout-theme-head,
       .rwph-panel-theme-picker-head{
         flex:0 0 auto!important;
         position:sticky!important;
@@ -3364,6 +3371,7 @@
         cursor:move!important;
         user-select:none!important;
       }
+      #rwph-layout-theme-panel .rwph-layout-theme-body,
       .rwph-panel-theme-picker-body{
         flex:1 1 auto!important;
         min-height:0!important;
@@ -3374,12 +3382,14 @@
         scrollbar-color:${t.accent} ${t.bg}!important;
         padding-right:8px!important;
       }
+      #rwph-layout-theme-panel .rwph-layout-theme-options,
       .rwph-panel-theme-grid{
         display:grid!important;
         grid-template-columns:1fr!important;
         gap:10px!important;
         overflow:visible!important;
       }
+      #rwph-layout-theme-panel > .rw-resize-handle,
       .rwph-panel-theme-picker > .rw-resize-handle{
         position:absolute!important;
         width:18px!important;
@@ -3391,6 +3401,7 @@
         opacity:.95!important;
         background:rgba(2,6,23,.18)!important;
       }
+      #rwph-layout-theme-panel > .rw-resize-handle-se,
       .rwph-panel-theme-picker > .rw-resize-handle-se{
         right:7px!important;
         bottom:7px!important;
@@ -3399,6 +3410,7 @@
         border-bottom:2px solid ${t.accent2}!important;
         border-radius:0 0 8px 0!important;
       }
+      #rwph-layout-theme-panel > .rw-resize-handle-sw,
       .rwph-panel-theme-picker > .rw-resize-handle-sw{
         left:7px!important;
         bottom:7px!important;
@@ -3407,6 +3419,7 @@
         border-bottom:2px solid ${t.accent2}!important;
         border-radius:0 0 0 8px!important;
       }
+      #rwph-layout-theme-panel > .rw-resize-handle-nw,
       .rwph-panel-theme-picker > .rw-resize-handle-nw{
         left:7px!important;
         top:7px!important;
@@ -3430,14 +3443,17 @@
         text-transform:none!important;
         letter-spacing:0!important;
       }
+      #rwph-layout-theme-panel .rwph-layout-theme-body::-webkit-scrollbar,
       .rwph-panel-theme-picker-body::-webkit-scrollbar{
         width:8px!important;
         height:8px!important;
       }
+      #rwph-layout-theme-panel .rwph-layout-theme-body::-webkit-scrollbar-track,
       .rwph-panel-theme-picker-body::-webkit-scrollbar-track{
         background:${t.bg}!important;
         border-radius:999px!important;
       }
+      #rwph-layout-theme-panel .rwph-layout-theme-body::-webkit-scrollbar-thumb,
       .rwph-panel-theme-picker-body::-webkit-scrollbar-thumb{
         background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
         border:2px solid ${t.bg}!important;
@@ -3454,6 +3470,124 @@
       .rw-results-panel ::-webkit-scrollbar-thumb{
         background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
         border:2px solid ${t.bg}!important;
+      }
+
+      /* v1.1.432: Layout / Theme panel gets the same visible move/scroll/resize/close controls as the main RWPH panels. */
+      #rwph-layout-theme-panel{
+        position:fixed!important;
+        z-index:2147483647!important;
+        width:min(540px,calc(100vw - 18px))!important;
+        height:min(660px,calc(100vh - 18px))!important;
+        min-width:min(300px,calc(100vw - 18px))!important;
+        min-height:260px!important;
+        max-width:calc(100vw - 16px)!important;
+        max-height:calc(100vh - 16px)!important;
+        overflow:hidden!important;
+        display:flex!important;
+        flex-direction:column!important;
+        box-sizing:border-box!important;
+        resize:none!important;
+      }
+      #rwph-layout-theme-panel .rwph-layout-theme-head{
+        flex:0 0 auto!important;
+        min-height:52px!important;
+        cursor:move!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        z-index:40!important;
+        position:relative!important;
+      }
+      #rwph-layout-theme-panel #rwph-layout-theme-close{
+        flex:0 0 auto!important;
+        width:34px!important;
+        min-width:34px!important;
+        height:34px!important;
+        min-height:34px!important;
+        display:inline-flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        padding:0!important;
+        margin:0!important;
+        font-size:20px!important;
+        line-height:1!important;
+        border-radius:999px!important;
+        z-index:50!important;
+        pointer-events:auto!important;
+      }
+      #rwph-layout-theme-panel .rwph-layout-theme-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        overscroll-behavior:contain!important;
+        -webkit-overflow-scrolling:touch!important;
+        scrollbar-width:thin!important;
+        scrollbar-color:${t.accent} ${t.bg}!important;
+        padding-bottom:34px!important;
+      }
+      #rwph-layout-theme-panel .rwph-layout-theme-options{
+        min-height:0!important;
+        overflow:visible!important;
+        align-content:start!important;
+      }
+      #rwph-layout-theme-panel > .rw-resize-handle{
+        position:absolute!important;
+        width:20px!important;
+        height:20px!important;
+        z-index:80!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        opacity:.98!important;
+        background:rgba(2,6,23,.24)!important;
+        box-sizing:border-box!important;
+        pointer-events:auto!important;
+      }
+      #rwph-layout-theme-panel > .rw-resize-handle-se{
+        right:6px!important;
+        bottom:6px!important;
+        cursor:nwse-resize!important;
+        border-right:3px solid ${t.accent}!important;
+        border-bottom:3px solid ${t.accent2}!important;
+        border-left:0!important;
+        border-top:0!important;
+        border-radius:0 0 9px 0!important;
+      }
+      #rwph-layout-theme-panel > .rw-resize-handle-sw{
+        left:6px!important;
+        bottom:6px!important;
+        cursor:nesw-resize!important;
+        border-left:3px solid ${t.accent}!important;
+        border-bottom:3px solid ${t.accent2}!important;
+        border-right:0!important;
+        border-top:0!important;
+        border-radius:0 0 0 9px!important;
+      }
+      #rwph-layout-theme-panel > .rw-resize-handle-nw{
+        left:6px!important;
+        top:6px!important;
+        cursor:nwse-resize!important;
+        border-left:3px solid ${t.accent}!important;
+        border-top:3px solid ${t.accent2}!important;
+        border-right:0!important;
+        border-bottom:0!important;
+        border-radius:9px 0 0 0!important;
+      }
+      @media (max-width:700px), (pointer:coarse){
+        #rwph-layout-theme-panel{
+          left:7px!important;
+          right:7px!important;
+          top:76px!important;
+          width:calc(100vw - 14px)!important;
+          height:min(620px,calc(100vh - 88px))!important;
+          min-width:0!important;
+          min-height:240px!important;
+        }
+        #rwph-layout-theme-panel > .rw-resize-handle{width:30px!important;height:30px!important;z-index:90!important;background:rgba(2,6,23,.34)!important;}
+        #rwph-layout-theme-panel > .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:0 3px 3px 0!important;}
+        #rwph-layout-theme-panel > .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:0 0 3px 3px!important;}
+        #rwph-layout-theme-panel > .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px 0 0 3px!important;}
       }
     `;
   }
@@ -4414,24 +4548,33 @@
     const key = rwphGetPanelThemeKey();
     const panel = document.createElement("div");
     panel.id = "rwph-layout-theme-panel";
-    panel.className = "rwph-floating-panel rwph-layout-theme-panel";
+    panel.className = "rwph-floating-panel rwph-layout-theme-panel rwph-layout-theme-panel-controls";
+    panel.dataset.layoutKey = "rwph_layout_theme_panel_layout";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "RWPH Layout / Theme");
     panel.style.cssText = `
       position: fixed;
       z-index: 1000004;
       right: 18px;
       top: 120px;
-      width: min(520px, calc(100vw - 18px));
-      max-height: min(680px, calc(100vh - 18px));
+      width: min(540px, calc(100vw - 18px));
+      height: min(660px, calc(100vh - 18px));
+      max-width: calc(100vw - 16px);
+      max-height: calc(100vh - 16px);
+      min-width: min(300px, calc(100vw - 18px));
+      min-height: 260px;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
       color: #fff7ed;
       font-family: Inter, Segoe UI, Arial, sans-serif;
     `;
     panel.innerHTML = `
-      <div class="rwph-panel-head rwph-layout-theme-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">
-        <div style="display:flex;align-items:center;gap:10px;font-weight:950;"><img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:42px;height:42px;object-fit:contain;pointer-events:none;"><span>Layout / Theme</span></div>
+      <div class="rwph-panel-head rwph-layout-theme-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;flex:0 0 auto;">
+        <div style="display:flex;align-items:center;gap:10px;font-weight:950;min-width:0;"><img src="${RWPH_LAUNCHER_LOGO_DATA_URI}" alt="RWPH" style="width:42px;height:42px;object-fit:contain;pointer-events:none;flex:0 0 auto;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Layout / Theme</span></div>
         <button id="rwph-layout-theme-close" class="danger" type="button" title="Close" aria-label="Close" style="margin:0;">×</button>
       </div>
-      <div class="rwph-floating-panel-body rwph-layout-theme-body" style="padding:14px;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 96px);">
+      <div class="rwph-floating-panel-body rwph-layout-theme-body" style="padding:14px;overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;">
         <div class="rw-layout-theme-current rw-card" style="padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:12px;">
           <b>Current layout:</b> <span id="rw-current-layout-label">${esc(rwphLayoutThemeLabel(key))}</span><br>
           <span class="rw-muted">This switch changes panel layout, button positioning, tabs, calculation controls, sections, cards, inputs, checkboxes/dropdowns, payment/member panels, and popup notification styling.</span>
