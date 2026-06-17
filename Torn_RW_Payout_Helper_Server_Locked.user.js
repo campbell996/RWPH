@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.421
+// @version      1.1.422
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
+  // v1.1.422: expanded each panel theme/colour into its own unique layout profile, card style, header treatment, spacing, shadows, and button feel.
   // v1.1.421: desktop launcher logo now uses the same larger logo style as PDA while keeping the Ranked War Payout Helper name text.
   // v1.1.420: anchored the PDA/phone launcher to the faction page/header position so it no longer follows the screen while scrolling.
   // v1.1.419: restored the PDA/phone logo-only header launcher from v1.1.414 while keeping the v1.1.418 Member Management fixes.
@@ -2501,8 +2502,34 @@
       { styleName:"Crown trim", radius:"14px 14px 4px 4px", cardRadius:"12px 12px 4px 4px", buttonRadius:"10px 10px 3px 3px", borderWidth:"2px", borderStyle:"solid", buttonCase:"uppercase", buttonTracking:".08em", texture:"linear-gradient(90deg, rgba(255,255,255,.08), transparent 28%, rgba(255,255,255,.04) 72%, transparent)", headerTexture:"linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,.04))", cardTexture:"linear-gradient(90deg, rgba(255,255,255,.06), transparent 52%)", buttonTexture:"linear-gradient(180deg, rgba(255,255,255,.20), rgba(0,0,0,.08))" }
     ];
 
+    // v1.1.422: every colour now also gets a unique panel layout/density/header/card profile.
+    const layoutCycle = [
+      { layoutName:"Classic stacked", panelPad:"14px", bodyPad:"14px", headPad:"12px 14px", headJustify:"space-between", headAlign:"center", headCase:"none", headTracking:".015em", cardPad:"12px", cardGap:"10px", sectionInset:"0", cardAccent:"left", cardAccentSize:"4px", cardShadow:"0 12px 28px rgba(0,0,0,.22)", buttonPad:"9px 12px", buttonJustify:"center", panelShadow:"0 22px 70px rgba(0,0,0,.62),0 0 34px var(--rwph-theme-line)", themePickerWidth:"520px", themePickerCols:"1fr" },
+      { layoutName:"Wide glass dashboard", panelPad:"16px", bodyPad:"16px", headPad:"14px 18px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".035em", cardPad:"14px", cardGap:"14px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"3px", cardShadow:"0 18px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06)", buttonPad:"10px 16px", buttonJustify:"center", panelShadow:"0 26px 80px rgba(0,0,0,.58),0 0 42px var(--rwph-theme-line2)", themePickerWidth:"560px", themePickerCols:"1fr" },
+      { layoutName:"Offset leaf cards", panelPad:"13px", bodyPad:"12px 14px 16px", headPad:"11px 14px", headJustify:"flex-start", headAlign:"center", headCase:"none", headTracking:".02em", cardPad:"13px 13px 13px 16px", cardGap:"12px", sectionInset:"0", cardAccent:"left", cardAccentSize:"6px", cardShadow:"-6px 10px 26px rgba(0,0,0,.20)", buttonPad:"9px 14px", buttonJustify:"flex-start", panelShadow:"-12px 22px 58px rgba(0,0,0,.55),0 0 28px var(--rwph-theme-line)", themePickerWidth:"500px", themePickerCols:"1fr" },
+      { layoutName:"Royal boxed rows", panelPad:"12px", bodyPad:"12px", headPad:"13px 14px", headJustify:"center", headAlign:"center", headCase:"uppercase", headTracking:".08em", cardPad:"11px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", cardShadow:"inset 0 0 0 1px rgba(255,255,255,.04),0 10px 22px rgba(0,0,0,.28)", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 18px 50px rgba(0,0,0,.64),0 0 20px var(--rwph-theme-line2)", themePickerWidth:"490px", themePickerCols:"1fr" },
+      { layoutName:"Sharp compact", panelPad:"10px", bodyPad:"10px", headPad:"10px 12px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".09em", cardPad:"10px", cardGap:"8px", sectionInset:"0", cardAccent:"right", cardAccentSize:"4px", cardShadow:"8px 12px 0 rgba(0,0,0,.20)", buttonPad:"8px 10px", buttonJustify:"center", panelShadow:"12px 18px 0 rgba(0,0,0,.25),0 20px 55px rgba(0,0,0,.55)", themePickerWidth:"470px", themePickerCols:"1fr" },
+      { layoutName:"Neon terminal", panelPad:"12px", bodyPad:"12px", headPad:"11px 14px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"12px", cardGap:"10px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"2px", cardShadow:"0 0 24px var(--rwph-theme-line), inset 0 0 20px rgba(0,0,0,.16)", buttonPad:"8px 13px", buttonJustify:"center", panelShadow:"0 0 42px var(--rwph-theme-line),0 24px 70px rgba(0,0,0,.62)", themePickerWidth:"540px", themePickerCols:"1fr" },
+      { layoutName:"Industrial blocks", panelPad:"11px", bodyPad:"11px", headPad:"10px 13px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".075em", cardPad:"10px 12px", cardGap:"8px", sectionInset:"0", cardAccent:"outline", cardAccentSize:"2px", cardShadow:"0 9px 0 rgba(0,0,0,.18),0 18px 30px rgba(0,0,0,.25)", buttonPad:"8px 11px", buttonJustify:"center", panelShadow:"0 16px 0 rgba(0,0,0,.18),0 28px 70px rgba(0,0,0,.58)", themePickerWidth:"500px", themePickerCols:"1fr" },
+      { layoutName:"Bubble relaxed", panelPad:"18px", bodyPad:"16px", headPad:"14px 18px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".02em", cardPad:"15px", cardGap:"14px", sectionInset:"0", cardAccent:"none", cardAccentSize:"0", cardShadow:"0 18px 42px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.08)", buttonPad:"10px 18px", buttonJustify:"center", panelShadow:"0 28px 75px rgba(0,0,0,.50),0 0 35px var(--rwph-theme-line2)", themePickerWidth:"560px", themePickerCols:"1fr" },
+      { layoutName:"Minimal clean", panelPad:"12px", bodyPad:"12px", headPad:"10px 12px", headJustify:"space-between", headAlign:"center", headCase:"none", headTracking:".01em", cardPad:"11px", cardGap:"9px", sectionInset:"0", cardAccent:"none", cardAccentSize:"0", cardShadow:"0 8px 22px rgba(0,0,0,.18)", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 18px 50px rgba(0,0,0,.50)", themePickerWidth:"500px", themePickerCols:"1fr" },
+      { layoutName:"Heat stagger", panelPad:"13px 15px", bodyPad:"12px 15px 15px", headPad:"12px 16px", headJustify:"flex-start", headAlign:"center", headCase:"uppercase", headTracking:".065em", cardPad:"12px 14px", cardGap:"11px", sectionInset:"2px", cardAccent:"right", cardAccentSize:"5px", cardShadow:"7px 10px 28px rgba(0,0,0,.28)", buttonPad:"9px 13px", buttonJustify:"flex-start", panelShadow:"10px 22px 64px rgba(0,0,0,.60),0 0 30px var(--rwph-theme-line)", themePickerWidth:"515px", themePickerCols:"1fr" },
+      { layoutName:"Frosted spacious", panelPad:"18px", bodyPad:"18px", headPad:"15px 18px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".035em", cardPad:"16px", cardGap:"15px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"4px", cardShadow:"0 20px 48px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.12)", buttonPad:"11px 17px", buttonJustify:"center", panelShadow:"0 30px 82px rgba(0,0,0,.48),0 0 38px var(--rwph-theme-line2)", themePickerWidth:"575px", themePickerCols:"1fr" },
+      { layoutName:"Hazard control", panelPad:"11px", bodyPad:"11px", headPad:"10px 14px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".10em", cardPad:"10px 12px", cardGap:"8px", sectionInset:"0", cardAccent:"left", cardAccentSize:"7px", cardShadow:"0 12px 0 rgba(0,0,0,.20),0 20px 36px rgba(0,0,0,.24)", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 18px 0 rgba(0,0,0,.20),0 30px 68px rgba(0,0,0,.56)", themePickerWidth:"505px", themePickerCols:"1fr" },
+      { layoutName:"Sunset soft split", panelPad:"16px", bodyPad:"15px", headPad:"13px 17px", headJustify:"flex-start", headAlign:"center", headCase:"none", headTracking:".025em", cardPad:"14px", cardGap:"13px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"5px", cardShadow:"-8px 14px 32px rgba(0,0,0,.24)", buttonPad:"10px 15px", buttonJustify:"flex-start", panelShadow:"-14px 24px 70px rgba(0,0,0,.55),0 0 34px var(--rwph-theme-line2)", themePickerWidth:"540px", themePickerCols:"1fr" },
+      { layoutName:"Cyber console", panelPad:"10px", bodyPad:"10px", headPad:"10px 12px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".11em", cardPad:"10px", cardGap:"7px", sectionInset:"0", cardAccent:"outline", cardAccentSize:"1px", cardShadow:"0 0 0 1px var(--rwph-theme-line),0 0 22px rgba(0,0,0,.26)", buttonPad:"8px 10px", buttonJustify:"center", panelShadow:"0 0 0 1px var(--rwph-theme-line2),0 0 42px var(--rwph-theme-line),0 24px 62px rgba(0,0,0,.62)", themePickerWidth:"525px", themePickerCols:"1fr" },
+      { layoutName:"Gem feature cards", panelPad:"15px", bodyPad:"14px 15px 16px", headPad:"13px 16px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".03em", cardPad:"14px 15px", cardGap:"12px", sectionInset:"2px", cardAccent:"left", cardAccentSize:"5px", cardShadow:"0 16px 36px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.07)", buttonPad:"9px 14px", buttonJustify:"center", panelShadow:"0 24px 72px rgba(0,0,0,.58),0 0 30px var(--rwph-theme-line)", themePickerWidth:"535px", themePickerCols:"1fr" },
+      { layoutName:"Blade panels", panelPad:"10px 12px", bodyPad:"11px 12px", headPad:"10px 13px", headJustify:"flex-start", headAlign:"center", headCase:"uppercase", headTracking:".085em", cardPad:"10px 13px", cardGap:"8px", sectionInset:"0", cardAccent:"right", cardAccentSize:"6px", cardShadow:"9px 11px 26px rgba(0,0,0,.28)", buttonPad:"8px 12px", buttonJustify:"flex-start", panelShadow:"14px 20px 62px rgba(0,0,0,.62),0 0 25px var(--rwph-theme-line)", themePickerWidth:"500px", themePickerCols:"1fr" },
+      { layoutName:"Ripple cards", panelPad:"15px", bodyPad:"14px", headPad:"13px 16px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".03em", cardPad:"13px 15px", cardGap:"12px", sectionInset:"1px", cardAccent:"top", cardAccentSize:"3px", cardShadow:"0 15px 36px rgba(0,0,0,.22), inset 0 0 24px rgba(255,255,255,.03)", buttonPad:"9px 15px", buttonJustify:"center", panelShadow:"0 22px 68px rgba(0,0,0,.54),0 0 34px var(--rwph-theme-line2)", themePickerWidth:"545px", themePickerCols:"1fr" },
+      { layoutName:"Noir framed", panelPad:"11px", bodyPad:"11px", headPad:"11px 13px", headJustify:"space-between", headAlign:"center", headCase:"uppercase", headTracking:".075em", cardPad:"10px 12px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", cardShadow:"inset 0 0 0 1px rgba(255,255,255,.06),0 14px 30px rgba(0,0,0,.30)", buttonPad:"8px 12px", buttonJustify:"center", panelShadow:"0 20px 58px rgba(0,0,0,.68), inset 0 0 0 1px var(--rwph-theme-line2)", themePickerWidth:"500px", themePickerCols:"1fr" },
+      { layoutName:"Storm split", panelPad:"12px 15px", bodyPad:"12px 15px", headPad:"11px 15px", headJustify:"flex-start", headAlign:"center", headCase:"uppercase", headTracking:".085em", cardPad:"12px 13px", cardGap:"10px", sectionInset:"1px", cardAccent:"left", cardAccentSize:"4px", cardShadow:"-7px 13px 30px rgba(0,0,0,.25)", buttonPad:"8px 13px", buttonJustify:"flex-start", panelShadow:"-12px 22px 66px rgba(0,0,0,.60),0 0 30px var(--rwph-theme-line)", themePickerWidth:"515px", themePickerCols:"1fr" },
+      { layoutName:"Parchment ledger", panelPad:"14px", bodyPad:"13px 14px", headPad:"12px 15px", headJustify:"space-between", headAlign:"center", headCase:"none", headTracking:".02em", cardPad:"12px 14px", cardGap:"11px", sectionInset:"2px", cardAccent:"top", cardAccentSize:"2px", cardShadow:"0 10px 20px rgba(0,0,0,.22),4px 4px 0 rgba(255,255,255,.025)", buttonPad:"9px 13px", buttonJustify:"flex-start", panelShadow:"0 24px 60px rgba(0,0,0,.58),4px 4px 0 rgba(255,255,255,.03)", themePickerWidth:"510px", themePickerCols:"1fr" },
+      { layoutName:"Clean bright", panelPad:"16px", bodyPad:"15px", headPad:"13px 16px", headJustify:"center", headAlign:"center", headCase:"none", headTracking:".03em", cardPad:"14px", cardGap:"12px", sectionInset:"1px", cardAccent:"none", cardAccentSize:"0", cardShadow:"0 16px 38px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.08)", buttonPad:"9px 14px", buttonJustify:"center", panelShadow:"0 24px 70px rgba(0,0,0,.52),0 0 26px var(--rwph-theme-line2)", themePickerWidth:"540px", themePickerCols:"1fr" },
+      { layoutName:"Crown command", panelPad:"12px", bodyPad:"12px", headPad:"12px 14px", headJustify:"center", headAlign:"center", headCase:"uppercase", headTracking:".095em", cardPad:"11px 13px", cardGap:"9px", sectionInset:"2px", cardAccent:"outline", cardAccentSize:"2px", cardShadow:"inset 0 1px 0 rgba(255,255,255,.08),0 12px 28px rgba(0,0,0,.28)", buttonPad:"8px 13px", buttonJustify:"center", panelShadow:"0 20px 60px rgba(0,0,0,.62),0 0 30px var(--rwph-theme-line2)" , themePickerWidth:"520px", themePickerCols:"1fr" }
+    ];
+
     Object.keys(presets).forEach((key, index) => {
-      Object.assign(presets[key], styleCycle[index % styleCycle.length]);
+      Object.assign(presets[key], styleCycle[index % styleCycle.length], layoutCycle[index % layoutCycle.length]);
     });
     return presets;
   }
@@ -2533,6 +2560,24 @@
     const themeBorderStyle = t.borderStyle || "solid";
     const themeButtonCase = t.buttonCase || "none";
     const themeButtonTracking = t.buttonTracking || ".01em";
+    const themePanelPad = t.panelPad || "14px";
+    const themeBodyPad = t.bodyPad || "14px";
+    const themeHeadPad = t.headPad || "12px 14px";
+    const themeHeadJustify = t.headJustify || "space-between";
+    const themeHeadAlign = t.headAlign || "center";
+    const themeHeadCase = t.headCase || "none";
+    const themeHeadTracking = t.headTracking || ".015em";
+    const themeCardPad = t.cardPad || "12px";
+    const themeCardGap = t.cardGap || "10px";
+    const themeSectionInset = t.sectionInset || "0";
+    const themeCardAccent = t.cardAccent || "left";
+    const themeCardAccentSize = t.cardAccentSize || "4px";
+    const themeCardShadow = t.cardShadow || "0 12px 28px rgba(0,0,0,.22)";
+    const themeButtonPad = t.buttonPad || "9px 12px";
+    const themeButtonJustify = t.buttonJustify || "center";
+    const themePanelShadow = t.panelShadow || "0 22px 70px rgba(0,0,0,.62),0 0 34px var(--rwph-theme-line)";
+    const themePickerWidth = t.themePickerWidth || "520px";
+    const themePickerCols = t.themePickerCols || "1fr";
     const standaloneScope = includeStandalonePage ? `
       body,
       .app,
@@ -2562,12 +2607,29 @@
         --rwph-theme-orange:${t.accent2};
         --rwph-theme-green:${t.good};
         --rwph-theme-red:${t.danger};
-        --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 34px ${t.line};
+        --rwph-theme-shadow:${themePanelShadow};
         --rwph-theme-radius:${themeRadius};
         --rwph-theme-card-radius:${themeCardRadius};
         --rwph-theme-button-radius:${themeButtonRadius};
         --rwph-theme-border-width:${themeBorderWidth};
         --rwph-theme-border-style:${themeBorderStyle};
+        --rwph-theme-panel-pad:${themePanelPad};
+        --rwph-theme-body-pad:${themeBodyPad};
+        --rwph-theme-head-pad:${themeHeadPad};
+        --rwph-theme-head-justify:${themeHeadJustify};
+        --rwph-theme-head-align:${themeHeadAlign};
+        --rwph-theme-head-case:${themeHeadCase};
+        --rwph-theme-head-tracking:${themeHeadTracking};
+        --rwph-theme-card-pad:${themeCardPad};
+        --rwph-theme-card-gap:${themeCardGap};
+        --rwph-theme-section-inset:${themeSectionInset};
+        --rwph-theme-card-accent:${themeCardAccent};
+        --rwph-theme-card-accent-size:${themeCardAccentSize};
+        --rwph-theme-card-shadow:${themeCardShadow};
+        --rwph-theme-button-pad:${themeButtonPad};
+        --rwph-theme-button-justify:${themeButtonJustify};
+        --rwph-theme-picker-width:${themePickerWidth};
+        --rwph-theme-picker-cols:${themePickerCols};
       }
 
       ${standaloneScope}
@@ -3207,6 +3269,151 @@
         cursor:not-allowed!important;
       }
 
+      /* v1.1.422: selected colour/theme now controls layout spacing, header feel, card accents and shadows too. */
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .rwph-panel-theme-picker{
+        padding:var(--rwph-theme-panel-pad)!important;
+        box-shadow:var(--rwph-theme-shadow)!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-panel-body,.rw-content,.rw-help-body),
+      #rw-pay-all-panel :where(.rw-pay-all-body),
+      .rw-pay-all-panel :where(.rw-pay-all-body),
+      #rwph-xanax-send-status :where(.rwph-xanax-scroll),
+      .rwph-floating-panel :where(.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell),
+      .rw-results-panel :where(.app,.side,.summary){
+        padding:var(--rwph-theme-body-pad)!important;
+      }
+
+      #rw-payout-helper :where(.rw-head,.rw-header,.rw-panel-head,.rw-titlebar),
+      #rw-pay-all-panel :where(.rw-pay-all-head,.pay-all-head),
+      .rw-pay-all-panel :where(.rw-pay-all-head,.pay-all-head),
+      #rwph-xanax-send-status :where(.rwph-xanax-head,.rwph-panel-head),
+      .rwph-floating-panel :where(.rwph-panel-head,.rwph-floating-panel-head),
+      .rwph-results-loading-panel :where(.rwph-panel-head,.rwph-loading-head),
+      .rwph-results-html-panel :where(.rwph-panel-head),
+      .rw-results-panel :where(.topbar,.rwph-panel-head),
+      .rwph-panel-theme-picker-head{
+        padding:var(--rwph-theme-head-pad)!important;
+        justify-content:var(--rwph-theme-head-justify)!important;
+        align-items:var(--rwph-theme-head-align)!important;
+        text-transform:var(--rwph-theme-head-case)!important;
+        letter-spacing:var(--rwph-theme-head-tracking)!important;
+        gap:var(--rwph-theme-card-gap)!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-grid,.rw-section-list,.rw-member-grid,.rw-member-management-grid),
+      #rw-pay-all-panel :where(.rw-pay-all-list),
+      .rw-pay-all-panel :where(.rw-pay-all-list),
+      #rwph-xanax-send-status :where(.rwph-xanax-actions,.rwph-xanax-steps),
+      .rwph-floating-panel :where(.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell),
+      .rw-results-panel :where(.summary,.results-grid,.cards,.app){
+        gap:var(--rwph-theme-card-gap)!important;
+      }
+
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content),
+      #rw-pay-all-panel :where(.rw-pay-all-list,.rw-pay-all-row),
+      .rw-pay-all-panel :where(.rw-pay-all-list,.rw-pay-all-row),
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card),
+      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current,.rwph-theme-choice){
+        position:relative!important;
+        padding:var(--rwph-theme-card-pad)!important;
+        margin-inline:var(--rwph-theme-section-inset)!important;
+        box-shadow:var(--rwph-theme-card-shadow)!important;
+      }
+
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{
+        content:""!important;
+        position:absolute!important;
+        pointer-events:none!important;
+        background:linear-gradient(180deg, ${t.accent}, ${t.accent2})!important;
+        opacity:.82!important;
+        display:block!important;
+      }
+
+      ${themeCardAccent === "left" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{left:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);height:auto;}
+      ` : ""}
+      ${themeCardAccent === "right" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{right:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);height:auto;}
+      ` : ""}
+      ${themeCardAccent === "top" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{left:0;right:0;top:0;height:var(--rwph-theme-card-accent-size);width:auto;}
+      ` : ""}
+      ${themeCardAccent === "outline" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{inset:0;border:var(--rwph-theme-card-accent-size) solid ${t.accent};background:transparent!important;opacity:.36;}
+      ` : ""}
+      ${themeCardAccent === "none" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{display:none!important;}
+      ` : ""}
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        padding:var(--rwph-theme-button-pad)!important;
+        justify-content:var(--rwph-theme-button-justify)!important;
+      }
+
       /* v1.1.407: theme styles now change shapes, borders, button text, and theme picker scrolling. */
       #rw-payout-helper,
       #rw-pay-all-panel,
@@ -3253,7 +3460,7 @@
       .rwph-panel-theme-picker{
         display:flex!important;
         flex-direction:column!important;
-        width:min(520px, calc(100vw - 24px))!important;
+        width:min(var(--rwph-theme-picker-width), calc(100vw - 24px))!important;
         height:min(720px, calc(100vh - 28px))!important;
         max-width:calc(100vw - 16px)!important;
         max-height:calc(100vh - 16px)!important;
@@ -3281,7 +3488,7 @@
       }
       .rwph-panel-theme-grid{
         display:grid!important;
-        grid-template-columns:1fr!important;
+        grid-template-columns:var(--rwph-theme-picker-cols)!important;
         gap:10px!important;
         overflow:visible!important;
       }
@@ -3396,13 +3603,13 @@
         <button id="rwph-theme-picker-close" class="danger" type="button" title="Close">×</button>
       </div>
       <div class="rwph-panel-theme-picker-body">
-        <div class="rw-small">Choose a theme below. It changes the colours of all RWPH script panels, helpers, dropdowns and buttons, but it does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
+        <div class="rw-small">Choose a theme below. Each theme now has its own colours, panel layout, card style, header style, spacing, shadows and button feel. It does not change the generated newsletter HTML code. Saved for this browser/PDA.</div>
         <div class="rwph-panel-theme-current">Current theme: <b id="rw-current-panel-theme-label">${esc(presets[currentKey].label)}</b></div>
         <div class="rwph-panel-theme-grid">
           ${Object.entries(presets).map(([key, theme]) => `
             <button class="rwph-theme-choice ${key === currentKey ? "primary" : "secondary"}" type="button" data-rwph-theme-key="${esc(key)}" style="border-color:${esc(theme.line2)}!important;border-radius:${esc(theme.buttonRadius || "12px")}!important;background:${esc(theme.buttonTexture ? `${theme.buttonTexture},` : "")}linear-gradient(135deg,${esc(theme.panel3)},${esc(theme.bg)})!important;color:${esc(theme.text)}!important;">
               <span class="rwph-theme-swatch" style="background:linear-gradient(135deg,${esc(theme.accent)},${esc(theme.accent2)});"></span>
-              <span>${esc(theme.label)}<small>${esc(theme.styleName || "Custom style")}</small></span>
+              <span>${esc(theme.label)}<small>${esc(`${theme.styleName || "Custom style"} / ${theme.layoutName || "Layout"}`)}</small></span>
             </button>`).join("")}
         </div>
         <button id="rwph-theme-reset" class="secondary" type="button">Reset to Bronze Gold</button>
@@ -8938,7 +9145,7 @@
     @media (max-width:1100px){
       body{padding:12px!important;}
       .app{
-        grid-template-columns:1fr!important;
+        grid-template-columns:var(--rwph-theme-picker-cols)!important;
         grid-template-areas:
           "hero"
           "actions"
