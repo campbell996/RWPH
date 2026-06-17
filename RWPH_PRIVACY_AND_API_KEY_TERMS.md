@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.450**
+Version: **1.1.451**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
