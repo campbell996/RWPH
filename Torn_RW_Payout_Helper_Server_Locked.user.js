@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.415
+// @version      1.1.417
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,6 +25,8 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
+  // v1.1.417: Payments Copy tab now suppresses Results, Loading, main, and export/newsletter panels so only Payments Copy Panel opens.
+  // v1.1.416: Member Management panel now explicitly shows resize handles, has a draggable header, and keeps a visible close button.
   // v1.1.415: Payments tab now opens copy-panel-only without restoring the Results/main panel, tightened Member Management cards further, and fixed Payment Copy header overlap.
   // v1.1.414: fixed Member Management panel opacity/layering and made its default layout smaller and more compact.
   // v1.1.413: added Member Management panel, 20-minute saved member adjustments, payable-hit/respect removal, Basic respect toggle, and Advanced respect score settings.
@@ -82,6 +84,93 @@
   const MEMBER_MANAGEMENT_EXPIRY_MS = 20 * 60 * 1000;
   const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
   const LAUNCHER_CORNERS = ["bottom-right", "bottom-left", "top-left", "top-right"];
+
+  const RWPH_PAYMENTS_ONLY_SESSION_KEY = "rwph_payments_only_tab";
+
+  function rwphIsPaymentsOnlyTabUrl() {
+    try {
+      const href = String(window.location.href || "");
+      return href.includes("/factions.php") && href.includes("rwphPayAll=1");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphMarkPaymentsOnlyTab() {
+    try {
+      if (rwphIsPaymentsOnlyTabUrl()) sessionStorage.setItem(RWPH_PAYMENTS_ONLY_SESSION_KEY, "1");
+    } catch (_) {}
+  }
+
+  function rwphIsPaymentsOnlyTabContext() {
+    try {
+      return rwphIsPaymentsOnlyTabUrl() || sessionStorage.getItem(RWPH_PAYMENTS_ONLY_SESSION_KEY) === "1";
+    } catch (_) {
+      return rwphIsPaymentsOnlyTabUrl();
+    }
+  }
+
+  function rwphInstallPaymentsOnlyPanelGuard() {
+    if (!rwphIsPaymentsOnlyTabContext()) return;
+    rwphMarkPaymentsOnlyTab();
+    try { rwphSetPaymentsOnlyTabRestoreState(); } catch (_) {}
+
+    try {
+      if (!document.getElementById("rwph-payments-only-panel-guard-style")) {
+        const style = document.createElement("style");
+        style.id = "rwph-payments-only-panel-guard-style";
+        style.textContent = `
+          #rw-payout-helper,
+          #rw-results-panel,
+          #rwph-results-loading-panel,
+          .rwph-results-loading-panel,
+          .rw-results-panel,
+          #rwph-export-html-panel,
+          .rwph-results-html-panel {
+            display:none!important;
+            visibility:hidden!important;
+            opacity:0!important;
+            pointer-events:none!important;
+          }
+          #rw-pay-all-panel,
+          .rw-pay-all-panel {
+            display:flex!important;
+            visibility:visible!important;
+            opacity:1!important;
+            pointer-events:auto!important;
+          }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+      }
+    } catch (_) {}
+
+    const removeWrongPanels = () => {
+      try {
+        const selectors = [
+          "#rw-payout-helper",
+          "#rw-results-panel",
+          "#rwph-results-loading-panel",
+          ".rwph-results-loading-panel",
+          ".rw-results-panel",
+          "#rwph-export-html-panel",
+          ".rwph-results-html-panel"
+        ].join(",");
+        document.querySelectorAll(selectors).forEach((el) => {
+          if (!el || el.id === "rw-pay-all-panel" || el.classList?.contains("rw-pay-all-panel")) return;
+          try { el.remove(); } catch (_) {}
+        });
+      } catch (_) {}
+    };
+
+    removeWrongPanels();
+    try {
+      if (!window.rwphPaymentsOnlyPanelGuardObserver) {
+        window.rwphPaymentsOnlyPanelGuardObserver = new MutationObserver(removeWrongPanels);
+        window.rwphPaymentsOnlyPanelGuardObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
+      }
+    } catch (_) {}
+    [50, 150, 300, 650, 1200, 2500].forEach((ms) => setTimeout(removeWrongPanels, ms));
+  }
 
   function rwphRememberOpenResultsPageHtml(html) {
     try {
@@ -161,6 +250,7 @@
 
   function rwphRestoreOpenResultsPageAfterRefresh() {
     try {
+      if (rwphIsPaymentsOnlyTabContext()) return false;
       try {
         const loadingRaw = localStorage.getItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY);
         const loadingState = loadingRaw ? JSON.parse(loadingRaw) : null;
@@ -1216,7 +1306,7 @@
     `;
     document.body.appendChild(panel);
     panel.querySelector("#rw-wrong-payment-close")?.addEventListener("click", closeWrongPaymentPanel);
-    rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head");
+    rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head, .rwph-panel-head");
   }
 
   async function autoCheckPaymentOnce(userKey, mode = "unlock") {
@@ -7432,15 +7522,24 @@
   }
 
   function rwphForcePaymentsOnlyTabState() {
+    rwphMarkPaymentsOnlyTab();
     rwphSetPaymentsOnlyTabRestoreState();
     try {
-      const mainPanel = document.getElementById("rw-payout-helper");
-      if (mainPanel) mainPanel.remove();
+      const selectors = [
+        "#rw-payout-helper",
+        "#rw-results-panel",
+        "#rwph-results-loading-panel",
+        ".rwph-results-loading-panel",
+        ".rw-results-panel",
+        "#rwph-export-html-panel",
+        ".rwph-results-html-panel"
+      ].join(",");
+      document.querySelectorAll(selectors).forEach((el) => {
+        if (!el || el.id === "rw-pay-all-panel" || el.classList?.contains("rw-pay-all-panel")) return;
+        try { el.remove(); } catch (_) {}
+      });
     } catch (_) {}
-    try {
-      const resultsPanel = document.getElementById("rw-results-panel");
-      if (resultsPanel) resultsPanel.remove();
-    } catch (_) {}
+    rwphInstallPaymentsOnlyPanelGuard();
   }
 
   function rwphGetStoredPayAllRows() {
@@ -10759,6 +10858,7 @@
 
   function rwphRestoreResultsLoadingPanelAfterRefresh() {
     try {
+      if (rwphIsPaymentsOnlyTabContext()) return false;
       const stored = rwphReadResultsLoadingPanelState(true);
       if (!stored || !stored.active) return false;
 
@@ -11363,8 +11463,9 @@
 
   function rwphMemberManagementPanelCss() {
     return `
-      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;backdrop-filter:none!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:42px!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;}
+      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(184,136,89,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#211714), var(--rwph-theme-bg,#0b0705))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:both!important;backdrop-filter:none!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(251,191,36,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#3a241c), var(--rwph-theme-panel,#211714))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;min-height:42px!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:sticky!important;top:0!important;z-index:90!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head:active{cursor:grabbing!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:28px;height:28px;flex:0 0 28px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 7px rgba(251,191,36,.35))!important;}
       #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:0;line-height:1.04;min-width:0;}
       #rwph-member-management-panel .rwph-mm-heading b{font-size:12px;color:var(--rwph-theme-text,#fff2dd)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -11386,7 +11487,12 @@
       #rwph-member-management-panel .rwph-mm-empty{padding:7px;border:1px dashed var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:var(--rwph-theme-card-radius,9px);color:var(--rwph-theme-soft,#cfaa8e);background:linear-gradient(180deg, var(--rwph-theme-panel2,#2b1d18), var(--rwph-theme-panel,#211714))!important;font-size:11px;}
       #rwph-member-management-panel button{border-radius:var(--rwph-theme-button-radius,8px)!important;}
       #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:7px!important;top:7px!important;min-width:26px!important;width:26px!important;height:26px!important;min-height:26px!important;padding:0!important;display:grid!important;place-items:center!important;font-size:16px!important;line-height:1!important;}
-      @media (max-width:560px){#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr;}#rwph-member-management-panel .rwph-mm-adjust-row{grid-template-columns:repeat(2,minmax(0,1fr));}}
+      #rwph-member-management-panel .rw-resize-handle{position:absolute!important;width:18px!important;height:18px!important;z-index:100!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;opacity:.95!important;background:rgba(2,6,23,.18)!important;}
+      #rwph-member-management-panel .rw-resize-handle-se{right:5px!important;bottom:5px!important;cursor:nwse-resize!important;border-right:2px solid rgba(245,158,11,.88)!important;border-bottom:2px solid rgba(245,158,11,.88)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
+      #rwph-member-management-panel .rw-resize-handle-sw{left:5px!important;bottom:5px!important;cursor:nesw-resize!important;border-left:2px solid rgba(245,158,11,.88)!important;border-bottom:2px solid rgba(245,158,11,.88)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
+      #rwph-member-management-panel .rw-resize-handle-nw{left:5px!important;top:5px!important;cursor:nwse-resize!important;border-left:2px solid rgba(245,158,11,.88)!important;border-top:2px solid rgba(245,158,11,.88)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
+      #rwph-member-management-panel .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 6px rgba(245,158,11,.65))!important;}
+      @media (max-width:560px){#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr;}#rwph-member-management-panel .rwph-mm-adjust-row{grid-template-columns:repeat(2,minmax(0,1fr));}#rwph-member-management-panel .rwph-floating-panel-head{min-height:42px!important;cursor:grab!important;}#rwph-member-management-panel .rw-resize-handle{width:30px!important;height:30px!important;z-index:110!important;background:rgba(2,6,23,.28)!important;}#rwph-member-management-panel .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px!important;}}
     `;
   }
 
@@ -11493,9 +11599,9 @@
     }
     panel.innerHTML = `
       <style>${rwphMemberManagementPanelCss()}</style>
-      <div class="rwph-floating-panel-head rwph-panel-head">
+      <div class="rwph-floating-panel-head rwph-panel-head" title="Drag to move Member Management">
         <div class="rwph-mm-heading"><b>${rwphHtmlEscape(modeTitle)}</b><span class="rwph-mm-sub">Ranked-war report members</span></div>
-        <button id="rwph-mm-close" class="rwph-mini-close" type="button">×</button>
+        <button id="rwph-mm-close" class="rwph-mini-close" type="button" title="Close Member Management" aria-label="Close Member Management">×</button>
       </div>
       <div class="rwph-mm-body">
         <div class="rwph-mm-toolbar">
@@ -11507,7 +11613,7 @@
         <div id="rwph-mm-cards"><div class="rwph-mm-empty">Loading...</div></div>
       </div>`;
     document.body.appendChild(panel);
-    rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head");
+    rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head, .rwph-panel-head");
     const status = panel.querySelector("#rwph-mm-status");
     const cards = panel.querySelector("#rwph-mm-cards");
     const close = () => { rwphCaptureMemberManagementPanel(safeMode); rwphCloseMemberManagementPanel(); };
@@ -12571,7 +12677,9 @@
     if (!href.includes("/factions.php")) return false;
     if (!href.includes("rwphPayAll=1")) return false;
 
-    // In faction controls, show only the compact copy panel and keep the main/results RWPH panels closed.
+    // In faction controls, show only the compact copy panel and keep every other RWPH panel closed.
+    rwphMarkPaymentsOnlyTab();
+    rwphInstallPaymentsOnlyPanelGuard();
     rwphForcePaymentsOnlyTabState();
     setTimeout(rwphForcePaymentsOnlyTabState, 50);
     setTimeout(rwphForcePaymentsOnlyTabState, 300);
@@ -15392,6 +15500,6 @@
 
   rwphInjectUnifiedPanelThemeV1375();
   rwphApplyPanelThemeChoice();
-  setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
+  if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();
