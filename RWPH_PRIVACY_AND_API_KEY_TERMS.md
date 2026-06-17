@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.432**
+Version: **1.1.434**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -312,7 +312,12 @@ This version adds a local Layout / Theme switcher for RWPH panels. The selected 
 
 
 
-## v1.1.432 note - Three extra fitted layout/theme profiles
+## v1.1.433 - Crimson Ledger help tab and bottom-right popups
+
+- Fixed Crimson Ledger Cards so the Help tab stays visible at the top of locked and main panels.
+- RWPH popup notifications now pin to the bottom-right above Torn message buttons instead of following panel positions.
+
+## v1.1.431 note - Three extra fitted layout/theme profiles
 
 This update adds three additional visual layout/theme options to the local userscript interface. These layout/theme choices only change the local RWPH panel appearance, controls, cards, buttons, popup notifications, and panel layout. They do not change API key use, licence checks, payout calculations, payment-helper behaviour, or server-side data handling.
 

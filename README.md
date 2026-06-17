@@ -1,10 +1,5 @@
 # Ranked War Payout Helper
 
-### v1.1.432
-- Added main-panel-style move, resize, scroll, and close controls to the Layout / Theme panel across every layout/theme.
-- The Layout / Theme panel now uses a saved layout key, visible corner resize handles, draggable header, fixed close button, and scroll-safe body.
-
-
 <p align="center">
   <a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js">
     <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download Here">
@@ -15,10 +10,16 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.432**  
+Current package version: **1.1.434**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
+
+### v1.1.434 logo selector
+
+- Added a new **Logo Selector** button next to **Open Layout / Theme** in the main payout panel.
+- The new Logo Selector opens its own floating panel and lets users switch between the supplied RWPH logo sets.
+- Switching logos updates the launcher logo plus the RWPH logos used through the main and floating panels, while keeping the current layout/theme system intact.
 
 
 ### v1.1.330 manual time/faction-member fixes
@@ -1379,7 +1380,12 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Added Basic Respect checkbox and Advanced Respect Score settings.
 
 
-## v1.1.432 - Layout / Theme panel controls and fitted layout polish
+## v1.1.433 - Crimson Ledger help tab and bottom-right popups
+
+- Fixed Crimson Ledger Cards so the Help tab stays visible at the top of locked and main panels.
+- RWPH popup notifications now pin to the bottom-right above Torn message buttons instead of following panel positions.
+
+## v1.1.431 - Three extra fitted layout/theme profiles
 
 - Added three more full layout/theme profiles to the Layout / Theme panel: Neon Forge Grid, Crimson Ledger Cards, and Frostline Minimal.
 - Each new layout/theme changes colours, panel shape, card layout, button style/positioning, tab layout, calculation controls, inputs, checkboxes, dropdowns, payment rows, member cards, results cards, and popup notifications.
