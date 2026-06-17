@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.418
+// @version      1.1.420
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,7 +25,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
-  // v1.1.418: Member Management number boxes now remove payable hits, not raw/report hits.
+  // v1.1.420: adds Basic Respect checkbox, Advanced Respect Score, parent-page Payments handoff, and stronger PC/PDA CSV/HTML exports.
   // v1.1.417: replaced manual exclude text boxes with Member Management panels, saved per-member settings for 20 minutes, and added per-member hit removal support.
   // v1.1.416: PDA-safe CSV/HTML exports use server-backed direct download links plus copy-box fallbacks.
   // v1.1.415: hardened Results Export Html with native anchor download, server attachment fallback, and manual .html download link.
@@ -2166,7 +2166,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -2200,7 +2200,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -7883,20 +7883,56 @@
     const label = String(kind || "export").toUpperCase();
     const safeName = rwphSafeDownloadFilename(filename || (extension === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html"));
     const value = String(text || "");
+    const type = mime || "text/plain;charset=utf-8";
+    const ext = extension || "txt";
     const isPda = typeof rwphIsMobileOrPdaView === "function" && rwphIsMobileOrPdaView();
 
+    // Start a direct local download immediately for PC browsers. Some browsers silently block
+    // generated-file downloads, so v1.1.420 also creates a server-backed link every time.
+    let localStarted = false;
     if (!isPda) {
-      const ok = rwphDownloadTextFileStrong(safeName, value, mime || "text/plain;charset=utf-8");
-      if (ok) return true;
+      try { localStarted = !!rwphDownloadTextFileStrong(safeName, value, type); } catch (_) { localStarted = false; }
     }
 
     try {
       if (statusEl) statusEl.textContent = `Preparing ${label} download link...`;
-      const data = await rwphCreateServerExportFile(safeName, value, mime || "text/plain;charset=utf-8", extension || "txt");
-      rwphOpenExportTextFallbackPanel(label, value, data.filename || safeName, mime, isPda ? `PDA-safe ${label} export ready. Tap Download below.` : `Automatic ${label} download was blocked. Use the link below.`, data.downloadUrl || "", data.inlineUrl || ((data.downloadUrl || "") ? String(data.downloadUrl) + "?inline=1" : ""));
+      const data = await rwphCreateServerExportFile(safeName, value, type, ext);
+      const downloadUrl = data.downloadUrl || "";
+      const inlineUrl = data.inlineUrl || (downloadUrl ? String(downloadUrl) + "?inline=1" : "");
+      if (!isPda && downloadUrl) {
+        try {
+          if (typeof GM_download === "function") {
+            GM_download({ url: downloadUrl, name: data.filename || safeName, saveAs: false });
+          }
+        } catch (e) { console.warn("RWPH GM_download server export failed:", e); }
+        try { rwphTriggerDownloadAnchor(downloadUrl, data.filename || safeName); } catch (_) {}
+        try {
+          const iframe = document.createElement("iframe");
+          iframe.style.position = "fixed";
+          iframe.style.left = "-9999px";
+          iframe.style.top = "-9999px";
+          iframe.style.width = "1px";
+          iframe.style.height = "1px";
+          iframe.src = downloadUrl;
+          (document.body || document.documentElement).appendChild(iframe);
+          setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 60000);
+        } catch (_) {}
+      }
+      rwphOpenExportTextFallbackPanel(
+        label,
+        value,
+        data.filename || safeName,
+        type,
+        isPda
+          ? `PDA-safe ${label} export ready. Tap Download below.`
+          : (localStarted ? `Download started. If no .${ext} file appears, click Download below.` : `Automatic ${label} download was blocked. Click Download below.`),
+        downloadUrl,
+        inlineUrl
+      );
       return true;
     } catch (e) {
-      rwphOpenExportTextFallbackPanel(label, value, safeName, mime, `${label} download link could not be created. Copy the raw box below.`);
+      rwphOpenExportTextFallbackPanel(label, value, safeName, type, `${label} download link could not be created. Copy the raw box below.`);
+      if (localStarted) return true;
       throw e;
     }
   }
@@ -7923,10 +7959,35 @@
     }
   }
 
+
+  function rwphHandleResultsPaymentsNavigateMessage(event) {
+    try {
+      const data = event && event.data;
+      if (!data || data.rwphType !== "rwph-results-open-payments-request") return;
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length) return;
+      rwphStorePayAllRows(rows);
+      const html = String(data.html || "");
+      if (html && html.length > 1000) rwphStoreRecentPayAllReport(html, data.filename || "rwph-results-report.html");
+      else rwphStoreRecentPayAllReportFromRows(rows, data.summary || lastSummary || {});
+      try {
+        event.source && event.source.postMessage({ rwphType: "rwph-results-open-payments-ack", requestId: data.requestId || "", ok: true }, "*");
+      } catch (_) {}
+      rwphQueueCrossTabPopup("payments", "Payments opened in the current Torn tab on the faction vault/controls page. Use the copy-only panel there.", "info", "RWPH Payments");
+      try { closePanel(); } catch (_) {}
+      try { rwphCloseAllPanelsExceptPayAll(); } catch (_) {}
+      const url = rwphFactionControlsPayAllUrl();
+      try { window.location.assign(url); } catch (_) { window.location.href = url; }
+    } catch (e) {
+      console.warn("RWPH parent Payments navigation handler failed:", e);
+    }
+  }
+
   try {
     if (!window.__rwphResultsHtmlDownloadBridgeReady) {
       window.__rwphResultsHtmlDownloadBridgeReady = true;
       window.addEventListener("message", rwphHandleResultsHtmlDownloadMessage, false);
+      window.addEventListener("message", rwphHandleResultsPaymentsNavigateMessage, false);
     }
   } catch (_) {}
 
@@ -9292,6 +9353,7 @@
             var downloadUrl = String(data.downloadUrl || "");
             var inlineUrl = String(data.inlineUrl || (downloadUrl ? downloadUrl + "?inline=1" : ""));
             if (!rwphIsPdaOrMobileExportView()) {
+              try { rwphTriggerDirectDownload(downloadUrl, data.filename || safeName); } catch (_) {}
               try {
                 var iframe = document.createElement("iframe");
                 iframe.style.position = "fixed";
@@ -9727,6 +9789,7 @@
             var downloadUrl = String(data.downloadUrl || "");
             var inlineUrl = String(data.inlineUrl || (downloadUrl ? downloadUrl + "?inline=1" : ""));
             if (!rwphIsPdaOrMobileExportView()) {
+              try { rwphTriggerDirectDownload(downloadUrl, data.filename || safeName); } catch (_) {}
               try {
                 var iframe = document.createElement("iframe");
                 iframe.style.position = "fixed";
@@ -9906,7 +9969,54 @@
         if (ev) { ev.preventDefault(); ev.stopPropagation(); }
         storePayAllRowsFallback();
         storePayAllReportReopenSnapshot();
-        window.location.href = "https://www.torn.com/factions.php?step=your&rwphPayAll=1#/tab=controls&subtab=vault";
+        var requestId = "rwph-payments-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        var html = "";
+        try { html = getCurrentResultsPageHtml(); } catch (_) { html = ""; }
+        var filename = "rwph-results-report.html";
+        try { filename = rwphExportHtmlFilename ? rwphExportHtmlFilename() : filename; } catch (_) {}
+        var payload = {
+          rwphType: "rwph-results-open-payments-request",
+          requestId: requestId,
+          rows: rows || [],
+          summary: summary || {},
+          html: html,
+          filename: filename
+        };
+        var sent = false;
+        var finished = false;
+        function fallbackNavigate() {
+          if (finished) return;
+          finished = true;
+          try { window.removeEventListener("message", onAck, false); } catch (_) {}
+          window.location.href = "https://www.torn.com/factions.php?step=your&rwphPayAll=1#/tab=controls&subtab=vault";
+        }
+        function onAck(messageEvent) {
+          try {
+            var data = messageEvent && messageEvent.data;
+            if (!data || data.rwphType !== "rwph-results-open-payments-ack" || data.requestId !== requestId) return;
+            finished = true;
+            try { window.removeEventListener("message", onAck, false); } catch (_) {}
+            try { window.close(); } catch (_) {}
+          } catch (_) {}
+        }
+        try { window.addEventListener("message", onAck, false); } catch (_) {}
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(payload, "*");
+            sent = true;
+          }
+        } catch (_) {}
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(payload, "*");
+            sent = true;
+          }
+        } catch (_) {}
+        if (sent) {
+          setTimeout(fallbackNavigate, 1200);
+          return false;
+        }
+        fallbackNavigate();
         return false;
       } catch (e) {
         console.warn("RWPH same-tab Payments navigation failed:", e);
@@ -11763,9 +11873,10 @@
         name: String(entry?.name || "").trim(),
         exclude: !!entry?.exclude,
         hitsToRemove: Math.max(0, Math.floor(Number(entry?.hitsToRemove || 0) || 0)),
+        respectToRemove: Math.max(0, Number(entry?.respectToRemove || 0) || 0),
       }))
       .filter((entry) => entry.id || entry.name)
-      .filter((entry) => entry.exclude || entry.hitsToRemove > 0);
+      .filter((entry) => entry.exclude || entry.hitsToRemove > 0 || entry.respectToRemove > 0);
   }
 
   function rwphMemberManagementSignature(mode = "standard") {
@@ -11888,9 +11999,11 @@
       const payload = rwphGetMemberManagementPayload(mode);
       const excluded = payload.filter((m) => m.exclude).length;
       const hitMembers = payload.filter((m) => !m.exclude && Number(m.hitsToRemove || 0) > 0).length;
+      const respectMembers = payload.filter((m) => !m.exclude && Number(m.respectToRemove || 0) > 0).length;
       const hits = payload.reduce((sum, m) => sum + (!m.exclude ? Math.max(0, Number(m.hitsToRemove || 0) || 0) : 0), 0);
+      const respect = payload.reduce((sum, m) => sum + (!m.exclude ? Math.max(0, Number(m.respectToRemove || 0) || 0) : 0), 0);
       if (!payload.length) el.textContent = "No member changes selected.";
-      else el.textContent = `${excluded} excluded • ${hitMembers} payable-hit adjusted • ${hits} payable hit(s) removed`;
+      else el.textContent = `${excluded} excluded • ${hitMembers} payable-hit adjusted • ${hits} payable hit(s) removed • ${respectMembers} respect adjusted • ${Number(respect.toFixed(2))} respect removed`;
     };
     setSummary("standard", "rw-member-management-summary");
     setSummary("points", "rw-points-member-management-summary");
@@ -11925,7 +12038,7 @@
       #rwph-member-management-panel .rwph-mm-body{max-height:62vh;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
       #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:2px;}
       #rwph-member-management-panel .rwph-mm-status{font-size:12px;opacity:.86;line-height:1.35;}
-      #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+      #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:10px;}
       #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rw-border);background:var(--rw-card-bg);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--rw-card-shadow);}
       #rwph-member-management-panel .rwph-mm-title{font-weight:800;color:var(--rw-text);font-size:13px;}
       #rwph-member-management-panel .rwph-mm-sub{font-size:11px;color:var(--rw-muted);}
@@ -11951,14 +12064,19 @@
       const name = String(member.name || (id ? `Torn ID ${id}` : "Unknown member"));
       const checked = saved.exclude ? "checked" : "";
       const hitsToRemove = Math.max(0, Math.floor(Number(saved.hitsToRemove || 0) || 0));
+      const respectToRemove = Math.max(0, Number(saved.respectToRemove || 0) || 0);
       const maxHits = Math.max(0, Math.floor(Number(member.payableEvents ?? member.payableHits ?? member.warHits ?? member.attacks ?? 0) || 0));
+      const memberRespect = Math.max(0, Number(member.totalRespect ?? member.score ?? 0) || 0);
       return `
         <div class="rwph-mm-card" data-mm-key="${rwphHtmlEscape(key)}" data-mm-id="${rwphHtmlEscape(id)}" data-mm-name="${rwphHtmlEscape(name)}">
           <div class="rwph-mm-title">${rwphHtmlEscape(name)}${id ? ` <span class="rwph-mm-sub">[${rwphHtmlEscape(id)}]</span>` : ""}</div>
-          <div class="rwph-mm-sub">Payable hits: ${rwphHtmlEscape(maxHits)} • Respect: ${rwphHtmlEscape(member.totalRespect ?? member.score ?? 0)}</div>
+          <div class="rwph-mm-sub">Payable hits: ${rwphHtmlEscape(maxHits)} • Respect: ${rwphHtmlEscape(memberRespect)}</div>
           <label><input type="checkbox" class="rwph-mm-exclude" ${checked}> Remove this member completely</label>
           <label>Payable hits to remove
             <input type="number" class="rwph-mm-hits" value="${rwphHtmlEscape(hitsToRemove)}" min="0" max="${rwphHtmlEscape(maxHits)}" step="1" inputmode="numeric">
+          </label>
+          <label>Respect to remove
+            <input type="number" class="rwph-mm-respect" value="${rwphHtmlEscape(Number(respectToRemove.toFixed ? respectToRemove.toFixed(2) : respectToRemove))}" min="0" max="${rwphHtmlEscape(memberRespect)}" step="0.01" inputmode="decimal">
           </label>
         </div>`;
     }).join("")}</div>`;
@@ -11973,13 +12091,15 @@
       if (!key) return;
       const exclude = card.querySelector(".rwph-mm-exclude")?.checked === true;
       const hitsToRemove = Math.max(0, Math.floor(Number(card.querySelector(".rwph-mm-hits")?.value || 0) || 0));
+      const respectToRemove = Math.max(0, Number(card.querySelector(".rwph-mm-respect")?.value || 0) || 0);
       const entry = {
         id: String(card.dataset.mmId || "").trim(),
         name: String(card.dataset.mmName || "").trim(),
         exclude,
         hitsToRemove,
+        respectToRemove,
       };
-      if (entry.exclude || entry.hitsToRemove > 0) currentMembers[key] = entry;
+      if (entry.exclude || entry.hitsToRemove > 0 || entry.respectToRemove > 0) currentMembers[key] = entry;
     });
     const meta = panel.rwphMemberManagementMeta || {};
     rwphSaveMemberManagementState(mode, { ...meta, members: currentMembers });
@@ -12041,6 +12161,7 @@
     panel.querySelector("#rwph-mm-clear")?.addEventListener("click", () => {
       panel.querySelectorAll(".rwph-mm-exclude").forEach((el) => { el.checked = false; });
       panel.querySelectorAll(".rwph-mm-hits").forEach((el) => { el.value = "0"; });
+      panel.querySelectorAll(".rwph-mm-respect").forEach((el) => { el.value = "0"; });
       rwphCaptureMemberManagementPanel(safeMode);
       if (status) status.textContent = "All member management changes cleared. Saved defaults will apply for 20 minutes.";
     });
@@ -12056,7 +12177,7 @@
           to: result.to || 0,
         };
         if (cards) cards.innerHTML = rwphRenderMemberManagementCards(safeMode, result.members || []);
-        if (status) status.textContent = `Loaded ${(result.members || []).length} member card(s). Tick members to remove them fully, or type how many payable hits to remove. Click Save Changes to remember the settings for 20 minutes.`;
+        if (status) status.textContent = `Loaded ${(result.members || []).length} member card(s). Tick members to remove them fully, or type how many payable hits/respect to remove. Click Save Changes to remember the settings for 20 minutes.`;
       } catch (e) {
         if (cards) cards.innerHTML = `<div class="rwph-mm-empty">${rwphHtmlEscape(e.message || e)}</div>`;
         if (status) status.textContent = "Could not load ranked-war report members.";
@@ -12068,6 +12189,12 @@
       if (event.target?.classList?.contains("rwph-mm-hits")) {
         const max = Number(event.target.getAttribute("max") || 0);
         let n = Math.max(0, Math.floor(Number(event.target.value || 0) || 0));
+        if (Number.isFinite(max) && max > 0 && n > max) n = max;
+        event.target.value = String(n);
+      }
+      if (event.target?.classList?.contains("rwph-mm-respect")) {
+        const max = Number(event.target.getAttribute("max") || 0);
+        let n = Math.max(0, Number(event.target.value || 0) || 0);
         if (Number.isFinite(max) && max > 0 && n > max) n = max;
         event.target.value = String(n);
       }
@@ -12101,6 +12228,8 @@
         rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
         rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
         rwphFixedPerHitWeight("rw-assist-weight", 0),
+        rwphFixedPerHitWeight("rw-respect-weight", 0),
+        "basic-respect-weight-v1",
         rwphBasicFastModeEnabled() ? "basic-fast-report-only-v1" : "basic-normal-hybrid-v1",
         "member-management-v1",
         `exclude:${rwphExcludedMembersSignature("standard")}`,
@@ -12117,6 +12246,8 @@
         Number(document.getElementById("rw-point-retal")?.value || 0.2),
         Number(document.getElementById("rw-point-hospital")?.value || 2),
         rwphPointEnemyHospitalBonusValue(),
+        Number(document.getElementById("rw-point-respect")?.value || 0.01),
+        "advanced-respect-score-v1",
         document.getElementById("rw-point-fair-fight")?.checked !== false ? "ff" : "no-ff",
         rwphPointFairFightAvgStepValue(),
         rwphPointFairFightBonusStepValue(),
@@ -12145,6 +12276,7 @@
       outsideHitWeight: rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
       retaliationHitWeight: rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
       assistWeight: rwphFixedPerHitWeight("rw-assist-weight", 0),
+      respectWeight: rwphFixedPerHitWeight("rw-respect-weight", 0),
       basicFastMode: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasicFastModeEnabled(),
       basic120ResultsPage: false,
       pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
@@ -12153,6 +12285,7 @@
       pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 0.2),
       pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
       pointEnemyHospitalBonus: rwphPointEnemyHospitalBonusValue(),
+      pointRespectValue: Number(document.getElementById("rw-point-respect")?.value || 0.01),
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
       pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
       pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
@@ -12168,8 +12301,8 @@
     // Cache lookup/open/delete should not be blocked by changed payout fields.
     // The saved cached report keeps its own Member Payout and Total Payout values.
     const sharedInvalid = !payload.userKey;
-    const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0;
-    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0));
+    const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0 || payload.respectWeight < 0;
+    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || payload.pointRespectValue < 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0));
     if (sharedInvalid || (mode === "standard" && perHitInvalid) || (mode === "points" && pointsInvalid)) {
       return { ok: false, payload };
     }
@@ -14546,12 +14679,13 @@
                   <input id="rw-total-overall" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                 </label>
               </div>
-              <div class="rw-calc-brief">Tick hit types to include. Each checked type counts as <b>1</b>.</div>
+              <div class="rw-calc-brief">Tick hit types/respect to include. Each checked hit type counts as <b>1</b>; Respect adds that member's payout respect to their payout weight.</div>
               <div class="rw-compact-check-grid">
                 <label><input id="rw-war-hit-weight" type="checkbox" checked> War hits</label>
                 <label><input id="rw-outside-hit-weight" type="checkbox" checked> Outside hits</label>
                 <label><input id="rw-retaliation-hit-weight" type="checkbox" checked> Retals</label>
                 <label><input id="rw-assist-weight" type="checkbox"> Assists</label>
+                <label><input id="rw-respect-weight" type="checkbox"> Respect</label>
               </div>
               <div class="rw-compact-check-grid rw-compact-check-grid-single">
                 <label><input id="rw-basic-fast-mode" type="checkbox"> Fast Mode — ranked-war report only</label>
@@ -14562,7 +14696,7 @@
                 <span id="rw-member-management-summary" class="rw-muted rw-member-management-summary">No member changes selected.</span>
               </div>
               <textarea id="rw-excluded-members" rows="1" hidden style="display:none"></textarea>
-              <div class="rw-calc-brief rw-calc-mini-note">Open Member Management to remove a member completely or remove a set number of payable hits from a member before payouts are recalculated.</div>
+              <div class="rw-calc-brief rw-calc-mini-note">Open Member Management to remove a member completely, remove payable hits, or subtract respect from a member before payouts are recalculated.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-run" type="button">Calculate</button>
                 <button id="rw-use-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -14602,7 +14736,7 @@
                 <span id="rw-points-member-management-summary" class="rw-muted rw-member-management-summary">No member changes selected.</span>
               </div>
               <textarea id="rw-points-excluded-members" rows="1" hidden style="display:none"></textarea>
-              <div class="rw-calc-brief rw-calc-mini-note">Open Member Management to remove a member completely or remove a set number of payable hits from a member before points payouts are recalculated.</div>
+              <div class="rw-calc-brief rw-calc-mini-note">Open Member Management to remove a member completely, remove payable hits, or subtract respect from a member before points payouts are recalculated.</div>
               <div class="rw-row">
                 <label>War hit points
                   <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
@@ -14626,6 +14760,12 @@
                 <label>Enemy war faction hospital bonus points (can be negative)
                   <input id="rw-point-enemy-hospital" type="number" value="-1" step="0.1">
                 </label>
+              </div>
+              <div class="rw-row">
+                <label>Respect Score per 0.01 respect
+                  <input id="rw-point-respect" type="number" value="0.01" step="0.01" min="0">
+                </label>
+                <div class="rw-calc-brief rw-calc-mini-note">Default: every <b>0.01</b> respect earned adds <b>0.01</b> score. Example: 1.00 respect adds 1.00 score.</div>
               </div>
               <div class="rw-compact-check-grid rw-compact-check-grid-single">
                 <label><input id="rw-point-fair-fight" type="checkbox" checked> Use fair-fight modifier</label>
@@ -14888,7 +15028,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
+    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -15107,6 +15247,7 @@
       const outsideHitWeight = rwphFixedPerHitWeight("rw-outside-hit-weight", 1);
       const retaliationHitWeight = rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1);
       const assistWeight = rwphFixedPerHitWeight("rw-assist-weight", 0);
+      const respectWeight = rwphFixedPerHitWeight("rw-respect-weight", 0);
       const basicFastMode = !isPointsMode && rwphBasicFastModeEnabled();
       const basic120ResultsPage = false;
       const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
@@ -15115,6 +15256,7 @@
       const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 0.2);
       const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
       const pointEnemyHospitalBonus = rwphPointEnemyHospitalBonusValue();
+      const pointRespectValue = Number(document.getElementById("rw-point-respect")?.value || 0.01);
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
       const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
       const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
@@ -15125,8 +15267,8 @@
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
-      if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0) return alert("Weights cannot be negative.");
-      if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0) return alert("Advanced Calculation values cannot be negative.");
+      if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0 || respectWeight < 0) return alert("Weights cannot be negative.");
+      if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0 || pointRespectValue < 0) return alert("Advanced Calculation values cannot be negative.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightAvgStep) || pointFairFightAvgStep <= 0)) return alert("Avg FF required per bonus step must be greater than 0.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightBonusPerStep) || pointFairFightBonusPerStep < 0)) return alert("Point bonus per payable hit per step cannot be negative.");
 
@@ -15144,10 +15286,10 @@
         status.textContent = useCacheOnly
           ? "Opening matching cached completed-war report..."
           : (isPointsMode
-            ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
+            ? "Server is verifying licence, using the selected war/time window, fetching attacks, scoring contribution points, applying war-faction retal bonus, own-faction/enemy-faction hospital, and configurable Respect Score, Avg FF per-payable-hit bonus, and splitting the payout by final points. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."
             : (basicFastMode
               ? "Server is verifying licence, checking the report cache, then using Torn rankedwarreport only for a much faster Basic result. Attack-log extras are skipped in Fast Mode..."
-              : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."));
+              : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying hit/respect weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."));
         preOpenedResultsTab = openBlankResultsTab(progressId);
         const cancelBecauseTabClosed = () => {
           if (calculationFinished || calculationCancelledByClosedTab) return;
@@ -15174,6 +15316,7 @@
           outsideHitWeight,
           retaliationHitWeight,
           assistWeight,
+          respectWeight,
           basicFastMode,
           basic120ResultsPage,
           pointWarHitValue,
@@ -15182,11 +15325,13 @@
           pointRetaliationHitValue,
           pointHospitalBonus,
           pointEnemyHospitalBonus,
+          pointRespectValue,
           pointFairFightEnabled,
           pointFairFightAvgStep,
           pointFairFightBonusPerStep,
           includeLeftFactionMembers,
           excludedMembersText,
+          memberManagement: memberAdjustments,
           memberAdjustments,
           useCacheOnly,
           forceRefresh,
