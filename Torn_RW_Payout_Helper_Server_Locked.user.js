@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.424
+// @version      1.1.425
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,7 +23,8 @@
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
-  // v1.1.424: fixed theme rebuild interaction layer so panels remain scrollable, movable, clickable, resizable, and usable on PDA/phone/PC.
+  // v1.1.425: rebuilt the theme styling layer on the last working interaction-safe selectors so panels are scrollable, movable, clickable and resizable again.
+  // v1.1.424: attempted theme rebuild interaction safety layer.
   // v1.1.423: completely rebuilt every theme/colour into its own full panel layout, style, colour system, payment-copy styling and popup notification style.
   // v1.1.422: expanded each panel theme/colour into its own unique layout profile, card style, header treatment, spacing, shadows, and button feel.
   // v1.1.421: desktop launcher logo now uses the same larger logo style as PDA while keeping the Ranked War Payout Helper name text.
@@ -2506,17 +2507,43 @@
 
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
     const t = theme || rwphGetPanelThemePreset();
+    const themeTexture = t.texture ? `${t.texture},` : "";
+    const themeHeaderTexture = t.headerTexture ? `${t.headerTexture},` : "";
+    const themeCardTexture = t.cardTexture ? `${t.cardTexture},` : "";
+    const themeButtonTexture = t.buttonTexture ? `${t.buttonTexture},` : "";
     const themeTextureSize = t.textureSize || "auto";
     const themeCardTextureSize = t.cardTextureSize || themeTextureSize;
-    const safeButtonCase = t.buttonCase || "none";
-    const safeHeadCase = t.headCase || "none";
+    const themeRadius = t.radius || "16px";
+    const themeCardRadius = t.cardRadius || "14px";
+    const themeButtonRadius = t.buttonRadius || "12px";
+    const themeBorderWidth = t.borderWidth || "1px";
+    const themeBorderStyle = t.borderStyle || "solid";
+    const themeButtonCase = t.buttonCase || "none";
+    const themeButtonTracking = t.buttonTracking || ".01em";
+    const themePanelPad = t.panelPad || "14px";
+    const themeBodyPad = t.bodyPad || "14px";
+    const themeHeadPad = t.headPad || "12px 14px";
+    const themeHeadJustify = t.headJustify || "space-between";
+    const themeHeadAlign = t.headAlign || "center";
+    const themeHeadCase = t.headCase || "none";
+    const themeHeadTracking = t.headTracking || ".015em";
+    const themeCardPad = t.cardPad || "12px";
+    const themeCardGap = t.cardGap || "10px";
+    const themeSectionInset = t.sectionInset || "0";
+    const themeCardAccent = t.cardAccent || "left";
+    const themeCardAccentSize = t.cardAccentSize || "4px";
+    const themeCardShadow = t.cardShadow || "0 12px 28px rgba(0,0,0,.22)";
+    const themeButtonPad = t.buttonPad || "9px 12px";
+    const themeButtonJustify = t.buttonJustify || "center";
+    const themePanelShadow = t.panelShadow || "0 22px 70px rgba(0,0,0,.62),0 0 34px var(--rwph-theme-line)";
+    const themePickerWidth = t.themePickerWidth || "520px";
+    const themePickerCols = t.themePickerCols || "1fr";
     const standaloneScope = includeStandalonePage ? `
       body,
       .app,
       .hero,
       .topbar,
       .side,
-      .summary,
       .summary-card,
       .result-card,
       .pay-all-panel,
@@ -2525,24 +2552,6 @@
       .rwph-side-card,
       .mini,
       .wait-note,` : "";
-    const panelSelectors = `
-      ${standaloneScope}
-      #rw-payout-helper,
-      #rw-pay-all-panel,
-      .rw-pay-all-panel,
-      #rw-pay-all-copy-panel,
-      .rw-pay-all-copy-panel,
-      #rwph-xanax-send-status,
-      #rw-wrong-payment-panel,
-      #rwph-member-management-panel,
-      .rwph-member-management-panel,
-      .rwph-floating-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel,
-      .rw-results-panel,
-      .rwph-panel-theme-picker,
-      #rwphFullPopupPanelLive,
-      .rwph-info-popup-panel`;
     return `
       :root{
         --rwph-theme-bg:${t.bg};
@@ -2558,259 +2567,1043 @@
         --rwph-theme-orange:${t.accent2};
         --rwph-theme-green:${t.good};
         --rwph-theme-red:${t.danger};
-        --rwph-theme-panel-bg:${t.panelBg};
-        --rwph-theme-body-bg:${t.bodyBg};
-        --rwph-theme-card-bg:${t.cardBg};
-        --rwph-theme-header-bg:${t.headerBg};
-        --rwph-theme-button-bg:${t.buttonBg};
-        --rwph-theme-primary-bg:${t.primaryBg};
-        --rwph-theme-input-bg:${t.inputBg};
-        --rwph-theme-popup-bg:${t.popupBg};
-        --rwph-theme-shadow:${t.panelShadow};
-        --rwph-theme-card-shadow:${t.cardShadow};
-        --rwph-theme-radius:${t.radius};
-        --rwph-theme-card-radius:${t.cardRadius};
-        --rwph-theme-button-radius:${t.buttonRadius};
-        --rwph-theme-border-width:${t.borderWidth};
-        --rwph-theme-border-style:${t.borderStyle};
-        --rwph-theme-panel-pad:${t.panelPad};
-        --rwph-theme-body-pad:${t.bodyPad};
-        --rwph-theme-head-pad:${t.headPad};
-        --rwph-theme-head-justify:${t.headJustify};
-        --rwph-theme-head-align:${t.headAlign};
-        --rwph-theme-head-case:${safeHeadCase};
-        --rwph-theme-head-tracking:${t.headTracking};
-        --rwph-theme-card-pad:${t.cardPad};
-        --rwph-theme-card-gap:${t.cardGap};
-        --rwph-theme-section-inset:${t.sectionInset};
-        --rwph-theme-card-accent-size:${t.cardAccentSize};
-        --rwph-theme-button-pad:${t.buttonPad};
-        --rwph-theme-button-justify:${t.buttonJustify};
-        --rwph-theme-button-case:${safeButtonCase};
-        --rwph-theme-button-tracking:${t.buttonTracking};
-        --rwph-theme-picker-width:${t.themePickerWidth || "520px"};
-        --rwph-theme-picker-cols:${t.themePickerCols || "1fr"};
+        --rwph-theme-shadow:${themePanelShadow};
+        --rwph-theme-radius:${themeRadius};
+        --rwph-theme-card-radius:${themeCardRadius};
+        --rwph-theme-button-radius:${themeButtonRadius};
+        --rwph-theme-border-width:${themeBorderWidth};
+        --rwph-theme-border-style:${themeBorderStyle};
+        --rwph-theme-panel-pad:${themePanelPad};
+        --rwph-theme-body-pad:${themeBodyPad};
+        --rwph-theme-head-pad:${themeHeadPad};
+        --rwph-theme-head-justify:${themeHeadJustify};
+        --rwph-theme-head-align:${themeHeadAlign};
+        --rwph-theme-head-case:${themeHeadCase};
+        --rwph-theme-head-tracking:${themeHeadTracking};
+        --rwph-theme-card-pad:${themeCardPad};
+        --rwph-theme-card-gap:${themeCardGap};
+        --rwph-theme-section-inset:${themeSectionInset};
+        --rwph-theme-card-accent:${themeCardAccent};
+        --rwph-theme-card-accent-size:${themeCardAccentSize};
+        --rwph-theme-card-shadow:${themeCardShadow};
+        --rwph-theme-button-pad:${themeButtonPad};
+        --rwph-theme-button-justify:${themeButtonJustify};
+        --rwph-theme-picker-width:${themePickerWidth};
+        --rwph-theme-picker-cols:${themePickerCols};
       }
 
-      ${panelSelectors}{
-        background:var(--rwph-theme-panel-bg)!important;
-        background-size:${themeTextureSize}, auto, auto, auto!important;
-        color:var(--rwph-theme-text)!important;
-        border:var(--rwph-theme-border-width) var(--rwph-theme-border-style) var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-radius)!important;
-        box-shadow:var(--rwph-theme-shadow)!important;
-        text-shadow:none!important;
-      }
-
-      ${panelSelectors} :where(.rw-body,.rw-panel-body,.rw-content,.rw-tab-section,.rw-unified-tab-panel,.rw-admin-unified-panel,.rw-help-body,.rw-pay-all-body,.rwph-floating-panel-body,.rwph-loading-shell,.app,.side,.summary,.rwph-panel-theme-picker-body,.rwph-results-html-preview,.rwph-results-html-box,.rwph-mm-body,.rwph-xanax-scroll){
-        background:var(--rwph-theme-body-bg)!important;
-        color:var(--rwph-theme-text)!important;
-        border-color:var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-card-radius)!important;
-        padding:var(--rwph-theme-body-pad)!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.045)!important;
-      }
-
-      ${panelSelectors} :where(.rw-head,.rw-header,.rw-panel-head,.rw-titlebar,.rw-tabbar,.rw-pay-all-head,.pay-all-head,.rwph-floating-panel-head,.rwph-results-loading-head,.rwph-results-html-head,.rwph-panel-theme-picker-head,.topbar,details>summary,.rw-api-visible-head,.rw-help-dropdown-summary,.rw-api-tos-title,#rwph-payment-helper-title,.rwph-xanax-detail-title,.rwph-mm-control-stack){
-        background:var(--rwph-theme-header-bg)!important;
-        background-size:${themeTextureSize}, auto, auto!important;
-        color:var(--rwph-theme-gold)!important;
-        border-color:var(--rwph-theme-line2)!important;
-        border-radius:var(--rwph-theme-card-radius)!important;
-        padding:var(--rwph-theme-head-pad)!important;
-        display:flex!important;
-        justify-content:var(--rwph-theme-head-justify)!important;
-        align-items:var(--rwph-theme-head-align)!important;
-        gap:var(--rwph-theme-card-gap)!important;
-        text-transform:var(--rwph-theme-head-case)!important;
-        letter-spacing:var(--rwph-theme-head-tracking)!important;
-        box-shadow:0 12px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08)!important;
-      }
-
-      ${panelSelectors} :where(.rw-card,.rw-box,.rw-section,.card,.box,.panel,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-admin-advanced-box,.rw-api-tos-content,.rw-calc-brief,.rw-cache-tools,.rw-mode-cache-tools,.rw-compact-check-grid,.rw-primary-calc-actions,.rw-settings-calc-actions,.rw-settings-time-actions,.rw-licence-control-grid,.rw-payment-card,.rw-payment-expiry,.rw-pay-all-list,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.mini,.wait-note,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-results-html-preview-wrap,.rwph-raw-html-copy-note,.rwph-mm-toolbar,.rwph-mm-status,.rwph-mm-card,.rwph-mm-stat,.rwph-mm-number-label,.rwph-mm-empty){
-        position:relative!important;
-        background:var(--rwph-theme-card-bg)!important;
+      ${standaloneScope}
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rw-pay-all-copy-panel,
+      .rw-pay-all-copy-panel,
+      #rw-wrong-payment-panel,
+      #rwph-xanax-send-status,
+      #rwph-member-management-panel,
+      .rwph-member-management-panel,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .rw-main-panel,
+      .rw-locked-panel,
+      .rw-admin-panel,
+      .rw-help-panel,
+      .rw-payment-panel,
+      .rw-admin-box,
+      .rw-how-box,
+      .rw-modal,
+      .rw-popup,
+      .rw-toast,
+      .rw-settings-panel,
+      .rw-api-tos-card,
+      .rw-api-tos-dropdown,
+      .rw-settings-dropdown,
+      .rw-card,
+      .rw-box,
+      .rw-section,
+      .rw-panel,
+      [id^="rwph-"][class*="panel"],
+      [class^="rwph-"][class*="panel"],
+      [class*="rwph-"][class*="panel"],
+      #rwphFullPopupPanelLive,
+      .rwph-info-popup-panel,
+      .rwph-panel-theme-picker{
+        background:
+          ${themeTexture}
+          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 32%),
+          radial-gradient(circle at 86% 8%, ${t.line}, transparent 30%),
+          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
         background-size:${themeCardTextureSize}, auto, auto, auto!important;
-        color:var(--rwph-theme-text)!important;
-        border-color:var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-card-radius)!important;
-        padding:var(--rwph-theme-card-pad)!important;
-        margin-inline:var(--rwph-theme-section-inset)!important;
-        box-shadow:var(--rwph-theme-card-shadow)!important;
-        overflow:hidden;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+        box-shadow:var(--rwph-theme-shadow)!important;
       }
 
-      ${panelSelectors} :where(.rw-grid,.rw-section-list,.rw-member-grid,.rw-member-management-grid,.rw-actions,.rw-tabs,.rw-pay-all-list,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-floating-panel-body,.rwph-loading-shell,.results-grid,.cards,.app,.rwph-panel-theme-grid,.rwph-mm-grid,.rwph-mm-card,.rwph-mm-stats,.rwph-mm-adjust-row){
-        gap:var(--rwph-theme-card-gap)!important;
-      }
-
-      ${panelSelectors} :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-tab-btn,.rw-primary,.secondary,.danger,.success,.pay-all-btn,.pay-all-close,.pay-all-undo,.rw-pay-all-copy,.rw-pay-all-undo,.rwph-info-popup-close){
-        background:var(--rwph-theme-button-bg)!important;
+      #rw-payout-helper header,
+      #rw-payout-helper .rw-header,
+      #rw-payout-helper .rw-title,
+      #rw-payout-helper .rw-panel-head,
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-tabbar,
+      #rw-pay-all-panel .rw-pay-all-head,
+      .rw-pay-all-panel .rw-pay-all-head,
+      #rw-pay-all-copy-panel .rw-pay-all-head,
+      .rw-pay-all-copy-panel .rw-pay-all-head,
+      #rwph-member-management-panel .rwph-mm-toolbar,
+      #rwph-member-management-panel .rwph-mm-status,
+      .rwph-floating-panel .rwph-panel-head,
+      .rwph-results-loading-panel .rwph-results-loading-head,
+      .rwph-results-html-head,
+      .rw-admin-box h1,
+      .rw-admin-box h2,
+      .rw-how-box h1,
+      .rw-how-box h2,
+      .rw-api-tos-title,
+      .rw-settings-dropdown > summary,
+      .rw-api-tos-dropdown > summary{
+        background:${themeHeaderTexture}linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
         background-size:${themeTextureSize}, auto!important;
-        border:1px solid var(--rwph-theme-line2)!important;
-        border-radius:var(--rwph-theme-button-radius)!important;
-        color:var(--rwph-theme-text)!important;
-        padding:var(--rwph-theme-button-pad)!important;
-        justify-content:var(--rwph-theme-button-justify)!important;
-        text-transform:var(--rwph-theme-button-case)!important;
-        letter-spacing:var(--rwph-theme-button-tracking)!important;
-        box-shadow:0 10px 24px rgba(0,0,0,.27), inset 0 1px 0 rgba(255,255,255,.08)!important;
+        border-color:${t.line2}!important;
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper button,
+      #rw-payout-helper .rw-button,
+      #rw-payout-helper .rw-tab,
+      #rw-payout-helper a.btn,
+      #rw-pay-all-panel button,
+      #rw-pay-all-panel a.btn,
+      .rw-pay-all-panel button,
+      .rw-pay-all-panel a.btn,
+      #rw-pay-all-copy-panel button,
+      #rw-pay-all-copy-panel a.btn,
+      .rw-pay-all-copy-panel button,
+      .rw-pay-all-copy-panel a.btn,
+      #rwph-member-management-panel button,
+      #rwph-member-management-panel a.btn,
+      .rwph-info-popup-close,
+      .rwph-floating-panel button,
+      .rwph-floating-panel a.btn,
+      .rwph-results-html-panel button,
+      .rwph-results-html-panel a.btn,
+      .rw-results-panel button,
+      .rw-results-panel a.btn,
+      .rw-admin-box button,
+      .rw-how-box button{
+        background:${themeButtonTexture}linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto!important;
+        border-color:${t.line2}!important;
+        color:${t.text}!important;
+        box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
+      }
+
+      #rw-payout-helper button.primary,
+      #rw-payout-helper .primary,
+      #rw-payout-helper .rw-primary,
+      #rw-payout-helper .rw-tab.active,
+      #rw-payout-helper [aria-selected="true"],
+      #rw-pay-all-panel .primary,
+      .rw-pay-all-panel .primary,
+      #rw-pay-all-copy-panel .primary,
+      .rw-pay-all-copy-panel .primary,
+      .rwph-floating-panel .primary,
+      .rwph-results-html-panel .primary,
+      .rw-results-panel .primary{
+        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
+        border-color:${t.line2}!important;
+        color:${t.bg}!important;
+      }
+
+      ${includeStandalonePage ? "body h1, body h2, body h3, body .title-text, body .results-side-title, body .summary-card span, body .result-name," : ""}
+      #rw-payout-helper h1,
+      #rw-payout-helper h2,
+      #rw-payout-helper h3,
+      #rw-payout-helper .rw-title,
+      #rw-payout-helper .rw-section-title,
+      #rw-payout-helper .rw-api-tos-title,
+      #rw-pay-all-panel h1,
+      #rw-pay-all-panel h2,
+      .rw-pay-all-panel h1,
+      .rw-pay-all-panel h2,
+      #rw-pay-all-copy-panel h1,
+      #rw-pay-all-copy-panel h2,
+      .rw-pay-all-copy-panel h1,
+      .rw-pay-all-copy-panel h2,
+      #rwph-member-management-panel .rwph-mm-title,
+      .rwph-info-popup-title,
+      .rwph-floating-panel h1,
+      .rwph-floating-panel h2,
+      .rwph-results-loading-panel h1,
+      .rwph-results-loading-panel h2,
+      .rwph-results-html-title,
+      .rwph-results-html-preview-title,
+      .rw-results-panel h1,
+      .rw-results-panel h2,
+      .rw-admin-box h1,
+      .rw-admin-box h2,
+      .rw-how-box h1,
+      .rw-how-box h2{
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper label,
+      #rw-payout-helper .rw-muted,
+      #rw-payout-helper .muted,
+      #rw-payout-helper small,
+      #rw-payout-helper .rw-calc-brief,
+      #rw-pay-all-panel .muted,
+      .rw-pay-all-panel .muted,
+      #rw-pay-all-copy-panel .muted,
+      .rw-pay-all-copy-panel .muted,
+      #rwph-member-management-panel .rwph-mm-sub,
+      .rwph-info-popup-message,
+      .rwph-floating-panel .muted,
+      .rwph-results-loading-panel .muted,
+      .rwph-results-html-note,
+      .rwph-results-html-status,
+      .rw-results-panel .muted,
+      .rw-admin-box .muted,
+      .rw-how-box .muted{
+        color:${t.soft}!important;
+      }
+
+      #rw-payout-helper input,
+      #rw-payout-helper textarea,
+      #rw-payout-helper select,
+      #rw-pay-all-panel input,
+      #rw-pay-all-panel textarea,
+      #rw-pay-all-panel select,
+      .rw-pay-all-panel input,
+      .rw-pay-all-panel textarea,
+      .rw-pay-all-panel select,
+      #rw-pay-all-copy-panel input,
+      #rw-pay-all-copy-panel textarea,
+      #rw-pay-all-copy-panel select,
+      .rw-pay-all-copy-panel input,
+      .rw-pay-all-copy-panel textarea,
+      .rw-pay-all-copy-panel select,
+      #rwph-member-management-panel input,
+      #rwph-member-management-panel textarea,
+      #rwph-member-management-panel select,
+      .rwph-floating-panel input,
+      .rwph-floating-panel textarea,
+      .rwph-floating-panel select,
+      .rwph-results-html-panel textarea,
+      .rw-results-panel input,
+      .rw-results-panel textarea,
+      .rw-results-panel select,
+      .rw-admin-box input,
+      .rw-admin-box textarea,
+      .rw-admin-box select,
+      .rw-how-box input,
+      .rw-how-box textarea,
+      .rw-how-box select{
+        background:${t.bg}!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      ${includeStandalonePage ? "body .summary-card, body .result-card, body .rwph-status-card, body .rwph-side-card, body .mini, body .wait-note," : ""}
+      #rw-payout-helper .card,
+      #rw-payout-helper .rw-card,
+      #rw-payout-helper .rw-box,
+      #rw-payout-helper .rw-section,
+      #rw-payout-helper .rw-api-tos-content,
+      #rw-payout-helper .rw-calc-brief,
+      #rw-payout-helper details,
+      #rw-pay-all-panel .rw-pay-all-row,
+      .rw-pay-all-panel .rw-pay-all-row,
+      .rwph-floating-panel .rw-card,
+      .rwph-results-loading-panel .rw-card,
+      .rwph-results-html-preview-wrap,
+      .rwph-results-html-preview,
+      .rw-results-panel .summary-card,
+      .rw-results-panel .result-card,
+      .rw-admin-box .rw-card,
+      .rw-how-box .rw-card{
+        background:${themeCardTexture}${t.panel2}!important;
+        background-size:${themeCardTextureSize}, auto!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings{
+        border-color:${t.line2}!important;
+        background:${themeTexture}radial-gradient(circle at 12% 0%, ${t.line2}, transparent 32%),linear-gradient(180deg, ${t.panel3}, ${t.bg})!important;
+        background-size:${themeTextureSize}, auto, auto!important;
+        box-shadow:0 0 0 1px rgba(255,255,255,.055) inset,0 18px 44px rgba(0,0,0,.42),0 0 28px ${t.line}!important;
+      }
+      #rw-payout-helper details.rw-per-hit-settings::before,
+      #rw-payout-helper details.rw-points-settings::before{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+      }
+      #rw-payout-helper details.rw-per-hit-settings > summary,
+      #rw-payout-helper details.rw-points-settings > summary{
+        background:${themeHeaderTexture}linear-gradient(135deg, ${t.line2}, ${t.line}),linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto, auto!important;
+        color:${t.accent}!important;
+        border-bottom-color:${t.line}!important;
+      }
+
+
+      /* v1.1.386: make every RWPH panel interior follow the chosen theme */
+      #rw-payout-helper,
+      #rw-payout-helper .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper .rw-unified-tab-panel,
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-licence-control-grid,
+      #rw-payout-helper #rw-paywall-unlock-section,
+      #rw-payout-helper #rw-paywall-admin-section,
+      #rw-payout-helper #rw-paywall-how-section,
+      #rw-payout-helper #rw-payout-tab,
+      #rw-payout-helper #rw-admin-tab-section,
+      #rw-payout-helper #rw-how-tab-section,
+      #rw-payout-helper #rw-results-panel,
+      #rw-payout-helper .rw-admin-unified-panel,
+      #rw-payout-helper .rw-help-section-card,
+      #rw-payout-helper .rw-help-dropdown-content,
+      #rw-payout-helper .rw-api-visible-card,
+      #rw-payout-helper .rw-admin-advanced-box,
+      #rw-payout-helper .rw-cache-tools,
+      #rw-payout-helper .rw-mode-cache-tools,
+      #rw-payout-helper .rw-compact-check-grid,
+      #rw-payout-helper .rw-primary-calc-actions,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions,
+      #rw-payout-helper #rw-main-payment-code,
+      #rw-payout-helper #rw-paywall-code,
+      #rw-payout-helper #rw-admin-results,
+      #rw-payout-helper #rw-results,
+      #rw-payout-helper #rw-results-placeholder,
+      #rw-pay-all-panel,
+      #rw-pay-all-panel .rw-pay-all-body,
+      #rw-pay-all-panel .rw-pay-all-list,
+      #rw-pay-all-panel .rw-pay-all-row,
+      .rw-pay-all-panel,
+      .rw-pay-all-panel .rw-pay-all-body,
+      .rw-pay-all-panel .rw-pay-all-list,
+      .rw-pay-all-panel .rw-pay-all-row,
+      .rwph-floating-panel,
+      .rwph-floating-panel-body,
+      .rwph-panel-theme-picker,
+      .rwph-panel-theme-picker-body,
+      .rwph-panel-theme-grid,
+      .rwph-panel-theme-current,
+      .rwph-results-loading-panel,
+      .rwph-results-loading-panel .rwph-loading-shell,
+      .rwph-results-loading-panel .rwph-status-card,
+      .rwph-results-loading-panel .rwph-side-card,
+      .rwph-results-html-panel,
+      .rwph-results-html-panel .rwph-results-html-preview-wrap,
+      .rwph-results-html-panel .rwph-results-html-preview,
+      .rwph-results-html-panel .rwph-select-raw-html-row,
+      .rwph-results-html-panel .rwph-results-html-box,
+      .rw-results-panel,
+      .rw-results-panel .summary,
+      .rw-results-panel .summary-card,
+      .rw-results-panel .result-card{
+        background:
+          ${themeCardTexture}
+          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      #rw-payout-helper .rw-body,
+      #rw-payout-helper .rw-tab-section,
+      #rw-payout-helper #rw-payout-tab,
+      #rw-payout-helper #rw-admin-tab-section,
+      #rw-payout-helper #rw-how-tab-section,
+      #rw-payout-helper #rw-paywall-unlock-section,
+      #rw-payout-helper #rw-paywall-admin-section,
+      #rw-payout-helper #rw-paywall-how-section,
+      .rwph-panel-theme-picker-body,
+      .rwph-floating-panel-body,
+      .rwph-results-html-panel .rwph-results-html-preview,
+      .rwph-results-html-panel .rwph-results-html-box{
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;
+      }
+
+      #rw-payout-helper .rw-small,
+      #rw-payout-helper .rw-how-intro,
+      #rw-payout-helper .rw-how-list,
+      #rw-payout-helper .rw-help-dropdown-content,
+      #rw-payout-helper .rw-api-visible-summary,
+      #rw-payout-helper .rw-cache-status,
+      #rw-payout-helper .rw-compact-cache-status,
+      #rw-payout-helper #rw-status,
+      #rw-payout-helper #rw-paywall-status,
+      #rw-payout-helper #rw-admin-status,
+      #rw-payout-helper #rw-admin-status-summary,
+      .rwph-panel-theme-picker .rw-small,
+      .rwph-panel-theme-picker span,
+      .rwph-results-html-panel span{
+        color:${t.soft}!important;
+      }
+
+      #rw-payout-helper .rw-head,
+      #rw-payout-helper .rw-api-visible-head,
+      #rw-payout-helper .rw-help-dropdown-summary,
+      #rw-payout-helper .rw-api-tos-title,
+      #rw-payout-helper details > summary,
+      #rw-pay-all-panel .rw-pay-all-head,
+      .rw-pay-all-panel .rw-pay-all-head,
+      #rw-pay-all-copy-panel .rw-pay-all-head,
+      .rw-pay-all-copy-panel .rw-pay-all-head,
+      #rwph-member-management-panel .rwph-mm-toolbar,
+      #rwph-member-management-panel .rwph-mm-status,
+      .rwph-panel-theme-picker-head,
+      .rwph-floating-panel-head,
+      .rwph-results-html-head{
+        background:
+          ${themeHeaderTexture}
+          radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
+          linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
+        background-size:${themeTextureSize}, auto, auto!important;
+        border-color:${t.line2}!important;
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper .rw-api-visible-badge,
+      #rw-payout-helper .rw-api-visible-dot,
+      #rw-payout-helper b,
+      .rwph-panel-theme-picker b,
+      .rwph-results-html-panel b{
+        color:${t.accent}!important;
+      }
+
+      #rw-payout-helper input[type="checkbox"],
+      #rw-payout-helper input[type="radio"]{
+        accent-color:${t.accent}!important;
+      }
+
+
+      /* v1.1.386: include the Xanax/payment helper panel in the selected theme */
+      #rwph-xanax-send-status,
+      #rwph-xanax-send-status .rwph-xanax-scroll,
+      #rwph-xanax-send-status .rwph-xanax-detail-card,
+      #rwph-xanax-send-status .rwph-xanax-actions,
+      #rwph-xanax-send-status .rwph-xanax-steps,
+      #rwph-xanax-send-status .rwph-xanax-safety-note,
+      #rwph-xanax-send-status .rwph-xanax-helper-message,
+      #rwph-xanax-send-status .rwph-xanax-expiry,
+      #rwph-xanax-send-status .rw-payment-expiry,
+      #rwph-xanax-send-status .rwph-xanax-expiry-hero{
+        background:
+          ${themeCardTexture}
+          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 16px 44px rgba(0,0,0,.34)!important;
+      }
+
+      #rwph-xanax-send-status #rwph-payment-helper-title,
+      #rwph-xanax-send-status .rwph-xanax-detail-title{
+        background:
+          ${themeHeaderTexture}
+          radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
+          linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
+        background-size:${themeTextureSize}, auto, auto!important;
+        border:1px solid ${t.line2}!important;
+        border-radius:12px!important;
+        color:${t.accent}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important;
+      }
+
+      #rwph-xanax-send-status button,
+      #rwph-xanax-send-status #rwph-close-helper,
+      #rwph-xanax-send-status .rwph-xanax-actions button{
+        background:linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        border:1px solid ${t.line2}!important;
+        color:${t.text}!important;
+        box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
+      }
+
+      #rwph-xanax-send-status #rwph-close-helper,
+      #rwph-xanax-send-status .danger{
+        background:linear-gradient(180deg, ${t.danger}, ${t.bg})!important;
+        border-color:rgba(248,113,113,.52)!important;
+        color:#fee2e2!important;
+      }
+
+      #rwph-xanax-send-status .rwph-xanax-helper-subtitle,
+      #rwph-xanax-send-status .rwph-xanax-expiry-note,
+      #rwph-xanax-send-status .rwph-xanax-steps,
+      #rwph-xanax-send-status .rwph-xanax-small-blue,
+      #rwph-xanax-send-status .rwph-xanax-expiry,
+      #rwph-xanax-send-status .rwph-expire-clock{
+        color:${t.soft}!important;
+      }
+
+      #rwph-xanax-send-status b,
+      #rwph-xanax-send-status .rwph-xanax-code,
+      #rwph-xanax-send-status .rwph-xanax-detail-title,
+      #rwph-xanax-send-status [data-rwph-expire-count]{
+        color:${t.accent}!important;
+      }
+
+      #rwph-xanax-send-status .rwph-xanax-helper-error,
+      #rwph-xanax-send-status .rwph-xanax-safety-note{
+        color:#fca5a5!important;
+        border-color:rgba(248,113,113,.34)!important;
+      }
+
+      #rwph-xanax-send-status input,
+      #rwph-xanax-send-status textarea,
+      #rwph-xanax-send-status select{
+        background:${t.bg}!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+
+
+      /* v1.1.386: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
+      #rw-payout-helper :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      #rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      #rwph-xanax-send-status :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-floating-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-results-loading-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rw-results-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-panel-theme-picker :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
+      .rwph-results-html-panel > :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form):not(.rwph-results-html-preview-wrap),
+      .rwph-results-html-panel .rwph-results-html-head,
+      .rwph-results-html-panel .rwph-results-html-status,
+      .rwph-results-html-panel .rwph-raw-html-copy-note{
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-tab-section,.rw-unified-tab-panel,.rw-tabs,.rw-actions,.rw-cache-tools,.rw-mode-cache-tools,.rw-compact-check-grid,.rw-primary-calc-actions,.rw-settings-calc-actions,.rw-settings-time-actions,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-admin-unified-panel,.rw-admin-advanced-box,.rw-api-tos-content,.rw-card,.rw-box,.rw-section),
+      #rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      .rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      #rwph-xanax-send-status :where(.rwph-xanax-scroll,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
+      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current),
+      .rwph-results-html-panel :where(.rwph-results-html-preview-wrap,.rwph-raw-html-copy-note,.rwph-results-html-box){
+        background:
+          ${themeCardTexture}
+          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel2}, ${t.bg})!important;
+        background-size:${themeCardTextureSize}, auto, auto, auto!important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+      }
+
+      /* Keep the rendered newsletter HTML itself on its own generated colours. */
+      .rwph-results-html-panel .rwph-results-html-preview,
+      .rwph-results-html-panel .rwph-results-html-preview *,
+      .rwph-results-html-panel textarea.rwph-results-html-box{
+        font-family:inherit;
+      }
+
+
+      /* v1.1.386: force Basic/Advanced dropdowns and every RWPH button to follow the chosen theme */
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings,
+      #rw-payout-helper details.rw-per-hit-settings .rw-api-tos-content,
+      #rw-payout-helper details.rw-points-settings .rw-api-tos-content,
+      #rw-payout-helper details.rw-per-hit-settings .rw-compact-check-grid,
+      #rw-payout-helper details.rw-points-settings .rw-compact-check-grid,
+      #rw-payout-helper details.rw-per-hit-settings .rw-cache-tools,
+      #rw-payout-helper details.rw-points-settings .rw-cache-tools,
+      #rw-payout-helper details.rw-per-hit-settings .rw-mode-cache-tools,
+      #rw-payout-helper details.rw-points-settings .rw-mode-cache-tools,
+      #rw-payout-helper details.rw-per-hit-settings .rw-primary-calc-actions,
+      #rw-payout-helper details.rw-points-settings .rw-primary-calc-actions,
+      #rw-payout-helper details.rw-per-hit-settings .rw-settings-calc-actions,
+      #rw-payout-helper details.rw-points-settings .rw-settings-calc-actions,
+      #rw-payout-helper details.rw-per-hit-settings .rw-settings-time-actions,
+      #rw-payout-helper details.rw-points-settings .rw-settings-time-actions,
+      #rw-payout-helper details.rw-per-hit-settings label,
+      #rw-payout-helper details.rw-points-settings label,
+      #rw-payout-helper details.rw-per-hit-settings .rw-calc-brief,
+      #rw-payout-helper details.rw-points-settings .rw-calc-brief,
+      #rw-payout-helper details.rw-per-hit-settings input,
+      #rw-payout-helper details.rw-points-settings input,
+      #rw-payout-helper details.rw-per-hit-settings textarea,
+      #rw-payout-helper details.rw-points-settings textarea,
+      #rw-payout-helper details.rw-per-hit-settings select,
+      #rw-payout-helper details.rw-points-settings select{
+        background:
+          radial-gradient(circle at 12% 0%, ${t.line2}, transparent 34%),
+          radial-gradient(circle at 92% 8%, ${t.line}, transparent 34%),
+          linear-gradient(180deg, ${t.panel2}, ${t.bg}) !important;
+        border-color:${t.line}!important;
+        color:${t.text}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings{
+        border-color:${t.line2}!important;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,.055) inset,
+          0 18px 44px rgba(0,0,0,.42),
+          0 0 32px ${t.line}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings::before,
+      #rw-payout-helper details.rw-points-settings::before{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+        box-shadow:0 0 18px ${t.line2}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings > summary,
+      #rw-payout-helper details.rw-points-settings > summary{
+        background:
+          radial-gradient(circle at 12% 0%, ${t.line2}, transparent 34%),
+          linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
+        border-color:${t.line2}!important;
+        color:${t.accent}!important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 24px rgba(0,0,0,.24)!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings > summary::after,
+      #rw-payout-helper details.rw-points-settings > summary::after{
+        background:linear-gradient(180deg, ${t.bg2}, ${t.bg})!important;
+        border-color:${t.line2}!important;
+        color:${t.soft}!important;
+      }
+
+      #rw-payout-helper details.rw-per-hit-settings[open] > summary::after,
+      #rw-payout-helper details.rw-points-settings[open] > summary::after{
+        color:${t.good}!important;
+        border-color:${t.good}!important;
+      }
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        background:
+          ${themeButtonTexture}
+          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 36%),
+          linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        background-size:${themeTextureSize}, auto, auto!important;
+        border:1px solid ${t.line2}!important;
+        color:${t.text}!important;
+        box-shadow:0 10px 22px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.07)!important;
         text-shadow:none!important;
       }
 
-      ${panelSelectors} :where(button.primary,.primary,.rw-primary,.rw-tab.active,.rw-tab-btn.active,[aria-selected="true"],.rwph-theme-choice.primary){
-        background:var(--rwph-theme-primary-bg)!important;
-        color:var(--rwph-theme-bg)!important;
-        border-color:var(--rwph-theme-line2)!important;
-        box-shadow:0 12px 28px rgba(0,0,0,.32),0 0 22px var(--rwph-theme-line)!important;
+      #rw-payout-helper :where(button.primary,.primary,.rw-primary,.rw-tab.active,[aria-selected="true"]),
+      #rw-pay-all-panel :where(button.primary,.primary),
+      .rw-pay-all-panel :where(button.primary,.primary),
+      #rwph-xanax-send-status :where(button.primary,.primary),
+      .rwph-floating-panel :where(button.primary,.primary),
+      .rwph-results-loading-panel :where(button.primary,.primary),
+      .rwph-results-html-panel :where(button.primary,.primary),
+      .rw-results-panel :where(button.primary,.primary),
+      .rwph-panel-theme-picker :where(button.primary,.primary,.rwph-theme-choice.primary){
+        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
+        border-color:${t.line2}!important;
+        color:${t.bg}!important;
+        box-shadow:0 12px 26px rgba(0,0,0,.30),0 0 20px ${t.line}!important;
       }
 
-      ${panelSelectors} :where(button.danger,.danger,#rwph-close-helper,#rw-wrong-payment-close){
-        background:linear-gradient(180deg, var(--rwph-theme-red), var(--rwph-theme-bg))!important;
+      #rw-payout-helper :where(button.danger,.danger),
+      #rw-pay-all-panel :where(button.danger,.danger),
+      .rw-pay-all-panel :where(button.danger,.danger),
+      #rwph-xanax-send-status :where(button.danger,.danger,#rwph-close-helper),
+      .rwph-floating-panel :where(button.danger,.danger),
+      .rwph-results-loading-panel :where(button.danger,.danger),
+      .rw-results-panel :where(button.danger,.danger),
+      .rwph-panel-theme-picker :where(button.danger,.danger){
+        background:linear-gradient(180deg, ${t.danger}, ${t.bg})!important;
+        border-color:rgba(248,113,113,.55)!important;
         color:#fee2e2!important;
-        border-color:rgba(248,113,113,.58)!important;
       }
 
-      ${panelSelectors} :where(button.success,.success){
-        background:linear-gradient(180deg, var(--rwph-theme-green), var(--rwph-theme-panel))!important;
-        color:var(--rwph-theme-bg)!important;
-        border-color:var(--rwph-theme-green)!important;
+      #rw-payout-helper :where(button.success,.success),
+      #rw-pay-all-panel :where(button.success,.success),
+      .rw-pay-all-panel :where(button.success,.success),
+      #rwph-xanax-send-status :where(button.success,.success),
+      .rwph-floating-panel :where(button.success,.success),
+      .rwph-results-loading-panel :where(button.success,.success),
+      .rw-results-panel :where(button.success,.success),
+      .rwph-panel-theme-picker :where(button.success,.success){
+        background:linear-gradient(180deg, ${t.good}, ${t.panel})!important;
+        border-color:${t.good}!important;
+        color:${t.bg}!important;
       }
 
-      ${panelSelectors} :where(button:hover,a.btn:hover,.btn:hover,.rw-button:hover,.rw-tab:hover,.rw-tab-btn:hover){
-        border-color:var(--rwph-theme-gold)!important;
+      #rw-payout-helper :where(button:hover,a.btn:hover,.btn:hover,.rw-button:hover,.rw-tab:hover),
+      #rw-pay-all-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rw-pay-all-panel :where(button:hover,a.btn:hover,.btn:hover),
+      #rwph-xanax-send-status :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-floating-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-results-loading-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-results-html-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rw-results-panel :where(button:hover,a.btn:hover,.btn:hover),
+      .rwph-panel-theme-picker :where(button:hover,a.btn:hover,.btn:hover){
+        border-color:${t.accent}!important;
         filter:brightness(1.12)!important;
       }
 
-      ${panelSelectors} :where(input,textarea,select){
-        background:var(--rwph-theme-input-bg)!important;
-        color:var(--rwph-theme-text)!important;
-        border:1px solid var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-button-radius)!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
-      }
-      ${panelSelectors} :where(input[type="checkbox"],input[type="radio"]){accent-color:var(--rwph-theme-gold)!important;}
-      ${panelSelectors} :where(input::placeholder,textarea::placeholder){color:var(--rwph-theme-soft)!important;opacity:.75!important;}
-
-      ${panelSelectors} :where(h1,h2,h3,h4,.rw-title,.rw-section-title,.rw-card-title,.rw-member-name,.rw-admin-title,.rw-payment-title,.rw-result-name,.rw-pay-all-title,.rwph-results-html-title,.rwph-results-html-preview-title,.rwph-mm-title,strong,b){
-        color:var(--rwph-theme-gold)!important;
-        text-shadow:none!important;
-      }
-      ${panelSelectors} :where(p,li,span,small,div,label,td,th,.rw-muted,.muted,.rw-small,.rw-how-intro,.rw-how-list li,.rw-cache-status,.rw-compact-cache-status,.rwph-results-html-note,.rwph-results-html-status,.rwph-mm-sub,.rwph-mm-stat,.rwph-info-popup-message){
-        color:var(--rwph-theme-soft)!important;
+      #rw-payout-helper :where(button:disabled,.btn[aria-disabled="true"],.btn:disabled),
+      #rw-pay-all-panel :where(button:disabled,.btn:disabled),
+      .rw-pay-all-panel :where(button:disabled,.btn:disabled),
+      .rwph-floating-panel :where(button:disabled,.btn:disabled),
+      .rwph-results-loading-panel :where(button:disabled,.btn:disabled),
+      .rw-results-panel :where(button:disabled,.btn:disabled){
+        opacity:.58!important;
+        filter:saturate(.65)!important;
+        cursor:not-allowed!important;
       }
 
-      ${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{
+      /* v1.1.422: selected colour/theme now controls layout spacing, header feel, card accents and shadows too. */
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rw-pay-all-copy-panel,
+      .rw-pay-all-copy-panel,
+      #rw-wrong-payment-panel,
+      #rwph-xanax-send-status,
+      #rwph-member-management-panel,
+      .rwph-member-management-panel,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .rwph-panel-theme-picker{
+        padding:var(--rwph-theme-panel-pad)!important;
+        box-shadow:var(--rwph-theme-shadow)!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-panel-body,.rw-content,.rw-help-body),
+      #rw-pay-all-panel :where(.rw-pay-all-body),
+      .rw-pay-all-panel :where(.rw-pay-all-body),
+      #rwph-xanax-send-status :where(.rwph-xanax-scroll),
+      .rwph-floating-panel :where(.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell),
+      .rw-results-panel :where(.app,.side,.summary){
+        padding:var(--rwph-theme-body-pad)!important;
+      }
+
+      #rw-payout-helper :where(.rw-head,.rw-header,.rw-panel-head,.rw-titlebar),
+      #rw-pay-all-panel :where(.rw-pay-all-head,.pay-all-head),
+      .rw-pay-all-panel :where(.rw-pay-all-head,.pay-all-head),
+      #rwph-xanax-send-status :where(.rwph-xanax-head,.rwph-panel-head),
+      .rwph-floating-panel :where(.rwph-panel-head,.rwph-floating-panel-head),
+      .rwph-results-loading-panel :where(.rwph-panel-head,.rwph-loading-head),
+      .rwph-results-html-panel :where(.rwph-panel-head),
+      .rw-results-panel :where(.topbar,.rwph-panel-head),
+      .rwph-panel-theme-picker-head{
+        padding:var(--rwph-theme-head-pad)!important;
+        justify-content:var(--rwph-theme-head-justify)!important;
+        align-items:var(--rwph-theme-head-align)!important;
+        text-transform:var(--rwph-theme-head-case)!important;
+        letter-spacing:var(--rwph-theme-head-tracking)!important;
+        gap:var(--rwph-theme-card-gap)!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-grid,.rw-section-list,.rw-member-grid,.rw-member-management-grid),
+      #rw-pay-all-panel :where(.rw-pay-all-list),
+      .rw-pay-all-panel :where(.rw-pay-all-list),
+      #rwph-xanax-send-status :where(.rwph-xanax-actions,.rwph-xanax-steps),
+      .rwph-floating-panel :where(.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell),
+      .rw-results-panel :where(.summary,.results-grid,.cards,.app){
+        gap:var(--rwph-theme-card-gap)!important;
+      }
+
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content),
+      #rw-pay-all-panel :where(.rw-pay-all-list,.rw-pay-all-row),
+      .rw-pay-all-panel :where(.rw-pay-all-list,.rw-pay-all-row),
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card),
+      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current,.rwph-theme-choice){
+        position:relative!important;
+        padding:var(--rwph-theme-card-pad)!important;
+        margin-inline:var(--rwph-theme-section-inset)!important;
+        box-shadow:var(--rwph-theme-card-shadow)!important;
+      }
+
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{
         content:""!important;
         position:absolute!important;
         pointer-events:none!important;
-        background:linear-gradient(180deg, var(--rwph-theme-gold), var(--rwph-theme-orange))!important;
+        background:linear-gradient(180deg, ${t.accent}, ${t.accent2})!important;
         opacity:.82!important;
         display:block!important;
       }
-      ${t.cardAccent === "left" ? `${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{left:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);}` : ""}
-      ${t.cardAccent === "right" ? `${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{right:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);}` : ""}
-      ${t.cardAccent === "top" ? `${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{left:0;right:0;top:0;height:var(--rwph-theme-card-accent-size);}` : ""}
-      ${t.cardAccent === "outline" ? `${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{inset:0;border:var(--rwph-theme-card-accent-size) solid var(--rwph-theme-gold);background:transparent!important;opacity:.38;}` : ""}
-      ${t.cardAccent === "none" ? `${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{display:none!important;}` : ""}
 
-      .rwph-info-popup-panel{
-        background:var(--rwph-theme-popup-bg)!important;
-        border-color:var(--rwph-theme-line2)!important;
+      ${themeCardAccent === "left" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{left:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);height:auto;}
+      ` : ""}
+      ${themeCardAccent === "right" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{right:0;top:0;bottom:0;width:var(--rwph-theme-card-accent-size);height:auto;}
+      ` : ""}
+      ${themeCardAccent === "top" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{left:0;right:0;top:0;height:var(--rwph-theme-card-accent-size);width:auto;}
+      ` : ""}
+      ${themeCardAccent === "outline" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{inset:0;border:var(--rwph-theme-card-accent-size) solid ${t.accent};background:transparent!important;opacity:.36;}
+      ` : ""}
+      ${themeCardAccent === "none" ? `
+      #rw-payout-helper :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content)::before,
+      #rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      .rw-pay-all-panel :where(.rw-pay-all-row)::before,
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero)::before,
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section)::before,
+      .rwph-results-loading-panel :where(.rwph-status-card,.rwph-side-card)::before,
+      .rw-results-panel :where(.summary-card,.result-card,.results-action-zone,.side,.hero)::before,
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-current,.rwph-theme-choice)::before{display:none!important;}
+      ` : ""}
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        padding:var(--rwph-theme-button-pad)!important;
+        justify-content:var(--rwph-theme-button-justify)!important;
+      }
+
+      /* v1.1.407: theme styles now change shapes, borders, button text, and theme picker scrolling. */
+      #rw-payout-helper,
+      #rw-pay-all-panel,
+      .rw-pay-all-panel,
+      #rw-pay-all-copy-panel,
+      .rw-pay-all-copy-panel,
+      #rw-wrong-payment-panel,
+      #rwph-xanax-send-status,
+      #rwph-member-management-panel,
+      .rwph-member-management-panel,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel,
+      .rwph-panel-theme-picker{
+        border-radius:var(--rwph-theme-radius)!important;
+        border-width:var(--rwph-theme-border-width)!important;
+        border-style:var(--rwph-theme-border-style)!important;
+      }
+
+      #rw-payout-helper :where(.rw-body,.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content),
+      #rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      .rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
+      #rwph-xanax-send-status :where(.rwph-xanax-scroll,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
+      .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
+      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
+      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current){
         border-radius:var(--rwph-theme-card-radius)!important;
+        border-style:var(--rwph-theme-border-style)!important;
+      }
+
+      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
+      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      #rwph-xanax-send-status :where(button,a.btn,.btn),
+      .rwph-floating-panel :where(button,a.btn,.btn),
+      .rwph-results-loading-panel :where(button,a.btn,.btn),
+      .rwph-results-html-panel :where(button,a.btn,.btn),
+      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
+      .rwph-panel-theme-picker :where(button,a.btn,.btn){
+        border-radius:var(--rwph-theme-button-radius)!important;
+        text-transform:${themeButtonCase}!important;
+        letter-spacing:${themeButtonTracking}!important;
+        border-width:var(--rwph-theme-border-width)!important;
+        border-style:var(--rwph-theme-border-style)!important;
+      }
+
+      .rwph-panel-theme-picker{
+        display:flex!important;
+        flex-direction:column!important;
+        width:min(var(--rwph-theme-picker-width), calc(100vw - 24px))!important;
+        height:min(720px, calc(100vh - 28px))!important;
+        max-width:calc(100vw - 16px)!important;
+        max-height:calc(100vh - 16px)!important;
+        min-width:min(300px, calc(100vw - 24px))!important;
+        min-height:260px!important;
+        overflow:hidden!important;
+      }
+      .rwph-panel-theme-picker-head{
+        flex:0 0 auto!important;
+        position:sticky!important;
+        top:0!important;
+        z-index:20!important;
+        cursor:move!important;
+        user-select:none!important;
+      }
+      .rwph-panel-theme-picker-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        overscroll-behavior:contain!important;
+        scrollbar-width:thin!important;
+        scrollbar-color:${t.accent} ${t.bg}!important;
+        padding-right:8px!important;
+      }
+      .rwph-panel-theme-grid{
+        display:grid!important;
+        grid-template-columns:var(--rwph-theme-picker-cols)!important;
+        gap:10px!important;
+        overflow:visible!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle{
+        position:absolute!important;
+        width:18px!important;
+        height:18px!important;
+        z-index:30!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        opacity:.95!important;
+        background:rgba(2,6,23,.18)!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle-se{
+        right:7px!important;
+        bottom:7px!important;
+        cursor:nwse-resize!important;
+        border-right:2px solid ${t.accent}!important;
+        border-bottom:2px solid ${t.accent2}!important;
+        border-radius:0 0 8px 0!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle-sw{
+        left:7px!important;
+        bottom:7px!important;
+        cursor:nesw-resize!important;
+        border-left:2px solid ${t.accent}!important;
+        border-bottom:2px solid ${t.accent2}!important;
+        border-radius:0 0 0 8px!important;
+      }
+      .rwph-panel-theme-picker > .rw-resize-handle-nw{
+        left:7px!important;
+        top:7px!important;
+        cursor:nwse-resize!important;
+        border-left:2px solid ${t.accent}!important;
+        border-top:2px solid ${t.accent2}!important;
+        border-radius:8px 0 0 0!important;
+      }
+
+      .rwph-theme-choice{
+        justify-content:flex-start!important;
+        min-height:48px!important;
+        border-radius:var(--rwph-theme-button-radius)!important;
+      }
+      .rwph-theme-choice small{
+        display:block!important;
+        color:${t.soft}!important;
+        font-size:10px!important;
+        font-weight:700!important;
+        margin-top:2px!important;
+        text-transform:none!important;
+        letter-spacing:0!important;
+      }
+      .rwph-panel-theme-picker-body::-webkit-scrollbar{
+        width:8px!important;
+        height:8px!important;
+      }
+      .rwph-panel-theme-picker-body::-webkit-scrollbar-track{
+        background:${t.bg}!important;
+        border-radius:999px!important;
+      }
+      .rwph-panel-theme-picker-body::-webkit-scrollbar-thumb{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+        border:2px solid ${t.bg}!important;
+        border-radius:999px!important;
+      }
+
+      /* v1.1.425: popup notifications get themed without adding any click-blocking overlay rules. */
+      .rwph-info-popup-panel{
+        background:linear-gradient(180deg, ${t.panel2}, ${t.bg})!important;
+        border-color:${t.line2}!important;
+        color:${t.text}!important;
         box-shadow:var(--rwph-theme-shadow)!important;
-        color:var(--rwph-theme-text)!important;
       }
-      .rwph-info-popup-panel::before{background:linear-gradient(180deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;box-shadow:0 0 18px var(--rwph-theme-line2)!important;}
-      .rwph-info-popup-panel.rwph-info-popup-warn::before{background:linear-gradient(180deg,#facc15,var(--rwph-theme-orange))!important;}
-      .rwph-info-popup-panel.rwph-info-popup-error::before{background:linear-gradient(180deg,#fb7185,var(--rwph-theme-orange))!important;}
-      .rwph-info-popup-title{color:var(--rwph-theme-gold)!important;text-transform:var(--rwph-theme-head-case)!important;letter-spacing:var(--rwph-theme-head-tracking)!important;}
-      .rwph-info-popup-message{color:var(--rwph-theme-soft)!important;}
-      .rwph-info-popup-close{background:var(--rwph-theme-button-bg)!important;color:var(--rwph-theme-text)!important;border-color:var(--rwph-theme-line2)!important;border-radius:var(--rwph-theme-button-radius)!important;}
-      .rwph-info-popup-timer{background:linear-gradient(90deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;}
-
-      .rwph-panel-theme-picker{width:min(var(--rwph-theme-picker-width),calc(100vw - 18px))!important;max-height:min(82vh,720px)!important;overflow:hidden!important;}
-      .rwph-panel-theme-picker-body{max-height:calc(82vh - 74px)!important;overflow:auto!important;scrollbar-width:thin!important;scrollbar-color:var(--rwph-theme-gold) var(--rwph-theme-bg)!important;}
-      .rwph-panel-theme-grid{display:grid!important;grid-template-columns:var(--rwph-theme-picker-cols)!important;gap:10px!important;}
-      .rwph-theme-choice{min-height:50px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;text-align:left!important;}
-      .rwph-theme-choice small{display:block!important;color:var(--rwph-theme-soft)!important;font-size:10px!important;margin-top:2px!important;text-transform:none!important;letter-spacing:0!important;}
-      .rwph-theme-swatch{width:24px!important;height:24px!important;border-radius:var(--rwph-theme-button-radius)!important;box-shadow:0 0 12px var(--rwph-theme-line2)!important;flex:0 0 24px!important;}
-
-      ${panelSelectors} ::-webkit-scrollbar{width:8px!important;height:8px!important;}
-      ${panelSelectors} ::-webkit-scrollbar-track{background:var(--rwph-theme-bg)!important;border-radius:999px!important;}
-      ${panelSelectors} ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
-
-      /* v1.1.424: interaction safety layer.
-         The full theme rebuild styles the panels heavily, but real controls must never
-         be turned into static decorative cards. These final rules keep drag headers,
-         resize handles, scroll bodies, buttons, inputs, summaries and copy rows active. */
-      ${panelSelectors}{
-        pointer-events:auto!important;
-        -webkit-user-select:auto!important;
-        user-select:auto!important;
-      }
-      ${panelSelectors} :where(.rw-body,.rw-panel-body,.rw-content,.rw-tab-section,.rw-unified-tab-panel,.rw-admin-unified-panel,.rw-help-body,.rw-pay-all-body,.rwph-floating-panel-body,.rwph-panel-theme-picker-body,.rwph-results-html-preview,.rwph-results-html-box,.rwph-mm-body,.rwph-xanax-scroll,.rw-pay-all-list,.pay-all-list,.rwph-newsletter-dropdown-menu,.rwph-results-html-preview-wrap,#rwph-mm-cards){
-        pointer-events:auto!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        -webkit-overflow-scrolling:touch!important;
-        touch-action:pan-y!important;
-      }
-      ${panelSelectors} :where(button:not(:disabled):not([aria-disabled="true"]),a[href],a.btn,input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,label,.rw-tab,.rw-tab-btn,.rw-button,.btn,.rwph-theme-choice,.rw-pay-all-copy:not(:disabled):not([aria-disabled="true"]),.rw-pay-all-undo:not(:disabled),.pay-all-undo:not(:disabled),.pay-all-close,.rwph-info-popup-close){
-        pointer-events:auto!important;
-        touch-action:manipulation!important;
-        -webkit-user-select:auto!important;
-        user-select:auto!important;
-      }
-      ${panelSelectors} :where(input:not(:disabled),textarea:not(:disabled),select:not(:disabled)){
-        touch-action:auto!important;
-        -webkit-user-select:text!important;
-        user-select:text!important;
-      }
-      ${panelSelectors} :where(button:disabled,[aria-disabled="true"],.rwph-pay-button-hidden){
+      .rwph-info-popup-panel::before{
+        background:linear-gradient(180deg, ${t.accent}, ${t.accent2})!important;
         pointer-events:none!important;
       }
-      ${panelSelectors} :where(.rw-head,.rw-header,.rw-panel-head,.rw-titlebar,.rw-pay-all-head,.pay-all-head,.rwph-floating-panel-head,.rwph-results-loading-head,.rwph-results-html-head,.rwph-panel-theme-picker-head){
-        pointer-events:auto!important;
-        cursor:grab!important;
-        touch-action:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
+      .rwph-info-popup-close{
+        background:${themeButtonTexture}linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
+        border-color:${t.line2}!important;
+        color:${t.text}!important;
       }
-      ${panelSelectors} :where(.rw-head:active,.rw-panel-head:active,.rw-pay-all-head:active,.pay-all-head:active,.rwph-floating-panel-head:active,.rwph-results-loading-head:active,.rwph-results-html-head:active,.rwph-panel-theme-picker-head:active){
-        cursor:grabbing!important;
-      }
-      ${panelSelectors} :where(.resize-handle,.rw-resize-handle,[class*="resize-handle"]){
-        pointer-events:auto!important;
-        touch-action:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        z-index:2147483647!important;
-      }
-      ${panelSelectors} :where(.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-pay-all-row,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rwph-xanax-expiry-hero,.rwph-status-card,.rwph-side-card,.summary-card,.result-card,.results-action-zone,.hero,.rwph-panel-theme-current,.rwph-theme-choice,.rwph-mm-card)::before{
-        pointer-events:none!important;
-      }
-      #rw-payout-helper .rw-body,
-      #rw-pay-all-panel .pay-all-list,
-      #rw-pay-all-panel .rw-pay-all-list,
-      .rw-pay-all-panel .pay-all-list,
-      .rw-pay-all-panel .rw-pay-all-list,
-      #rwph-member-management-panel .rwph-mm-body,
-      #rwph-xanax-send-status .rwph-xanax-scroll,
-      .rwph-panel-theme-picker .rwph-panel-theme-picker-body{
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        -webkit-overflow-scrolling:touch!important;
-        touch-action:pan-y!important;
-      }
+      .rwph-info-popup-timer{background:linear-gradient(90deg,${t.accent},${t.accent2})!important;}
 
-      @media (max-width:560px){
-        ${panelSelectors}{padding:min(10px,var(--rwph-theme-panel-pad))!important;}
-        ${panelSelectors} :where(.rw-body,.rw-panel-body,.rw-content,.rw-tab-section,.rw-unified-tab-panel,.rw-pay-all-body,.rwph-floating-panel-body,.rwph-loading-shell,.rwph-panel-theme-picker-body,.rwph-mm-body){padding:10px!important;}
+
+      #rw-payout-helper ::-webkit-scrollbar-thumb,
+      #rw-pay-all-panel ::-webkit-scrollbar-thumb,
+      .rw-pay-all-panel ::-webkit-scrollbar-thumb,
+      #rw-pay-all-copy-panel ::-webkit-scrollbar-thumb,
+      .rw-pay-all-copy-panel ::-webkit-scrollbar-thumb,
+      #rwph-member-management-panel ::-webkit-scrollbar-thumb,
+      #rwph-xanax-send-status ::-webkit-scrollbar-thumb,
+      .rwph-floating-panel ::-webkit-scrollbar-thumb,
+      .rwph-results-loading-panel ::-webkit-scrollbar-thumb,
+      .rwph-results-html-panel ::-webkit-scrollbar-thumb,
+      .rw-results-panel ::-webkit-scrollbar-thumb{
+        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
+        border:2px solid ${t.bg}!important;
       }
     `;
   }
-
 
   function rwphApplyPanelThemeChoice(key = "") {
     const themeKey = key || rwphGetPanelThemeKey();

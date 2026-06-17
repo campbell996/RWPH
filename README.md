@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.424**  
+Current package version: **1.1.425**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -1299,6 +1299,12 @@ The old Include Left Members / automatic left-member removal system has been rem
 - Updated package version to **1.1.402**.
 
 
+
+## v1.1.425 - Theme interaction rollback-safe rebuild
+
+- Fixed the issue where v1.1.423/v1.1.424 panels could appear like a static picture and not scroll, move, resize, or accept clicks.
+- Rebuilt the theme styling layer on the last known working interaction-safe selectors instead of styling broad generic cards/panels.
+- Kept unique theme/colour visuals across RWPH panels, Payments Copy Panel, Member Management, payment helper panels, and popup notifications.
 
 ## v1.1.424 - Theme interaction safety fix
 
