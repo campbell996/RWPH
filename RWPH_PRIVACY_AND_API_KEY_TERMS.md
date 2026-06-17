@@ -1,6 +1,6 @@
 # RWPH Privacy and API Key Terms
 
-Version: **1.1.420**
+Version: **1.1.421**
 
 These terms explain how **Ranked War Payout Helper (RWPH)** uses Torn API keys and calculation data. RWPH is a manual ranked-war payout helper. It is not an official Torn product.
 
@@ -289,7 +289,7 @@ This update enlarges the RWPH logo in panel headers and result/loading header ar
 The client script saves a short-lived local report snapshot for the Payments Copy Panel so users can reopen the report for up to 10 minutes after switching to the faction controls/vault page.
 
 
-## v1.1.420 note - Member Management payable hits
+## v1.1.421 note - Member Management payable hits
 
 Member Management hit-removal boxes remove payable hits from calculation results before payouts are recalculated. The saved settings are local to the userscript and reset after the configured 20-minute window.
 
@@ -313,11 +313,11 @@ Results Export Html now uses a temporary backend attachment route so browsers an
 - PC/desktop launcher remains the full logo plus `Ranked War Payout Helper` text.
 
 
-## v1.1.420 note
+## v1.1.421 note
 Member Management can include saved per-member respect removal values, payable-hit removal values, and member exclusion choices. These settings are local/temporary and reset after 20 minutes in the userscript.
 
 ---
 
-## v1.1.420 note - Respect scoring and export hardening
+## v1.1.421 note - Respect scoring and export hardening
 
 This version adds configurable respect-based scoring options to Basic and Advanced calculations, improves CSV/HTML export fallback links for PC and PDA, and changes generated-results Payments handoff so navigation happens from the main Torn page where possible.

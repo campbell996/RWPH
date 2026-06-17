@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.420
+// @version      1.1.421
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -25,7 +25,7 @@
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
   // v1.1.313: Payments Copy Panel now requires Accept Warning before Name + ID/Amount prefill buttons unlock.
   // v1.1.410: Buy/Extend Licence now navigates the current Torn tab to the Xanax item-send page instead of opening a new tab.
-  // v1.1.420: adds Basic Respect checkbox, Advanced Respect Score, parent-page Payments handoff, and stronger PC/PDA CSV/HTML exports.
+  // v1.1.421: fixes exports with direct server form downloads, forces Payments to the parent Torn page, adds editable Advanced respect step/score settings, and restyles Member Management.
   // v1.1.417: replaced manual exclude text boxes with Member Management panels, saved per-member settings for 20 minutes, and added per-member hit removal support.
   // v1.1.416: PDA-safe CSV/HTML exports use server-backed direct download links plus copy-box fallbacks.
   // v1.1.415: hardened Results Export Html with native anchor download, server attachment fallback, and manual .html download link.
@@ -2166,7 +2166,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -2200,7 +2200,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -7728,8 +7728,13 @@
     rwphStorePayAllRows(rows || []);
     rwphStoreRecentPayAllReportFromRows(rows || [], lastSummary || {});
     const url = rwphFactionControlsPayAllUrl();
+    try { rwphQueueCrossTabPopup("payments", "Payments opened in the current Torn tab on the faction vault/controls page. Use the copy-only panel there.", "info", "RWPH Payments"); } catch (_) {}
+    try { closePanel(); } catch (_) {}
+    try { rwphCloseAllPanelsExceptPayAll(); } catch (_) {}
     try {
-      closePanel();
+      if (window.top && window.top !== window) { window.top.location.href = url; return true; }
+    } catch (_) {}
+    try {
       window.location.assign(url);
       return true;
     } catch (e) {
@@ -7799,6 +7804,41 @@
     }
 
     return false;
+  }
+
+
+  function rwphSubmitMainExportDownloadForm(filename, content, mime = "text/plain;charset=utf-8", extension = "txt") {
+    try {
+      const base = String(PAYWALL_API_BASE || "").replace(/\/+$/, "");
+      if (!base) return false;
+      const ext = String(extension || "txt").replace(/[^a-z0-9]/gi, "").toLowerCase() || "txt";
+      const safeName = rwphSafeDownloadFilename(filename || (ext === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html"));
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = base + "/api/calc/download-file";
+      form.target = "_blank";
+      form.acceptCharset = "UTF-8";
+      form.style.position = "fixed";
+      form.style.left = "-9999px";
+      form.style.top = "-9999px";
+      const add = (name, value) => {
+        const input = document.createElement("textarea");
+        input.name = name;
+        input.value = String(value == null ? "" : value);
+        form.appendChild(input);
+      };
+      add("filename", safeName);
+      add("content", String(content || ""));
+      add("mime", mime || "text/plain;charset=utf-8");
+      add("extension", ext);
+      (document.body || document.documentElement).appendChild(form);
+      form.submit();
+      setTimeout(() => { try { form.remove(); } catch (_) {} }, 1000);
+      return true;
+    } catch (e) {
+      console.warn("RWPH main direct form export failed:", e);
+      return false;
+    }
   }
 
   function rwphOpenExportTextFallbackPanel(kind, text, filename, mime = "text/plain;charset=utf-8", reason = "Download fallback ready.", downloadUrl = "", inlineUrl = "") {
@@ -7885,57 +7925,62 @@
     const value = String(text || "");
     const type = mime || "text/plain;charset=utf-8";
     const ext = extension || "txt";
-    const isPda = typeof rwphIsMobileOrPdaView === "function" && rwphIsMobileOrPdaView();
 
-    // Start a direct local download immediately for PC browsers. Some browsers silently block
-    // generated-file downloads, so v1.1.420 also creates a server-backed link every time.
+    let formStarted = false;
+    try {
+      if (statusEl) statusEl.textContent = `Starting ${label} download...`;
+      // Direct POST download happens immediately from the user's click handler. This is more reliable
+      // than waiting for fetch/blob permissions, especially inside Torn PDA.
+      formStarted = rwphSubmitMainExportDownloadForm(safeName, value, type, ext);
+    } catch (_) { formStarted = false; }
+
     let localStarted = false;
-    if (!isPda) {
+    if (!formStarted && !(typeof rwphIsMobileOrPdaView === "function" && rwphIsMobileOrPdaView())) {
       try { localStarted = !!rwphDownloadTextFileStrong(safeName, value, type); } catch (_) { localStarted = false; }
     }
 
+    const panel = rwphOpenExportTextFallbackPanel(
+      label,
+      value,
+      safeName,
+      type,
+      formStarted
+        ? `${label} download was sent to the browser. If no .${ext} file appears, use the backup options below.`
+        : (localStarted ? `Local ${label} download started. If no .${ext} file appears, use the backup options below.` : `${label} automatic download was blocked. Use the backup options below.`)
+    );
+
+    // Still create a server-backed GET link where possible, but do not depend on it for the main click.
     try {
-      if (statusEl) statusEl.textContent = `Preparing ${label} download link...`;
       const data = await rwphCreateServerExportFile(safeName, value, type, ext);
       const downloadUrl = data.downloadUrl || "";
       const inlineUrl = data.inlineUrl || (downloadUrl ? String(downloadUrl) + "?inline=1" : "");
-      if (!isPda && downloadUrl) {
-        try {
-          if (typeof GM_download === "function") {
-            GM_download({ url: downloadUrl, name: data.filename || safeName, saveAs: false });
+      if (downloadUrl) {
+        const boxPanel = document.getElementById("rwph-export-text-panel") || panel;
+        const actions = boxPanel?.querySelector?.("#rwph-export-text-actions");
+        if (actions && !actions.querySelector("[data-rwph-server-download]")) {
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = data.filename || safeName;
+          a.target = "_self";
+          a.textContent = `Server Download .${ext} File`;
+          a.setAttribute("data-rwph-server-download", "1");
+          actions.insertBefore(a, actions.firstChild || null);
+          if (inlineUrl) {
+            const open = document.createElement("a");
+            open.href = inlineUrl;
+            open.target = "_self";
+            open.textContent = `Open ${label} in this tab`;
+            actions.insertBefore(open, a.nextSibling);
           }
-        } catch (e) { console.warn("RWPH GM_download server export failed:", e); }
-        try { rwphTriggerDownloadAnchor(downloadUrl, data.filename || safeName); } catch (_) {}
-        try {
-          const iframe = document.createElement("iframe");
-          iframe.style.position = "fixed";
-          iframe.style.left = "-9999px";
-          iframe.style.top = "-9999px";
-          iframe.style.width = "1px";
-          iframe.style.height = "1px";
-          iframe.src = downloadUrl;
-          (document.body || document.documentElement).appendChild(iframe);
-          setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 60000);
-        } catch (_) {}
+        }
       }
-      rwphOpenExportTextFallbackPanel(
-        label,
-        value,
-        data.filename || safeName,
-        type,
-        isPda
-          ? `PDA-safe ${label} export ready. Tap Download below.`
-          : (localStarted ? `Download started. If no .${ext} file appears, click Download below.` : `Automatic ${label} download was blocked. Click Download below.`),
-        downloadUrl,
-        inlineUrl
-      );
-      return true;
     } catch (e) {
-      rwphOpenExportTextFallbackPanel(label, value, safeName, type, `${label} download link could not be created. Copy the raw box below.`);
-      if (localStarted) return true;
-      throw e;
+      console.warn("RWPH server export link could not be created:", e);
     }
+
+    return !!(formStarted || localStarted || panel);
   }
+
 
   function rwphHandleResultsHtmlDownloadMessage(event) {
     try {
@@ -9245,6 +9290,41 @@
       return false;
     }
 
+    function rwphSubmitExportDownloadForm(kind, filename, content, mime, extension, inline) {
+      try {
+        var base = String(rwphApiBase || "").replace(/\/+$/, "");
+        if (!base) return false;
+        var ext = String(extension || "txt").replace(/[^a-z0-9]/gi, "").toLowerCase() || "txt";
+        var safeName = rwphExportFileSafeName(filename, ext === "csv" ? "torn-rw-payouts.csv" : "rwph-results-page.html", ext);
+        var form = document.createElement("form");
+        form.method = "POST";
+        form.action = base + "/api/calc/download-file";
+        form.target = "_blank";
+        form.acceptCharset = "UTF-8";
+        form.style.position = "fixed";
+        form.style.left = "-9999px";
+        form.style.top = "-9999px";
+        function field(name, value) {
+          var input = document.createElement("textarea");
+          input.name = name;
+          input.value = String(value == null ? "" : value);
+          form.appendChild(input);
+        }
+        field("filename", safeName);
+        field("content", String(content || ""));
+        field("mime", mime || "text/plain;charset=utf-8");
+        field("extension", ext);
+        if (inline) field("inline", "1");
+        (document.body || document.documentElement).appendChild(form);
+        form.submit();
+        setTimeout(function(){ try { form.remove(); } catch (_) {} }, 1000);
+        return true;
+      } catch (e) {
+        console.warn("RWPH direct form export failed:", e);
+        return false;
+      }
+    }
+
     function escapeHtml(value) {
       return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) {
         return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[ch] || ch;
@@ -9386,13 +9466,11 @@
         if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {} }
         var filename = "torn-rw-payouts.csv";
         var value = String(csvText || "");
-        var fallback = function(reason) {
-          var ok = false;
-          if (!rwphIsPdaOrMobileExportView()) ok = downloadText(filename, value, "text/csv;charset=utf-8");
-          if (!ok) rwphOpenExportFileFallbackPanel("CSV", value, filename, "text/csv;charset=utf-8", reason || "Download was blocked by this browser/PDA.");
-        };
-        if (rwphStartServerTextAttachmentDownload("CSV", filename, value, "text/csv;charset=utf-8", "csv", fallback)) return false;
-        fallback("Server export unavailable. Use the fallback below.");
+        var started = rwphSubmitExportDownloadForm("CSV", filename, value, "text/csv;charset=utf-8", "csv", false);
+        // Always open the fallback/copy panel too. PDA often blocks automatic downloads,
+        // but the visible link/text box still lets the user get the file contents.
+        rwphOpenExportFileFallbackPanel("CSV", value, filename, "text/csv;charset=utf-8", started ? "CSV download was sent to the browser. If no file appears, use the backup options below." : "CSV automatic download was blocked. Use the backup options below.");
+        if (!started && !rwphIsPdaOrMobileExportView()) downloadText(filename, value, "text/csv;charset=utf-8");
         return false;
       } catch (e) {
         console.warn("RWPH CSV export failed:", e);
@@ -9827,9 +9905,9 @@
         }
         var html = getCurrentResultsPageHtml();
         var filename = rwphExportHtmlFilename();
-        var localFallback = function(reason) { rwphDownloadHtmlWithoutBlob(filename, html, reason); };
-        if (rwphStartServerHtmlAttachmentDownload(filename, html, localFallback)) return false;
-        if (!rwphRequestParentHtmlDownload(filename, html, localFallback)) localFallback("Server export unavailable. Trying local browser download.");
+        var started = rwphSubmitExportDownloadForm("HTML", filename, html, "text/html;charset=utf-8", "html", false);
+        rwphOpenExportHtmlFallbackPanel(html, filename, started ? "HTML download was sent to the browser. If no file appears, use the backup options below." : "HTML automatic download was blocked. Use the backup options below.");
+        if (!started && !rwphIsPdaOrMobileExportView()) rwphDownloadHtmlWithoutBlob(filename, html, "Trying local browser download.");
         return false;
       } catch (e) {
         try { rwphOpenExportHtmlFallbackPanel("", "rwph-results-page.html", "Could not export this results page HTML."); } catch (_) {}
@@ -9988,7 +10066,28 @@
           if (finished) return;
           finished = true;
           try { window.removeEventListener("message", onAck, false); } catch (_) {}
-          window.location.href = "https://www.torn.com/factions.php?step=your&rwphPayAll=1#/tab=controls&subtab=vault";
+          var url = "https://www.torn.com/factions.php?step=your&rwphPayAll=1#/tab=controls&subtab=vault";
+          // Do not open the vault inside the results iframe/panel. Navigate the main Torn page whenever possible.
+          try {
+            if (window.opener && !window.opener.closed) {
+              window.opener.location.href = url;
+              try { window.close(); } catch (_) {}
+              return;
+            }
+          } catch (_) {}
+          try {
+            if (window.top && window.top !== window) {
+              window.top.location.href = url;
+              return;
+            }
+          } catch (_) {}
+          try {
+            if (window.parent && window.parent !== window) {
+              window.parent.location.href = url;
+              return;
+            }
+          } catch (_) {}
+          window.location.href = url;
         }
         function onAck(messageEvent) {
           try {
@@ -11972,6 +12071,14 @@
     return Number(document.getElementById("rw-point-enemy-hospital")?.value || -1);
   }
 
+  function rwphPointRespectScoreValue() {
+    return Number(document.getElementById("rw-point-respect")?.value || 0.01);
+  }
+
+  function rwphPointRespectStepValue() {
+    return Number(document.getElementById("rw-point-respect-step")?.value || 0.01);
+  }
+
   function rwphPointFairFightAvgStepValue() {
     return Number(document.getElementById("rw-point-fair-fight-avg-step")?.value || 0.02);
   }
@@ -12035,16 +12142,23 @@
 
   function rwphMemberManagementPanelCss() {
     return `
-      #rwph-member-management-panel .rwph-mm-body{max-height:62vh;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
-      #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:2px;}
-      #rwph-member-management-panel .rwph-mm-status{font-size:12px;opacity:.86;line-height:1.35;}
+      #rwph-member-management-panel{background:var(--rw-panel-bg)!important;color:var(--rw-text)!important;border:1px solid var(--rw-border)!important;border-radius:var(--rw-panel-radius,16px)!important;box-shadow:var(--rw-panel-shadow,0 24px 70px rgba(0,0,0,.55))!important;overflow:hidden!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head{background:var(--rw-head-bg)!important;border-bottom:1px solid var(--rw-border)!important;min-height:58px!important;padding:10px 56px 10px 14px!important;display:flex!important;align-items:center!important;gap:10px!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:42px;height:42px;flex:0 0 42px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 8px var(--rw-accent-soft,rgba(251,191,36,.35)))!important;}
+      #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:2px;line-height:1.15;}
+      #rwph-member-management-panel .rwph-mm-heading b{font-size:16px;color:var(--rw-text)!important;}
+      #rwph-member-management-panel .rwph-mm-body{height:calc(100% - 58px);max-height:none;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--rw-body-bg,transparent)!important;}
+      #rwph-member-management-panel .rwph-mm-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:2px;padding:10px;border:1px solid var(--rw-border);border-radius:var(--rw-card-radius,12px);background:var(--rw-card-bg);box-shadow:var(--rw-card-shadow);}
+      #rwph-member-management-panel .rwph-mm-status{font-size:12px;opacity:.92;line-height:1.35;padding:9px 10px;border:1px solid var(--rw-border);border-radius:var(--rw-card-radius,12px);background:var(--rw-card-bg);color:var(--rw-muted);}
       #rwph-member-management-panel .rwph-mm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:10px;}
-      #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rw-border);background:var(--rw-card-bg);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--rw-card-shadow);}
-      #rwph-member-management-panel .rwph-mm-title{font-weight:800;color:var(--rw-text);font-size:13px;}
+      #rwph-member-management-panel .rwph-mm-card{border:1px solid var(--rw-border);background:var(--rw-card-bg);border-radius:var(--rw-card-radius,12px);padding:11px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--rw-card-shadow);}
+      #rwph-member-management-panel .rwph-mm-title{font-weight:900;color:var(--rw-text);font-size:13px;}
       #rwph-member-management-panel .rwph-mm-sub{font-size:11px;color:var(--rw-muted);}
       #rwph-member-management-panel .rwph-mm-card label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--rw-text);}
-      #rwph-member-management-panel .rwph-mm-card input[type=number]{width:100%;box-sizing:border-box;}
-      #rwph-member-management-panel .rwph-mm-empty{padding:12px;border:1px dashed var(--rw-border);border-radius:10px;color:var(--rw-muted);}
+      #rwph-member-management-panel .rwph-mm-card label:not(:has(input[type=checkbox])){display:grid;grid-template-columns:1fr;align-items:start;}
+      #rwph-member-management-panel .rwph-mm-card input[type=number]{width:100%;box-sizing:border-box;margin-top:4px;}
+      #rwph-member-management-panel .rwph-mm-empty{padding:12px;border:1px dashed var(--rw-border);border-radius:var(--rw-card-radius,12px);color:var(--rw-muted);background:var(--rw-card-bg);}
+      #rwph-member-management-panel button{border-radius:var(--rw-button-radius,10px)!important;}
       #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar{width:10px;height:10px;}
       #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-track{background:var(--rw-scroll-track);border-radius:10px;}
       #rwph-member-management-panel .rwph-mm-body::-webkit-scrollbar-thumb{background:var(--rw-scroll-thumb);border-radius:10px;border:2px solid var(--rw-scroll-track);}
@@ -12136,7 +12250,7 @@
     panel.innerHTML = `
       <style>${rwphMemberManagementPanelCss()}</style>
       <div class="rwph-floating-panel-head rwph-panel-head">
-        <div><b>${rwphHtmlEscape(modeTitle)}</b><span class="rwph-mm-sub"> Ranked-war report members</span></div>
+        <div class="rwph-mm-heading"><b>${rwphHtmlEscape(modeTitle)}</b><span class="rwph-mm-sub">Ranked-war report members</span></div>
         <button id="rwph-mm-close" class="rwph-mini-close" type="button">×</button>
       </div>
       <div class="rwph-mm-body">
@@ -12246,8 +12360,9 @@
         Number(document.getElementById("rw-point-retal")?.value || 0.2),
         Number(document.getElementById("rw-point-hospital")?.value || 2),
         rwphPointEnemyHospitalBonusValue(),
-        Number(document.getElementById("rw-point-respect")?.value || 0.01),
-        "advanced-respect-score-v1",
+        rwphPointRespectScoreValue(),
+        rwphPointRespectStepValue(),
+        "advanced-respect-score-step-v2",
         document.getElementById("rw-point-fair-fight")?.checked !== false ? "ff" : "no-ff",
         rwphPointFairFightAvgStepValue(),
         rwphPointFairFightBonusStepValue(),
@@ -12285,7 +12400,8 @@
       pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 0.2),
       pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
       pointEnemyHospitalBonus: rwphPointEnemyHospitalBonusValue(),
-      pointRespectValue: Number(document.getElementById("rw-point-respect")?.value || 0.01),
+      pointRespectValue: rwphPointRespectScoreValue(),
+      pointRespectStep: rwphPointRespectStepValue(),
       pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
       pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
       pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
@@ -12302,7 +12418,7 @@
     // The saved cached report keeps its own Member Payout and Total Payout values.
     const sharedInvalid = !payload.userKey;
     const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0 || payload.respectWeight < 0;
-    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || payload.pointRespectValue < 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0));
+    const pointsInvalid = payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || payload.pointRespectValue < 0 || payload.pointRespectStep <= 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0));
     if (sharedInvalid || (mode === "standard" && perHitInvalid) || (mode === "points" && pointsInvalid)) {
       return { ok: false, payload };
     }
@@ -14762,11 +14878,14 @@
                 </label>
               </div>
               <div class="rw-row">
-                <label>Respect Score per 0.01 respect
+                <label>Respect score to add
                   <input id="rw-point-respect" type="number" value="0.01" step="0.01" min="0">
                 </label>
-                <div class="rw-calc-brief rw-calc-mini-note">Default: every <b>0.01</b> respect earned adds <b>0.01</b> score. Example: 1.00 respect adds 1.00 score.</div>
+                <label>Per respect earned
+                  <input id="rw-point-respect-step" type="number" value="0.01" step="0.01" min="0.01">
+                </label>
               </div>
+              <div class="rw-calc-brief rw-calc-mini-note">Default: every <b>0.01</b> respect earned adds <b>0.01</b> score. You can change both the score added and the respect amount.</div>
               <div class="rw-compact-check-grid rw-compact-check-grid-single">
                 <label><input id="rw-point-fair-fight" type="checkbox" checked> Use fair-fight modifier</label>
               </div>
@@ -15028,7 +15147,7 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
+    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
       const input = document.getElementById(id);
       if (input) {
         input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
@@ -15077,7 +15196,6 @@
       const payAllBtn = e.target.closest("[data-pay-all]");
       if (payAllBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
-        rwphQueueCrossTabPopup("payments", "Payments opened in the current tab on the faction vault/controls page. Use the copy-only panel there.", "info", "RWPH Payments");
         const opened = rwphOpenPayAllInFactionControls(lastRows);
         if (!opened) {
           rwphClearCrossTabPopup("payments");
@@ -15256,7 +15374,8 @@
       const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 0.2);
       const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
       const pointEnemyHospitalBonus = rwphPointEnemyHospitalBonusValue();
-      const pointRespectValue = Number(document.getElementById("rw-point-respect")?.value || 0.01);
+      const pointRespectValue = rwphPointRespectScoreValue();
+      const pointRespectStep = rwphPointRespectStepValue();
       const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
       const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
       const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
@@ -15269,6 +15388,7 @@
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
       if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0 || respectWeight < 0) return alert("Weights cannot be negative.");
       if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0 || pointRespectValue < 0) return alert("Advanced Calculation values cannot be negative.");
+      if (!Number.isFinite(pointRespectStep) || pointRespectStep <= 0) return alert("Advanced Respect per respect earned must be greater than 0.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightAvgStep) || pointFairFightAvgStep <= 0)) return alert("Avg FF required per bonus step must be greater than 0.");
       if (pointFairFightEnabled && (!Number.isFinite(pointFairFightBonusPerStep) || pointFairFightBonusPerStep < 0)) return alert("Point bonus per payable hit per step cannot be negative.");
 
@@ -15326,6 +15446,7 @@
           pointHospitalBonus,
           pointEnemyHospitalBonus,
           pointRespectValue,
+          pointRespectStep,
           pointFairFightEnabled,
           pointFairFightAvgStep,
           pointFairFightBonusPerStep,

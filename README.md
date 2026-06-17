@@ -1,5 +1,15 @@
 # Ranked War Payout Helper
 
+
+## v1.1.421 updates
+
+- Reworked Export CSV and Export Html to use direct server form downloads from the user click, with PDA-safe fallback panels and raw copy boxes.
+- Fixed the Payments button handoff so it navigates the main Torn page to faction controls/vault instead of opening inside the results panel.
+- Kept the Payments Copy Panel as the only RWPH panel on the vault page and preserved the 10-minute Reopen Report button.
+- Added editable Advanced respect settings for both the score added and the respect amount it applies to.
+- Restyled Member Management to better match the main RWPH panel theme/layout/style.
+
+
 <p align="center">
   <a href="https://github.com/campbell996/RWPH/raw/refs/heads/main/Torn_RW_Payout_Helper_Server_Locked.user.js">
     <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download Here">
@@ -10,13 +20,13 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.420**  
+Current package version: **1.1.421**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
 
 
-## v1.1.420 - Respect scoring, exports, Payments handoff and launcher cleanup
+## v1.1.421 - Respect scoring, exports, Payments handoff and launcher cleanup
 
 - Added a **Respect** checkbox to **Basic Calculations**. When enabled, each member's payout respect is added to their Basic payout weight alongside the selected hit-type weights.
 - Added **Respect Score per 0.01 respect** to **Advanced Calculations**. The default value is `0.01`, meaning every `0.01` respect adds `0.01` score, and admins/users can change the value like the other Advanced score settings.
@@ -24,7 +34,7 @@ Author: **Evil_Panda_420**
 - Reworked **Export CSV** and **Export Html** again so PC and PDA both get a server-backed download link plus a visible fallback panel with copy boxes. PC also tries direct local download and backend download methods.
 - Removed the background/highlight from launcher logo buttons so the logo itself shows cleanly without the extra button glow/background.
 - Kept **Member Management** payable-hit and respect removal from v1.1.419.
-- Updated package version to **1.1.420**.
+- Updated package version to **1.1.421**.
 
 ## v1.1.417 - Member Management panel
 
