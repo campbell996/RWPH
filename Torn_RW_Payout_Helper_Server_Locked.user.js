@@ -14559,6 +14559,7 @@
       .filter(rwphSendHelperVisible)
       .filter((el) => !el.disabled && !el.readOnly && el.getAttribute?.("aria-disabled") !== "true")
       .filter((el) => !el.closest?.("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel"))
+      .filter((el) => !rwphIsPayAllWrongTornPanelField(el))
       .filter((el) => {
         const type = String(el.type || "").toLowerCase();
         return !["hidden", "button", "submit", "reset", "checkbox", "radio", "file", "image", "password"].includes(type);
@@ -14662,6 +14663,100 @@
     return `${attrText} ${wrap}`.replace(/\s+/g, " ").toLowerCase();
   }
 
+  function rwphPayAllAncestorAttrText(el, maxDepth = 10) {
+    const bits = [];
+    let node = el;
+    for (let depth = 0; node && node !== document.documentElement && depth < maxDepth; depth += 1, node = node.parentElement) {
+      try {
+        ["id", "class", "name", "role", "aria-label", "title", "placeholder", "data-testid", "data-test", "data-name", "data-id"].forEach((attr) => {
+          const value = node.getAttribute?.(attr);
+          if (value) bits.push(value);
+        });
+      } catch (_) {}
+    }
+    return bits.join(" ").replace(/\s+/g, " ").toLowerCase();
+  }
+
+  function rwphPayAllNearbyText(el) {
+    const scope = el?.closest?.("form,[role='dialog'],[aria-modal='true'],[class*='modal'],[class*='popup'],[class*='dialog'],[class*='money'],[class*='bank'],[class*='payment'],[class*='pay'],[class*='send'],[class*='give'],[class*='transfer'],section,article,main") || el?.parentElement || el;
+    return rwphSendHelperText(scope).slice(0, 1800);
+  }
+
+  function rwphPayAllHasMoneyContext(el) {
+    const scope = el?.closest?.("form,[role='dialog'],[aria-modal='true'],[class*='modal'],[class*='popup'],[class*='dialog'],[class*='money'],[class*='bank'],[class*='payment'],[class*='pay'],[class*='give'],[class*='transfer'],[id*='money'],[id*='bank'],[id*='payment'],[id*='pay'],[id*='give'],[id*='transfer']") || el?.closest?.("label,div,li,tr,td") || el?.parentElement || el;
+    const text = `${rwphPayAllAncestorAttrText(el)} ${rwphSendHelperText(scope).slice(0, 1400)}`;
+    return /\b(add\s*to\s*balance|add\s*money|give\s*money|give\s*cash|send\s*money|money|cash|balance|bank|banking|vault|transfer|deposit|payment|payout|pay\s*member|member\s*balance|faction\s*controls)\b/i.test(text);
+  }
+
+  function rwphIsPayAllWrongTornPanelField(el) {
+    if (!el || !el.closest) return true;
+    if (el.closest("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel")) return true;
+
+    const attrText = rwphPayAllAncestorAttrText(el);
+    const fieldText = `${rwphPayAllFieldMeta(el)} ${rwphPayAllNearbyText(el)}`;
+    const hasMoneyContext = rwphPayAllHasMoneyContext(el);
+
+    // Torn chat/settings panels live in the bottom-right and often expose generic textboxes first.
+    // Never let those fields become the Payments Copy Panel target, even when they are open over faction controls.
+    const chatSettingsRe = /\b(chat|chatbox|chat-window|chat_box|chatroom|chat-list|chatlist|message-box|messagebox|emoji|emoticon|smiley|settings|preferences|preference|options|option-panel|quicklink|quick-link|sidebar|side-bar|notification|notepad|notes|profile-quick|footer)\b/i;
+    const fieldDenyRe = /\b(chat|message|comment|reason|note|emoji|settings|preferences|filter|api\s*key|password|search\s*settings)\b/i;
+
+    if (!hasMoneyContext && (chatSettingsRe.test(attrText) || fieldDenyRe.test(fieldText))) return true;
+
+    try {
+      const r = el.getBoundingClientRect();
+      const w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const h = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const bottomRightOverlay = r.width > 0 && r.height > 0 && r.right > w * 0.52 && r.bottom > h * 0.52 && r.width <= Math.min(560, w * 0.58);
+      if (!hasMoneyContext && bottomRightOverlay) return true;
+    } catch (_) {}
+
+    return false;
+  }
+
+  function rwphForcePayAllCloseButton(panel) {
+    if (!panel) return null;
+    let btn = panel.querySelector?.("[data-pay-all-close]");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "danger rw-pay-all-close";
+      btn.setAttribute("data-pay-all-close", "1");
+      panel.insertBefore(btn, panel.firstChild);
+    }
+    btn.textContent = "×";
+    btn.hidden = false;
+    btn.disabled = false;
+    btn.removeAttribute("aria-hidden");
+    btn.setAttribute("aria-label", "Close");
+    btn.setAttribute("title", "Close");
+    try {
+      panel.style.setProperty("position", "fixed", "important");
+      const forced = {
+        position: "absolute",
+        top: "8px",
+        right: "8px",
+        width: "32px",
+        height: "32px",
+        minWidth: "32px",
+        minHeight: "32px",
+        padding: "0",
+        display: "grid",
+        placeItems: "center",
+        zIndex: "2147483647",
+        opacity: "1",
+        visibility: "visible",
+        pointerEvents: "auto",
+        cursor: "pointer",
+        lineHeight: "1",
+        fontSize: "19px",
+        fontWeight: "950"
+      };
+      Object.entries(forced).forEach(([key, value]) => btn.style.setProperty(key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`), value, "important"));
+    } catch (_) {}
+    return btn;
+  }
+
   function rwphPayAllEditableFields(scope = null) {
     return rwphPayAllFieldsInScope(scope || document);
   }
@@ -14763,7 +14858,7 @@
   }
 
   function rwphSetPayAllFieldValue(el, value) {
-    if (!el) return false;
+    if (!el || rwphIsPayAllWrongTornPanelField(el)) return false;
 
     const text = String(value ?? "");
     const touchMode = rwphIsTouchPhoneOrPda();
@@ -14935,8 +15030,11 @@
     const panel = wrap.firstElementChild;
     document.body.appendChild(panel);
     panel.hidden = false;
+    rwphForcePayAllCloseButton(panel);
     rwphSetPayAllWarningAccepted(panel, false);
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
+    setTimeout(() => rwphForcePayAllCloseButton(panel), 50);
+    setTimeout(() => rwphForcePayAllCloseButton(panel), 300);
     rwphConsumeCrossTabPopup("payments", panel, 550);
     const payAllUndoStack = [];
 
