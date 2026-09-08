@@ -79,7 +79,7 @@
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
-  const PAYWALL_API_BASE = "https://gooey-eagle-rentable.ngrok-free.dev";
+  const PAYWALL_API_BASE = "https://rwph-backend.evilpanda2612.workers.dev/";
 
   const STORAGE_KEY = "rw_payout_helper_api_key";
   const PAYWALL_TOKEN_STORAGE_KEY = "rw_payout_helper_license_token";
