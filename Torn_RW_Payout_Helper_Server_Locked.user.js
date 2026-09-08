@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.455
+// @version      1.1.453
 // @description  Server-side locked Torn ranked-war payout helper. Backend verifies license and calculates payouts.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -13,14 +13,13 @@
 // @grant        GM_download
 // @grant        GM_setClipboard
 // @connect      api.torn.com
-// @connect      rwph-backend.evilpanda2612.workers.dev
+// @connect      gooey-eagle-rentable.ngrok-free.dev
 // ==/UserScript==
   // v1.1.310: replaced launcher and panel logos with the ranked-war payout logo asset.
 
 (function () {
   "use strict";
 
-  // v1.1.455: Cloudflare Worker + Durable Object backend with persistent RWPH state stored in Aiven MySQL through Hyperdrive.
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
   // v1.1.328: manual time windows now use a matched rankedwarreport for War Hits, members, Respect, and Total Respect when Torn exposes one in that window.
@@ -80,7 +79,7 @@
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
-  const PAYWALL_API_BASE = "https://rwph-backend.evilpanda2612.workers.dev";
+  const PAYWALL_API_BASE = "https://rwph-backend.evilpanda2612.workers.dev/";
 
   const STORAGE_KEY = "rw_payout_helper_api_key";
   const PAYWALL_TOKEN_STORAGE_KEY = "rw_payout_helper_license_token";
@@ -5569,7 +5568,7 @@
             reject(new Error(`Could not parse server response. Status ${res.status}.`));
           }
         },
-        onerror: () => reject(new Error("Failed to reach paywall server. Check the Cloudflare Worker /health endpoint, Hyperdrive binding, and Aiven MySQL service.")),
+        onerror: () => reject(new Error("Failed to reach paywall server.")),
         ontimeout: () => reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")),
       });
     });
@@ -5606,7 +5605,7 @@
             reject(new Error(`Could not parse server response. Status ${res.status}.`));
           }
         },
-        onerror: () => { settled = true; reject(new Error("Failed to reach paywall server. Check the Cloudflare Worker /health endpoint, Hyperdrive binding, and Aiven MySQL service.")); },
+        onerror: () => { settled = true; reject(new Error("Failed to reach paywall server.")); },
         ontimeout: () => { settled = true; reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")); },
         onabort: () => { settled = true; const err = new Error("Calculation cancelled because the results loading tab was closed."); err.cancelled = true; reject(err); },
       });
