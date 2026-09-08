@@ -13,7 +13,7 @@
 // @grant        GM_download
 // @grant        GM_setClipboard
 // @connect      api.torn.com
-// @connect      gooey-eagle-rentable.ngrok-free.dev
+// @connect      rwph-backend.evilpanda2612.workers.dev
 // ==/UserScript==
   // v1.1.310: replaced launcher and panel logos with the ranked-war payout logo asset.
 
