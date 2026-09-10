@@ -120,7 +120,7 @@
     const LICENCE_SESSION_TTL_MS = 30 * 60 * 1000;
     const LICENCE_PURCHASE_TTL_MS = 15 * 60 * 1000;
     const XANAX_LICENCE_DAYS = 15;
-    const DEFAULT_BACKEND_URL = 'https://rwph-backend.evilpanda2612.workers.dev';
+    const DEFAULT_BACKEND_URL = 'https://YOUR-RWPH-WORKER.YOUR-SUBDOMAIN.workers.dev';
     const BACKEND_TIMEOUT_MS = 15000;
     const BACKEND_API_VERSION = '2.8';
     const MIN_BACKEND_VERSION = '2.8.0';
