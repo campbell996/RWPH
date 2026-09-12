@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.454
+// @version      1.1.455
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,6 +20,7 @@
 (function () {
   "use strict";
 
+  // v1.1.455: resizing any supported RWPH panel from a corner now scales its text and line-height with the panel size, including button/input text, and remembers that text scale with the saved panel layout.
   // v1.1.454: backend moved to a standalone Cloudflare Worker + Aiven MySQL service; this build can replace the existing rwph-backend Worker.
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
   // v1.1.328: fixed Admin button binding with panel-scoped delegated handlers, and stopped Payments Accept Warning feedback from replacing the Payments Copy Panel contents.
@@ -2524,6 +2525,7 @@
       top: Math.round(rect.top),
       width: Math.round(rect.width),
       height: Math.round(rect.height),
+      textScale: rwphGetPanelTextScale(panel),
     };
     rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, layouts);
   }
@@ -2551,6 +2553,7 @@
     panel.style.setProperty("height", `${height}px`, "important");
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
+    rwphEnsurePanelTextScale(panel, saved.textScale);
   }
 
   function rwphSaveActiveTab(area, tabName) {
@@ -15641,6 +15644,146 @@
     panel.style.setProperty(prop, String(value), "important");
   }
 
+  const RWPH_PANEL_TEXT_SCALE_MIN = 0.55;
+  const RWPH_PANEL_TEXT_SCALE_MAX = 2.25;
+
+  function rwphClampPanelTextScale(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return 1;
+    return Math.min(RWPH_PANEL_TEXT_SCALE_MAX, Math.max(RWPH_PANEL_TEXT_SCALE_MIN, n));
+  }
+
+  function rwphGetPanelTextScaleState(panel) {
+    if (!panel) return null;
+    if (!panel.__rwphPanelTextScaleState) {
+      try {
+        Object.defineProperty(panel, "__rwphPanelTextScaleState", {
+          configurable: true,
+          value: {
+            scale: 1,
+            initialized: false,
+            contentRoot: null,
+            appliedNodes: new WeakSet(),
+          },
+        });
+      } catch (_) {
+        panel.__rwphPanelTextScaleState = {
+          scale: 1,
+          initialized: false,
+          contentRoot: null,
+          appliedNodes: new WeakSet(),
+        };
+      }
+    }
+    return panel.__rwphPanelTextScaleState;
+  }
+
+  function rwphGetPanelTextScale(panel) {
+    const state = rwphGetPanelTextScaleState(panel);
+    return rwphClampPanelTextScale(state?.scale || 1);
+  }
+
+  function rwphPanelScaleContentRoot(panel) {
+    if (!panel) return null;
+    return Array.from(panel.children || []).find((child) => !child.classList?.contains("rw-resize-handle")) || null;
+  }
+
+  function rwphCollectPanelTextMetrics(panel) {
+    if (!panel) return [];
+    const seen = new Set();
+    const metrics = [];
+
+    const addElement = (el) => {
+      if (!el || el === panel || seen.has(el) || !panel.contains(el)) return;
+      if (el.matches?.("style, script, noscript, template, svg, path, defs")) return;
+      if (el.closest?.(".rw-resize-handle")) return;
+
+      let styles;
+      try { styles = getComputedStyle(el); } catch (_) { return; }
+      if (!styles || styles.display === "none") return;
+
+      const fontSize = parseFloat(styles.fontSize);
+      if (!Number.isFinite(fontSize) || fontSize <= 0) return;
+      const lineHeightRaw = parseFloat(styles.lineHeight);
+      const lineHeight = Number.isFinite(lineHeightRaw) && lineHeightRaw > 0 ? lineHeightRaw : null;
+
+      seen.add(el);
+      metrics.push({ el, fontSize, lineHeight });
+    };
+
+    try {
+      const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!String(node?.nodeValue || "").trim()) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (!parent || parent.closest?.(".rw-resize-handle") || parent.matches?.("style, script, noscript, template")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      let node;
+      while ((node = walker.nextNode())) addElement(node.parentElement);
+    } catch (_) {}
+
+    panel.querySelectorAll?.("button, input, textarea, select, option, summary").forEach(addElement);
+    return metrics;
+  }
+
+  function rwphApplyPanelTextMetricFactor(metrics, factor) {
+    const safeFactor = Number.isFinite(Number(factor)) && Number(factor) > 0 ? Number(factor) : 1;
+    for (const metric of metrics || []) {
+      const el = metric?.el;
+      if (!el?.isConnected) continue;
+      const nextFont = Math.max(6, metric.fontSize * safeFactor);
+      el.style.setProperty("font-size", `${nextFont.toFixed(2)}px`, "important");
+      if (Number.isFinite(metric.lineHeight) && metric.lineHeight > 0) {
+        const nextLineHeight = Math.max(7, metric.lineHeight * safeFactor);
+        el.style.setProperty("line-height", `${nextLineHeight.toFixed(2)}px`, "important");
+      }
+    }
+  }
+
+  function rwphEnsurePanelTextScale(panel, requestedScale = null) {
+    if (!panel) return 1;
+    const state = rwphGetPanelTextScaleState(panel);
+    if (!state) return 1;
+
+    const contentRoot = rwphPanelScaleContentRoot(panel);
+    if (state.contentRoot !== contentRoot) {
+      state.contentRoot = contentRoot;
+      state.appliedNodes = new WeakSet();
+    }
+
+    if (!state.initialized) {
+      state.scale = rwphClampPanelTextScale(requestedScale ?? 1);
+      state.initialized = true;
+    } else if (requestedScale !== null && requestedScale !== undefined && !Number.isNaN(Number(requestedScale))) {
+      state.scale = rwphClampPanelTextScale(requestedScale);
+    }
+
+    const metrics = rwphCollectPanelTextMetrics(panel).filter((metric) => !state.appliedNodes.has(metric.el));
+    if (Math.abs(state.scale - 1) > 0.0001) rwphApplyPanelTextMetricFactor(metrics, state.scale);
+    for (const metric of metrics) state.appliedNodes.add(metric.el);
+    panel.dataset.rwphTextScale = state.scale.toFixed(4);
+    return state.scale;
+  }
+
+  function rwphApplyPanelResizeTextScale(panel, metrics, startScale, desiredScale) {
+    if (!panel) return 1;
+    const state = rwphGetPanelTextScaleState(panel);
+    if (!state) return 1;
+    const safeStartScale = rwphClampPanelTextScale(startScale || 1);
+    const safeDesiredScale = rwphClampPanelTextScale(desiredScale || safeStartScale);
+    const factor = safeDesiredScale / safeStartScale;
+    rwphApplyPanelTextMetricFactor(metrics, factor);
+    for (const metric of metrics || []) state.appliedNodes.add(metric.el);
+    state.scale = safeDesiredScale;
+    state.initialized = true;
+    panel.dataset.rwphTextScale = safeDesiredScale.toFixed(4);
+    return safeDesiredScale;
+  }
+
   function makeDraggable(panel, handleSelector = ".rw-head") {
     if (!panel || panel.dataset.rwphDragReady === "1") return;
     panel.dataset.rwphDragReady = "1";
@@ -15758,6 +15901,8 @@
     let startTop = 0;
     let startWidth = 0;
     let startHeight = 0;
+    let startTextScale = 1;
+    let resizeTextMetrics = [];
 
     function panelMinimums() {
       const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
@@ -15784,6 +15929,8 @@
       startTop = rect.top;
       startWidth = rect.width || panel.offsetWidth || 300;
       startHeight = rect.height || panel.offsetHeight || 240;
+      startTextScale = rwphEnsurePanelTextScale(panel);
+      resizeTextMetrics = rwphCollectPanelTextMetrics(panel);
       rwphSetPanelStyle(panel, "left", `${rect.left}px`);
       rwphSetPanelStyle(panel, "top", `${rect.top}px`);
       rwphSetPanelStyle(panel, "right", "auto");
@@ -15825,6 +15972,12 @@
       newLeft = Math.min(Math.max(8, newLeft), Math.max(8, window.innerWidth - newWidth - 8));
       newTop = Math.min(Math.max(8, newTop), Math.max(8, window.innerHeight - newHeight - 8));
 
+      const widthRatio = startWidth > 0 ? (newWidth / startWidth) : 1;
+      const heightRatio = startHeight > 0 ? (newHeight / startHeight) : 1;
+      const sizeRatio = Math.sqrt(Math.max(0.01, widthRatio * heightRatio));
+      const desiredTextScale = rwphClampPanelTextScale(startTextScale * sizeRatio);
+      rwphApplyPanelResizeTextScale(panel, resizeTextMetrics, startTextScale, desiredTextScale);
+
       rwphSetPanelStyle(panel, "left", `${newLeft}px`);
       rwphSetPanelStyle(panel, "top", `${newTop}px`);
       rwphSetPanelStyle(panel, "width", `${newWidth}px`);
@@ -15834,8 +15987,12 @@
     }
 
     function endResize() {
-      if (resizing) rwphSavePanelLayout(panel);
+      if (resizing) {
+        rwphEnsurePanelTextScale(panel);
+        rwphSavePanelLayout(panel);
+      }
       resizing = false;
+      resizeTextMetrics = [];
     }
 
     panel.addEventListener("mousedown", beginResize);
@@ -15855,6 +16012,7 @@
     makeDraggable(panel, handleSelector);
     makeResizable(panel);
     rwphApplyPanelLayout(panel);
+    rwphEnsurePanelTextScale(panel);
   }
 
 
