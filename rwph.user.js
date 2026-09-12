@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.455
+// @version      1.1.456
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,6 +20,7 @@
 (function () {
   "use strict";
 
+  // v1.1.456: reduced unnecessary backend traffic by coalescing duplicate requests, checking report caches only for the calculation dropdown being used, skipping idle pending-payment lookups on the unlocked panel, and removing duplicate results-progress polling.
   // v1.1.455: resizing any supported RWPH panel from a corner now scales its text and line-height with the panel size, including button/input text, and remembers that text scale with the saved panel layout.
   // v1.1.454: backend moved to a standalone Cloudflare Worker + Aiven MySQL service; this build can replace the existing rwph-backend Worker.
   // v1.1.328: hardened Admin server response parsing, added ngrok browser-warning bypass headers, and made Admin errors show useful response previews.
@@ -562,7 +563,6 @@
       const formatAndSave = () => {
         rwphFormatMoneyInputElement(el);
         rwphSavePayoutFormState();
-        rwphScheduleAutoCacheCheck?.(700);
       };
       el.addEventListener("blur", formatAndSave);
       el.addEventListener("change", formatAndSave);
@@ -5546,8 +5546,20 @@
     createPanel();
   }
 
+  const rwphApiPostInFlight = new Map();
+
+  function rwphApiPostRequestKey(path, body) {
+    let payload = "";
+    try { payload = JSON.stringify(body || {}); } catch (_) { payload = String(body || ""); }
+    return `${String(path || "")}|${payload}`;
+  }
+
   function apiPost(path, body) {
-    return new Promise((resolve, reject) => {
+    const requestKey = rwphApiPostRequestKey(path, body);
+    const existing = rwphApiPostInFlight.get(requestKey);
+    if (existing) return existing;
+
+    const promise = new Promise((resolve, reject) => {
       const safePath = String(path || "");
       const requestTimeout = safePath.includes("/api/calc/") ? 300000 : 120000;
       GM_xmlhttpRequest({
@@ -5576,6 +5588,13 @@
         ontimeout: () => reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")),
       });
     });
+
+    rwphApiPostInFlight.set(requestKey, promise);
+    const clear = () => {
+      if (rwphApiPostInFlight.get(requestKey) === promise) rwphApiPostInFlight.delete(requestKey);
+    };
+    promise.then(clear, clear);
+    return promise;
   }
 
 
@@ -12338,30 +12357,10 @@
         else window.rwphSetLoadingStepDone(data.step);
       });
       function pollProgressFromLoadingTab(){
-        if (!rwphProgressId || !rwphApiBase || typeof fetch !== "function") return;
-        fetch(rwphApiBase + "/api/calc/progress", {
-          method: "POST",
-          mode: "cors",
-          cache: "no-store",
-          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-          body: JSON.stringify({ progressId: rwphProgressId })
-        }).then(function(res){ return res && res.json ? res.json() : null; })
-          .then(function(json){
-            if (json && json.ok) {
-              if (Number(json.percent) >= 0) window.rwphSetLoadingProgress(Number(json.percent), json.label || "", Number(json.step));
-              else if (Number(json.step) >= 0) window.rwphSetLoadingStepDone(Number(json.step));
-              if (json.resultHtmlReady && !rwphManualResultsHtml) {
-                try {
-                  fetch(rwphApiBase + "/api/calc/result-html?progressId=" + encodeURIComponent(rwphProgressId), { cache: "no-store", headers: { "ngrok-skip-browser-warning": "true" } })
-                    .then(function(r){ return r && r.json ? r.json() : null; })
-                    .then(function(payload){ if (payload && payload.ok && payload.ready && payload.html) rwphShowManualResultsButton(payload.html); })
-                    .catch(function(){});
-                } catch (_) {}
-              }
-              if (statusEl && json.label) statusEl.textContent = json.label;
-              if (statusEl && json.cancelled) statusEl.textContent = json.label || "Calculation cancelled because this loading panel was closed.";
-            }
-          }).catch(function(){});
+        // v1.1.456: the parent userscript owns the single backend progress poller and
+        // forwards updates into this frame. Keeping a second fetch loop here doubled
+        // Cloudflare requests without adding useful progress information.
+        return;
       }
       function tick(){
         if (!el) el = document.getElementById("rwph-load-seconds");
@@ -12389,8 +12388,7 @@
       window.addEventListener("online", wake);
       rwphCheckStoredManualResults();
       window.rwphManualResultsStoragePoller = setInterval(rwphCheckStoredManualResults, 1000);
-      pollProgressFromLoadingTab();
-      window.rwphLoadingProgressPoller = setInterval(pollProgressFromLoadingTab, 1500);
+      // Backend progress is polled once by the parent userscript (v1.1.456).
     })();
   </script>
 </body>
@@ -12547,6 +12545,8 @@
     let stopped = false;
     let pending = false;
     let timer = null;
+    let resultHtmlPending = false;
+    let resultHtmlLoaded = false;
     let closedSince = 0;
     let closedChecks = 0;
     const closedGraceMs = 45000;
@@ -12580,6 +12580,32 @@
         closedSince = 0;
         closedChecks = 0;
       }
+      const fetchReadyResultHtml = () => {
+        if (stopped || resultHtmlPending || resultHtmlLoaded || !tab || tab.closed) return;
+        resultHtmlPending = true;
+        GM_xmlhttpRequest({
+          method: "GET",
+          url: `${PAYWALL_API_BASE}/api/calc/result-html?progressId=${encodeURIComponent(id)}`,
+          headers: { "ngrok-skip-browser-warning": "true" },
+          timeout: 20000,
+          onload: (res) => {
+            resultHtmlPending = false;
+            try {
+              const payload = JSON.parse(res.responseText || "{}");
+              if (!payload?.ok || !payload?.ready || !payload?.html) return;
+              resultHtmlLoaded = true;
+              const ready = rwphInjectMainScrollbarCssIntoHtml(String(payload.html || ""));
+              rwphDirectUnlockLoadingTab(tab, id, ready);
+              rwphRememberResultsLoadingPanelState({ type: "ready", progressId: id, html: ready });
+              stopped = true;
+              if (timer) clearInterval(timer);
+            } catch (_) {}
+          },
+          onerror: () => { resultHtmlPending = false; },
+          ontimeout: () => { resultHtmlPending = false; },
+        });
+      };
+
       pending = true;
       GM_xmlhttpRequest({
         method: "POST",
@@ -12594,6 +12620,7 @@
             if (json && json.ok && Number(json.step) >= 0) {
               rwphSetResultsLoadingStepDone(tab, Number(json.step), Number(json.percent), json.label || "");
             }
+            if (json && json.ok && json.resultHtmlReady) fetchReadyResultHtml();
           } catch (_) {}
         },
         onerror: () => { pending = false; },
@@ -13216,33 +13243,8 @@
       rwphStartResultsTabCloseWatcher(tab, progressId, cancelRestoredLoading);
       rwphSetResultsLoadingStepDone(tab, 0, 8, "Results loading panel restored after refresh. Reconnecting to calculation...");
 
-      // Extra direct result-html fetch after restore, in case the backend had finished while the page was refreshing.
-      setTimeout(() => {
-        try {
-          if (!progressId) return;
-          GM_xmlhttpRequest({
-            method: "GET",
-            url: `${PAYWALL_API_BASE}/api/calc/result-html?progressId=${encodeURIComponent(progressId)}`,
-            headers: { "ngrok-skip-browser-warning": "true" },
-            timeout: 20000,
-            onload: (res) => {
-              try {
-                const payload = JSON.parse(res.responseText || "{}");
-                if (payload && payload.ok && payload.ready && payload.html) {
-                  const ready = rwphInjectMainScrollbarCssIntoHtml(String(payload.html || ""));
-                  rwphDirectUnlockLoadingTab(tab, progressId, ready);
-                  rwphRememberResultsLoadingPanelState({
-                    type: "ready",
-                    progressId,
-                    startedAtMs,
-                    html: ready
-                  });
-                }
-              } catch (_) {}
-            },
-          });
-        } catch (_) {}
-      }, 800);
+      // v1.1.456: the single parent progress poller now retrieves result HTML as soon as
+      // the backend reports it ready, so a second restore-only result request is unnecessary.
 
       return true;
     } catch (e) {
@@ -13576,7 +13578,7 @@
       updatedAtMs: Date.now(),
     };
     GM_setValue(MEMBER_MANAGEMENT_STORAGE_KEY, JSON.stringify(all));
-    rwphScheduleAutoCacheCheck(250);
+    rwphScheduleAutoCacheCheck(250, mode);
   }
 
   function rwphMemberManagementMemberKey(member = {}) {
@@ -14168,9 +14170,15 @@
     rwphRenderCacheButtonStates(silent);
   }
 
-  function rwphScheduleAutoCacheCheck(delayMs = 650) {
-    if (rwphAutoCacheCheckTimer) clearTimeout(rwphAutoCacheCheckTimer);
-    rwphAutoCacheCheckTimer = setTimeout(() => rwphAutoCheckCompletedWarCache(true), Math.max(100, Number(delayMs) || 650));
+  function rwphScheduleAutoCacheCheck(delayMs = 650, calculationMode = null) {
+    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
+    const timerKey = mode || "both";
+    if (rwphAutoCacheCheckTimers[timerKey]) clearTimeout(rwphAutoCacheCheckTimers[timerKey]);
+    rwphAutoCacheCheckTimers[timerKey] = setTimeout(() => {
+      rwphAutoCacheCheckTimers[timerKey] = null;
+      rwphAutoCheckCompletedWarCache(true, mode);
+    }, Math.max(100, Number(delayMs) || 650));
+    rwphAutoCacheCheckTimer = rwphAutoCacheCheckTimers[timerKey];
   }
 
   async function rwphAutoCheckCompletedWarCache(silent = true, calculationMode = null) {
@@ -14178,7 +14186,9 @@
     const modes = calculationMode ? [rwphNormalizeCalculationMode(calculationMode)] : ["standard", "points"];
     const signature = `${calculationMode ? rwphNormalizeCalculationMode(calculationMode) : "both"}|${rwphGetPayoutCacheSignature(calculationMode)}`;
 
-    if (silent && signature === rwphLastCacheCheckSignature) return;
+    const signatureKey = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : "both";
+    if (silent && signature === rwphLastCacheCheckSignatures[signatureKey]) return;
+    rwphLastCacheCheckSignatures[signatureKey] = signature;
     rwphLastCacheCheckSignature = signature;
 
     let checkedAny = false;
@@ -14350,6 +14360,8 @@
       rwphSetCacheStatusText(`Deleting matching ${modeLabel} database cached report...`, mode);
       const result = await apiPost("/api/calc/report-cache/delete", validation.payload);
       rwphLastCacheCheckSignature = "";
+      rwphLastCacheCheckSignatures[mode] = "";
+      rwphLastCacheCheckSignatures.both = "";
       rwphSetCacheButtonState(mode, false, null, false);
       rwphSetCacheStatusText(result.deleted ? `Cached ${modeLabel} report deleted. ${modeLabel} Settings Calculate can create a fresh report.` : (result.message || `No matching ${modeLabel} database cached report was found to delete.`), mode);
       rwphToastPanelInfo(status, result.message || `Cached ${modeLabel} report deleted.`, result.deleted ? "info" : "warn", "RWPH Cache");
@@ -16570,7 +16582,9 @@
   let rwphNextUseCacheOnly = false;
   let rwphNextUseCacheOnlyMode = "standard";
   let rwphAutoCacheCheckTimer = null;
+  let rwphAutoCacheCheckTimers = { standard: null, points: null, both: null };
   let rwphLastCacheCheckSignature = "";
+  let rwphLastCacheCheckSignatures = { standard: "", points: "", both: "" };
   let rwphCachedReports = {
     standard: { available: false, info: null },
     points: { available: false, info: null },
@@ -17014,14 +17028,34 @@
     });
 
     rwphUpdateLastResultsButton();
-    ["rw-key", "rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"].forEach((id) => {
-      const input = document.getElementById(id);
-      if (input) {
-        input.addEventListener("input", () => rwphScheduleAutoCacheCheck(700));
-        input.addEventListener("change", () => rwphScheduleAutoCacheCheck(700));
-      }
-    });
-    rwphScheduleAutoCacheCheck(900);
+    const standardDetails = panel.querySelector("details.rw-per-hit-settings");
+    const pointsDetails = panel.querySelector("details.rw-points-settings");
+    const detailsForMode = (mode) => rwphNormalizeCalculationMode(mode) === "points" ? pointsDetails : standardDetails;
+    const scheduleCacheIfOpen = (mode, delay = 700) => {
+      const details = detailsForMode(mode);
+      if (details?.open) rwphScheduleAutoCacheCheck(delay, mode);
+    };
+    const attachModeCacheWatchers = (ids, mode) => {
+      ids.forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener("input", () => scheduleCacheIfOpen(mode, 700));
+        input.addEventListener("change", () => scheduleCacheIfOpen(mode, 700));
+      });
+    };
+    attachModeCacheWatchers(["rw-from", "rw-to", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-excluded-members"], "standard");
+    attachModeCacheWatchers(["rw-points-from", "rw-points-to", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-points-excluded-members"], "points");
+    const keyInputForCache = document.getElementById("rw-key");
+    if (keyInputForCache) {
+      const onKeyChange = () => {
+        scheduleCacheIfOpen("standard", 700);
+        scheduleCacheIfOpen("points", 700);
+      };
+      keyInputForCache.addEventListener("input", onKeyChange);
+      keyInputForCache.addEventListener("change", onKeyChange);
+    }
+    standardDetails?.addEventListener("toggle", () => { if (standardDetails.open) rwphScheduleAutoCacheCheck(120, "standard"); });
+    pointsDetails?.addEventListener("toggle", () => { if (pointsDetails.open) rwphScheduleAutoCacheCheck(120, "points"); });
 
     document.getElementById("rw-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("standard"));
     document.getElementById("rw-points-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("points"));
@@ -17154,7 +17188,9 @@
 
     startLicenseExpiryMonitor();
     updatePendingPaymentUi();
-    restorePendingPaymentFromDatabase(document.getElementById("rw-key")?.value.trim(), "extend");
+    if (getPendingPayment()) {
+      restorePendingPaymentFromDatabase(document.getElementById("rw-key")?.value.trim(), "extend");
+    }
 
     async function rwphAutoFillWarTimesForMode(mode = "standard") {
       const status = document.getElementById("rw-status");
@@ -17169,7 +17205,7 @@
         const war = result.war;
         rwphSetTimeWindowForMode(mode, war.start, war.end);
         rwphSavePayoutFormState();
-        rwphScheduleAutoCacheCheck(250);
+        rwphScheduleAutoCacheCheck(250, mode);
         const msg = `${rwphModeLabel(mode)} times auto-filled: ${readableTime(war.start)} to ${readableTime(war.end)}.`;
         rwphToastPanelInfo(status, msg, "info", "RWPH Info");
       } catch (e) {
