@@ -10,11 +10,22 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.457**  
+Current package version: **1.1.459**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
 
+
+### v1.1.459 easier Advanced Calculation Settings
+
+- Reorganized Advanced mode into six numbered sections: War & Payout, Member Adjustments, Main Point Values, Hospital Bonuses, Respect Score, and Fair Fight Bonus.
+- Added an Easy Advanced Setup guide explaining the four basic steps for a first-time user.
+- Displays the recommended defaults directly in the panel so users can safely leave them unchanged when unsure.
+- Added clearer names, descriptions, and examples for every Advanced score setting.
+- Explains the default Respect Score with a worked example: 0.01 points per 0.01 respect means 2.50 respect adds 2.50 points.
+- Explains the default Fair Fight setup with a worked Avg FF example.
+- Added **Restore Recommended Defaults**. It resets only Advanced scoring values and the Fair Fight checkbox; war times, payout values, and Member Management remain untouched.
+- Advanced payout/calculation rules and backend behavior are unchanged from v1.1.457.
 
 ### v1.1.457 calculation speed improvements
 
