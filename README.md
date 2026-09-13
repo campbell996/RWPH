@@ -75,14 +75,6 @@ Author: **Evil_Panda_420**
 - An active RWPH licence or unused 7-day trial.
 - Access to the configured RWPH Cloudflare backend.
 
-### For the backend owner
-
-- Cloudflare account with Workers and Hyperdrive.
-- Aiven MySQL database, using `defaultdb` in the supplied setup.
-- Node.js LTS + npm locally for Wrangler/setup scripts.
-- Wrangler login to the Cloudflare account that owns the Worker.
-- A Torn API key belonging to the account that receives Xanax licence payments.
-
 ---
 
 ## Quick Start — Users
