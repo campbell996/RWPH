@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.460
+// @version      1.1.461
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,6 +20,7 @@
 (function () {
   "use strict";
 
+  // v1.1.461: moved the Advanced Calculations ? guide toggle from the logo controls into the Advanced Calculations dropdown header beside its OPEN status text; guide behavior and calculation logic are unchanged.
   // v1.1.460: restored the compact Advanced Calculations layout by default and added a small ? guide toggle beside Open Logo Selector that switches the same live Advanced controls into the detailed v1.1.459 guided setup view without changing calculation rules.
   // v1.1.457: sped up calculations with a 1,000-row Torn attacksfull fast path, fixed attack-range cache keys, whole-war attack reuse between Basic/Advanced, and safer faster Torn request pacing with automatic compatibility fallback.
   // v1.1.456: reduced unnecessary backend traffic by coalescing duplicate requests, checking report caches only for the calculation dropdown being used, skipping idle pending-payment lookups on the unlocked panel, and removing duplicate results-progress polling.
@@ -16726,7 +16727,6 @@
                 <div class="rw-muted rwph-theme-logo-current-label">Current logo: <span id="rw-current-logo-label">${esc(rwphLogoChoiceLabel())}</span></div>
                 <div class="rwph-logo-selector-action-row">
                   <button id="rw-open-logo-picker" class="secondary" type="button">Open Logo Selector</button>
-                  <button id="rw-advanced-guide-toggle" class="secondary rw-advanced-guide-toggle" type="button" title="Show the easy Advanced Calculations setup guide" aria-label="Advanced Calculations setup guide" aria-pressed="false">?</button>
                 </div>
               </div>
             </div>
@@ -16784,7 +16784,7 @@
             </div>
           </details>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
-            <summary class="rw-api-tos-title">Advanced Calculations</summary>
+            <summary class="rw-api-tos-title"><span class="rwph-advanced-summary-title">Advanced Calculations</span><button id="rw-advanced-guide-toggle" class="secondary rw-advanced-guide-toggle" type="button" title="Show the easy Advanced Calculations setup guide" aria-label="Advanced Calculations setup guide" aria-pressed="false">?</button></summary>
             <div class="rw-api-tos-content">
               <div class="rw-calc-brief"><b>Advanced:</b> splits Member Payout by points from war/assist/outside/retal/hospital and Avg FF settings.</div>
               <div class="rw-cache-tools rw-mode-cache-tools">
@@ -18779,28 +18779,39 @@
         #rw-payout-helper .rwph-logo-selector-action-row{
           display:flex!important;
           align-items:stretch!important;
-          gap:6px!important;
           width:100%!important;
           min-width:0!important;
         }
         #rw-payout-helper .rwph-theme-logo-control-card .rwph-logo-selector-action-row #rw-open-logo-picker{
           flex:1 1 auto!important;
-          width:auto!important;
+          width:100%!important;
           min-width:0!important;
         }
-        #rw-payout-helper .rwph-theme-logo-control-card #rw-advanced-guide-toggle{
-          flex:0 0 34px!important;
-          width:34px!important;
-          min-width:34px!important;
-          max-width:34px!important;
+        #rw-payout-helper details.rw-points-settings > summary #rw-advanced-guide-toggle{
+          flex:0 0 30px!important;
+          width:30px!important;
+          min-width:30px!important;
+          max-width:30px!important;
+          height:26px!important;
+          min-height:26px!important;
           padding:0!important;
-          margin:0!important;
-          font-size:17px!important;
+          margin-left:auto!important;
+          margin-right:0!important;
+          border-radius:999px!important;
+          font-size:15px!important;
           font-weight:950!important;
           line-height:1!important;
           display:inline-flex!important;
           align-items:center!important;
           justify-content:center!important;
+          position:relative!important;
+          z-index:2!important;
+        }
+        #rw-payout-helper details.rw-points-settings > summary::after{
+          margin-left:0!important;
+        }
+        #rw-payout-helper details.rw-points-settings > summary .rwph-advanced-summary-title{
+          min-width:0!important;
         }
         #rw-payout-helper .rw-advanced-guide-only,
         #rw-payout-helper .rw-advanced-guide-only-inline{
