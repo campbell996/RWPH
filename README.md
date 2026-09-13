@@ -1,4 +1,4 @@
-# Ranked War Payout Helper
+# Ranked War Payout Helper — RWPH
 
 <p align="center">
   <a href="https://www.tampermonkey.net/script_installation.php#url=https://raw.githubusercontent.com/campbell996/RWPH/refs/heads/main/rwph.user.js">
@@ -8,1546 +8,816 @@
 
 <p align="center"><strong>Click Download Here to install or update the RWPH userscript.</strong></p>
 
-**Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
+**Ranked War Payout Helper (RWPH)** is a Torn userscript with a standalone Cloudflare Worker + MySQL backend for calculating ranked-war payouts, managing licences, caching finished reports, and helping faction leaders prepare manual payments.
 
-Current package version: **1.1.461**  
+Current userscript version: **1.1.461**  
 Userscript name: **Ranked War Payout Helper**  
-Userscript namespace: **RankedWarPayoutHelper**  
+Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
 
-
-### v1.1.461 Advanced guide button placement
-
-- The small `?` Advanced setup-guide button is now inside the **Advanced Calculations** dropdown header beside its **OPEN / OPEN SETTINGS** status text.
-- The logo selector area contains only the logo selector again.
-- The guide itself and all calculation/backend behavior are unchanged.
-
-### v1.1.460 optional Advanced setup guide
-
-- Restored the compact pre-v1.1.459 Advanced Calculations layout as the default view.
-- Added a small **?** button beside **Open Logo Selector** at the top of the main panel.
-- Pressing **?** switches the live Advanced Calculations controls into the detailed v1.1.459 guided setup view and automatically opens Advanced Calculations.
-- Pressing **?** again hides the extra guide material and returns Advanced Calculations to the compact layout.
-- The guide uses the same live input IDs/values, so switching views does not duplicate controls or change calculation/cache wiring.
-- **Restore Recommended Defaults** is available only while the guide is shown. It does not change war times, payout amounts, or Member Management.
-- Advanced formulas, defaults, backend routes, licensing, report caches, payment logic, and calculation-speed optimisations are unchanged from v1.1.457.
-
-### v1.1.459 easier Advanced Calculation Settings
-
-- Reorganized Advanced mode into six numbered sections: War & Payout, Member Adjustments, Main Point Values, Hospital Bonuses, Respect Score, and Fair Fight Bonus.
-- Added an Easy Advanced Setup guide explaining the four basic steps for a first-time user.
-- Displays the recommended defaults directly in the panel so users can safely leave them unchanged when unsure.
-- Added clearer names, descriptions, and examples for every Advanced score setting.
-- Explains the default Respect Score with a worked example: 0.01 points per 0.01 respect means 2.50 respect adds 2.50 points.
-- Explains the default Fair Fight setup with a worked Avg FF example.
-- Added **Restore Recommended Defaults**. It resets only Advanced scoring values and the Fair Fight checkbox; war times, payout values, and Member Management remain untouched.
-- Advanced payout/calculation rules and backend behavior are unchanged from v1.1.457.
-
-### v1.1.457 calculation speed improvements
-
-- Uses Torn API v2 `faction/attacksfull` as the preferred attack-fetch path, allowing up to 1,000 attacks per request instead of 100.
-- Automatically falls back to the previous `faction/attacks` flow if `attacksfull` is unavailable for a key/response.
-- Fixed the attack-range memory-cache key so repeated finished-war calculations can actually reuse fetched attack chunks.
-- Saves the fully merged war attack range so Basic and Advanced calculations can share the same fetched data on a warm Worker.
-- Keeps attack-fetch memory for 30 minutes and uses 700ms default Torn request spacing.
-- Payout/calculation rules are unchanged.
-
-### v1.1.453 custom colour picker
-
-- Added a custom colour picker to the Theme / Colours panel.
-- Custom colours apply to RWPH panels, buttons, cards, inputs, and popup colours while keeping the default layout.
-
-### v1.1.452 theme/logo card cleanup
-
-- Removed the extra Theme / Colours heading from the main card.
-- Current colour now sits directly above the Open Theme / Colours button.
-- Current logo now sits directly above the Open Logo Selector button.
-
-### v1.1.451 main panel logo-only titles
-
-- Removed the title text under the logo from the locked, unlocked, admin, and help main panel views.
-- Kept the selected main logo visible in those panel headers.
-
-### v1.1.450 titles under main logo
-
-- Panel main titles now sit underneath the selected main logo across RWPH panels.
-- Red X close controls stay separate on the top-right so titles are not blocked.
-- Results/loading headers are centred with the title/copy under the logo.
-
-### v1.1.449 panel spacing and licence title cleanup
-
-- Added safe spacing rules so panel info is not hidden by close/header/action buttons.
-- Moved `Your Licence Info` under the logo in the licence/expiration panel.
-- Removed the bottom text-only `Close` button from the licence/expiration panel and kept the red X close control.
-
-### v1.1.448 popup timeout
-
-- Popup notifications now disappear automatically after 5 seconds.
-- This applies to info, warning, error, payment, theme, logo, and cross-tab RWPH popup notifications.
-
-### v1.1.447 Payment Helper title cleanup
-
-- Payment Helper panel title changed from `RWPH Payment Helper` to `Payment Helper`.
-- Title is positioned under the main selected logo in the Payment Helper panel.
-
-### v1.1.446 bigger panel logos
-
-- Increased the selected logo size across RWPH panels.
-- Larger logo sizing covers main, floating, results, payment helper, payment copy, member management, theme/colour, and logo selector panels.
-- Popup notification logos stay small on the left, and PDA/PC launcher sizing is unchanged.
-
-### v1.1.445 PDA launcher header lock
-
-- PDA launcher now locks to the first matching Torn header row containing the Faction Warfare button.
-- It no longer remounts to cloned/sticky Torn headers while scrolling.
-- PDA launcher size is adjusted to a little over half-size while still showing the full selected logo.
-
-### v1.1.444 PDA launcher no-scroll page anchor
-
-- PDA launcher is now always absolute page-anchored instead of inserted into sticky Torn headers.
-- It scrolls with the page and no longer follows the screen while scrolling.
-- It remains low z-index so RWPH panels cover it.
-
-### v1.1.443 smaller PDA launcher
-
-- PDA launcher full-logo button is slightly smaller.
-- It still uses the full selected logo and stays behind RWPH panels.
-
-### v1.1.442 PDA launcher page-flow logo
-
-- PDA launcher now uses a full-width selected logo instead of a small square crop.
-- PDA launcher is mounted into the Torn page/header flow when possible.
-- PDA launcher z-index is lowered so RWPH panels appear in front of it instead of the launcher showing through panels.
-
-### v1.1.441 popup logo left position
-
-- Popup notification logo is smaller.
-- Popup notification logo now sits on the left side of the title/message info.
-
-### v1.1.440 extra layout/theme activation fix
-
-- Fixed the 15 extra layout/theme buttons so they actively change the panel layout, colours, button styles, control positioning, cards, inputs, dropdowns, checkboxes, floating panels, member management, payments, result panels, and popup notifications.
-- Added stronger fit rules for PC/PDA/phone across all extra themes.
-
-### v1.1.436 extra layouts and transparent logo cleanup
-
-- Added 15 more unique fitted layout/themes with different colour schemes from the existing themes.
-- Regenerated selectable logo images with white/near-white background pixels removed.
-- Forced the PC launcher button to hide extra text and show the selected transparent logo only.
-
-### v1.1.435 full transparent logos
-
-- Logo choices now use the full wide transparent logo instead of a cropped square icon.
-- Removed the extra `Ranked War Payout Helper` text beside the PC launcher logo and main panel logo areas.
-- Logo previews and panel logos use transparent image backgrounds.
-
-### v1.1.434 logo selector
-
-- Added a new **Logo Selector** button next to **Open Layout / Theme** in the main payout panel.
-- The new Logo Selector opens its own floating panel and lets users switch between the supplied RWPH logo sets.
-- Switching logos updates the launcher logo plus the RWPH logos used through the main and floating panels, while keeping the current layout/theme system intact.
-
-
-### v1.1.330 manual time/faction-member fixes
-
-- Manual War start/end inputs now control the calculation window instead of being overridden by the latest finished war lookup.
-- Cached-report lookup/open/delete also uses the selected manual time window when dates are entered.
-- Current faction member filtering now refreshes the live member list for calculations/cache-open, reducing false left-member removals from stale cached member data.
-
-### v1.1.330
-
-- Manual war start/end windows now try to match a faction ranked-war record inside that window.
-- When a ranked-war report is matched, War Hits, members, Respect, and Total Respect come from Torn's rankedwarreport instead of attack-log estimates.
-- Attack logs are still fetched inside the exact manual start/end window for assists, outside hits, retals, and bonus extras.
-
+> **Important:** RWPH is a manual helper. It does not automatically attack, send cash, send items, confirm Torn payments, buy, sell, or perform gameplay actions for you. Always review results and manually confirm Torn actions yourself.
 
 ---
 
-## Important Notice
+## Current Architecture
 
+RWPH now uses the standalone Cloudflare/MySQL backend introduced in v1.1.454:
 
-RWPH is a manual payout calculator and copy/prefill helper. It does not send items, send cash, confirm payments, attack, buy, sell, travel, or perform Torn gameplay actions automatically. Users must manually review and confirm all Torn actions.
+```text
+RWPH userscript
+      ↓
+Cloudflare Worker (rwph-backend)
+      ↓
+Cloudflare Hyperdrive (HYPERDRIVE)
+      ↓
+Aiven MySQL (defaultdb)
+```
 
+The Cloudflare Worker handles licence verification, licence payments, Torn API requests used by calculations, report caching, calculation progress, exports, and admin functions.
 
-### Points System Results
+Persistent backend data is stored in normalized MySQL tables. The old `paywall-db.json` is retained only as an optional legacy import source and is **not** the live database.
 
-RWPH now includes an **Advanced Calculations** dropdown with its own **Calculate** button. This opens a new results tab and splits the Member Payout by final contribution score instead of flat per-hit pay. The default score values are:
+For backend installation, see:
 
-- War hit on the ranked-war opponent: **10 points**
-- War-faction retal bonus: **+0.2 points** by default. War-faction retals still count as War Hits, then add this bonus. Non-war-faction retals count as Outside Hits.
-- Assist: **3 points**
-- Outside hit / chain-maintenance hit: **2 points**
-- Own-faction hospitalizing target bonus: **+2 points**
-- Enemy war faction hospitalizing target bonus: **-1 point** by default. This can be changed and can be positive or negative.
-- Avg FF bonus: when the fair-fight checkbox is enabled, Avg FF 1.00 gives no bonus; every configured Avg FF step over 1.00 adds the configured point bonus per payable hit. Defaults are +0.02 Avg FF required and +0.01 point per payable hit. Avg FF is capped at 3.00. If the checkbox is off, no fair-fight bonus is added.
+- `TAKEOVER_INSTALL.md`
+- `backend/BACKEND_SETUP.md`
+- `backend/MYSQL_DATABASE_SETUP.md`
 
-The normal per-hit **Calculate** button now lives inside **Basic Calculations** for the existing weighted payout report. Points System mode now uses the same hybrid result source when Torn exposes a ranked-war report: war hits, score, and total respect come from `rankedwarreport`, while assists, outside hits, war-faction retal bonus evidence, own-faction/enemy-faction hospital bonus points, and Avg FF details come from attack logs. If rankedwarreport is unavailable, RWPH falls back to attack-log-only point scoring. Hospital bonus points are only added when the hospitalized target can be verified as one of your own faction members.
+---
 
-### Public Performance Mode
+## What Changed Recently
 
-RWPH now protects public servers with completed-war report caching, direct-start calculations, cooldowns, route rate limits, short Torn API memory caching, and admin-only force refresh. Users can open a matching cached report for the same finished war and calculation mode/settings even if Member Payout or Total Payout fields were changed afterward. Storage remains JSON for now; MySQL can be added later without changing the userscript flow.
+### v1.1.461 — Advanced guide button placement
 
-Before sending Torn money or items, always review the results yourself inside Torn.
+- The small **`?`** Advanced setup-guide button now sits inside the **Advanced Calculations** header beside its open/status area.
+- The main logo controls no longer contain the Advanced help button.
+- Clicking `?` switches the same live Advanced settings between the normal compact view and the detailed setup guide.
+- Calculation formulas, cache matching, Member Management, licence behaviour, and backend routes are unchanged.
 
-This package is not an official Torn product. Use it only in ways that follow Torn rules, your faction rules, and your own server/licence setup.
+### v1.1.460 — Optional Advanced setup guide
+
+- Restored the compact Advanced Calculations layout as the normal/default view.
+- Added an optional detailed setup guide for users who want explanations and examples.
+- The guide uses the same live fields, so values are not duplicated or lost when switching views.
+- **Restore Recommended Defaults** is available while the guide is open and only resets Advanced scoring settings.
+
+### v1.1.457 — Faster calculations
+
+- Prefers Torn API v2 `faction/attacksfull`, allowing up to 1,000 attack records per request where available.
+- Automatically falls back to the older attack-fetch path when needed.
+- Fixed attack-range memory cache keys so repeated finished-war calculations can reuse data correctly.
+- Basic and Advanced calculations can reuse an already-fetched whole-war attack range while the Worker cache is warm.
+- Finished attack-fetch cache lifetime is 30 minutes.
+- Torn request spacing defaults to 700 ms with retry/backoff handling.
+
+### v1.1.456 — Fewer unnecessary backend requests
+
+- Duplicate identical backend requests are coalesced.
+- Cache checks are performed only for the calculation mode being used.
+- Cache checks wait until the Basic or Advanced calculation section is opened/used instead of being needlessly triggered by unrelated controls.
+- Idle pending-payment lookups are skipped unless there is actually a pending payment to restore/check.
+- Duplicate calculation-progress polling was removed.
+
+### v1.1.455 — Resize scaling
+
+- Resizing supported RWPH panels from the corners also scales text and line-height.
+- Buttons and input text scale with the panel where appropriate.
+- The saved panel layout remembers the matching text scale.
+
+### v1.1.454 — Standalone Cloudflare/MySQL backend
+
+- Moved the backend to Cloudflare Workers + Hyperdrive + Aiven MySQL.
+- Added normalized MySQL storage for licences, payment challenges, payments, trials, report cache, settings, admin actions, and runtime metadata.
 
 ---
 
 ## Requirements
 
-### Browser/User Environment
+### For normal users
 
-- Torn in a browser or Torn PDA.
-- Tampermonkey, Violentmonkey, or userscript support.
-- A Torn API key with the access needed for faction/ranked-war data.
-- Access to the faction page where the launcher appears.
+- Torn in a desktop browser, mobile browser, or Torn PDA/userscript environment.
+- Tampermonkey, Violentmonkey, or equivalent userscript support.
+- A Torn API key with the faction/ranked-war access required by RWPH.
+- An active RWPH licence or unused 7-day trial.
+- Access to the configured RWPH Cloudflare backend.
 
-### Server Environment
+### For the backend owner
 
-- Node.js **18 or newer**.
-- A running backend reachable from the browser/Torn PDA.
-- A private `.env` file based on `.env.example`.
-- A server URL set in the userscript as `PAYWALL_API_BASE`.
-- The backend domain added to the userscript `@connect` metadata.
+- Cloudflare account with Workers and Hyperdrive.
+- Aiven MySQL database, using `defaultdb` in the supplied setup.
+- Node.js LTS + npm locally for Wrangler/setup scripts.
+- Wrangler login to the Cloudflare account that owns the Worker.
+- A Torn API key belonging to the account that receives Xanax licence payments.
 
 ---
 
-## How to Use the Script
+## Quick Start — Users
 
-### Unlocking
+1. Install `rwph.user.js` in Tampermonkey/Violentmonkey or your supported Torn PDA userscript system.
+2. Open a Torn faction page.
+3. Click the RWPH launcher beside the **Faction Warfare** area/header control.
+4. Paste your Torn API key.
+5. Click **Save Key** if you want RWPH to remember it on that browser/PDA.
+6. Click **Unlock Panel** if you already have an active licence.
+7. If you do not have a licence, use **Buy Licence** or the one-time **7 Day Free Trial**.
+8. Open **Basic Calculations** or **Advanced Calculations**.
+9. Use **Auto-fill Last Finished War** or enter the required finished-war time range.
+10. Enter the Member Payout amount, review settings, optionally use Member Management, then click **Calculate**.
+11. Review the full results before using Payments/Newsletter/export tools.
 
-1. Open a Torn faction page.
-2. Click the floating RWPH launcher.
-3. Paste your Torn API key.
-4. Click **Save Key** if you want it stored locally.
-5. Click **Unlock Panel** if you already have a licence.
-6. Click **Buy Licence** if you need to pay for a licence.
-7. Or click **7 Day Free Trial** if you have not used the trial before.
+RWPH is designed around completed ranked-war reports. Active/current wars are not treated as finished payout reports.
 
-### Buying or Extending a Licence
+---
+
+## Licence System
+
+RWPH uses backend-verified licences.
+
+Current default payment configuration in the supplied Worker config:
+
+- Item: **Xanax**
+- Torn item ID: **206**
+- Quantity per payment unit: **1**
+- Licence time: **15 days per Xanax**
+- Trial: **one-time 7-day free trial per Torn account**
+
+### Buy / Extend flow
 
 1. Click **Buy Licence** or **Extend Licence**.
-2. RWPH creates a payment code.
-3. Send the configured item to the configured receiver in Torn.
-4. Include the exact payment code.
-5. RWPH checks for the payment.
-6. When verified, your licence unlocks or extends.
+2. RWPH requests a payment challenge/code from the backend.
+3. RWPH opens/navigates to the Torn Xanax send page and shows the payment helper.
+4. Send the required Xanax manually to the configured receiver and include the exact payment code.
+5. RWPH checks the backend for the matching Torn item transfer.
+6. When the payment is verified, the licence is created or extended.
 
-### Calculating Payouts
+The payment helper can prefill/copy details, but RWPH never presses Torn's final **Send** or **Confirm** action for you.
 
-1. Open the unlocked RWPH panel.
-2. Confirm your API key is saved or pasted.
-3. Use **Auto-fill Last Finished War** to load the latest completed war window.
-5. Open **Basic Calculations** or **Advanced Calculations** and set the values you want.
-6. Click **Calculate** inside the matching calculation section.
-7. Wait for the loading dots/results page.
-8. Review all results before paying.
-
-### Exporting Results
-
-After a successful calculation, use:
-
-- **Export CSV** for spreadsheet records.
-- **Payments** to open the manual copy/prefill payment helper.
+The old licence purchase bonus system has been removed. Licence payments add only the configured base time.
 
 ---
 
-## Torn API Key Usage
+## Main Panel
 
-RWPH asks for a Torn API key because it needs to:
-
-- Verify the user's Torn ID.
-- Verify faction/ranked-war access.
-- Fetch faction/member names and IDs.
-- Fetch ranked-war timing where available.
-- Fetch attack records inside the selected war window.
-- Send required data to the backend for payout calculation.
-
-When you click **Save Key**, the key is stored locally in browser/Torn PDA userscript storage.
-
-The backend is not designed to save user API keys inside `paywall-db.json`. Server owners should still avoid logging API keys and should protect server logs, `.env`, and backups.
-
-RWPH does not need your Torn password.
-
----
-
-## What Is Included
-
-The zip package contains both the public userscript file and the owner/server-side files.
-
-| File | Who it is for | Purpose |
-| --- | --- | --- |
-| `Torn_RW_Payout_Helper_Server_Locked.user.js` | **Users / members** | The Tampermonkey/Torn PDA userscript. This is the main file users install to open the RWPH panel on Torn faction pages. |
-| `README.md` | **Users and owner** | This guide. It explains what RWPH does, what is included, safe-use notes, and troubleshooting information. |
-| `RWPH_PRIVACY_AND_API_KEY_TERMS.md` | **Users and owner** | Extra privacy and API key terms that explain how API keys and data should be handled. |
-| `rwph_launcher_logo_256.png` | **Users and owner** | Launcher logo image used by the userscript/package. |
-| `server.js` | **Owner/server-side only** | The private Node.js backend. It handles licence checks, admin tools, Torn API requests, item-payment checks, and protected payout calculations. Do not give this file to normal users unless you want them to host their own backend. |
-| `package.json` | **Owner/server-side only** | Backend package metadata and dependency list used by the owner server. |
-| `.env.example` | **Owner/server-side only** | Example backend configuration file. The owner copies this to `.env` and fills in private server secrets/API settings. Never share your real `.env` file. |
-| `start-server-windows.bat` | **Owner/server-side only** | Windows helper file for starting the backend server. |
-| `start-server-mac-linux.sh` | **Owner/server-side only** | Mac/Linux helper file for starting the backend server. |
-
-Normal members usually only need the `.user.js` userscript. The owner/server-side files are for the person hosting and controlling the RWPH backend, licence system, admin tools, and payment checking.
-
-Important owner note: `paywall-db.json` is created by the backend when it runs. It stores licence/payment data and should be backed up and kept private. It is not meant to be shared with users.
-
----
-
-## Main Features
-
-### Faction Header Launcher
-
-RWPH adds a **Ranked War Payout Helper** button in the top faction header, immediately to the left of Torn's **Faction Warfare** button. The launcher:
-
-- Only appears on Torn faction pages and faction/ranked-war report pages where the Faction Warfare header button is available.
-- Opens the Ranked War Payout Helper panel.
-- Uses the RWPH logo on the left and the text **Ranked War Payout Helper**.
-- Copies the nearby Faction Warfare button styling so it looks like part of the faction header.
-
-### Locked and Unlocked Panels
-
-RWPH has two main panel states:
-
-1. **Locked panel** for users without a verified licence.
-2. **Unlocked main panel** for users with an active licence.
-
-The panel checks the saved licence with the backend when it opens. If the licence is missing, expired, revoked, or cannot be verified, RWPH stays on the locked panel.
-
-### Active Tab Highlighting
-
-The selected tab is highlighted in both panel states.
-
-Locked panel tabs:
-
-- **Unlock**
-- **Admin**
-- **Help**
-
-Unlocked panel tabs:
+The unlocked main panel contains three tabs:
 
 - **Payout**
 - **Admin**
 - **Help**
 
-### Dropdown Help Panel
+Main controls include:
 
-The Help panel is built from dropdown-style buttons. This keeps the panel short and easier to scan.
+- API Key
+- Save Key
+- Extend Licence
+- Your Expiration
+- Lock Panel
+- Theme / Colours
+- Logo Selector
+- Basic Calculations
+- Advanced Calculations
 
-Help sections explain:
+The selected API key is stored locally only when **Save Key** is pressed.
 
-- Current features
-- Quick start
-- Licence and payment codes
-- Main payout panel
-- Results loading screen
-- Results tab
-- Payments helper
-- Admin tools
-- Popup panels
-- Responsible use
-- API key usage
-- Backend/server settings
-- Troubleshooting
+---
 
-All Help dropdown buttons use the same midnight-blue main panel style.
+## Basic Calculations
 
-### Server-Side Licence System
+Basic mode is intended for a simpler per-hit payout split.
 
-RWPH uses a backend-verified licence system. The userscript does not unlock itself by only changing front-end code. The backend verifies the user, creates signed licence tokens, and protects payout calculation routes.
+Each selected **hit type** counts as a weight of **1**. Respect is a separate optional contribution: when enabled, the member's payout respect is added to their payout weight. Current controls are:
 
-Licence features include:
+- War hits — enabled by default
+- Outside hits — enabled by default
+- Retals — enabled by default
+- Assists — disabled by default
+- Respect — disabled by default
 
-- Buy licence by sending the configured Torn item.
-- Extend licence with additional item payments.
-- One-time 7-day free trial per Torn account.
-- Existing licence check.
-- Licence expiry display with **Your Expiration** in a separate info panel.
-- Admin grant, extend, remove, and list tools.
-- Server-side signed licence token verification.
-- Licence data stored in the backend database file.
+Basic mode keeps contribution categories separate so they are not unintentionally double-counted. In particular:
 
-### Xanax Licence Payment Helper
+- War-faction retals remain in the **Retaliation Hits** bucket in Basic mode.
+- Non-war-faction retals are treated as **Outside Hits**.
+- Assists are tracked separately rather than also counting as normal war hits.
 
-By default, the included `.env.example` is configured for Xanax payments:
+### Basic Fast Mode
 
-- Required item ID: `206`
-- Required item name: `Xanax`
-- Required quantity: `1`
-- Default licence days per Xanax: `15`
+Basic mode also includes:
 
-The backend can be configured to use a different item, name, quantity, or licence duration.
+**Fast Mode — ranked-war report only**
 
-When the user clicks **Buy Licence** or **Extend Licence**, RWPH:
+Fast Mode is much quicker because it uses Torn's ranked-war report for:
 
-1. Creates a unique payment code.
-2. Shows the receiver, item requirement, and code.
-3. Changes the current Torn tab to the Xanax Payment Helper/item-send page.
-4. Provides **Copy Receiver** and **Copy Code** helpers.
-5. Checks the backend for payment confirmation.
-6. Unlocks or extends the licence after a valid matching payment is detected.
+- War Hits
+- Members
+- Respect
+- Total Respect
 
-The payment code expires after a short time. Users must send the item manually inside Torn and include the exact code.
+Fast Mode intentionally skips attack-log extras such as:
 
-### Purchase Bonus System Removed
+- Assists
+- Outside hits
+- Retals
 
-The purchase bonus system has been removed. New licence purchases now add only the base configured licence days:
+Use Fast Mode when you only need the ranked-war report data and want the quickest possible calculation.
 
-```env
-LICENSE_DAYS=15
+---
+
+## Advanced Calculations
+
+Advanced mode gives members contribution points and splits the **Member Payout** according to each member's share of the final points.
+
+The normal Advanced view is compact. Click the small **`?`** button in the Advanced Calculations header to show the detailed setup guide. Click it again to return to the compact view.
+
+### Recommended/default Advanced values
+
+| Setting | Default |
+| --- | ---: |
+| War hit | 10 points |
+| Assist | 3 points |
+| Outside hit | 2 points |
+| War-faction retal bonus | +0.2 points |
+| Own-faction hospital bonus | +2 points |
+| Enemy war-faction hospital bonus | -1 point |
+| Respect score | +0.01 point per 0.01 respect |
+| Fair Fight | Enabled |
+| Avg FF step | +0.02 |
+| FF point bonus | +0.01 per payable hit per step |
+| Avg FF cap | 3.00 |
+
+### Retal handling in Advanced mode
+
+- A retal against the war faction still counts as the normal **War Hit** and then receives the configured **retal bonus**.
+- A retal against a non-war faction is treated as an **Outside Hit**.
+
+### Hospital bonuses
+
+Advanced mode can apply extra points for verified hospitalizing results:
+
+- Own-faction hospital bonus defaults to **+2**.
+- Enemy war-faction hospital bonus defaults to **-1** and may be changed to a negative, zero, or positive value.
+
+### Respect Score
+
+The default Advanced Respect Score is:
+
+```text
++0.01 point for every 0.01 respect earned
 ```
 
-There are no cumulative milestone bonuses, single-order bonuses, bonus dropdown controls, or 365-day completion reward. Existing licence time in the database is not removed.
+Example: 2.50 respect adds 2.50 Advanced points with the default values.
 
-### Admin Tools
+Set **Respect score to add** to `0` if you do not want respect to affect Advanced payouts.
 
-Admin tools are available from both the locked panel and the unlocked main panel.
+### Fair Fight bonus
 
-Admin features:
+With defaults:
 
-- Save admin key locally.
-- List current licences.
-- Grant a licence to a Torn ID.
-- Extend an existing licence by adding days.
-- Remove licence days from a user.
-- Auto-grant the owner account a long licence when the admin key is saved.
-- Fill a selected licence into the admin form from the licence list.
+- Avg FF 1.00 = no FF bonus.
+- Every +0.02 Avg FF above 1.00 = one bonus step.
+- Each step adds +0.01 point per payable hit.
+- Avg FF is capped at 3.00 for this bonus.
 
-Admin routes are protected by `ADMIN_KEY`. Keep it private.
+Example: Avg FF 1.40 is 0.40 above 1.00. At 0.02 per step, that is 20 steps, giving +0.20 points per payable hit.
 
-### Payout Calculator
+Untick **Use fair-fight modifier** to disable the FF bonus entirely.
 
-The main payout panel calculates ranked-war member payouts.
+### Advanced setup guide
 
-Inputs:
+Clicking the `?` button reveals explanations, worked examples, recommended values, and **Restore Recommended Defaults**.
 
-- Torn API key
-- War start date/time
-- War end date/time
+Restore Recommended Defaults resets only the Advanced scoring settings and Fair Fight option. It does **not** change:
+
+- War times
 - Member Payout
 - Total Payout
-- War Hit Weight
-- Outside Hit Weight
-- Retaliation Hit Weight
-- Assist Weight
+- Member Management adjustments
 
-Useful buttons:
+---
 
-- **Save Key** saves the Torn API key locally.
-- **Your Expiration** opens the licence info panel with remaining licence time and expiry date.
-- **Lock Panel** returns to the locked panel.
-- **Auto-fill Last Finished War** detects the latest completed ranked war. Current/active wars are not calculated.
-- **Calculate** inside Basic Calculations runs the normal backend payout calculation for the last finished ranked war only.
-- **Calculate** inside Advanced Calculations runs the points-based backend payout calculation for the last finished ranked war only.
-- **Use Cached Report** inside Basic Calculations or Advanced Calculations opens the matching backend/database cached report when it exists.
-- **Delete Cache** inside Basic Calculations or Advanced Calculations removes the matching backend/database cached report and is limited to one successful delete every 10 minutes per user.
-- Browser-saved report fallback is disabled.
-- The RWPH launcher is fixed beside Torn's **Areas** text on supported faction/report pages.
+## Member Management
 
-### Auto-Fill War Times
+Basic and Advanced each have a Member Management button.
 
-The backend detects the latest completed ranked war through Torn ranked-war data. Current/active wars are not used for payout reports. When successful, RWPH fills the completed war start and finish fields automatically.
+Member Management allows you to adjust the calculation before the final payout is built. Depending on the mode, you can:
 
-If auto-fill cannot find a finished war, RWPH will not create a payout report until a completed ranked war is available.
+- Exclude a member completely.
+- Remove a selected number of payable hits.
+- Remove/subtract respect from a member.
 
-### Hybrid Ranked-War Calculation Mode
+Member Management changes are saved locally for approximately **20 minutes** so they can survive panel changes/reopens during the calculation workflow.
 
-RWPH attempts to use Torn ranked-war report data when available.
+Member Management has its own movable/resizable panel and responsive card layout.
 
-In hybrid mode:
+---
 
-- War Hits come from Torn ranked-war report member attacks.
-- Respect and Total Respect come from Torn ranked-war report score/respect fields.
-- Assists, Outside Hits, and Retaliation Hits come from the attack-log classifier.
-- Attack-log War Hits are ignored in hybrid mode so war hits are not double counted.
+## Finished-War Data and Calculation Sources
 
-If ranked-war report mode fails, RWPH falls back to attack-log calculation and shows a warning.
+RWPH uses Torn ranked-war report data where available and attack logs where needed.
 
-### Attack Classification
+### Hybrid calculation behaviour
 
-The backend classifies attacks into contribution types:
+When Torn exposes a usable ranked-war report, RWPH can use it for authoritative ranked-war values such as:
 
-| Type | Meaning |
-| --- | --- |
-| War Hits | Ranked-war hits against the selected war opponent. |
-| Outside Hits | Hits outside the ranked-war opponent/category, tracked separately. |
-| Retaliation Hits | Hits with explicit retaliation evidence or a retaliation multiplier above normal. |
-| Assists | Attack results identified as assists. |
+- War Hits
+- Member participation
+- Ranked-war score/respect data
+- Total Respect
 
-Failed attacks such as losses, stalemates, timeouts, escapes, runaways, misses, or failed results do not count as successful hits, except assists are treated separately.
+Attack logs are then used for extras that ranked-war report data does not expose in enough detail, including:
 
-### Weight-Based Payout Split
+- Assists
+- Outside hits
+- Retals / retal evidence
+- Advanced hospital bonuses
+- Fair Fight details
 
-RWPH uses weighted contribution points to split the Member Payout.
+This avoids double-counting report War Hits while still allowing the extra contribution categories needed by RWPH.
 
-Simplified formula:
+If the ranked-war report path cannot be used, RWPH can fall back to attack-log processing where supported.
 
-```text
-member weight =
-  (war hits × war hit weight)
-+ (outside hits × outside hit weight)
-+ (retaliation hits × retaliation hit weight)
-+ (assists × assist weight)
-```
+---
 
-Then:
+## Calculation Speed and Torn API Handling
 
-```text
-member payout = Member Payout × (member weight / total faction weight)
-```
+RWPH includes several performance protections:
 
-If every weight is zero, no meaningful payout split can be calculated.
+- Preferred `faction/attacksfull` fetch path with up to 1,000 attacks per request where supported.
+- Compatibility fallback to the older attack-fetch path.
+- 30-minute attack-range memory cache for finished-war data.
+- Whole-war attack reuse between Basic and Advanced while Worker memory remains warm.
+- Torn API request queueing and retry/backoff handling.
+- Default Torn request spacing of 700 ms.
+- Duplicate backend request coalescing in the userscript.
+- A single calculation-progress poller instead of duplicate polling.
+- Cache checks only for the calculation mode currently being used.
 
-### Results Loading Screen
+If Torn rate-limits a request, RWPH is designed to pause/retry rather than immediately failing where possible.
 
-When the user clicks **Fetch + Calculate**, RWPH opens a loading/results tab. The loading screen includes a timer and five progress steps.
+---
 
-The dots turn green as the backend progresses through:
+## Report Cache
 
-1. Verifying the licence with the server.
-2. Fetching the attack log for the selected start and finish times.
-3. Sorting war hits, outside hits, retals, and assists.
-4. Applying weights and splitting the Member Payout across members.
+Finished calculation reports can be stored in the backend/MySQL report cache.
 
-The timer counts total seconds, including past 59 seconds.
+Current behaviour:
 
-### Results Page
+- Basic and Advanced caches are separate.
+- Cache matching includes the relevant calculation mode/settings.
+- Member Payout / Total Payout edits do not unnecessarily trigger repeated cache lookups.
+- **Use Cached Report** opens a matching database-backed cached report.
+- **Delete Cache** deletes the matching report.
+- A successful cache delete is limited to **one every 10 minutes per user**.
+- Default backend report cache TTL is **24 hours** (`REPORT_CACHE_TTL_MS=86400000`).
+- Browser-only report fallback is not used as the authoritative cached report store.
 
-After calculation, RWPH builds a fullscreen results page with:
+The backend can still use temporary Worker memory caches for short-lived Torn/calculation data; persistent report cache data is stored in MySQL.
 
-- Summary cards
-- Member payout cards
-- War hit counts
-- Assist counts
-- Outside hit counts
-- Retaliation hit counts
-- Total tracked hits
-- Weight values
-- Payout amount per member
-- Calculation warnings where needed
-- Export and helper buttons
+---
 
-### CSV Export
+## Results and Loading Panel
 
-The results page can export a CSV file for spreadsheet use. The CSV includes payout information that can be opened in Excel, Google Sheets, or similar tools.
+When Calculate is pressed, RWPH opens its loading/results workflow.
 
+The loading panel shows the calculation progressing through stages such as:
 
+1. Licence/server verification.
+2. Backend/database report-cache check.
+3. Fetching and sorting war hits, outside hits, retals, assists, and other required data.
+4. Applying Basic weights or Advanced points and splitting the Member Payout.
+5. Building the final results page/tools.
 
-General workflow:
+The elapsed timer continues beyond 59 seconds.
 
-1. Calculate results.
-4. Preview and review before sending.
+Closing/cancelling the loading workflow can request backend calculation cancellation where supported.
 
+The results view can include:
 
-### Payments Copy Panel
+- War/member summary information
+- War Hits
+- Assists
+- Outside Hits
+- Retaliation Hits
+- Respect / Total Respect
+- Basic weight or Advanced points
+- Member payout amount
+- Warnings/calculation-source notes
+- Excluded/adjusted member information
+- Payments / export / newsletter helper controls
 
-The **Payments** button opens a manual payout helper.
+Always review the report before paying members.
 
-The helper provides payout rows with buttons to copy or prefill:
+---
 
-- Member name + Torn ID
+## Payments Copy Panel
+
+The Payments tool is a manual payout helper.
+
+It can provide member rows containing:
+
+- Torn name + ID
 - Payout amount
+- Copy/prefill helpers
 
-On Torn PDA/phone, RWPH tries to prefill without focusing fields so the phone keypad does not keep opening.
+The panel requires **Accept Warning** before payment-copy/prefill controls unlock.
 
-Payments are intentionally manual. RWPH helps prepare the details, but the user must review and confirm each Torn money payment.
+On PDA/phone RWPH uses fallbacks intended to reduce unwanted software-keyboard focus while filling/copying payment information.
 
-### Popup Feedback Panels
+The Payments panel does not send cash automatically and does not confirm a Torn payment for you.
 
-Many actions use small feedback panels instead of browser alerts.
+---
 
-Examples:
+## Payout Amount Input
 
-- Save Key
-- Your Expiration
-- Auto-fill Last Finished War
-- Admin actions
-- Results actions
-- Copy actions
-- Payment helper actions
+Payout fields accept normal numbers and shorthand values such as:
 
-Popup panels are movable/clamped near the active RWPH panel and auto-close after a short time.
+```text
+100000000
+100m
+346.21m
+4.5b
+1t
+```
 
-### Movable and Resizable Panels
+RWPH formats valid payout values as currency with commas.
 
-RWPH floating panels support moving and resizing. Layout choices are saved locally so the panel can reopen where the user left it.
+---
 
-Supported panels include:
+## Theme / Colours and Logo Selector
 
-- Main RWPH panel
-- Results panel
+RWPH includes UI customisation without changing the calculation rules.
+
+### Theme / Colours
+
+- Built-in colour themes.
+- Custom colour picker.
+- Theme colours are applied across main/floating panels, cards, buttons, inputs, popups, Member Management, Payments, and Results.
+
+### Logo Selector
+
+- Select from the supplied RWPH logo choices.
+- The selected logo is reused on the launcher and RWPH panels.
+- Transparent wide logos are used rather than forcing a square crop.
+
+---
+
+## Movable / Resizable Panels
+
+Supported floating panels can be moved and resized.
+
+The resize system also scales panel text with panel size and saves the resulting layout/scale locally.
+
+This applies to the main RWPH panel and supported helper panels such as:
+
+- Results/loading
 - Payments Copy Panel
+- Member Management
 - Xanax Payment Helper
-- Manual review/info popup panels
+- Theme / Colours
+- Logo Selector
+- Licence/info panels
+
+Phone/PDA layouts have additional sizing and launcher handling so the UI remains usable on smaller displays.
+
+---
+
+## Launcher Behaviour
+
+RWPH detects supported Torn faction/faction-war pages and mounts its launcher near the Torn **Faction Warfare** header area.
+
+Desktop and PDA/mobile use different fitting logic so the launcher remains in the page/header flow rather than becoming a permanently floating screen overlay.
+
+The selected RWPH logo is used by the launcher.
+
+---
+
+## Help and Tutorial
+
+The built-in Help tab includes dropdown sections covering:
+
+- Step-by-step tutorial
+- Fast start
+- Basic Calculations
+- Advanced Calculations
+- Licence/payment flow
+- Results/loading
+- Payments
+- API key use
+- Backend/server information
+- Troubleshooting
+
+First-time users may be shown the tutorial automatically on supported Torn faction pages.
+
+---
+
+## Admin Tools
+
+Admin tools are available from both locked and unlocked RWPH panels when a valid admin key is supplied.
+
+Current admin functions include:
+
+- Save/check Admin Key
+- Server/backend status
+- List licences
+- Grant licence
+- Extend licence
+- Remove licence days
+- Owner grant helper
+- Fill selected licence/user information into the admin form
+
+Admin routes are protected by the Cloudflare Worker secret:
+
+```text
+RWPH_ADMIN_KEY
+```
+
+Keep this secret private.
+
+---
+
+## API Key and Privacy Behaviour
+
+RWPH uses a Torn API key to read the Torn data required for licence identity checks and ranked-war calculations.
+
+The script may use the key for:
+
+- Torn user identity
+- Faction/member information
+- Ranked-war information
+- Ranked-war report data
+- Attack data required for the selected calculation
+
+When **Save Key** is used, the API key is stored locally in userscript/browser storage on that device.
+
+The key is sent to the configured RWPH backend only when required for licence/report/calculation functionality. It is not intended to be stored as a persistent user API-key column in the MySQL licence database.
+
+RWPH never needs your Torn password.
+
+See `RWPH_PRIVACY_AND_API_KEY_TERMS.md` for the package's detailed API-key/privacy terms.
+
+---
+
+## Backend Database
+
+The normalized MySQL backend uses the following persistent tables:
+
+1. `rwph_users`
+2. `rwph_licences`
+3. `rwph_licence_metadata`
+4. `rwph_payment_challenges`
+5. `rwph_payments`
+6. `rwph_trials`
+7. `rwph_report_cache`
+8. `rwph_report_cache_delete_cooldowns`
+9. `rwph_settings`
+10. `rwph_admin_actions`
+11. `rwph_runtime_meta`
+12. `rwph_config`
+13. `rwph_schema_migrations`
+
+Short-lived calculation progress, temporary export data, Torn response caches, attack-fetch caches, and rate-limit buckets can remain in Worker memory because they are temporary rather than authoritative persistent user data.
+
+The expected standalone schema marker is:
+
+```text
+1.1.454-mysql-normalized
+```
+
+---
+
+## Backend Owner Setup
+
+### Recommended automatic setup
+
+1. Extract this package.
+2. Open the `backend` folder.
+3. Run `RWPH_Wrangler_Auto_Setup.bat` on Windows.
+4. Choose **1 - FIRST-TIME FULL SETUP + DATABASE INSTALL**.
+5. Confirm/create the Hyperdrive binding.
+6. Configure the Torn payment receiver.
+7. Set the required Worker secrets.
+8. Install/verify the MySQL schema.
+9. Deploy the Worker.
+10. Verify `/health` and `/db-test`.
+
+### Required Worker secrets
+
+```text
+RWPH_LICENSE_SECRET
+RWPH_ADMIN_KEY
+RWPH_OWNER_TORN_API_KEY
+```
+
+### Important Worker settings
+
+The supplied `backend/wrangler.jsonc` currently includes settings such as:
+
+```text
+RWPH_REQUIRED_ITEM_ID=206
+RWPH_REQUIRED_ITEM_NAME=Xanax
+RWPH_REQUIRED_ITEM_QTY=1
+RWPH_XANAX_DAYS=15
+REPORT_CACHE_TTL_MS=86400000
+ATTACK_FETCH_CACHE_TTL_MS=1800000
+TORN_API_MIN_INTERVAL_MS=700
+TORN_API_MAX_RETRIES=6
+```
+
+If your Cloudflare Hyperdrive ID differs from the packaged value, update it using the supplied setup tools before deployment.
+
+### Health checks
+
+After deployment, check:
+
+```text
+/health
+/db-test
+```
+
+A correct `/db-test` should report no missing required tables and the expected standalone schema marker.
+
+---
+
+## Package Contents
+
+| Path | Purpose |
+| --- | --- |
+| `rwph.user.js` | Main userscript installed by RWPH users. |
+| `README.md` | Current feature/setup overview. |
+| `RWPH_PRIVACY_AND_API_KEY_TERMS.md` | Privacy/API-key handling terms. |
+| `TAKEOVER_INSTALL.md` | Standalone Cloudflare/MySQL takeover deployment guide. |
+| `VERSION.txt` | Package/userscript version information. |
+| `rwph_launcher_logo_256.png` | Packaged RWPH launcher/logo asset. |
+| `backend/src/index.js` | Cloudflare Worker backend. |
+| `backend/wrangler.jsonc` | Worker/Hyperdrive configuration. |
+| `backend/schema.sql` | Full normalized MySQL schema. |
+| `backend/migrations/takeover_existing_rwph_database.sql` | Migration/takeover schema for an existing RWPH database. |
+| `backend/BACKEND_SETUP.md` | Detailed backend setup notes. |
+| `backend/MYSQL_DATABASE_SETUP.md` | Detailed MySQL table/setup notes. |
+| `backend/RWPH_Wrangler_Auto_Setup.bat` | Windows setup/deployment helper. |
+| `backend/scripts/*` | Hyperdrive/database setup, diagnostics, config, and legacy import scripts. |
+| `backend/test-standalone.mjs` | Standalone backend test suite. |
+| `legacy-original/paywall-db.json` | Old JSON state included only for optional migration/import. |
+| `legacy-original/ORIGINAL_README.md` | Archived original README/reference. |
+
+Normal users usually only need `rwph.user.js`.
 
 ---
 
 ## Security Notes
 
-Keep these private:
+Keep the following private:
 
 - Torn API keys
-- `OWNER_TORN_API_KEY`
-- `PAYWALL_SECRET`
-- `ADMIN_KEY`
-- `.env`
-- Private server URLs if you do not want others using the backend
-- `paywall-db.json` if it contains licence/payment records
+- `RWPH_OWNER_TORN_API_KEY`
+- `RWPH_LICENSE_SECRET`
+- `RWPH_ADMIN_KEY`
+- Database credentials / Hyperdrive origin credentials
+- Private database backups
 
 Recommended practices:
 
-- Use long random values for `PAYWALL_SECRET` and `ADMIN_KEY`.
-- Do not commit `.env` to GitHub.
-- Only run the backend somewhere you trust.
-- Rotate secrets if you accidentally share them.
-- Keep backups of your server database before making big admin changes.
+- Use long random values for licence/admin secrets.
+- Never commit secrets to a public GitHub repository.
+- Do not hard-code private MySQL credentials in the userscript.
+- Use Cloudflare Worker secrets for sensitive backend values.
+- Keep Aiven/MySQL access restricted.
+- Back up the MySQL database before major migrations/admin changes.
+- Rotate a secret immediately if it is exposed.
 
 ---
 
 ## Troubleshooting
 
-### `localhost refused to connect`
-
-The backend is not running, the port is wrong, or the browser cannot reach the server.
-
-Fixes:
-
-- Run `npm start`.
-- Check `/health`.
-- Confirm `PAYWALL_API_BASE` matches the real server URL.
-- If using ngrok, confirm the ngrok tunnel is active.
-
-### `Payment start error: Failed to fetch`
-
-The userscript could not reach the backend.
-
-Fixes:
-
-- Check that the backend is online.
-- Check `PAYWALL_API_BASE`.
-- Check userscript `@connect`.
-- Check whether your ngrok/public URL changed.
-- Check browser/Torn PDA network permissions.
-
-### Payment Not Found Yet
-
-RWPH did not detect a valid matching payment.
+### RWPH says it cannot reach the backend
 
 Check:
 
-- Correct receiver Torn ID.
-- Correct item.
-- Correct quantity.
-- Exact payment code.
-- Payment code has not expired.
-- Owner API key can read item events/payment data.
+- The Worker is deployed.
+- `/health` responds successfully.
+- `PAYWALL_API_BASE` in `rwph.user.js` points to the correct Worker URL.
+- The userscript `@connect` entry allows that backend domain.
+- The Worker has all required secrets.
+- Hyperdrive can reach the MySQL database.
 
-### Wrong Payment Detected
+### `/health` says `configuration-required`
 
-RWPH found a payment that did not match the expected item/code/quantity.
-
-The user may need manual admin review.
-
-### Too Many Requests / Torn Rate Limit
-
-Torn may be rate-limiting API calls.
-
-Fixes:
-
-- Wait before recalculating.
-- Do not spam **Fetch + Calculate**.
-- Increase rate-limit settings in `.env`.
-- Avoid running several calculations at once.
-
-### Results Loading Seems Stuck
-
-Large wars or Torn API delays can take longer.
-
-Check:
-
-- Loading timer.
-- Backend console.
-- Torn API errors.
-- Server `/health`.
-- Browser console if needed.
-
-### Launcher Does Not Show
-
-The launcher only appears on Torn faction pages.
-
-Go to:
+At least one required Worker secret is missing. Configure:
 
 ```text
-https://www.torn.com/factions.php
+RWPH_LICENSE_SECRET
+RWPH_ADMIN_KEY
+RWPH_OWNER_TORN_API_KEY
 ```
 
-Also check:
+Then redeploy/check again.
 
-- Userscript is enabled.
-- You installed the newest version.
-- The page was refreshed after installation.
-- No duplicate old userscript is installed.
+### `/db-test` reports missing tables
 
-### Duplicate Scripts in Tampermonkey
+Run the database installer/schema again:
 
-If you changed `@name` or `@namespace`, Tampermonkey may treat the script as a different script.
+- `RWPH_Wrangler_Auto_Setup.bat` database-install option, or
+- `backend/schema.sql`, or
+- `backend/migrations/takeover_existing_rwph_database.sql` for an existing RWPH database.
 
-Fix:
+### Calculation is slow
 
-- Disable or remove old copies.
-- Keep only the latest **Ranked War Payout Helper** version.
+Calculation time depends mainly on the amount of Torn attack data that must be fetched and Torn API availability.
+
+Try:
+
+- Reusing a cached finished report when available.
+- Using **Basic Fast Mode** when attack-log extras are not needed.
+- Re-running Basic/Advanced while the Worker attack cache is still warm.
+- Checking that the deployed backend is v1.1.457-compatible or newer so `attacksfull` and fixed attack-range caching are active.
+
+### Torn rate-limit message
+
+RWPH queues Torn API requests and retries with backoff. Avoid repeatedly restarting calculations while a large report is already running.
+
+### Cached report button is disabled
+
+Open the correct Basic/Advanced section and make sure the API key, war time/settings, and mode match an existing cached report. Basic and Advanced caches are checked independently.
+
+### Delete Cache is temporarily blocked
+
+A successful report-cache deletion is limited to one every 10 minutes per user.
+
+### Launcher does not appear
+
+Check that:
+
+- The userscript is enabled.
+- You are on a supported Torn faction/faction-war page.
+- You do not have an older duplicate RWPH userscript also running.
+- Refresh the faction page after installing/updating the script.
+
+### Payment helper cannot confirm a Xanax payment
+
+Check that:
+
+- The payment code has not expired.
+- The exact payment code was included.
+- The correct receiver received the Xanax.
+- The owner's Torn API key can see the required item-transfer data.
+- The backend Worker and database are healthy.
 
 ---
 
-## Updating
+## Updating RWPH
 
-When updating RWPH:
+For a userscript-only release:
 
-1. Backup `.env`.
-2. Backup your licence database file if present.
-3. Replace the userscript with the newer `.user.js`.
-4. Replace backend files as needed.
-5. Re-run `npm install` if dependencies changed.
-6. Restart the backend.
-7. Test `/health`.
-8. Refresh Torn and open the faction page.
+1. Replace/update `rwph.user.js` in Tampermonkey/Violentmonkey/Torn PDA.
+2. Refresh Torn.
+
+For a backend release:
+
+1. Update the files in `backend`.
+2. Run the backend checks/tests.
+3. Deploy with Wrangler/the supplied setup helper.
+4. Verify `/health` and `/db-test`.
+
+Versions **1.1.459–1.1.461** are userscript/UI changes built on the v1.1.457 calculation/backend behaviour, so an already-deployed compatible v1.1.457 backend does not need to be redeployed solely for the Advanced help-button changes.
 
 ---
 
-## Recent Changelog
+## Responsible Use
 
-### v1.1.330
+RWPH is not an official Torn product.
 
+Use it in accordance with:
 
+- Torn's rules and API rules.
+- Your faction's payout policies.
+- Your own server/security requirements.
 
-### v1.1.330
-
-- Fixed Admin panel button handling with a panel-scoped delegated click handler, so Save Admin Key, List Licences, Server Status, Grant, Extend, Remove, and Fill buttons keep working after panel rebuilds/tab switches.
-- Fixed the Payments Copy Panel **Accept Warning** button so it unlocks prefill buttons without replacing/wiping the panel contents.
-- Added safer popup/status handling so feedback messages cannot accidentally overwrite full panels.
-
-### v1.1.308
-
-- Active licences now unlock straight into the main payout panel after a saved-key licence check, without needing to press Unlock Panel again.
-- Compacted both **Basic Calculations** and **Advanced Calculations** dropdowns with shorter notes, tighter cache text, compact checkbox grids, and smaller spacing.
-- Kept all calculation fields, button IDs, payout maths, cache behaviour, and licence checks unchanged.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.307
-
-- Compacted the visible **API Key Notice** under the API key box on both the locked **Unlock** panel and unlocked main **Payout** panel.
-- Replaced the larger multi-card notice with one tighter summary line while keeping the important points: purpose, data read, local storage, backend use, no Torn password, and no automatic money/Xanax sending.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.306
-
-- Removed the **Full API ToS / Key Usage Details** dropdown from the locked **Unlock** panel.
-- Kept the compact visible **API Key Usage Notice** under the locked API key box.
-- Detailed API ToS / Usage Table remains available in the **Help** tab.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.305
-
-- Safely removed clearly unused userscript and server helper code after repeated reference checks.
-- Removed the old `Torn_RW_Payout_Helper_Server_Locked.user.js.bak` backup file from the release zip because the running script never uses it.
-- Left generated-results-page helper code alone where removal could affect the fullscreen report/payment page.
-
-### v1.1.304
-
-
-### v1.1.303
-- Removed the **Full API ToS / Key Usage Details** dropdown from the unlocked main **Payout** panel.
-- Kept the compact visible **API Key Usage Notice** directly under the main API key box.
-- Kept the locked Unlock tab API details and the Help tab API ToS / Usage Table available for review.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.302
-- Added a permanent visible API Key Usage Notice directly under both API key fields in the locked Unlock tab and unlocked Payout tab.
-- The notice now clearly explains why the key is needed, what data is read, where the key is saved, when it is sent to the backend, and what RWPH does not do.
-- Full API ToS / Key Usage Details now opens by default below the visible notice.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.301
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.300
-
-
-### v1.1.300
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.298
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.297
-
-- Kept the phone-friendly layout and no-scrollbar generated HTML cleanup.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.292
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.290
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.289
-
-- Removed per-player stat grids, ranks, IDs, metric blocks, share values, and extra details from the payout cards themselves.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.288
-
-- Compacted payout user cards to roughly one-quarter of the previous size by tightening padding, font sizes, and spacing.
-- Changed payout cards to a compact 4-column stat grid while keeping the full Basic/Advanced stat detail set.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.286
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.284
-
-- Replaced wide desktop payout tables with compact 3-column mobile payout rows: Member, Weight/Points, and Payout.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.283
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.282
-
-- **Select All** now uses DOM range selection so the full raw HTML visibly highlights in Torn PDA/webviews.
-- **Copy All** now copies from the stored full HTML source and keeps the full code highlighted if clipboard access is blocked.
-- Added a manual copy prompt fallback when both normal clipboard routes are blocked.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.275
-
-- Added move support via the panel title bar.
-- Added resize support with corner handles.
-- Added size preset buttons: Small, Wide, Tall, and Full.
-- Kept Close, Copy All, and live preview inside the results tab.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.274
-
-- The panel includes the full raw HTML code, **Copy All** and a live inline preview.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.273
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.272
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.269
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.268
-
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.267
-
-- Fixed **Removed Left-Member Hits** over-counting in both **Basic Calculations** and **Advanced Calculations** by counting only hits that were actually included in that mode's calculation.
-- Disabled Basic tickbox categories and zero-point Advanced categories no longer increase the removed-hit stat.
-- Bonus-only values are still removed with former members, but they still do not count as removed hits.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.266
-
-- Removed former-member bonus points from totals when **Include members who left the faction** is unticked.
-- Bonus-only values such as war-faction retal bonus, own-faction hospital bonus, enemy war-faction hospital bonus, and fair-fight bonus are stripped with the former member, but they do **not** increase **Removed Left-Member Hits**.
-- Kept **Removed Left-Member Hits** as a unique tracked-hit count only.
-- Applied the fix to both **Basic Calculations** and **Advanced Calculations**, including cached-report reopening.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.265
-
-- Fixed **Removed Left-Member Hits** over-counting by counting unique tracked hits only. Bonus-only stats such as war-faction retal bonus, hospital bonus, and fair-fight bonus are no longer added as extra removed hits.
-- Applied the corrected removed-left-member hit counter to both **Basic Calculations** and **Advanced Calculations**.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.264
-
-- Result tabs now hide **Removed Left-Member Hits** when **Include members who left the faction** is ticked.
-- The removed-hit stat still shows when former members are excluded, so users can see how many hits were removed.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.263
-
-- Fixed **Removed Left-Member Hits** showing `0` in hybrid Basic/Advanced results when former members were already filtered inside report/attack-log sub-calculations.
-- Hybrid Basic and Advanced now defer the current-faction filter until after report rows and attack-log extras are merged, so removed hits are counted correctly when **Include members who left the faction** is unticked.
-- Updated cache matching version so new reports do not reuse old cached results with the incorrect removed-hit counter.
-
-### v1.1.262
-- Added an off-by-default **Include members who left the faction** checkbox inside both Basic Calculations and Advanced Calculations.
-- When the checkbox is off, former faction members are removed automatically as before. When it is ticked, former members are kept in that calculation's result rows.
-- Both result tabs now show **Removed Left-Member Hits**, the number of tracked hits removed because members had left the faction.
-- Cache matching includes the include-left-members setting, while still ignoring changed payout amounts.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.261
-- Help text and README now explain not to paste raw HTML source into Torn because it can show as text or lose CSS/background styling.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.260
-- Basic and Advanced calculation results automatically remove members who are not in your current faction member list at calculation/open time unless the matching Include members who left the faction checkbox is ticked.
-- If former members are removed, RWPH adds a warning naming the removed Torn IDs where available.
-- Cache keys include the current-member filter mode so new reports stay separated from older calculation behavior.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.257
-
-- Member Payout is now explicitly sent to the backend as the calculation/payment pool.
-- Backend calculation and cache-open payload parsing now prefer `memberPayout` for payment splits while keeping old `totalPayout` compatibility.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.256
-
-- Backend/database report cache matching now ignores changed payout fields.
-- **Use Cached Report** can still open the saved Basic or Advanced report even if the user changes Member Payout or Total Payout after the cache was created.
-- Cached reports keep and display the payout values saved inside that report; changing payout fields later does not rewrite an old cached report.
-- Cache lookup/open/delete still stay separated by faction, finished war, calculation mode, and non-payout calculation settings.
-
-### v1.1.255
-
-- Advanced Calculations now treats retals against enemy ranked-war faction opponents as War Hits plus a configurable retal bonus.
-- Added/updated the Advanced Calculations retal box as **War-faction retal bonus points**, defaulting to **0.2**.
-- Non-war-faction retals are now classified as Outside Hits instead of Retaliation Hits.
-- Updated cache-key protection so old Advanced cached reports do not mix with the new retal bonus rules.
-- Updated README, terms, server version, package version, and userscript version.
-
-### v1.1.254
-
-- Retaliation Hits now only count as retaliation when the target is in the selected ranked-war enemy faction.
-- Retals against non-war-faction targets are no longer paid/classified as Retaliation Hits.
-- Basic Calculations and Advanced Calculations still keep assists, eligible retals, and outside hits separate from War Hits to prevent double counting.
-- Updated cache-key protection so cached reports do not mix the older retal rules with the new war-faction-only retal rule.
-
-### v1.1.252
-
-- Renamed **Per Hit Settings** to **Basic Calculations**.
-- Renamed **Points System Settings** to **Advanced Calculations**.
-- Updated main panel labels, help text, cache messages, README notes, and terms wording to use the new calculation section names.
-
-### v1.1.251
-
-- Removed **Member Payout**, **Total Payout**, and **Members Paid** from the top hero section of both fullscreen result tabs.
-- Added **Per Point Amount** to the Points System results summary next to **Total Payout**.
-- Cleaned up the existing layout styling in both Per Hit and Points System result tabs without changing the result structure, button order, calculations, cache handling, exports, or Payments handoff.
-
-### v1.1.249
-- Cleaned up the member/user card layout in both Per Hit and Points System results tabs so names, payout, main score, and hit stats are easier to read.
-- Result-card layout only changed display styling; calculations, cache handling, exports, and Payments handoff are unchanged.
-- Moved the long v1.1.247 and v1.1.240 release notes into this Recent Changelog section and removed the old standalone v1.1.237 layout note from the top of the README.
-- Changed the default **Enemy war faction hospital bonus points** value from **2** to **-1**. The setting can still be positive or negative.
-
-### v1.1.247
-
-- Added two editable Points System fair-fight controls: **Avg FF required per bonus step** and **Point bonus per payable hit per step**.
-- Fair-fight bonus is only applied when **Use fair-fight modifier** is ticked; unticked means no fair-fight bonus points.
-- Defaults remain **0.02 Avg FF required** and **0.01 point per payable hit per step**.
-
-- Changed Points System fair-fight scoring to use the member's **Avg FF** instead of multiplying attack points.
-- Fair-fight checkbox now uses editable step settings. By default it awards **+0.01 point per payable hit for every +0.02 Avg FF over 1.00**. Avg FF is capped at **3.00** and no bonus is added when the checkbox is off.
-- Points results now show the per-payable-hit fair-fight bonus value alongside total Fair Bonus.
-
-- Fixed both **Use Cached Report** buttons so Per Hit and Points System open cached reports through a dedicated backend cache-open route instead of re-entering the normal calculation route.
-- Cached reports now pre-open the results tab immediately from the button click, which helps prevent browser/Torn PDA popup blocking.
-- Removed the report queue from the loading/results tabs. Calculations now start directly, while Torn API retry/backoff and database report caching remain enabled.
-
-
-- Added Points System enemy war faction hospital hits and enemy faction hospital bonus points. Enemy war faction hospital bonus can be set to a negative value to subtract points.
-- Basic Calculations now use fixed 1-per-hit tick boxes instead of editable weight numbers.
-
-
-- **Use Cached Report** now works independently inside each system. Per Hit only checks/opens Per Hit cached reports, and Points System only checks/opens Points System cached reports.
-- One invalid or incomplete dropdown no longer blocks the other dropdown's cached report button.
-- Cache auto-check messages stay mode-specific for each dropdown.
-
-### v1.1.240
-
-- Advanced Calculations now only shows Points cached-report status.
-- Basic Calculations now only shows Per Hit cached-report status.
-
-- Renamed the old per-mode **Total payout pool** field to **Member Payout** in both **Basic Calculations** and **Advanced Calculations**.
-- Added a new **Total Payout** field to both calculation dropdowns. Member Payout is still the amount split across members; Total Payout is saved/displayed as the full payout record amount.
-- Results tabs now show both **Member Payout** and **Total Payout**.
-- Backend/database report cache keys now include the new Total Payout value so cached reports do not mix different payout records.
-
-
-### v1.1.235
-- Added separate backend/database cache support in the panel for both **Per Hit** and **Points System** reports.
-- Added separate cached-report open buttons for Per Hit and Points System reports.
-- Added separate cached-report delete buttons for Per Hit and Points System reports, still protected by the one-successful-delete-per-10-minutes limit.
-- Updated cache checking so both result types can be found without relying on browser-saved report data.
-- Ensured cached Per Hit and cached Points results both keep the Payments handoff so the Payments Copy Panel can open from either cached report type.
-
-### v1.1.234
-- Moved the normal per-hit report button inside **Basic Calculations** and renamed it **Calculate**.
-- Moved the Points System report button inside **Advanced Calculations** and renamed it **Calculate**.
-- Changed Points System mode to use the same hybrid source as the normal report when possible: rankedwarreport for war hits/score/total respect plus attack logs for assists, outside hits, retals, own-faction hospital bonuses, and fair-fight modifiers.
-- Kept attack-log-only Points System fallback for wars where Torn does not return a usable rankedwarreport.
-
-### v1.1.233
-- Changed the normal hit weight controls into a collapsed **Basic Calculations** dropdown.
-- Matched the Basic Calculations and Advanced Calculations dropdown cards to the main panel blue/modern theme.
-- Previously kept the existing per-hit and Points System calculations unchanged.
-
-### v1.1.232
-
-- Changed Points System hospital bonus scoring so the bonus is only awarded when the hospitalized target can be verified as one of your own faction members.
-- Added backend tracking for detected hospital results that were skipped because the target was not verified as your own faction.
-- Updated Points System labels/help text to say own-faction hospital bonus instead of a general hospital bonus.
-
-### v1.1.231
-
-- Hardened Payments Copy Panel button hiding so buttons still disappear even if browser clipboard permission is blocked.
-- Added a local fallback handoff for payment rows so Payments can still open from fullscreen cached-result tabs.
-- Hardened Xanax Payment Helper opening on the item tab by restoring the active pending payment code from the backend/database before rendering the helper.
-
-### v1.1.229
-
-- Updated the Help panel to explain the latest cache and payment helper behaviour.
-- Help now covers database-only cached reports, cached-report open/delete buttons, 24-hour cache cleanup, and the one-delete-per-10-minutes limit.
-- Help now explains that Payments Copy Panel can open from current results or cached reports, hides clicked buttons, and restores only the most recently hidden payment button.
-- Help now explains that Buy Licence / Extend Licence reopen an existing pending Xanax payment code from the backend/database when one already exists.
-- Help now notes that Your Expiration is limited to 2 manual checks per minute.
-
-### v1.1.228
-
-- Rebuilt the fullscreen Fetch + Calculate results page layout to better match the main RWPH panel layout.
-- Added a cleaner report header with faction, report type, total payout, and members paid.
-- Kept the layout responsive so smaller screens stack the actions, summary, and member results cleanly.
-
-### v1.1.226
-
-- Refreshed the fullscreen Fetch + Calculate results panel so it matches the main RWPH midnight-blue theme.
-- Updated results sidebar cards, buttons, summary cards, member result cards, payment helper panel, spacing, borders, and text contrast.
-- Added clearer results-page wording for completed-war reports, backend/database cache, 24-hour cache expiry, and manual-only payments.
-
-### v1.1.225
-- Added a browser-side 2-per-minute guard to the **Your Expiration** button so it stops repeated manual licence checks before they hit the backend.
-- Slowed the background licence monitor so it no longer burns through the manual expiry-check allowance.
-- Fixed Payments Copy Panel buttons not disappearing by forcing the hidden state with the same button CSS strength used by the panel theme.
-- **Bring Back Disappeared Button** still restores only the most recently hidden payment-copy button.
-
-### v1.1.224
-
-- Payments Copy Panel opens from the current results or a backend/database cached report.
-- Xanax Payment Helper can restore the current pending payment code from the backend/database.
-- Xanax/payment status is always re-checked live before licence days are added.
-- Browser-only cached licence/payment status is not accepted as final truth.
-- Payments Copy Panel buttons disappear after being clicked.
-- **Bring Back Disappeared Button** restores only the most recently hidden payment-copy button.
-
-### v1.1.222
-
-- Changed the cached-report status text to show the exact saved time and exact expiry time.
-- Removed the countdown-style `Expires in 1440:00` wording from the cache card.
-
-### v1.1.221
-
-- Updated the loading/results tab information to explain completed-war mode, database-only cached reports, 24-hour cache expiry, direct-start loading and Torn API retries.
-- Restyled the loading/results tab to match the midnight-blue RWPH panel/card theme.
-- Fixed cached-report status text so it updates immediately when a matching backend/database cached report exists.
-- Backend now returns saved cache expiry metadata after creating a new report.
-
-### v1.1.220
-
-- Moved the cached report card/section under **Fetch + Calculate** and above the launcher controls used at that time.
-- Renamed **Button Movements** to **Launcher Movement** across the panel and README at that time.
-
-### v1.1.219
-
-- Removed the old Fetch + Calculate time lock.
-- Fetch + Calculate now shows a popup when a matching cached report already exists.
-- **Use Cached Report** inside the matching settings dropdown opens the matching cached report.
-- **Delete Cache** inside the matching settings dropdown removes the matching database cached report when a fresh report needs to be created.
-- Cached reports auto-expire and are deleted from the backend/database after 24 hours.
-- Licence verification/check rate limit changed to 2 checks per minute.
-
-### v1.1.217
-
-- Removed the separate **Check Cache** button.
-- Added automatic completed-war cache checking when the API key and payout settings are ready.
-- Removed the separate **Reopen Results** button.
-- Changed **Use Cached Report** so it opens the saved/cached results report. Later versions split this into separate Per Hit and Points cached-report buttons.
-- Backend/database cached reports now expire and are pruned automatically after 24 hours by default.
-- Kept the new cache controls in the same midnight-blue RWPH style/theme/layout.
-
-### v1.1.216
-
-- Added completed-war report caching for same faction/war/settings reports.
-- Added Use Cached Report and Check Cache controls.
-- Replaced the backend calculation queue with direct-start calculations while keeping route rate limits and per-user cooldown protection.
-- Added short Torn API memory caching for finished-war/faction data.
-- Added admin-only force refresh and server status tools.
-- Kept storage on the current JSON database for now, with MySQL-ready organisation for a later update.
-- Kept all new controls in the same midnight-blue RWPH theme/layout.
-
-### v1.1.215
-
-- Added clearer completed-war-only and report-lock wording to the Help panel.
-- Added the same notice to the locked panel, main payout panel, loading screen, and results page where users need to see it.
-- Clarified that Fetch + Calculate uses the latest finished ranked war, not an active/current war.
-
-### v1.1.214
-
-- Changed **Fetch + Calculate** to calculate the latest completed ranked war only.
-- Current/active ranked wars are no longer calculated. Users must wait until the war is finished.
-- **Auto-fill War Times** was renamed to **Auto-fill Last Finished War** in the panel.
-- Added a cached report prompt: while the saved-results reopen control is active, users cannot create another payout report.
-- Added server-side protection so edited userscripts cannot bypass the completed-war-only rule or recent-report lock.
-
-### v1.1.213
-
-- Updated `RWPH_PRIVACY_AND_API_KEY_TERMS.md` with clearer API key, backend, licence data, manual-action, and owner responsibility terms.
-- Made the README **Download Here** button stand out more at the top of the page.
-
-### v1.1.212
-
-- Moved the Requirements, How to Use the Script, and Torn API Key Usage sections directly under Important Notice.
-
-### v1.1.211
-
-- Updated the README **What Is Included** section to explain every file in the zip.
-- Clearly marked which files are public/userscript files and which files are owner/server-side only.
-- Added a private owner note for backend-created `paywall-db.json`.
-
-### v1.1.210
-
-- Added a clearer manual-only Torn actions notice to the README Important Notice section.
-
-### v1.1.208
-
-- Removed the Installation, `.env Settings`, and Backend API Routes sections from the README.
-
-### v1.1.207
-
-- Fixed `/api/paywall/trial` returning a generic 500 when Torn rejects a user API key or the server cannot save the trial database.
-- Trial activation now uses Torn API v2 `user/basic` first, with the old user/basic endpoint kept as a fallback.
-- Server errors now return clearer messages for bad keys, access-level issues, Torn rate limits, and `paywall-db.json` write problems.
-- Added optional `DB_FILE` `.env` setting so hosted servers can point the paywall database at a writable path.
-
-### v1.1.206
-
-- Changed the README download link to the raw GitHub userscript URL.
-- Replaced the visible download URL with a **Download Here** button badge.
-
-### v1.1.205
-
-- Added the GitHub userscript download link to the top of this README.
-
-### v1.1.204
-
-- Replaced the old changelog-style README with a full feature and setup guide.
-- Updated package, userscript, and server version numbers.
-
-### v1.1.203
-
-- Added userscript author metadata: `Evil_Panda_420`.
-
-### v1.1.202
-
-- Changed the userscript name to `Ranked War Payout Helper`.
-- Changed the userscript namespace to `RankedWarPayoutHelper`.
-- Removed `- Locked` from the locked panel title.
-
-### v1.1.201
-
-- Help panel dropdown button backgrounds now use the same midnight-blue main panel style.
-- Applies to locked Help, unlocked Help, and nested API Usage dropdown rows.
-
-### v1.1.200
-
-- Main panel tabs now visibly highlight the selected Payout, Admin, or Help tab.
-- Locked panel tabs now visibly highlight the selected Unlock, Admin, or Help tab.
-- Strengthened active-tab styling so it is not overridden by unified button styling.
-
-### v1.1.199
-
-- Changed Help panel cards into dropdown-style buttons.
-- Help sections are collapsed by default.
-- Applies to both locked and unlocked Help tabs.
-- API usage rows inside Help are dropdown buttons.
-
-### v1.1.198
-
-- RWPH launcher button only appears on Torn faction pages.
-- The userscript still runs on other Torn pages so payment helper/autofill flows can keep working.
-
-### v1.1.197
-
-- Improved panel text contrast.
-- Changed launcher to a floating logo style.
-- Improved results loading timer and progress dots.
-- Added stronger desktop/PDA loading progress handling.
+RWPH produces calculation assistance, not a guarantee that every payout configuration is correct for your faction. Review the report before paying anyone.
 
 ---
 
-## Final Reminder
-
-RWPH is built to make ranked-war payout work faster and cleaner, but the faction/user remains responsible for checking calculations, confirming Torn payments, protecting keys, and following Torn rules.
-
-
-## v1.1.224 Pending Payment Helper Update
-
-- Buy Licence and Extend Licence now reuse an existing pending backend/database payment code instead of creating a new code.
-- If a pending code already exists, RWPH opens the already-created Xanax Payment Helper panel for that code.
-- The Xanax Payment Helper now retries opening on the item page after tab load, focus, visibility changes, and Torn URL changes to make the helper panel more reliable.
-- Payment status still remains live-only: licence days are only added after the backend/Torn API confirms the payment.
-
-
-### v1.1.313
-- Payments Copy Panel now requires clicking **Accept Warning** before **Name + ID** and **Amount** prefill buttons unlock.
-- The warning reminds users to switch Torn faction controls from **Give money** to **Add To Balance** before paying members.
-
-
-## v1.1.330 update
-
-The old Include Left Members / automatic left-member removal system has been removed. RWPH now removes members only when they are typed or pasted into the Basic/Advanced **Exclude member from results** box. The existing Removed Member Hits result stat now counts hits removed by that manual exclude system.
-
-
-## v1.1.387
-
-- Fixed results loading dots and progress bar so they follow the same live backend stage/percent state.
-- Loading dots now show previous stages as done and the current backend stage as active instead of jumping ahead.
-
-
-
-
-
-## v1.1.387 - 15 day Xanax licence
-
-- Changed default licence credit from **20 days per Xanax** to **15 days per Xanax**.
-- Updated the payment helper to show **15 days per Xanax**.
-- Updated `.env.example` so `LICENSE_DAYS` defaults to `15` when present.
-
-
-## v1.1.387 - Admin purchase bonus toggle
-
-- Added a Purchase Bonus Control section to the Admin panel.
-- Admins can refresh, enable, or disable licence bonus days for new Xanax purchases from the panel.
-- Existing licences are not changed when bonuses are toggled.
-- When disabled, new purchases still receive the normal 15 licence days per Xanax, but bonus days are not added for that purchase.
-- Added `/api/admin/bonus-settings` so the userscript can read and update the persisted server setting.
-
-## v1.1.389 - Locked screen 15-day Xanax wording
-
-- Fixed the locked/unlock screen heading so it now says each Xanax extends the licence by **15 days** instead of 20 days.
-- Updated the README default Xanax licence days note from 20 to 15.
-
-## v1.1.388 - Admin editable purchase bonuses
-
-- Added admin editing for purchase bonus rules.
-- Admins can now change the cumulative user milestone bonus list from the Admin panel.
-- Admins can now change the single-order bonus list from the Admin panel.
-- Bonus rules are saved in the backend database settings and apply only to new purchases after the change.
-- Existing licences and previously recorded payments are not recalculated or reduced.
-- The `.env` bonus values still act as startup/default rules when the database has no admin-edited rules saved.
-
-
-## v1.1.391 - Updated default bonus lists and add-bonus button flow
-
-- Changed default cumulative user milestone bonuses to `25:30,50:30,75:30,100:30,150:30,200:30,250:30,300:30`.
-- Changed default single-order bonuses to `10:15,25:45,50:100,100:200,500:1000`.
-- Admin-added bonuses save to the backend and then appear as their own green/red button in the Purchase Bonus Dropdown.
-- Old v1.1.390 default database bonus rules are migrated to the new default lists so they do not stay stuck on the previous defaults.
-
-## v1.1.390 - Admin bonus dropdown and .env saving
-
-- Changed the Admin purchase bonus section into a dropdown-style bonus manager.
-- Each bonus now appears as its own button: green for enabled, red for disabled.
-- Clicking a bonus opens an editor panel where admins can change Xanax amount, bonus days, and enabled/disabled status.
-- Admins can add new user milestone bonuses and single-order bonuses from the dropdown.
-- Admins can delete a bonus rule from the editor panel.
-- Saving bonus edits updates the backend database and attempts to write the new bonus config to the server `.env` file.
-- `.env` bonus rules now support optional `:off` entries, for example `50:30:off`.
-- Existing licence days are not recalculated or removed by changing bonus rules.
-
-
-## v1.1.392 - Admin panel hidden until valid admin key
-
-- Admin panel now only shows the Admin Key field, Save Admin Key button, and status message until the backend accepts the ADMIN_KEY.
-- Licence tools, server status, force refresh, licence list stay hidden for non-admin users.
-- Save Admin Key now verifies against `/api/admin/status` before showing any admin tools.
-- 
-
-
-## v1.1.393 - Highest single-order bonus and cumulative milestones
-
-- Single-order purchase bonuses now explicitly award only the highest qualifying single-order tier for that one payment.
-- Example: a 25 Xanax single order gets the `25:45` single-order bonus only; it does not also get the lower `10:15` single-order bonus.
-- Cumulative user milestone bonuses still use that Torn ID's total recorded Xanax purchase history.
-- Milestone bonuses can stack with the highest single-order bonus on the same purchase.
-- Example: a 50 Xanax purchase can get the highest qualifying single-order bonus and any cumulative milestone bonuses crossed by that member's total purchases.
-
-
-
-## v1.1.401 - Licence Info panel cleanup
-
-- Cleaned the **Your Expiration / Licence Info** panel.
-- Removed the **Bonus system: Removed** card.
-- Removed the bottom note explaining that bonuses were removed.
-- The panel now only shows current licence details and the base 15 days per Xanax licence rate.
-
-## v1.1.400 - Faction Warfare header launcher
-
-- Moved the RWPH launcher away from Torn's left **Areas** sidebar.
-- The launcher now mounts directly to the left of the top **Faction Warfare** button on supported faction pages.
-- The launcher now shows the RWPH logo plus **Ranked War Payout Helper** text and copies the nearby Faction Warfare button styling.
-- Removed the visible page-corner fallback so the launcher will not jump to the wrong corner if Torn renders the header late.
-
-## v1.1.399 - Fixed Areas launcher visibility
-
-- Improved Torn left-navigation detection so the launcher can find **Areas** even when Torn wraps it in different sidebar elements.
-- Added stronger faction and ranked-war report URL checks.
-- Added a faction-page-only fallback launcher position so the button still appears if Torn loads the sidebar late or changes the Areas markup.
-- The launcher still stays hidden on non-faction pages.
-
-
-## v1.1.397 - Static faction-page launcher beside Areas
-
-- Changed the RWPH launcher from the old movable floating logo into a static Torn left-navigation button beside the **Areas** text.
-- The launcher is only shown on Torn faction pages and faction/ranked-war report pages.
-- The launcher is removed from other Torn pages.
-- Added a navigation MutationObserver so the button reappears beside **Areas** after Torn page changes or sidebar reloads.
-- Removed the visible Launcher Movement buttons because the launcher position is now fixed.
-
-
-## v1.1.396 - Purchase bonus system removed
-
-- Removed cumulative licence milestone bonuses.
-- Removed single-order licence bonuses.
-- Removed Admin bonus dropdown/add/edit/delete/save controls and `/api/admin/bonus-settings`.
-- Removed bonus progress ticks from the Licence Info panel.
-- Removed the one-time 365 day completion reward and `/api/paywall/claim-completion-bonus`.
-- New Xanax payments now add only the configured base licence days, currently 15 days per Xanax.
-- Existing licence expiry time is not reduced or recalculated.
-
-
-## v1.1.412 - Decimal billion/trillion shorthand hardening
-
-- Hardened shorthand parsing so decimal billion/trillion payout entries convert exactly before calculation.
-- Confirmed examples: `346.1b` -> `$346,100,000,000`, `346.21b` -> `$346,210,000,000`, and `346.99b` -> `$346,990,000,000`.
-- Confirmed examples: `346.1t` -> `$346,100,000,000,000`, `346.21t` -> `$346,210,000,000,000`, and `346.99t` -> `$346,990,000,000,000`.
-- Kept the existing **Member Payout** label unchanged.
-- Updated package version to **1.1.412**.
-
-## v1.1.411 - Money shorthand payout inputs
-
-- Basic and Advanced **Member Payout** and **Total Payout** fields now accept shorthand money values.
-- Supported examples include `346m`, `346.1m`, `346.21m`, `346.99m`, `346b`, and `346t`.
-- Payout inputs now format as `$` values with commas, such as `$346,000,000`.
-- Kept the existing **Member Payout** label unchanged.
-- Updated package version to **1.1.411**.
-
-## v1.1.395 - Locked 365 day completion reward
-
-- Added a locked **365 Day Completion Bonus** button to the Licence Info panel.
-- The button unlocks only after the user has completed every enabled user milestone bonus and every enabled single-order bonus.
-- Claiming the reward adds **365 days** onto the current licence expiry. It does not replace or reset the existing licence time.
-- The reward is server-tracked as one-time per Torn ID so it cannot be claimed repeatedly.
-
-## v1.1.394 - Licence info panel and bonus completion ticks
-
-- Changed the **Your Expiration** button so it opens a movable/resizable licence info panel instead of showing the expiry details in popup/toast messages.
-- The new panel shows the active licence status, expiry date, time left, lifetime Xanax paid, largest single order, and last recorded payment.
-- Added all configured user milestone bonuses to the panel with tick marks for completed milestones.
-- Added all configured single-order bonuses to the panel with tick marks only for the highest single-order tier completed by a past payment.
-- The panel explains that milestone bonuses use bonus-eligible lifetime Xanax total, while single-order bonuses use the highest qualifying tier per payment.
-- Added bonus completion data to the normal licence verification response so users can see their own progress without admin access.
-
-
-## v1.1.410 - Buy/Extend current-tab Xanax navigation
-
-- Changed **Buy Licence** and **Extend Licence** so they no longer open a new tab.
-- The current Torn tab now changes to the Xanax item-send page after the payment code is created.
-- Existing pending payment codes still reopen the Xanax helper flow, but in the current tab.
-- Updated package version to **1.1.410**.
-
-## v1.1.409 - Phone/PDA logo-only launcher
-
-- Phone/Torn PDA launcher now shows the RWPH logo only, with no text beside it.
-- PC/desktop launcher still shows the logo plus **Ranked War Payout Helper** text.
-- Mobile launcher fallback is now a compact round logo button.
-- Launcher visibility rules are unchanged: it only appears on supported faction and faction-war report pages.
-- Updated package version to **1.1.409**.
-
-## v1.1.407 - Theme picker scroll, move/resize, and unique styles
-
-- Fixed the Theme / Colour picker so the theme list has its own internal scrollbar.
-- The Theme / Colour picker now uses the same move, resize, and close behaviour as the main RWPH panels.
-- Added themed scrollbar styling to the Theme / Colour picker body.
-- Added a different visual style to every theme, including different panel shapes, card shapes, button shapes, border styles, texture overlays, and button text styling.
-- Theme buttons now show the colour name and its style name so each preset is easier to tell apart.
-- Updated package version to **1.1.407**.
-
-## v1.1.406 - Extra panel themes and colours
-
-- Added 14 more selectable Panel Theme / Colours presets.
-- New themes include Midnight Black, Lava Orange, Arctic Ice, Toxic Lime, Sunset Glow, Cyberpunk Pink, Emerald Glow, Ruby Blood, Aqua Teal, Amber Noir, Violet Storm, Desert Sand, Ghost White, and Royal Gold.
-- Theme picker still saves the selected theme per browser/PDA.
-- Extra themes apply to RWPH panels, helpers, dropdowns, buttons, popups, loading/results panels, and payment/newsletter tool panels.
-- Updated package version to **1.1.406**.
-
-## v1.1.405 - Export HTML download and themed popups
-
-- Fixed Results page **Export Html** with stronger download fallbacks.
-- Added a parent-window download bridge so results opened inside the RWPH panel can download from the main Torn page instead of the iframe.
-- Added Blob, data-link, and userscript download fallbacks where available.
-- RWPH popup/toast panels now follow the selected panel theme colours.
-- Updated package version to **1.1.405**.
-
-## v1.1.404 - Bigger panel logos
-
-- Made the RWPH logo much larger in the top/header area of the script panels.
-- Enlarged the main/locked/admin/help panel header logo.
-- Enlarged the Xanax helper/payment review panel header logos.
-- Enlarged the Licence Info panel logo.
-- Enlarged the results/loading page header logos.
-- Updated package version to **1.1.404**.
-
-## v1.1.403 - First-open tutorial panel
-
-- Added first-time tutorial auto-open on supported Torn faction pages.
-- When a user opens a faction page after installing/updating with no prior tutorial marker, RWPH opens the panel automatically.
-- The panel switches to the Help tab and expands the **Step-by-Step Tutorial** dropdown.
-- A local browser/PDA flag prevents the tutorial from popping up repeatedly after it has been shown once.
-- Updated package version to **1.1.403**.
-
-## v1.1.402 - Built-in tutorial
-
-- Added a new **Step-by-Step Tutorial** dropdown inside the Help tab.
-- Tutorial covers opening RWPH, saving the API key, unlocking/buying a licence, choosing Basic/Advanced calculations, setting war times, calculating, reviewing results, and manually using payment/newsletter tools.
-- Updated package version to **1.1.402**.
-
-
-## v1.1.428 - Theme/Colour changer removed
-
-- Continued from the safe **v1.1.421 PC logo match with name** base.
-- Removed the **Panel Theme / Colours** button from the main panel.
-- Removed the Theme/Colour changer panel from the active UI.
-- Cleared old saved panel-theme choices and forced RWPH back to the fixed default panel style.
-- Kept PC launcher logo/name behaviour from v1.1.421.
-- Kept PDA/phone logo-only, no-scroll-follow launcher behaviour.
-- Kept the v1.1.418 Member Management fixes.
-- Updated README, terms, server version, package version, and userscript version.
-
-## v1.1.421 - PC launcher logo match with name
-
-- PC launcher still stays beside **Faction Warfare**.
-- PC launcher now uses the same larger logo style as the PDA launcher, while still showing the **Ranked War Payout Helper** name beside it.
-- PDA/phone launcher remains **logo only** and page-anchored so it does not follow while scrolling.
-- Updated README, terms, server version, package version, and userscript version.
-
-## v1.1.420 - PDA launcher no-scroll-follow fix
-
-- PDA/phone launcher remains logo-only.
-- Changed PDA/phone launcher mounting so it is anchored to the faction page/header position instead of the sticky/mobile header.
-- Fixed the PDA issue where the launcher logo followed down the screen while scrolling faction pages.
-- PC launcher placement beside Faction Warfare is unchanged.
-- Kept the v1.1.418 Member Management fixes and the v1.1.419 PDA logo-only header detection.
-- Updated README, terms, server version, package version, and userscript version.
-
-## v1.1.419 - PDA logo-only header launcher restored
-
-- Restored the v1.1.414 PDA/phone launcher logic into the v1.1.418 build.
-- PC launcher placement stays beside Faction Warfare and keeps the logo plus `Ranked War Payout Helper` text.
-- PDA/phone launcher is logo-only and can detect Torn layouts where Faction Warfare is rendered as an icon/link without visible text.
-- Kept the v1.1.418 Member Management card fit and sticky-control fixes.
-- Updated package, userscript, and server version numbers.
-
-## v1.1.418 - Member Management card layout and sticky controls
-- Reworked Member Management member cards so names, IDs, stats, remove checkbox, payable-hit removal, and respect removal fit cleanly inside the panel.
-- Improved the Member Management card grid so it safely drops to one column when the panel is too narrow instead of cramping or overflowing.
-- Made the Refresh, Save, Clear, and status area sticky at the top of the Member Management panel while scrolling through members.
-- Fit patch: changed the Member Management panel body to a flex scroll area with extra bottom padding so the last player card is not clipped off the bottom.
-- Fit patch: moved the Refresh, Save, Clear, and status section up into an opaque sticky strip so member cards cannot show through it while scrolling.
-- Kept the v1.1.417 Payments Copy tab isolation fix.
-- Package version remains **1.1.418** as requested.
-
-## v1.1.417 - Payments Copy tab isolation fix
-- Payments Copy tab now suppresses Results, Loading, main RWPH, export, and newsletter panels.
-- The payment handoff tab now opens only the Payments Copy Panel.
-- Kept the v1.1.416 Member Management move/resize/close controls and compact layout.
-- Updated package version to **1.1.417**.
-
-## v1.1.415 - Payments tab and compact panel patch
-
-- Payments opened from Results now force a copy-panel-only Torn faction-control tab so the main/results RWPH panel does not restore in the new tab.
-- Member Management default size and cards are more compact again.
-- Payment Copy Panel header spacing was adjusted so the top helper text is not blocked by the close button.
-- Updated package version to **1.1.415**.
-
-## v1.1.414 - Member Management panel display and compact layout
-
-- Fixed the Member Management panel so it opens as a solid themed panel instead of appearing transparent.
-- Forced the Member Management panel above the main RWPH panel when opened.
-- Made the default Member Management panel size smaller.
-- Tightened the panel spacing and member card layout so the panel is more compact.
-- Updated package version to **1.1.414**.
-
-
-## v1.1.413 - Member Management and Respect Controls
-
-- Added Member Management buttons to Basic and Advanced calculations.
-- Member Management loads ranked-war report members for the selected war/time window.
-- Each member card can fully exclude the member, remove payable hits, or subtract respect.
-- Saved Member Management settings apply to calculations for 20 minutes, then reset to defaults.
-- Added Basic Respect checkbox and Advanced Respect Score settings.
-
-
-## v1.1.433 - Crimson Ledger help tab and bottom-right popups
-
-- Fixed Crimson Ledger Cards so the Help tab stays visible at the top of locked and main panels.
-- RWPH popup notifications now pin to the bottom-right above Torn message buttons instead of following panel positions.
-
-## v1.1.431 - Three extra fitted layout/theme profiles
-
-- Added three more full layout/theme profiles to the Layout / Theme panel: Neon Forge Grid, Crimson Ledger Cards, and Frostline Minimal.
-- Each new layout/theme changes colours, panel shape, card layout, button style/positioning, tab layout, calculation controls, inputs, checkboxes, dropdowns, payment rows, member cards, results cards, and popup notifications.
-- Added fit safety so the new layouts stay inside panels on PC, phone, and Torn PDA.
-- Kept the existing Default RWPH Bronze and Advanced Aurora Command layouts.
-
-## v1.1.430 - Advanced Aurora layout fit polish
-
-- Polished the second Advanced Aurora layout/theme so it fits all panels more cleanly.
-- Tightened panel widths, max heights, scroll bodies, grid wrapping, button rows, calculation controls, input sizing, Payments Copy Panel rows, Member Management cards, Results cards, and popup notifications.
-- Kept the safe two-layout switcher and did not bring back the broken multi-theme system.
-
-## v1.1.429 - Safe Layout / Theme switcher added
-
-- Added a new **Layout / Theme** button inside the main RWPH panel.
-- Added a new floating **Layout / Theme** panel with two options: default RWPH Bronze and the new Advanced Aurora Command layout.
-- Advanced Aurora Command changes the full panel layout, colour scheme, buttons, tabs, calculation controls, sections, cards, inputs, checkboxes/dropdowns, payment/member panels, and popup notifications.
-- Kept the safer v1.1.428 base and avoided the broken multi-theme rebuild system.
-- Kept v1.1.421 PC launcher logo/name, PDA logo-only launcher, PDA no-scroll-follow, and Member Management fixes.
-
-
-## v1.1.440 - Theme / Colours restored, layout switcher removed
-
-- Removed the full **Layout/Theme** layout-switching system and forced RWPH back to the default layout.
-- Restored the **Theme / Colours** button and floating panel as a colour-only system.
-- Added many colour themes while keeping the default panel layout, sizing, moving, resizing, and scrolling behaviour.
-- Kept the separate Logo Selector panel and PC launcher logo-only fix.
-
-## v1.1.440 - PC launcher logo-only renderer
-
-- Forced the PC launcher renderer to return only the selected logo image.
-- Added stronger launcher CSS to hide any leftover launcher title spans.
-
-## v1.1.440 - Global button colours and bigger panel logos
-
-- Theme / Colours now applies button colours to all RWPH panels, including Payment Copy, Payment Helper, Member Management, Results, Logo Selector, Theme / Colours, floating panels, and popup notifications.
-- Enlarged the selected RWPH logo across main panels, Payment Copy Panel, Payment Helper Panel, Member Management, results/loading panels, floating panels, and popup notifications.
-- Added selected logo display inside RWPH popup notifications.
+## Current Version Summary — v1.1.461
+
+RWPH v1.1.461 currently combines:
+
+- Standalone Cloudflare Worker + Aiven MySQL backend.
+- Backend-verified licences and Xanax payment challenges.
+- One-time 7-day trial.
+- Basic per-hit calculations.
+- Basic Fast Mode.
+- Advanced points calculations.
+- Optional `?` Advanced setup guide inside the Advanced header.
+- Member Management.
+- Ranked-war report + attack-log hybrid processing.
+- Faster `attacksfull` attack retrieval with compatibility fallback.
+- Warm attack-range reuse between calculations.
+- Backend/database cached reports.
+- Cached-report deletion cooldown.
+- Results/loading workflow.
+- Payments Copy Panel.
+- Export/newsletter helpers.
+- Theme / Colours and custom colour picker.
+- Logo Selector.
+- Movable/resizable panels with resize-based text scaling.
+- Desktop/PDA/phone launcher/layout handling.
+- Admin licence tools.
+- Reduced unnecessary backend polling/requests.
 
