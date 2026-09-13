@@ -19,32 +19,6 @@ Author: **Evil_Panda_420**
 
 ---
 
-## Current Architecture
-
-RWPH now uses the standalone Cloudflare/MySQL backend introduced in v1.1.454:
-
-```text
-RWPH userscript
-      ↓
-Cloudflare Worker (rwph-backend)
-      ↓
-Cloudflare Hyperdrive (HYPERDRIVE)
-      ↓
-Aiven MySQL (defaultdb)
-```
-
-The Cloudflare Worker handles licence verification, licence payments, Torn API requests used by calculations, report caching, calculation progress, exports, and admin functions.
-
-Persistent backend data is stored in normalized MySQL tables. The old `paywall-db.json` is retained only as an optional legacy import source and is **not** the live database.
-
-For backend installation, see:
-
-- `TAKEOVER_INSTALL.md`
-- `backend/BACKEND_SETUP.md`
-- `backend/MYSQL_DATABASE_SETUP.md`
-
----
-
 ## What Changed Recently
 
 ### v1.1.461 — Advanced guide button placement
