@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.459
+// @version      1.1.460
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,7 +20,7 @@
 (function () {
   "use strict";
 
-  // v1.1.459: simplified Advanced Calculation Settings with guided setup sections, plain-English explanations/examples, and a Restore Recommended Defaults button without changing calculation rules.
+  // v1.1.460: restored the compact Advanced Calculations layout by default and added a small ? guide toggle beside Open Logo Selector that switches the same live Advanced controls into the detailed v1.1.459 guided setup view without changing calculation rules.
   // v1.1.457: sped up calculations with a 1,000-row Torn attacksfull fast path, fixed attack-range cache keys, whole-war attack reuse between Basic/Advanced, and safer faster Torn request pacing with automatic compatibility fallback.
   // v1.1.456: reduced unnecessary backend traffic by coalescing duplicate requests, checking report caches only for the calculation dropdown being used, skipping idle pending-payment lookups on the unlocked panel, and removing duplicate results-progress polling.
   // v1.1.455: resizing any supported RWPH panel from a corner now scales its text and line-height with the panel size, including button/input text, and remembers that text scale with the saved panel layout.
@@ -3767,132 +3767,6 @@
         border-bottom:0!important;
         border-radius:9px 0 0 0!important;
       }
-      /* v1.1.459: easier-to-understand Advanced Calculation Settings */
-      #rw-payout-helper .rw-advanced-easy-guide,
-      #rw-payout-helper .rw-advanced-setting-card,
-      #rw-payout-helper .rw-advanced-ready-box{
-        grid-column:1 / -1!important;
-        box-sizing:border-box!important;
-        min-width:0!important;
-        border:1px solid var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-card-radius)!important;
-        background:linear-gradient(145deg,var(--rwph-theme-panel2),var(--rwph-theme-panel))!important;
-        color:var(--rwph-theme-text)!important;
-        padding:11px!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 8px 18px rgba(0,0,0,.18)!important;
-      }
-      #rw-payout-helper .rw-advanced-easy-guide{
-        border-color:var(--rwph-theme-line2)!important;
-        background:linear-gradient(145deg,var(--rwph-theme-panel3),var(--rwph-theme-panel2))!important;
-      }
-      #rw-payout-helper .rw-advanced-guide-title,
-      #rw-payout-helper .rw-advanced-setting-title{
-        display:flex!important;
-        align-items:center!important;
-        gap:8px!important;
-        color:var(--rwph-theme-gold)!important;
-        font-weight:900!important;
-        letter-spacing:.01em!important;
-        margin:0 0 6px!important;
-      }
-      #rw-payout-helper .rw-advanced-guide-title{font-size:1.08em!important;}
-      #rw-payout-helper .rw-advanced-setting-title{font-size:1.02em!important;}
-      #rw-payout-helper .rw-advanced-guide-text,
-      #rw-payout-helper .rw-advanced-setting-help,
-      #rw-payout-helper .rw-advanced-default-summary,
-      #rw-payout-helper .rw-advanced-example,
-      #rw-payout-helper .rw-advanced-field-help,
-      #rw-payout-helper .rw-advanced-label-hint{
-        color:var(--rwph-theme-soft)!important;
-      }
-      #rw-payout-helper .rw-advanced-guide-text,
-      #rw-payout-helper .rw-advanced-setting-help,
-      #rw-payout-helper .rw-advanced-default-summary,
-      #rw-payout-helper .rw-advanced-example{
-        line-height:1.45!important;
-      }
-      #rw-payout-helper .rw-advanced-guide-steps{
-        display:grid!important;
-        grid-template-columns:repeat(2,minmax(0,1fr))!important;
-        gap:6px!important;
-        margin:9px 0!important;
-      }
-      #rw-payout-helper .rw-advanced-guide-steps > span{
-        display:block!important;
-        min-width:0!important;
-        padding:7px 8px!important;
-        border:1px solid var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-button-radius)!important;
-        background:var(--rwph-theme-bg2)!important;
-        color:var(--rwph-theme-text)!important;
-      }
-      #rw-payout-helper .rw-advanced-default-summary,
-      #rw-payout-helper .rw-advanced-example{
-        margin-top:8px!important;
-        padding:8px 9px!important;
-        border-left:3px solid var(--rwph-theme-gold)!important;
-        background:var(--rwph-theme-bg2)!important;
-        border-radius:0 var(--rwph-theme-button-radius) var(--rwph-theme-button-radius) 0!important;
-      }
-      #rw-payout-helper .rw-advanced-guide-actions{margin-top:9px!important;}
-      #rw-payout-helper .rw-advanced-step-number{
-        display:inline-flex!important;
-        align-items:center!important;
-        justify-content:center!important;
-        flex:0 0 auto!important;
-        width:24px!important;
-        height:24px!important;
-        border-radius:999px!important;
-        background:linear-gradient(135deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;
-        color:var(--rwph-theme-bg)!important;
-        font-weight:900!important;
-      }
-      #rw-payout-helper .rw-advanced-setting-card > .rw-row{margin-top:9px!important;}
-      #rw-payout-helper .rw-advanced-setting-card label{
-        display:flex!important;
-        flex-direction:column!important;
-        gap:5px!important;
-        min-width:0!important;
-        color:var(--rwph-theme-text)!important;
-        font-weight:800!important;
-      }
-      #rw-payout-helper .rw-advanced-recommended{
-        display:inline-block!important;
-        width:max-content!important;
-        max-width:100%!important;
-        padding:2px 6px!important;
-        border:1px solid var(--rwph-theme-line)!important;
-        border-radius:999px!important;
-        color:var(--rwph-theme-gold)!important;
-        background:var(--rwph-theme-bg2)!important;
-        font-size:.82em!important;
-        font-weight:800!important;
-      }
-      #rw-payout-helper .rw-advanced-field-help,
-      #rw-payout-helper .rw-advanced-label-hint{
-        display:block!important;
-        font-size:.84em!important;
-        font-weight:600!important;
-        line-height:1.35!important;
-      }
-      #rw-payout-helper .rw-advanced-ff-toggle{
-        margin-top:9px!important;
-        padding:8px!important;
-        border:1px solid var(--rwph-theme-line)!important;
-        border-radius:var(--rwph-theme-button-radius)!important;
-        background:var(--rwph-theme-bg2)!important;
-      }
-      #rw-payout-helper .rw-advanced-ready-box{
-        border-color:var(--rwph-theme-green)!important;
-        color:var(--rwph-theme-text)!important;
-      }
-      #rw-payout-helper .rw-advanced-ready-box b{color:var(--rwph-theme-green)!important;}
-      @media (max-width:700px), (pointer:coarse){
-        #rw-payout-helper .rw-advanced-guide-steps{grid-template-columns:minmax(0,1fr)!important;}
-        #rw-payout-helper .rw-advanced-easy-guide,
-        #rw-payout-helper .rw-advanced-setting-card,
-        #rw-payout-helper .rw-advanced-ready-box{padding:9px!important;}
-      }
       @media (max-width:700px), (pointer:coarse){
         #rwph-layout-theme-panel{
           left:7px!important;
@@ -5640,6 +5514,80 @@
       rwphOpenLogoPicker();
     });
     rwphApplyLogoChoice();
+  }
+
+
+  function rwphSetAdvancedGuideMode(enabled, openAdvanced = false) {
+    const panel = document.getElementById("rw-payout-helper");
+    if (!panel) return;
+    const active = !!enabled;
+    panel.classList.toggle("rwph-advanced-guide-active", active);
+    const toggle = panel.querySelector("#rw-advanced-guide-toggle");
+    if (toggle) {
+      toggle.setAttribute("aria-pressed", active ? "true" : "false");
+      toggle.title = active ? "Hide the easy Advanced Calculations setup guide" : "Show the easy Advanced Calculations setup guide";
+      toggle.classList.toggle("primary", active);
+      toggle.classList.toggle("secondary", !active);
+    }
+    const run = panel.querySelector("#rw-points-run");
+    if (run) run.textContent = active ? "Calculate Advanced Payout" : "Calculate";
+    if (openAdvanced && active) {
+      const details = panel.querySelector("details.rw-points-settings");
+      if (details) {
+        details.open = true;
+        try { details.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (_) {}
+      }
+    }
+  }
+
+  function rwphRestoreAdvancedRecommendedDefaults() {
+    const recommended = {
+      "rw-point-war-hit": "10",
+      "rw-point-assist": "3",
+      "rw-point-outside": "2",
+      "rw-point-retal": "0.2",
+      "rw-point-hospital": "2",
+      "rw-point-enemy-hospital": "-1",
+      "rw-point-respect": "0.01",
+      "rw-point-respect-step": "0.01",
+      "rw-point-fair-fight-avg-step": "0.02",
+      "rw-point-fair-fight-bonus-step": "0.01",
+    };
+    Object.entries(recommended).forEach(([id, value]) => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const ffToggle = document.getElementById("rw-point-fair-fight");
+    if (ffToggle) {
+      ffToggle.checked = true;
+      ffToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    rwphToastPanelInfo(document.getElementById("rw-status"), "Advanced settings restored to the recommended defaults. War times, payout amounts, and Member Management were not changed.", "info", "RWPH Advanced");
+  }
+
+  function attachAdvancedGuideToggleButton() {
+    const panel = document.getElementById("rw-payout-helper");
+    const btn = panel?.querySelector("#rw-advanced-guide-toggle");
+    if (btn && btn.dataset.rwphAdvancedGuideReady !== "1") {
+      btn.dataset.rwphAdvancedGuideReady = "1";
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        rwphSetAdvancedGuideMode(!panel.classList.contains("rwph-advanced-guide-active"), true);
+      });
+    }
+    const reset = panel?.querySelector("#rw-points-reset-recommended");
+    if (reset && reset.dataset.rwphAdvancedResetReady !== "1") {
+      reset.dataset.rwphAdvancedResetReady = "1";
+      reset.addEventListener("click", (event) => {
+        event.preventDefault();
+        rwphRestoreAdvancedRecommendedDefaults();
+      });
+    }
+    rwphSetAdvancedGuideMode(false, false);
   }
 
 
@@ -16342,13 +16290,10 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Advanced Calculations</div>
             <ul class="rw-how-list">
-              <li><b>Best for:</b> payout splits where different actions are worth different amounts instead of every hit counting the same.</li>
-              <li><b>Easy setup:</b> if you are unsure, leave the recommended defaults alone, choose the war/time, enter Member Payout, and calculate.</li>
-              <li><b>Main points:</b> War Hit 10, Assist 3, Outside Hit 2, and War Retal +0.2 are the recommended starting values.</li>
-              <li><b>Hospital bonuses:</b> Own-Faction Hospital is +2 by default. Enemy War-Faction Hospital is -1 by default and can be negative, zero, or positive.</li>
-              <li><b>Respect Score:</b> default 0.01 points per 0.01 respect means the respect value is effectively added 1-for-1 as Advanced points.</li>
-              <li><b>Fair Fight:</b> default settings add +0.01 point per payable hit for every +0.02 Avg FF above 1.00, capped at Avg FF 3.00. Untick it to disable FF scoring.</li>
-              <li><b>Restore Recommended Defaults:</b> resets only the Advanced point settings; it does not change the selected war, payout amount, or Member Management choices.</li>
+              <li><b>Best for:</b> payout splits based on contribution points instead of simple hit counts.</li>
+              <li><b>Point values:</b> set values for war hits, assists, outside hits, retals, hospital bonuses, enemy hospital bonuses, and fair-fight bonus.</li>
+              <li><b>Negative enemy hospital bonus:</b> enemy war-faction hospital bonus can be negative when you want to punish that action.</li>
+              <li><b>Fair-fight modifier:</b> when enabled, Avg FF over 1.00 can add bonus points per payable hit. It is capped at 3.00.</li>
               <li><b>Member Management:</b> Advanced has its own member management settings and recalculates points payouts after exclusions or payable-hit/respect removals.</li>
             </ul>
           </div>
@@ -16438,6 +16383,7 @@
     attachMoveLauncherButton();
     attachPanelThemeButton();
     attachLogoPickerButton();
+    attachAdvancedGuideToggleButton();
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
 
@@ -16778,7 +16724,10 @@
               </div>
               <div class="rwph-theme-logo-control-block">
                 <div class="rw-muted rwph-theme-logo-current-label">Current logo: <span id="rw-current-logo-label">${esc(rwphLogoChoiceLabel())}</span></div>
-                <button id="rw-open-logo-picker" class="secondary" type="button">Open Logo Selector</button>
+                <div class="rwph-logo-selector-action-row">
+                  <button id="rw-open-logo-picker" class="secondary" type="button">Open Logo Selector</button>
+                  <button id="rw-advanced-guide-toggle" class="secondary rw-advanced-guide-toggle" type="button" title="Show the easy Advanced Calculations setup guide" aria-label="Advanced Calculations setup guide" aria-pressed="false">?</button>
+                </div>
               </div>
             </div>
           </div>
@@ -16837,14 +16786,20 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title">Advanced Calculations</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-advanced-easy-guide">
+              <div class="rw-calc-brief"><b>Advanced:</b> splits Member Payout by points from war/assist/outside/retal/hospital and Avg FF settings.</div>
+              <div class="rw-cache-tools rw-mode-cache-tools">
+                <div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
+                <div id="rw-cache-status-points" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
+              </div>
+
+              <div class="rw-advanced-guide-only rw-advanced-easy-guide">
                 <div class="rw-advanced-guide-title">Easy Advanced Setup</div>
                 <div class="rw-advanced-guide-text">Advanced mode gives each member <b>points for what they did</b>, then splits the Member Payout using each member's share of the final points.</div>
                 <div class="rw-advanced-guide-steps">
-                  <span><b>1.</b> Pick the war/time.</span>
-                  <span><b>2.</b> Enter the payout.</span>
-                  <span><b>3.</b> Set how many points each action is worth.</span>
-                  <span><b>4.</b> Leave the recommended defaults if you are unsure.</span>
+                  <span><b>1.</b> Pick the finished war/time.</span>
+                  <span><b>2.</b> Enter the Member Payout pool.</span>
+                  <span><b>3.</b> Leave the recommended point values alone unless you want different weighting.</span>
+                  <span><b>4.</b> Click Calculate and RWPH splits the pool by each member's points.</span>
                 </div>
                 <div class="rw-advanced-default-summary"><b>Recommended defaults:</b> War Hit 10 · Assist 3 · Outside 2 · War Retal +0.2 · Own Hosp +2 · Enemy Hosp -1 · Respect 0.01 per 0.01 · FF +0.01 per hit for every +0.02 Avg FF.</div>
                 <div class="rw-actions rw-advanced-guide-actions">
@@ -16852,14 +16807,9 @@
                 </div>
               </div>
 
-              <div class="rw-cache-tools rw-mode-cache-tools">
-                <div class="rw-calc-brief"><b>Cache:</b> RWPH checks for a matching Advanced report when this section is opened or its calculation settings change.</div>
-                <div id="rw-cache-status-points" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
-              </div>
-
-              <div class="rw-advanced-setting-card">
-                <div class="rw-advanced-setting-title"><span class="rw-advanced-step-number">1</span><span>War &amp; Payout</span></div>
-                <div class="rw-advanced-setting-help">Choose the ranked war you want to calculate, then enter the money that should be split between eligible members.</div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="1">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">1</span><span>War &amp; Payout</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Choose the finished ranked-war time range, then enter the amount you want shared between eligible members.</div>
                 <div class="rw-row">
                   <label>War start date/time
                     <input id="rw-points-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
@@ -16872,105 +16822,108 @@
                   <button id="rw-points-autofill" class="secondary" type="button" data-rwph-autofill-mode="points">Auto-fill Last Finished War</button>
                 </div>
                 <div class="rw-row">
-                  <label>Member Payout <span class="rw-advanced-label-hint">Amount actually split between members</span>
+                  <label>Member Payout <span class="rw-advanced-guide-only-inline rw-advanced-label-hint">Pool divided by Advanced points</span>
                     <input id="rw-points-total" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                   </label>
-                  <label>Total Payout <span class="rw-advanced-label-hint">Reference total only</span>
+                  <label>Total Payout <span class="rw-advanced-guide-only-inline rw-advanced-label-hint">Reference total only</span>
                     <input id="rw-points-total-overall" type="text" value="$100,000,000" inputmode="decimal" autocomplete="off" spellcheck="false">
                   </label>
                 </div>
-                <div class="rw-advanced-example"><b>Example:</b> If Member Payout is $1b and a member earns 10% of all Advanced points, that member receives $100m.</div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>Example:</b> If Member Payout is $1b and a member earns 10% of all Advanced points, that member receives $100m.</div>
               </div>
 
-              <div class="rw-advanced-setting-card">
-                <div class="rw-advanced-setting-title"><span class="rw-advanced-step-number">2</span><span>Member Adjustments</span></div>
-                <div class="rw-advanced-setting-help">Optional. Use this only when you need to exclude someone or manually remove payable hits/respect before the points are recalculated.</div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="2">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">2</span><span>Member Adjustments</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Optional. Use this only when you need to exclude someone or manually remove payable hits/respect before the points are recalculated.</div>
                 <div class="rw-actions rw-member-management-actions">
-                  <button id="rw-points-member-management" class="secondary" type="button" data-member-management-mode="points">Open Member Management</button>
+                  <button id="rw-points-member-management" class="secondary" type="button" data-member-management-mode="points">Member Management</button>
                   <span id="rw-points-member-management-summary" class="rw-muted rw-member-management-summary">No member changes selected.</span>
                 </div>
                 <textarea id="rw-points-excluded-members" rows="1" hidden style="display:none"></textarea>
+                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Open Member Management to remove a member completely, remove payable hits, or subtract respect from a member before points payouts are recalculated.</div>
               </div>
 
-              <div class="rw-advanced-setting-card">
-                <div class="rw-advanced-setting-title"><span class="rw-advanced-step-number">3</span><span>Main Point Values</span></div>
-                <div class="rw-advanced-setting-help">Higher numbers make that action worth more of the payout. You can leave the recommended values below if you do not want to customise the weighting.</div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="3">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">3</span><span>Main Point Values</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Higher numbers make that action worth more of the payout. Leave the recommended values if you do not want to customise the weighting.</div>
                 <div class="rw-row">
-                  <label>War Hit <span class="rw-advanced-recommended">Recommended: 10</span>
-                    <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0" title="Points for a normal hit on the selected ranked-war opponent.">
-                    <span class="rw-advanced-field-help">A normal hit on the ranked-war opponent.</span>
+                  <label>War hit points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 10</span>
+                    <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">A normal hit on the selected ranked-war opponent.</span>
                   </label>
-                  <label>Assist <span class="rw-advanced-recommended">Recommended: 3</span>
-                    <input id="rw-point-assist" type="number" value="3" step="0.1" min="0" title="Points for an assist.">
-                    <span class="rw-advanced-field-help">Points awarded for an assist.</span>
+                  <label>Assist points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 3</span>
+                    <input id="rw-point-assist" type="number" value="3" step="0.1" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Points awarded for an assist.</span>
                   </label>
                 </div>
                 <div class="rw-row">
-                  <label>Outside Hit <span class="rw-advanced-recommended">Recommended: 2</span>
-                    <input id="rw-point-outside" type="number" value="2" step="0.1" min="0" title="Points for a payable attack that is not a war hit.">
-                    <span class="rw-advanced-field-help">A payable hit that is not against the selected war faction.</span>
+                  <label>Outside hit points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 2</span>
+                    <input id="rw-point-outside" type="number" value="2" step="0.1" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">A payable hit that is not against the selected war faction.</span>
                   </label>
-                  <label>War Retal Bonus <span class="rw-advanced-recommended">Recommended: +0.2</span>
-                    <input id="rw-point-retal" type="number" value="0.2" step="0.1" min="0" title="Extra points added when a retaliation is against the selected war faction.">
-                    <span class="rw-advanced-field-help">Extra points added on top of the war-hit value when the retal is against the war faction.</span>
+                  <label>War-faction retal bonus points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: +0.2</span>
+                    <input id="rw-point-retal" type="number" value="0.2" step="0.1" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Extra points added on top of the war-hit value when the retaliation is against the war faction.</span>
                   </label>
                 </div>
-                <div class="rw-advanced-example"><b>Example:</b> with defaults, a normal war hit is 10 points. A war-faction retal is the normal war hit plus the +0.2 retal bonus.</div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>Example:</b> with defaults, a normal war hit is 10 points. A war-faction retal is the normal war hit plus the +0.2 retal bonus.</div>
               </div>
 
-              <div class="rw-advanced-setting-card">
-                <div class="rw-advanced-setting-title"><span class="rw-advanced-step-number">4</span><span>Hospital Bonuses</span></div>
-                <div class="rw-advanced-setting-help">These are extra points added for verified hospitalizing results. The enemy-war-faction value can be negative if you want it to reduce the member's score.</div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="4">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">4</span><span>Hospital Bonuses</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">These are extra points for verified hospitalizing results. The enemy-war-faction value can be negative if you want it to reduce the member's score.</div>
                 <div class="rw-row">
-                  <label>Own-Faction Hospital Bonus <span class="rw-advanced-recommended">Recommended: +2</span>
-                    <input id="rw-point-hospital" type="number" value="2" step="0.1" min="0" title="Extra points when the hospitalized target is verified as one of your own faction members.">
-                    <span class="rw-advanced-field-help">Extra points for a verified own-faction hospitalizing result.</span>
+                  <label>Own-faction hospital bonus points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: +2</span>
+                    <input id="rw-point-hospital" type="number" value="2" step="0.1" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Extra points for a verified own-faction hospitalizing result.</span>
                   </label>
-                  <label>Enemy War-Faction Hospital Bonus <span class="rw-advanced-recommended">Recommended: -1</span>
-                    <input id="rw-point-enemy-hospital" type="number" value="-1" step="0.1" title="Extra or negative points when the hospitalized target is verified as a member of the selected enemy war faction.">
-                    <span class="rw-advanced-field-help">Use a negative number to subtract points, 0 for no adjustment, or a positive number to reward it.</span>
+                  <label>Enemy war faction hospital bonus points (can be negative) <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: -1</span>
+                    <input id="rw-point-enemy-hospital" type="number" value="-1" step="0.1">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Use a negative number to subtract points, 0 for no adjustment, or a positive number to reward it.</span>
                   </label>
                 </div>
               </div>
 
-              <div class="rw-advanced-setting-card">
-                <div class="rw-advanced-setting-title"><span class="rw-advanced-step-number">5</span><span>Respect Score</span></div>
-                <div class="rw-advanced-setting-help">This converts earned respect into Advanced points. The first box is the points to add; the second box is how much respect earns that amount.</div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="5">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">5</span><span>Respect Score</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">This converts earned respect into Advanced points. The first box is the points to add; the second box is how much respect earns that amount.</div>
                 <div class="rw-row">
-                  <label>Points To Add <span class="rw-advanced-recommended">Recommended: 0.01</span>
-                    <input id="rw-point-respect" type="number" value="0.01" step="0.01" min="0" title="Number of Advanced points awarded for each configured amount of respect.">
-                    <span class="rw-advanced-field-help">How many points the member receives each time the respect amount below is earned.</span>
+                  <label>Respect score to add <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.01</span>
+                    <input id="rw-point-respect" type="number" value="0.01" step="0.01" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">How many points the member receives each time the configured respect amount is earned.</span>
                   </label>
-                  <label>For Every Respect Earned <span class="rw-advanced-recommended">Recommended: 0.01</span>
-                    <input id="rw-point-respect-step" type="number" value="0.01" step="0.01" min="0.01" title="Amount of respect that earns the configured Respect Score points.">
-                    <span class="rw-advanced-field-help">How much respect is needed to earn the points from the first box.</span>
+                  <label>Per respect earned <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.01</span>
+                    <input id="rw-point-respect-step" type="number" value="0.01" step="0.01" min="0.01">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">How much respect is needed to earn the points from the first box.</span>
                   </label>
                 </div>
-                <div class="rw-advanced-example"><b>Default example:</b> 0.01 points for every 0.01 respect means 2.50 respect adds 2.50 Advanced points. Set Points To Add to 0 if you do not want respect to affect payouts.</div>
+                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Default: every <b>0.01</b> respect earned adds <b>0.01</b> score. You can change both the score added and the respect amount.</div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>Default example:</b> 0.01 points for every 0.01 respect means 2.50 respect adds 2.50 Advanced points. Set Respect score to add to 0 if you do not want respect to affect payouts.</div>
               </div>
 
-              <div class="rw-advanced-setting-card">
-                <div class="rw-advanced-setting-title"><span class="rw-advanced-step-number">6</span><span>Fair Fight Bonus</span></div>
-                <div class="rw-advanced-setting-help">Optional. This rewards higher average Fair Fight (Avg FF). Avg FF 1.00 gives no bonus and the calculation is capped at Avg FF 3.00.</div>
-                <div class="rw-compact-check-grid rw-compact-check-grid-single rw-advanced-ff-toggle">
-                  <label><input id="rw-point-fair-fight" type="checkbox" checked> Enable Fair Fight Bonus</label>
+              <div class="rw-advanced-section" data-rwph-advanced-step="6">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">6</span><span>Fair Fight Bonus</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Optional. This rewards higher average Fair Fight (Avg FF). Avg FF 1.00 gives no bonus and the calculation is capped at Avg FF 3.00.</div>
+                <div class="rw-compact-check-grid rw-compact-check-grid-single">
+                  <label><input id="rw-point-fair-fight" type="checkbox" checked> Use fair-fight modifier</label>
                 </div>
                 <div class="rw-row">
-                  <label>Avg FF Increase Per Step <span class="rw-advanced-recommended">Recommended: 0.02</span>
-                    <input id="rw-point-fair-fight-avg-step" type="number" value="0.02" step="0.01" min="0.01" title="Each amount above Avg FF 1.00 counts as one bonus step.">
-                    <span class="rw-advanced-field-help">How far Avg FF must rise above 1.00 for each bonus step.</span>
+                  <label>Avg FF required per bonus step <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.02</span>
+                    <input id="rw-point-fair-fight-avg-step" type="number" value="0.02" step="0.01" min="0.01">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">How far Avg FF must rise above 1.00 for each bonus step.</span>
                   </label>
-                  <label>Bonus Points Per Payable Hit, Per Step <span class="rw-advanced-recommended">Recommended: 0.01</span>
-                    <input id="rw-point-fair-fight-bonus-step" type="number" value="0.01" step="0.01" min="0" title="Extra points per payable hit for each Fair Fight bonus step.">
-                    <span class="rw-advanced-field-help">How many extra points each payable hit gets for every FF step.</span>
+                  <label>Point bonus per payable hit per step <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.01</span>
+                    <input id="rw-point-fair-fight-bonus-step" type="number" value="0.01" step="0.01" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">How many extra points each payable hit gets for every Fair Fight step.</span>
                   </label>
                 </div>
-                <div class="rw-advanced-example"><b>Default example:</b> Avg FF 1.40 is 0.40 above 1.00. At 0.02 per step that is 20 steps, so each payable hit gets +0.20 points. Untick the checkbox to disable this completely.</div>
+                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Avg FF over 1.00 adds the configured bonus per payable hit. Capped at 3.00; untick for no FF bonus.</div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>Default example:</b> Avg FF 1.40 is 0.40 above 1.00. At 0.02 per step that is 20 steps, so each payable hit gets +0.20 points. Untick the checkbox to disable this completely.</div>
               </div>
 
-              <div class="rw-advanced-ready-box"><b>Ready:</b> If you are unsure what to change, leave the recommended values as they are, set the war and payout, then click Calculate.</div>
+              <div class="rw-advanced-guide-only rw-advanced-ready-box"><b>Ready:</b> If you are unsure what to change, leave the recommended values as they are, set the war and payout, then click Calculate.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
-                <button id="rw-points-run" class="secondary" type="button">Calculate Advanced Payout</button>
+                <button id="rw-points-run" class="secondary" type="button">Calculate</button>
                 <button id="rw-use-points-cache" class="secondary" type="button" disabled>Use Cached Report</button>
                 <button id="rw-delete-points-cache" class="danger" type="button" disabled>Delete Cache</button>
               </div>
@@ -17080,13 +17033,10 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Advanced Calculations</div>
             <ul class="rw-how-list">
-              <li><b>Best for:</b> payout splits where different actions are worth different amounts instead of every hit counting the same.</li>
-              <li><b>Easy setup:</b> if you are unsure, leave the recommended defaults alone, choose the war/time, enter Member Payout, and calculate.</li>
-              <li><b>Main points:</b> War Hit 10, Assist 3, Outside Hit 2, and War Retal +0.2 are the recommended starting values.</li>
-              <li><b>Hospital bonuses:</b> Own-Faction Hospital is +2 by default. Enemy War-Faction Hospital is -1 by default and can be negative, zero, or positive.</li>
-              <li><b>Respect Score:</b> default 0.01 points per 0.01 respect means the respect value is effectively added 1-for-1 as Advanced points.</li>
-              <li><b>Fair Fight:</b> default settings add +0.01 point per payable hit for every +0.02 Avg FF above 1.00, capped at Avg FF 3.00. Untick it to disable FF scoring.</li>
-              <li><b>Restore Recommended Defaults:</b> resets only the Advanced point settings; it does not change the selected war, payout amount, or Member Management choices.</li>
+              <li><b>Best for:</b> payout splits based on contribution points instead of simple hit counts.</li>
+              <li><b>Point values:</b> set values for war hits, assists, outside hits, retals, hospital bonuses, enemy hospital bonuses, and fair-fight bonus.</li>
+              <li><b>Negative enemy hospital bonus:</b> enemy war-faction hospital bonus can be negative when you want to punish that action.</li>
+              <li><b>Fair-fight modifier:</b> when enabled, Avg FF over 1.00 can add bonus points per payable hit. It is capped at 3.00.</li>
               <li><b>Member Management:</b> Advanced has its own member management settings and recalculates points payouts after exclusions or payable-hit/respect removals.</li>
             </ul>
           </div>
@@ -17176,6 +17126,7 @@
     attachMoveLauncherButton();
     attachPanelThemeButton();
     attachLogoPickerButton();
+    attachAdvancedGuideToggleButton();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
     const adminTabBtn = document.getElementById("rw-tab-admin");
@@ -17250,33 +17201,6 @@
 
     document.getElementById("rw-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("standard"));
     document.getElementById("rw-points-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("points"));
-    document.getElementById("rw-points-reset-recommended")?.addEventListener("click", () => {
-      const recommended = {
-        "rw-point-war-hit": "10",
-        "rw-point-assist": "3",
-        "rw-point-outside": "2",
-        "rw-point-retal": "0.2",
-        "rw-point-hospital": "2",
-        "rw-point-enemy-hospital": "-1",
-        "rw-point-respect": "0.01",
-        "rw-point-respect-step": "0.01",
-        "rw-point-fair-fight-avg-step": "0.02",
-        "rw-point-fair-fight-bonus-step": "0.01",
-      };
-      Object.entries(recommended).forEach(([id, value]) => {
-        const input = document.getElementById(id);
-        if (!input) return;
-        input.value = value;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-      });
-      const ffToggle = document.getElementById("rw-point-fair-fight");
-      if (ffToggle) {
-        ffToggle.checked = true;
-        ffToggle.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-      rwphToastPanelInfo(document.getElementById("rw-status"), "Advanced settings restored to the recommended defaults. War times, payout amounts, and Member Management were not changed.", "info", "RWPH Advanced");
-    });
 
     const legacyCsvBtn = document.getElementById("rw-csv");
     if (legacyCsvBtn) legacyCsvBtn.addEventListener("click", () => downloadCSV(lastRows));
@@ -18844,8 +18768,178 @@
     }
   }
 
+
+
+  function rwphInjectAdvancedGuideStylesV1460() {
+    try {
+      if (document.getElementById("rwph-advanced-guide-styles-v1460")) return;
+      const style = document.createElement("style");
+      style.id = "rwph-advanced-guide-styles-v1460";
+      style.textContent = `
+        #rw-payout-helper .rwph-logo-selector-action-row{
+          display:flex!important;
+          align-items:stretch!important;
+          gap:6px!important;
+          width:100%!important;
+          min-width:0!important;
+        }
+        #rw-payout-helper .rwph-theme-logo-control-card .rwph-logo-selector-action-row #rw-open-logo-picker{
+          flex:1 1 auto!important;
+          width:auto!important;
+          min-width:0!important;
+        }
+        #rw-payout-helper .rwph-theme-logo-control-card #rw-advanced-guide-toggle{
+          flex:0 0 34px!important;
+          width:34px!important;
+          min-width:34px!important;
+          max-width:34px!important;
+          padding:0!important;
+          margin:0!important;
+          font-size:17px!important;
+          font-weight:950!important;
+          line-height:1!important;
+          display:inline-flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+        }
+        #rw-payout-helper .rw-advanced-guide-only,
+        #rw-payout-helper .rw-advanced-guide-only-inline{
+          display:none!important;
+        }
+        #rw-payout-helper .rw-advanced-section{
+          display:contents!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-only{
+          display:block!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-only-inline{
+          display:inline-block!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-normal-note{
+          display:none!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-easy-guide,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-section,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-ready-box{
+          display:block!important;
+          grid-column:1 / -1!important;
+          box-sizing:border-box!important;
+          min-width:0!important;
+          border:1px solid var(--rwph-theme-line)!important;
+          border-radius:var(--rwph-theme-card-radius)!important;
+          background:linear-gradient(145deg,var(--rwph-theme-panel2),var(--rwph-theme-panel))!important;
+          color:var(--rwph-theme-text)!important;
+          padding:11px!important;
+          margin-top:9px!important;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 8px 18px rgba(0,0,0,.18)!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-easy-guide{
+          border-color:var(--rwph-theme-line2)!important;
+          background:linear-gradient(145deg,var(--rwph-theme-panel3),var(--rwph-theme-panel2))!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-title,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-setting-title{
+          align-items:center!important;
+          gap:8px!important;
+          color:var(--rwph-theme-gold)!important;
+          font-weight:900!important;
+          letter-spacing:.01em!important;
+          margin:0 0 6px!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-setting-title{
+          display:flex!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-title{font-size:1.08em!important;}
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-setting-title{font-size:1.02em!important;}
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-text,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-setting-help,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-default-summary,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-example,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-field-help,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-label-hint{
+          color:var(--rwph-theme-soft)!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-text,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-setting-help,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-default-summary,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-example{
+          line-height:1.45!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-steps{
+          display:grid!important;
+          grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          gap:6px!important;
+          margin:9px 0!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-steps > span{
+          display:block!important;
+          min-width:0!important;
+          padding:7px 8px!important;
+          border:1px solid var(--rwph-theme-line)!important;
+          border-radius:var(--rwph-theme-button-radius)!important;
+          background:var(--rwph-theme-bg2)!important;
+          color:var(--rwph-theme-text)!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-default-summary,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-example{
+          margin-top:8px!important;
+          padding:8px 9px!important;
+          border-left:3px solid var(--rwph-theme-gold)!important;
+          background:var(--rwph-theme-bg2)!important;
+          border-radius:0 var(--rwph-theme-button-radius) var(--rwph-theme-button-radius) 0!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-actions{margin-top:9px!important;}
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-step-number{
+          display:inline-flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          flex:0 0 auto!important;
+          width:24px!important;
+          height:24px!important;
+          border-radius:999px!important;
+          background:linear-gradient(135deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;
+          color:var(--rwph-theme-bg)!important;
+          font-weight:900!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-section > .rw-row{margin-top:9px!important;}
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-recommended{
+          width:max-content!important;
+          max-width:100%!important;
+          padding:2px 6px!important;
+          border:1px solid var(--rwph-theme-line)!important;
+          border-radius:999px!important;
+          color:var(--rwph-theme-gold)!important;
+          background:var(--rwph-theme-bg2)!important;
+          font-size:.82em!important;
+          font-weight:800!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-field-help,
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-label-hint{
+          font-size:.84em!important;
+          font-weight:600!important;
+          line-height:1.35!important;
+          margin-top:4px!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-ready-box{
+          border-color:var(--rwph-theme-green)!important;
+        }
+        #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-ready-box b{color:var(--rwph-theme-green)!important;}
+        @media (max-width:700px), (pointer:coarse){
+          #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-guide-steps{grid-template-columns:minmax(0,1fr)!important;}
+          #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-easy-guide,
+          #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-section,
+          #rw-payout-helper.rwph-advanced-guide-active .rw-advanced-ready-box{padding:9px!important;}
+        }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    } catch (e) {
+      console.warn("RWPH Advanced guide style injection failed:", e);
+    }
+  }
+
   rwphInjectUnifiedPanelThemeV1375();
   rwphInjectThemeLogoControlCardGuardV1452();
+  rwphInjectAdvancedGuideStylesV1460();
 
 
   function rwphInjectPanelTitlesUnderLogoV1450() {
