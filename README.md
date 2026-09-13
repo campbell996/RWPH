@@ -10,10 +10,20 @@
 
 **Ranked War Payout Helper**, also called **RWPH**, is a Torn userscript and Node.js backend package for calculating faction ranked-war payouts. The userscript gives players a floating Torn panel, while the backend verifies licences, checks item payments, fetches Torn ranked-war data, and calculates payouts server-side.
 
-Current package version: **1.1.453**  
+Current package version: **1.1.457**  
 Userscript name: **Ranked War Payout Helper**  
 Userscript namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
+
+
+### v1.1.457 calculation speed improvements
+
+- Uses Torn API v2 `faction/attacksfull` as the preferred attack-fetch path, allowing up to 1,000 attacks per request instead of 100.
+- Automatically falls back to the previous `faction/attacks` flow if `attacksfull` is unavailable for a key/response.
+- Fixed the attack-range memory-cache key so repeated finished-war calculations can actually reuse fetched attack chunks.
+- Saves the fully merged war attack range so Basic and Advanced calculations can share the same fetched data on a warm Worker.
+- Keeps attack-fetch memory for 30 minutes and uses 700ms default Torn request spacing.
+- Payout/calculation rules are unchanged.
 
 ### v1.1.453 custom colour picker
 

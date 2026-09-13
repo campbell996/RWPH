@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.456
+// @version      1.1.457
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -20,6 +20,7 @@
 (function () {
   "use strict";
 
+  // v1.1.457: sped up calculations with a 1,000-row Torn attacksfull fast path, fixed attack-range cache keys, whole-war attack reuse between Basic/Advanced, and safer faster Torn request pacing with automatic compatibility fallback.
   // v1.1.456: reduced unnecessary backend traffic by coalescing duplicate requests, checking report caches only for the calculation dropdown being used, skipping idle pending-payment lookups on the unlocked panel, and removing duplicate results-progress polling.
   // v1.1.455: resizing any supported RWPH panel from a corner now scales its text and line-height with the panel size, including button/input text, and remembers that text scale with the saved panel layout.
   // v1.1.454: backend moved to a standalone Cloudflare Worker + Aiven MySQL service; this build can replace the existing rwph-backend Worker.
