@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.461
+// @version      1.1.462
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -13,13 +13,14 @@
 // @grant        GM_download
 // @grant        GM_setClipboard
 // @connect      api.torn.com
-// @connect      rwph-backend.evilpanda2612.workers.dev
+// @connect      rwph-backend.rankedwarpayouthelper.workers.dev
 // ==/UserScript==
   // v1.1.310: replaced launcher and panel logos with the ranked-war payout logo asset.
 
 (function () {
   "use strict";
 
+  // v1.1.462: updated the production Cloudflare Worker domain to rwph-backend.rankedwarpayouthelper.workers.dev; calculation, licensing, cache, payment, and UI behavior are unchanged.
   // v1.1.461: moved the Advanced Calculations ? guide toggle from the logo controls into the Advanced Calculations dropdown header beside its OPEN status text; guide behavior and calculation logic are unchanged.
   // v1.1.460: restored the compact Advanced Calculations layout by default and added a small ? guide toggle beside Open Logo Selector that switches the same live Advanced controls into the detailed v1.1.459 guided setup view without changing calculation rules.
   // v1.1.457: sped up calculations with a 1,000-row Torn attacksfull fast path, fixed attack-range cache keys, whole-war attack reuse between Basic/Advanced, and safer faster Torn request pacing with automatic compatibility fallback.
@@ -85,7 +86,7 @@
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
-  const PAYWALL_API_BASE = "https://rwph-backend.evilpanda2612.workers.dev";
+  const PAYWALL_API_BASE = "https://rwph-backend.rankedwarpayouthelper.workers.dev";
 
   const STORAGE_KEY = "rw_payout_helper_api_key";
   const PAYWALL_TOKEN_STORAGE_KEY = "rw_payout_helper_license_token";

@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript with a standalone Cloudflare Worker + MySQL backend for calculating ranked-war payouts, managing licences, caching finished reports, and helping faction leaders prepare manual payments.
 
-Current userscript version: **1.1.461**  
+Current userscript version: **1.1.462**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -20,6 +20,13 @@ Author: **Evil_Panda_420**
 ---
 
 ## What Changed Recently
+
+### v1.1.462 — Production Worker domain update
+
+- Production backend URL is now `https://rwph-backend.rankedwarpayouthelper.workers.dev`.
+- The userscript `@connect` permission and backend base URL now point to the new Worker domain.
+- The Wrangler setup helper and takeover-install documentation now use the new address.
+- Calculation formulas, licence logic, cached reports, payments, Member Management, UI behaviour, and backend routes are unchanged.
 
 ### v1.1.461 — Advanced guide button placement
 
@@ -74,6 +81,14 @@ Author: **Evil_Panda_420**
 - A Torn API key with the faction/ranked-war access required by RWPH.
 - An active RWPH licence or unused 7-day trial.
 - Access to the configured RWPH Cloudflare backend.
+
+### For the backend owner
+
+- Cloudflare account with Workers and Hyperdrive.
+- Aiven MySQL database, using `defaultdb` in the supplied setup.
+- Node.js LTS + npm locally for Wrangler/setup scripts.
+- Wrangler login to the Cloudflare account that owns the Worker.
+- A Torn API key belonging to the account that receives Xanax licence payments.
 
 ---
 
@@ -474,6 +489,31 @@ First-time users may be shown the tutorial automatically on supported Torn facti
 
 ---
 
+## Admin Tools
+
+Admin tools are available from both locked and unlocked RWPH panels when a valid admin key is supplied.
+
+Current admin functions include:
+
+- Save/check Admin Key
+- Server/backend status
+- List licences
+- Grant licence
+- Extend licence
+- Remove licence days
+- Owner grant helper
+- Fill selected licence/user information into the admin form
+
+Admin routes are protected by the Cloudflare Worker secret:
+
+```text
+RWPH_ADMIN_KEY
+```
+
+Keep this secret private.
+
+---
+
 ## API Key and Privacy Behaviour
 
 RWPH uses a Torn API key to read the Torn data required for licence identity checks and ranked-war calculations.
@@ -493,6 +533,7 @@ The key is sent to the configured RWPH backend only when required for licence/re
 RWPH never needs your Torn password.
 
 See `RWPH_PRIVACY_AND_API_KEY_TERMS.md` for the package's detailed API-key/privacy terms.
+
 
 ### Calculation is slow
 
@@ -545,15 +586,6 @@ For a userscript-only release:
 1. Replace/update `rwph.user.js` in Tampermonkey/Violentmonkey/Torn PDA.
 2. Refresh Torn.
 
-For a backend release:
-
-1. Update the files in `backend`.
-2. Run the backend checks/tests.
-3. Deploy with Wrangler/the supplied setup helper.
-4. Verify `/health` and `/db-test`.
-
-Versions **1.1.459–1.1.461** are userscript/UI changes built on the v1.1.457 calculation/backend behaviour, so an already-deployed compatible v1.1.457 backend does not need to be redeployed solely for the Advanced help-button changes.
-
 ---
 
 ## Responsible Use
@@ -570,9 +602,9 @@ RWPH produces calculation assistance, not a guarantee that every payout configur
 
 ---
 
-## Current Version Summary — v1.1.461
+## Current Version Summary — v1.1.462
 
-RWPH v1.1.461 currently combines:
+RWPH v1.1.462 currently combines:
 
 - Standalone Cloudflare Worker + Aiven MySQL backend.
 - Backend-verified licences and Xanax payment challenges.
