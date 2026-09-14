@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.467
+// @version      1.1.468
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.467: Presets now zero/disable every Advanced setting they do not use.
+  // v1.1.468: Advanced per-setting help buttons are smaller and sit directly beside each setting label.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -17362,24 +17362,25 @@
           display:inline-flex!important;
           align-items:center!important;
           justify-content:center!important;
-          flex:0 0 20px!important;
-          width:20px!important;
-          min-width:20px!important;
-          max-width:20px!important;
-          height:20px!important;
-          min-height:20px!important;
-          max-height:20px!important;
+          flex:0 0 13px!important;
+          width:13px!important;
+          min-width:13px!important;
+          max-width:13px!important;
+          height:13px!important;
+          min-height:13px!important;
+          max-height:13px!important;
           padding:0!important;
-          margin:0 0 4px 6px!important;
+          margin:0 0 0 3px!important;
           border:1px solid var(--rwph-theme-line2)!important;
           border-radius:999px!important;
           background:linear-gradient(180deg,var(--rwph-theme-panel3),var(--rwph-theme-panel2))!important;
           color:var(--rwph-theme-gold)!important;
-          font:950 12px/1 Arial,Helvetica,sans-serif!important;
-          vertical-align:middle!important;
+          font:950 8px/1 Arial,Helvetica,sans-serif!important;
+          vertical-align:baseline!important;
           cursor:pointer!important;
-          box-shadow:0 2px 7px rgba(0,0,0,.18)!important;
+          box-shadow:0 1px 3px rgba(0,0,0,.16)!important;
           position:relative!important;
+          top:-1px!important;
           z-index:3!important;
         }
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button:hover,
@@ -17391,19 +17392,21 @@
           transform:translateY(-1px)!important;
         }
         #rw-payout-helper details.rw-points-settings label:has(> input[type="checkbox"]) .rwph-setting-help-button{
-          margin:0 0 0 6px!important;
+          margin:0 0 0 3px!important;
         }
         #rw-payout-helper .rw-advanced-section{
           display:contents!important;
         }
         @media (max-width:700px),(pointer:coarse){
           #rw-payout-helper details.rw-points-settings .rwph-setting-help-button{
-            width:22px!important;
-            min-width:22px!important;
-            max-width:22px!important;
-            height:22px!important;
-            min-height:22px!important;
-            max-height:22px!important;
+            width:14px!important;
+            min-width:14px!important;
+            max-width:14px!important;
+            height:14px!important;
+            min-height:14px!important;
+            max-height:14px!important;
+            font-size:8px!important;
+            margin-left:3px!important;
           }
         }
       `;

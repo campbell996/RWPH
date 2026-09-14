@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, reopening cached reports, and preparing manual faction payments.
 
-Current userscript version: **1.1.467**  
+Current userscript version: **1.1.468**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,18 +19,9 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.467
+## What's New in v1.1.468
 
-Advanced presets now fully reset the shared settings when selected. Settings a preset does not use are shown as **0**, **Off/Disabled**, or **None / Disabled** instead of keeping values from the previously selected preset.
-
-Examples:
-- A non-Hybrid preset sets the Hybrid allocation fields to `0`.
-- A preset with no Respect scoring sets Respect values/options to disabled/`0`.
-- A preset with no Fair Fight scoring turns Fair Fight off and sets its mode to `None`.
-- Retal/Overseas modifiers that are not used now show `None / Disabled`.
-- Defence activity settings are `0` unless the Turtling / Defence preset uses them.
-
-You can still change any setting after loading a preset to customise that selected calculation system.
+The small `?` help buttons beside Advanced Calculation settings are now much more compact and sit directly beside the setting name/text. Their help notifications and behaviour are unchanged.
 
 ## Requirements
 
@@ -411,8 +402,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.467
+## Current Version Summary — v1.1.468
 
-RWPH v1.1.467 keeps the shared editable Advanced calculation engine and makes preset switching safer and clearer by resetting unused settings to neutral values.
+RWPH v1.1.468 keeps the v1.1.467 calculation/preset behaviour unchanged and refines the Advanced per-setting help buttons so they are smaller and positioned directly beside each setting label.
 
 Preset selection now produces a clean, easy-to-audit setup: settings the preset uses are filled with its recommended values, while unrelated settings are reset to **0**, **Off**, or **None / Disabled**. The small setting-specific `?` help buttons and theme-matched preset controls remain available, and users can still modify any setting after loading a preset.
