@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.468
+// @version      1.1.469
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.468: Advanced per-setting help buttons are smaller and sit directly beside each setting label.
+  // v1.1.469: Advanced setting help icons are compact inline text-size controls; help popups stay open until closed or toggled.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -683,11 +683,12 @@
     }
   }
 
-  function rwphShowToast(message, mode = "info", ttlMs = 5000, title = "RWPH Info", anchorEl = null) {
+  function rwphShowToast(message, mode = "info", ttlMs = 5000, title = "RWPH Info", anchorEl = null, options = null) {
     try {
       rwphEnsureInfoPopupStyle();
       const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
-      const ttl = 5000; // v1.1.448: all popup notifications auto-close after 5 seconds.
+      const persistent = options?.persistent === true;
+      const ttl = 5000; // All normal RWPH notifications remain fixed at 5 seconds.
       const popupTheme = rwphPopupThemeForMode(safeMode);
       const accent = popupTheme.accent;
       const popupId = "rwph-info-popup-panel-live";
@@ -821,7 +822,7 @@
       popup.appendChild(leftBar);
       popup.appendChild(close);
       popup.appendChild(contentWrap);
-      popup.appendChild(timerBar);
+      if (!persistent) popup.appendChild(timerBar);
       (document.body || document.documentElement).appendChild(popup);
 
       const removePopup = () => {
@@ -853,6 +854,7 @@
       };
 
       popup.__rwphPositionPopup = positionPopup;
+      popup.__rwphClose = removePopup;
       close.addEventListener("click", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -862,16 +864,27 @@
       window.addEventListener("scroll", positionPopup, { passive: true, capture: true });
       positionPopup();
       setTimeout(positionPopup, 60);
-      popup.__rwphRemoveTimer = setTimeout(removePopup, ttl);
+      if (!persistent) popup.__rwphRemoveTimer = setTimeout(removePopup, ttl);
       return popup;
     } catch (err) {
       console.warn("RWPH popup panel failed:", err);
       try {
         const fallback = document.createElement("div");
+        fallback.id = "rwph-info-popup-panel-live";
         fallback.textContent = `${title || "RWPH"}: ${message || "Done."}`;
-        fallback.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:2147483647;max-width:min(420px,calc(100vw - 28px));padding:12px 16px;border-radius:14px;background:#020617;color:#fff7ed;border:1px solid #f59e0b;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 18px 55px rgba(0,0,0,.6);white-space:pre-wrap;overflow-wrap:anywhere;";
+        fallback.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:2147483647;max-width:min(420px,calc(100vw - 28px));padding:12px 34px 12px 16px;border-radius:14px;background:#020617;color:#fff7ed;border:1px solid #f59e0b;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 18px 55px rgba(0,0,0,.6);white-space:pre-wrap;overflow-wrap:anywhere;";
+        if (options?.persistent === true) {
+          const fallbackClose = document.createElement("button");
+          fallbackClose.type = "button";
+          fallbackClose.textContent = "×";
+          fallbackClose.setAttribute("aria-label", "Close RWPH info popup");
+          fallbackClose.style.cssText = "position:absolute;top:5px;right:8px;border:0;background:transparent;color:#fff7ed;font:900 18px/1 Arial,sans-serif;cursor:pointer;";
+          fallbackClose.addEventListener("click", () => fallback.remove(), { once: true });
+          fallback.appendChild(fallbackClose);
+          fallback.__rwphClose = () => fallback.remove();
+        }
         (document.body || document.documentElement).appendChild(fallback);
-        setTimeout(() => fallback.remove(), 5000);
+        if (options?.persistent !== true) setTimeout(() => fallback.remove(), 5000);
         return fallback;
       } catch (_) {
         return null;
@@ -4156,7 +4169,21 @@
       btn.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        rwphShowToast(rwphAdvancedHelpText(help), "info", 5000, help.title || "Advanced Setting", btn);
+        const currentPopup = document.getElementById("rwph-info-popup-panel-live");
+        if (currentPopup?.dataset?.rwphHelpFor === id) {
+          if (typeof currentPopup.__rwphClose === "function") currentPopup.__rwphClose();
+          else currentPopup.remove();
+          return;
+        }
+        const popup = rwphShowToast(
+          rwphAdvancedHelpText(help),
+          "info",
+          5000,
+          help.title || "Advanced Setting",
+          btn,
+          { persistent: true }
+        );
+        if (popup) popup.dataset.rwphHelpFor = id;
       });
 
       const isCheckbox = String(control.type || "").toLowerCase() === "checkbox";
@@ -17357,57 +17384,46 @@
           font-weight:900!important;
         }
 
-        /* Small per-setting help buttons. */
+        /* Compact inline per-setting help buttons: label text followed immediately by ?. */
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button{
-          display:inline-flex!important;
-          align-items:center!important;
-          justify-content:center!important;
-          flex:0 0 13px!important;
-          width:13px!important;
-          min-width:13px!important;
-          max-width:13px!important;
-          height:13px!important;
-          min-height:13px!important;
-          max-height:13px!important;
-          padding:0!important;
-          margin:0 0 0 3px!important;
-          border:1px solid var(--rwph-theme-line2)!important;
-          border-radius:999px!important;
-          background:linear-gradient(180deg,var(--rwph-theme-panel3),var(--rwph-theme-panel2))!important;
+          display:inline!important;
+          flex:0 0 auto!important;
+          width:auto!important;
+          min-width:0!important;
+          max-width:none!important;
+          height:auto!important;
+          min-height:0!important;
+          max-height:none!important;
+          padding:0 1px!important;
+          margin:0 0 0 4px!important;
+          border:0!important;
+          border-radius:0!important;
+          background:transparent!important;
           color:var(--rwph-theme-gold)!important;
-          font:950 8px/1 Arial,Helvetica,sans-serif!important;
+          font:inherit!important;
+          font-size:1em!important;
+          line-height:1!important;
+          font-weight:950!important;
           vertical-align:baseline!important;
           cursor:pointer!important;
-          box-shadow:0 1px 3px rgba(0,0,0,.16)!important;
+          box-shadow:none!important;
           position:relative!important;
-          top:-1px!important;
           z-index:3!important;
         }
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button:hover,
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button:focus-visible{
-          border-color:var(--rwph-theme-gold)!important;
-          background:linear-gradient(135deg,var(--rwph-theme-gold),var(--rwph-theme-orange))!important;
-          color:var(--rwph-theme-bg)!important;
+          border:0!important;
+          background:transparent!important;
+          color:var(--rwph-theme-orange)!important;
           outline:none!important;
-          transform:translateY(-1px)!important;
+          text-decoration:underline!important;
+          transform:none!important;
         }
         #rw-payout-helper details.rw-points-settings label:has(> input[type="checkbox"]) .rwph-setting-help-button{
-          margin:0 0 0 3px!important;
+          margin-left:4px!important;
         }
         #rw-payout-helper .rw-advanced-section{
           display:contents!important;
-        }
-        @media (max-width:700px),(pointer:coarse){
-          #rw-payout-helper details.rw-points-settings .rwph-setting-help-button{
-            width:14px!important;
-            min-width:14px!important;
-            max-width:14px!important;
-            height:14px!important;
-            min-height:14px!important;
-            max-height:14px!important;
-            font-size:8px!important;
-            margin-left:3px!important;
-          }
         }
       `;
       (document.head || document.documentElement).appendChild(style);
