@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript with a standalone Cloudflare Worker + MySQL backend for calculating ranked-war payouts, managing licences, caching finished reports, and helping faction leaders prepare manual payments.
 
-Current userscript version: **1.1.462**  
+Current userscript version: **1.1.463**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -20,6 +20,15 @@ Author: **Evil_Panda_420**
 ---
 
 ## What Changed Recently
+
+### v1.1.463 — Conservative userscript cleanup
+
+- Removed verified-unused legacy helpers and abandoned theme-layout generators.
+- Removed stale launcher-corner code and an obsolete swallowed `placeLauncher()` call.
+- Removed unused local variables and the unused `GM_setClipboard` permission.
+- Removed historical in-code version-comment clutter and excess blank lines.
+- Kept all current DOM IDs, backend route strings, embedded logo assets, calculation logic, licensing, caches, payments, themes, PDA behavior, and UI controls intact.
+- No backend redeploy is required for this cleanup.
 
 ### v1.1.462 — Production Worker domain update
 
@@ -602,9 +611,9 @@ RWPH produces calculation assistance, not a guarantee that every payout configur
 
 ---
 
-## Current Version Summary — v1.1.462
+## Current Version Summary — v1.1.463
 
-RWPH v1.1.462 currently combines:
+RWPH v1.1.463 currently combines:
 
 - Standalone Cloudflare Worker + Aiven MySQL backend.
 - Backend-verified licences and Xanax payment challenges.
