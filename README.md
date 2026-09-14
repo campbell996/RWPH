@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, reopening cached reports, and preparing manual faction payments.
 
-Current userscript version: **1.1.469**  
+Current userscript version: **1.1.470**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,26 +19,16 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.469
+## What's New in v1.1.470
 
-Advanced setting help has been tightened so the `?` control reads naturally as part of the setting label, for example **Calculation System ?**.
+Advanced setting help and dropdown styling were tightened without changing calculation behaviour.
 
-- Each Advanced `?` now uses the **same font size as its setting name/text** instead of a larger circular button.
-- The `?` sits immediately to the right of the setting label with only a small gap.
-- Advanced help notifications now stay open until you press the notification **×** button or click the **same `?` again**.
-- Clicking a different Advanced `?` replaces the current help notification with the new setting explanation.
+- Every Advanced setting name and its `?` help control are kept together on the **same line**, for example **Calculation System ?**.
+- The `?` stays immediately to the right of the setting name/text and keeps the same label-sized appearance introduced in v1.1.469.
+- **Retal Modifier Type**, **Overseas Modifier Type**, and **Fair Fight Mode** dropdowns now follow the active RWPH theme colours for their background, border, text and focus styling.
+- Advanced help notifications still stay open until you press **×** or click the same `?` again.
 - All normal RWPH notifications still close automatically after **5 seconds**.
-- Calculation formulas, presets, caching, licensing, payments, backend routes, and database behaviour are unchanged from v1.1.467.
-
-## Requirements
-
-Normal users need:
-
-- Torn in a supported desktop/mobile browser or Torn PDA environment.
-- Tampermonkey, Violentmonkey, or equivalent userscript support where required.
-- A Torn API key with the access RWPH needs for faction/ranked-war data.
-- An active RWPH licence or an available trial.
-- Internet access while using RWPH.
+- Calculation formulas, presets, caching and backend behaviour are unchanged.
 
 ---
 
@@ -409,8 +399,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.469
+## Current Version Summary — v1.1.470
 
-RWPH v1.1.469 is a UI/help-only update built directly from v1.1.467. Advanced setting `?` controls now match the setting label text size and sit directly beside the setting name.
+RWPH v1.1.470 is a UI-only update continuing the v1.1.467 calculation/backend base. Advanced setting names and `?` help controls now stay together on the same line, and the Retal, Overseas, and Fair Fight mode dropdowns follow the active RWPH theme colours.
 
 Setting-help notifications are persistent until closed with **×** or toggled off by clicking the same `?` again. Every other RWPH notification continues using the existing 5-second timeout. Advanced preset values, shared settings, calculation formulas, cache identity, licensing, payment tools, and backend behaviour are unchanged.

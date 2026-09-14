@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.469
+// @version      1.1.470
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.469: Advanced setting help icons are compact inline text-size controls; help popups stay open until closed or toggled.
+  // v1.1.470: Advanced help labels keep the setting name and ? on one inline row; retal/overseas/Fair Fight selectors follow the active theme.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -4187,8 +4187,33 @@
       });
 
       const isCheckbox = String(control.type || "").toLowerCase() === "checkbox";
-      if (isCheckbox) label.appendChild(btn);
-      else label.insertBefore(btn, control);
+      const titleLine = document.createElement("span");
+      titleLine.className = "rwph-setting-label-line";
+      titleLine.dataset.rwphHelpLineFor = id;
+
+      if (isCheckbox) {
+        const titleNodes = [];
+        let node = control.nextSibling;
+        while (node) {
+          const next = node.nextSibling;
+          titleNodes.push(node);
+          node = next;
+        }
+        label.insertBefore(titleLine, control.nextSibling);
+        titleNodes.forEach((item) => titleLine.appendChild(item));
+        titleLine.appendChild(btn);
+      } else {
+        const titleNodes = [];
+        let node = label.firstChild;
+        while (node && node !== control) {
+          const next = node.nextSibling;
+          titleNodes.push(node);
+          node = next;
+        }
+        label.insertBefore(titleLine, control);
+        titleNodes.forEach((item) => titleLine.appendChild(item));
+        titleLine.appendChild(btn);
+      }
     });
 
     const reset = panel.querySelector("#rw-points-reset-recommended");
@@ -17317,9 +17342,9 @@
 
   function rwphInjectAdvancedSettingHelpStylesV1466() {
     try {
-      if (document.getElementById("rwph-advanced-setting-help-styles-v1466")) return;
+      if (document.getElementById("rwph-advanced-setting-help-styles-v1470")) return;
       const style = document.createElement("style");
-      style.id = "rwph-advanced-setting-help-styles-v1466";
+      style.id = "rwph-advanced-setting-help-styles-v1470";
       style.textContent = `
         #rw-payout-helper .rwph-logo-selector-action-row{
           display:flex!important;
@@ -17362,6 +17387,32 @@
           background:var(--rwph-theme-panel2)!important;
           color:var(--rwph-theme-text)!important;
         }
+
+        /* v1.1.470: Retal, Overseas and Fair Fight selectors use the same active theme as the preset selector. */
+        #rw-payout-helper #rw-point-retal-mode,
+        #rw-payout-helper #rw-point-overseas-mode,
+        #rw-payout-helper #rw-point-fair-fight-mode{
+          background:linear-gradient(180deg,var(--rwph-theme-panel3),var(--rwph-theme-panel2))!important;
+          background-color:var(--rwph-theme-panel2)!important;
+          border:1px solid var(--rwph-theme-line2)!important;
+          color:var(--rwph-theme-text)!important;
+          color-scheme:dark!important;
+          accent-color:var(--rwph-theme-gold)!important;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 0 1px rgba(0,0,0,.08)!important;
+        }
+        #rw-payout-helper #rw-point-retal-mode:focus,
+        #rw-payout-helper #rw-point-overseas-mode:focus,
+        #rw-payout-helper #rw-point-fair-fight-mode:focus{
+          outline:none!important;
+          border-color:var(--rwph-theme-gold)!important;
+          box-shadow:0 0 0 2px color-mix(in srgb,var(--rwph-theme-gold) 24%,transparent)!important;
+        }
+        #rw-payout-helper #rw-point-retal-mode option,
+        #rw-payout-helper #rw-point-overseas-mode option,
+        #rw-payout-helper #rw-point-fair-fight-mode option{
+          background:var(--rwph-theme-panel2)!important;
+          color:var(--rwph-theme-text)!important;
+        }
         #rw-payout-helper .rw-advanced-preset-actions{
           margin-top:7px!important;
         }
@@ -17382,6 +17433,32 @@
           border-color:var(--rwph-theme-line2)!important;
           color:var(--rwph-theme-bg)!important;
           font-weight:900!important;
+        }
+
+        /* Keep every setting name and its help ? together on the same line. */
+        #rw-payout-helper details.rw-points-settings .rwph-setting-label-line{
+          display:inline-flex!important;
+          align-items:baseline!important;
+          justify-content:flex-start!important;
+          gap:0!important;
+          width:max-content!important;
+          max-width:none!important;
+          min-width:0!important;
+          margin:0!important;
+          padding:0!important;
+          border:0!important;
+          background:transparent!important;
+          color:inherit!important;
+          font:inherit!important;
+          line-height:inherit!important;
+          white-space:nowrap!important;
+          box-shadow:none!important;
+        }
+        #rw-payout-helper details.rw-points-settings label:has(> input[type="checkbox"]) .rwph-setting-label-line{
+          display:inline-flex!important;
+          flex:0 1 auto!important;
+          align-items:baseline!important;
+          min-width:0!important;
         }
 
         /* Compact inline per-setting help buttons: label text followed immediately by ?. */
