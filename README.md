@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript with a standalone Cloudflare Worker + MySQL backend for calculating ranked-war payouts, managing licences, caching finished reports, and helping faction leaders prepare manual payments.
 
-Current userscript version: **1.1.463**  
+Current userscript version: **1.1.464**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,7 +19,48 @@ Author: **Evil_Panda_420**
 
 ---
 
+## Current Architecture
+
+RWPH now uses the standalone Cloudflare/MySQL backend introduced in v1.1.454:
+
+```text
+RWPH userscript
+      ↓
+Cloudflare Worker (rwph-backend)
+      ↓
+Cloudflare Hyperdrive (HYPERDRIVE)
+      ↓
+Aiven MySQL (defaultdb)
+```
+
+The Cloudflare Worker handles licence verification, licence payments, Torn API requests used by calculations, report caching, calculation progress, exports, and admin functions.
+
+The production Worker URL is:
+
+`https://rwph-backend.rankedwarpayouthelper.workers.dev`
+
+Persistent backend data is stored in normalized MySQL tables. The old `paywall-db.json` is retained only as an optional legacy import source and is **not** the live database.
+
+For backend installation, see:
+
+- `TAKEOVER_INSTALL.md`
+- `backend/BACKEND_SETUP.md`
+- `backend/MYSQL_DATABASE_SETUP.md`
+
+---
+
 ## What Changed Recently
+
+### v1.1.464 — Selectable payout calculation systems
+
+- Added a **Calculation System** dropdown inside Advanced Calculations.
+- Preserved the existing **Custom Advanced** formula unchanged as a selectable option.
+- Added selectable systems for **Hybrid — Hits + Performance**, **Weighted Points**, **Exact Fair Fight**, **Fixed Pay Per Hit**, **Adjusted Respect Share**, **Tiered Fair Fight**, **Base Pay + Bonus Points**, **Energy / Efficiency**, **Turtling / Defence**, **Equal / Participation Pay**, and **RWPH Recommended**.
+- **Hybrid — Hits + Performance** is marked as the recommended balanced preset, while Custom Advanced remains the selected default on fresh installs so upgrading does not silently change the established RWPH calculation behaviour.
+- Advanced report caches are now isolated by selected calculation system so a cached report created by one preset cannot be opened as another preset.
+- Member Management continues to recalculate payouts after member exclusions/hit or respect adjustments.
+- The new preset calculations run from the same finished-war attack dataset and use the existing calculation progress/results/payment workflow.
+- This release changes backend calculation logic, so **the Cloudflare Worker must be redeployed** when upgrading to v1.1.464.
 
 ### v1.1.463 — Conservative userscript cleanup
 
@@ -213,11 +254,73 @@ Use Fast Mode when you only need the ranked-war report data and want the quickes
 
 ## Advanced Calculations
 
-Advanced mode gives members contribution points and splits the **Member Payout** according to each member's share of the final points.
+Advanced Calculations now has a **Calculation System** dropdown. Choose the payout model your faction wants, then use the normal war/time, Member Payout, Member Management, cache, and Calculate controls.
 
-The normal Advanced view is compact. Click the small **`?`** button in the Advanced Calculations header to show the detailed setup guide. Click it again to return to the compact view.
+The normal Advanced view stays compact. The small **`?`** button in the Advanced Calculations header reveals extra explanation for the selected system. When **Custom Advanced** is selected, the `?` view also shows the detailed configurable Advanced setup guide.
 
-### Recommended/default Advanced values
+**Hybrid — Hits + Performance** is marked **Recommended** in the dropdown. **Custom Advanced (Current RWPH)** remains selected by default on a fresh v1.1.464 install so existing users are not silently moved to a different payout formula.
+
+### Available calculation systems
+
+| System | Main scoring rule |
+| --- | --- |
+| **Hybrid — Hits + Performance (Recommended)** | 50% participation + 30% weighted FF performance + 15% war-hit contribution + 5% verified support. Empty components redistribute their percentage across active components. |
+| **Weighted Points** | War hit = exact FF; war retal ×1.25; overseas war hit ×1.25; assist 0.65; outside/non-war retal 0.35. Retal + overseas can stack. |
+| **Exact Fair Fight** | War hit = exact FF; war retal ×1.25; overseas ×1.25; assist 0.60; outside/non-war retal 0.30. |
+| **Fixed Pay Per Hit** | War hit 1.00; war retal ×1.25; overseas ×1.25; assist 0.50; outside/non-war retal 0.25. |
+| **Adjusted Respect Share** | Payout share follows respect earned against the ranked-war opponent. When Torn exposes a chain-bonus multiplier, RWPH removes that multiplier before scoring the respect. |
+| **Tiered Fair Fight** | FF brackets score 1.00 / 1.10 / 1.25 / 1.40 / 1.60 / 1.80 / 2.10 / 2.40 / 2.75; retal and overseas each ×1.25; assist 0.60; outside 0.30. |
+| **Base Pay + Bonus Points** | War hit starts at 1.00; FF bonus = +0.50 per +1.00 FF above 1.00; war retal +0.25; overseas +0.25; verified hospitalize +0.10; assist 0.50; outside 0.30. |
+| **Energy / Efficiency** | War hit uses exact FF; war retal +0.25; assist 0.50; outside chain-maintenance hit 0.30; other outside hits 0. |
+| **Turtling / Defence** | Verified-data proxy: war hit 1.00; war retal +0.50; assist 0.50; outside 0; plus +0.25 per unique 15-minute activity block containing a war hit/assist. |
+| **Equal / Participation Pay** | Every member with at least one successful tracked contribution receives one equal payout share; extra hits do not increase the share. |
+| **RWPH Recommended** | War hit = exact FF; war retal +0.25; overseas +0.25; assist 0.60; outside/non-war retal 0.30. |
+| **Custom Advanced** | The original configurable RWPH Advanced calculation described below. |
+
+### Hybrid — Hits + Performance
+
+Hybrid calculates four faction-wide components:
+
+```text
+50%  Participation
+30%  Weighted FF performance
+15%  War-hit contribution
+ 5%  Verified support
+```
+
+Participation counts successful tracked contribution events. Weighted performance rewards exact FF and the preset retal/overseas treatment. War contribution uses war hits. Verified support uses data RWPH can verify from attack logs, such as war retals, assists, and outside chain-maintenance hits.
+
+If one component has no qualifying activity for the faction, that component's percentage is redistributed proportionally across the remaining active components instead of leaving part of the Member Payout unallocated.
+
+### Tiered Fair Fight table
+
+| Fair Fight | Points before retal/overseas modifiers |
+| --- | ---: |
+| 1.00–1.24 | 1.00 |
+| 1.25–1.49 | 1.10 |
+| 1.50–1.74 | 1.25 |
+| 1.75–1.99 | 1.40 |
+| 2.00–2.24 | 1.60 |
+| 2.25–2.49 | 1.80 |
+| 2.50–2.74 | 2.10 |
+| 2.75–2.99 | 2.40 |
+| 3.00 | 2.75 |
+
+### Adjusted Respect Share
+
+Only ranked-war-opponent war-hit respect contributes to the Respect Share score. Assists and outside hits do not add Respect Share score.
+
+If the attack data exposes a chain-bonus multiplier greater than 1, RWPH divides the attack respect by that multiplier before adding it to the member's adjusted-respect score. If Torn does not expose a usable chain multiplier for a particular record, RWPH uses the respect value available in that record rather than guessing.
+
+### Turtling / Defence limitation
+
+The Turtling / Defence option is deliberately a **verified-data proxy**, not a claim to measure true defensive/turtle time. RWPH's current report source cannot reliably prove how long somebody was online, hospitalized, unavailable, or intentionally turtling. It therefore scores only attack-log contribution plus unique 15-minute activity blocks and clearly labels the limitation in the report metadata.
+
+### Custom Advanced — original RWPH formula
+
+Selecting **Custom Advanced (Current RWPH)** preserves the existing Advanced formula and controls from v1.1.463.
+
+#### Recommended/default Custom Advanced values
 
 | Setting | Default |
 | --- | ---: |
@@ -233,53 +336,27 @@ The normal Advanced view is compact. Click the small **`?`** button in the Advan
 | FF point bonus | +0.01 per payable hit per step |
 | Avg FF cap | 3.00 |
 
-### Retal handling in Advanced mode
+#### Retal handling in Custom Advanced
 
 - A retal against the war faction still counts as the normal **War Hit** and then receives the configured **retal bonus**.
 - A retal against a non-war faction is treated as an **Outside Hit**.
 
-### Hospital bonuses
-
-Advanced mode can apply extra points for verified hospitalizing results:
+#### Hospital bonuses in Custom Advanced
 
 - Own-faction hospital bonus defaults to **+2**.
 - Enemy war-faction hospital bonus defaults to **-1** and may be changed to a negative, zero, or positive value.
 
-### Respect Score
+#### Respect Score in Custom Advanced
 
-The default Advanced Respect Score is:
+The default is **+0.01 point for every 0.01 respect earned**. Example: 2.50 respect adds 2.50 Custom Advanced points. Set **Respect score to add** to `0` if you do not want respect to affect Custom Advanced payouts.
 
-```text
-+0.01 point for every 0.01 respect earned
-```
+#### Fair Fight bonus in Custom Advanced
 
-Example: 2.50 respect adds 2.50 Advanced points with the default values.
+With defaults, Avg FF 1.00 gives no FF bonus. Every +0.02 Avg FF over 1.00 adds +0.01 point per payable hit, capped at Avg FF 3.00. Untick **Use fair-fight modifier** to disable this custom FF bonus.
 
-Set **Respect score to add** to `0` if you do not want respect to affect Advanced payouts.
+#### Custom Advanced setup guide
 
-### Fair Fight bonus
-
-With defaults:
-
-- Avg FF 1.00 = no FF bonus.
-- Every +0.02 Avg FF above 1.00 = one bonus step.
-- Each step adds +0.01 point per payable hit.
-- Avg FF is capped at 3.00 for this bonus.
-
-Example: Avg FF 1.40 is 0.40 above 1.00. At 0.02 per step, that is 20 steps, giving +0.20 points per payable hit.
-
-Untick **Use fair-fight modifier** to disable the FF bonus entirely.
-
-### Advanced setup guide
-
-Clicking the `?` button reveals explanations, worked examples, recommended values, and **Restore Recommended Defaults**.
-
-Restore Recommended Defaults resets only the Advanced scoring settings and Fair Fight option. It does **not** change:
-
-- War times
-- Member Payout
-- Total Payout
-- Member Management adjustments
+Clicking the `?` button while Custom Advanced is selected reveals explanations, examples, recommended values, and **Restore Recommended Defaults**. Restore Recommended Defaults resets only the Custom Advanced scoring settings/Fair Fight option; it does not change war times, Member Payout, Total Payout, or Member Management adjustments.
 
 ---
 
@@ -303,9 +380,11 @@ Member Management has its own movable/resizable panel and responsive card layout
 
 RWPH uses Torn ranked-war report data where available and attack logs where needed.
 
-### Hybrid calculation behaviour
+### Calculation data behaviour
 
-When Torn exposes a usable ranked-war report, RWPH can use it for authoritative ranked-war values such as:
+Basic and Custom Advanced keep their existing ranked-war-report/attack-log behaviour. The new fixed Advanced presets use the finished-war attack dataset because they need per-attack FF/modifier/category information consistently.
+
+When Torn exposes a usable ranked-war report for the existing report-backed paths, RWPH can use it for authoritative ranked-war values such as:
 
 - War Hits
 - Member participation
@@ -351,7 +430,8 @@ Finished calculation reports can be stored in the backend/MySQL report cache.
 Current behaviour:
 
 - Basic and Advanced caches are separate.
-- Cache matching includes the relevant calculation mode/settings.
+- Advanced cached reports are additionally isolated by **Calculation System**, so one preset can never be opened as another preset.
+- Cache matching includes the relevant calculation mode/system/settings.
 - Member Payout / Total Payout edits do not unnecessarily trigger repeated cache lookups.
 - **Use Cached Report** opens a matching database-backed cached report.
 - **Delete Cache** deletes the matching report.
@@ -543,6 +623,170 @@ RWPH never needs your Torn password.
 
 See `RWPH_PRIVACY_AND_API_KEY_TERMS.md` for the package's detailed API-key/privacy terms.
 
+---
+
+## Backend Database
+
+The normalized MySQL backend uses the following persistent tables:
+
+1. `rwph_users`
+2. `rwph_licences`
+3. `rwph_licence_metadata`
+4. `rwph_payment_challenges`
+5. `rwph_payments`
+6. `rwph_trials`
+7. `rwph_report_cache`
+8. `rwph_report_cache_delete_cooldowns`
+9. `rwph_settings`
+10. `rwph_admin_actions`
+11. `rwph_runtime_meta`
+12. `rwph_config`
+13. `rwph_schema_migrations`
+
+Short-lived calculation progress, temporary export data, Torn response caches, attack-fetch caches, and rate-limit buckets can remain in Worker memory because they are temporary rather than authoritative persistent user data.
+
+The expected standalone schema marker is:
+
+```text
+1.1.454-mysql-normalized
+```
+
+---
+
+## Backend Owner Setup
+
+### Recommended automatic setup
+
+1. Extract this package.
+2. Open the `backend` folder.
+3. Run `RWPH_Wrangler_Auto_Setup.bat` on Windows.
+4. Choose **1 - FIRST-TIME FULL SETUP + DATABASE INSTALL**.
+5. Confirm/create the Hyperdrive binding.
+6. Configure the Torn payment receiver.
+7. Set the required Worker secrets.
+8. Install/verify the MySQL schema.
+9. Deploy the Worker.
+10. Verify `/health` and `/db-test`.
+
+### Required Worker secrets
+
+```text
+RWPH_LICENSE_SECRET
+RWPH_ADMIN_KEY
+RWPH_OWNER_TORN_API_KEY
+```
+
+### Important Worker settings
+
+The supplied `backend/wrangler.jsonc` currently includes settings such as:
+
+```text
+RWPH_REQUIRED_ITEM_ID=206
+RWPH_REQUIRED_ITEM_NAME=Xanax
+RWPH_REQUIRED_ITEM_QTY=1
+RWPH_XANAX_DAYS=15
+REPORT_CACHE_TTL_MS=86400000
+ATTACK_FETCH_CACHE_TTL_MS=1800000
+TORN_API_MIN_INTERVAL_MS=700
+TORN_API_MAX_RETRIES=6
+```
+
+If your Cloudflare Hyperdrive ID differs from the packaged value, update it using the supplied setup tools before deployment.
+
+### Health checks
+
+After deployment, check:
+
+```text
+/health
+/db-test
+```
+
+A correct `/db-test` should report no missing required tables and the expected standalone schema marker.
+
+---
+
+## Package Contents
+
+| Path | Purpose |
+| --- | --- |
+| `rwph.user.js` | Main userscript installed by RWPH users. |
+| `README.md` | Current feature/setup overview. |
+| `RWPH_PRIVACY_AND_API_KEY_TERMS.md` | Privacy/API-key handling terms. |
+| `TAKEOVER_INSTALL.md` | Standalone Cloudflare/MySQL takeover deployment guide. |
+| `VERSION.txt` | Package/userscript version information. |
+| `rwph_launcher_logo_256.png` | Packaged RWPH launcher/logo asset. |
+| `backend/src/index.js` | Cloudflare Worker backend. |
+| `backend/wrangler.jsonc` | Worker/Hyperdrive configuration. |
+| `backend/schema.sql` | Full normalized MySQL schema. |
+| `backend/migrations/takeover_existing_rwph_database.sql` | Migration/takeover schema for an existing RWPH database. |
+| `backend/BACKEND_SETUP.md` | Detailed backend setup notes. |
+| `backend/MYSQL_DATABASE_SETUP.md` | Detailed MySQL table/setup notes. |
+| `backend/RWPH_Wrangler_Auto_Setup.bat` | Windows setup/deployment helper. |
+| `backend/scripts/*` | Hyperdrive/database setup, diagnostics, config, and legacy import scripts. |
+| `backend/test-standalone.mjs` | Standalone backend test suite. |
+| `legacy-original/paywall-db.json` | Old JSON state included only for optional migration/import. |
+| `legacy-original/ORIGINAL_README.md` | Archived original README/reference. |
+
+Normal users usually only need `rwph.user.js`.
+
+---
+
+## Security Notes
+
+Keep the following private:
+
+- Torn API keys
+- `RWPH_OWNER_TORN_API_KEY`
+- `RWPH_LICENSE_SECRET`
+- `RWPH_ADMIN_KEY`
+- Database credentials / Hyperdrive origin credentials
+- Private database backups
+
+Recommended practices:
+
+- Use long random values for licence/admin secrets.
+- Never commit secrets to a public GitHub repository.
+- Do not hard-code private MySQL credentials in the userscript.
+- Use Cloudflare Worker secrets for sensitive backend values.
+- Keep Aiven/MySQL access restricted.
+- Back up the MySQL database before major migrations/admin changes.
+- Rotate a secret immediately if it is exposed.
+
+---
+
+## Troubleshooting
+
+### RWPH says it cannot reach the backend
+
+Check:
+
+- The Worker is deployed.
+- `/health` responds successfully.
+- `PAYWALL_API_BASE` in `rwph.user.js` points to the correct Worker URL.
+- The userscript `@connect` entry allows that backend domain.
+- The Worker has all required secrets.
+- Hyperdrive can reach the MySQL database.
+
+### `/health` says `configuration-required`
+
+At least one required Worker secret is missing. Configure:
+
+```text
+RWPH_LICENSE_SECRET
+RWPH_ADMIN_KEY
+RWPH_OWNER_TORN_API_KEY
+```
+
+Then redeploy/check again.
+
+### `/db-test` reports missing tables
+
+Run the database installer/schema again:
+
+- `RWPH_Wrangler_Auto_Setup.bat` database-install option, or
+- `backend/schema.sql`, or
+- `backend/migrations/takeover_existing_rwph_database.sql` for an existing RWPH database.
 
 ### Calculation is slow
 
@@ -595,6 +839,19 @@ For a userscript-only release:
 1. Replace/update `rwph.user.js` in Tampermonkey/Violentmonkey/Torn PDA.
 2. Refresh Torn.
 
+For a backend release:
+
+1. Update the files in `backend`.
+2. Run the backend checks/tests.
+3. Deploy with Wrangler/the supplied setup helper.
+4. Verify `/health` and `/db-test`.
+
+Versions **1.1.459–1.1.461** are userscript/UI changes built on the v1.1.457 calculation/backend behaviour, so an already-deployed compatible v1.1.457 backend does not need to be redeployed solely for the Advanced help-button changes.
+
+Version **1.1.463** keeps the current production Worker address and performs a conservative userscript-only cleanup. No backend redeploy is required for v1.1.463 alone.
+
+Version **1.1.464** adds the selectable payout-system engine to both the userscript and Worker. **Redeploy the supplied v1.1.464 backend** before using the new Advanced presets.
+
 ---
 
 ## Responsible Use
@@ -611,16 +868,17 @@ RWPH produces calculation assistance, not a guarantee that every payout configur
 
 ---
 
-## Current Version Summary — v1.1.463
+## Current Version Summary — v1.1.464
 
-RWPH v1.1.463 currently combines:
+RWPH v1.1.464 currently combines:
 
 - Standalone Cloudflare Worker + Aiven MySQL backend.
 - Backend-verified licences and Xanax payment challenges.
 - One-time 7-day trial.
 - Basic per-hit calculations.
 - Basic Fast Mode.
-- Advanced points calculations.
+- Advanced calculation-system dropdown with **11 preset systems + Custom Advanced** (12 Advanced choices total).
+- Original Custom Advanced formula preserved unchanged.
 - Optional `?` Advanced setup guide inside the Advanced header.
 - Member Management.
 - Ranked-war report + attack-log hybrid processing.
