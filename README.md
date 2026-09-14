@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript with a standalone Cloudflare Worker + MySQL backend for calculating ranked-war payouts, managing licences, caching finished reports, and helping faction leaders prepare manual payments.
 
-Current userscript version: **1.1.464**  
+Current userscript version: **1.1.465**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -51,12 +51,25 @@ For backend installation, see:
 
 ## What Changed Recently
 
-### v1.1.464 — Selectable payout calculation systems
+### v1.1.465 — Shared editable Advanced settings + Results error fix
+
+- Removed **Custom Advanced** as a separate calculation-system choice.
+- Every Advanced calculation system is now a **preset loader** for one shared editable Advanced Settings panel.
+- Selecting a system immediately loads that system's recommended values for hits, assists, outside hits, retals, overseas handling, hospital/respect scoring, Fair Fight mode, Hybrid allocation, and Defence activity credit.
+- After a preset loads, every visible setting remains editable. The calculation uses the values currently shown in the fields, so changing any field creates your own customised version of the selected system without changing to a separate Custom mode.
+- Added **RWPH Classic Advanced** as a normal preset. Upgrades from the old Custom Advanced mode are migrated to this preset and existing saved custom point values are preserved.
+- Fresh installs default to **Hybrid — Hits + Performance (Recommended)** and load its shared settings automatically.
+- Advanced cache identity now includes the selected system **and all current shared scoring settings**, while payout amount changes still do not invalidate the report cache.
+- Fixed the Results error **`includeLeftFactionMembers is not defined`** by explicitly defining the intended value before calculation requests are built.
+- Added regression tests proving preset defaults, editable overrides, Hybrid split changes, cache isolation, legacy Custom migration, and the Results variable fix.
+- This release changes backend scoring logic, so **redeploy the supplied v1.1.465 Cloudflare Worker** when upgrading.
+
+### v1.1.464 — Selectable payout calculation systems (historical; superseded by v1.1.465)
 
 - Added a **Calculation System** dropdown inside Advanced Calculations.
-- Preserved the existing **Custom Advanced** formula unchanged as a selectable option.
+- At v1.1.464, the existing **Custom Advanced** formula was still a separate selectable option. v1.1.465 replaces that model with RWPH Classic + shared editable settings.
 - Added selectable systems for **Hybrid — Hits + Performance**, **Weighted Points**, **Exact Fair Fight**, **Fixed Pay Per Hit**, **Adjusted Respect Share**, **Tiered Fair Fight**, **Base Pay + Bonus Points**, **Energy / Efficiency**, **Turtling / Defence**, **Equal / Participation Pay**, and **RWPH Recommended**.
-- **Hybrid — Hits + Performance** is marked as the recommended balanced preset, while Custom Advanced remains the selected default on fresh installs so upgrading does not silently change the established RWPH calculation behaviour.
+- v1.1.464 kept Custom Advanced selected by default for upgrade safety. v1.1.465 now migrates old Custom settings to RWPH Classic and uses Hybrid as the fresh-install default.
 - Advanced report caches are now isolated by selected calculation system so a cached report created by one preset cannot be opened as another preset.
 - Member Management continues to recalculate payouts after member exclusions/hit or respect adjustments.
 - The new preset calculations run from the same finished-war attack dataset and use the existing calculation progress/results/payment workflow.
@@ -254,47 +267,83 @@ Use Fast Mode when you only need the ranked-war report data and want the quickes
 
 ## Advanced Calculations
 
-Advanced Calculations now has a **Calculation System** dropdown. Choose the payout model your faction wants, then use the normal war/time, Member Payout, Member Management, cache, and Calculate controls.
+Advanced Calculations uses a **Calculation System** dropdown plus **one shared editable settings panel**.
 
-The normal Advanced view stays compact. The small **`?`** button in the Advanced Calculations header reveals extra explanation for the selected system. When **Custom Advanced** is selected, the `?` view also shows the detailed configurable Advanced setup guide.
+The dropdown is a preset selector, not a locked formula selector:
 
-**Hybrid — Hits + Performance** is marked **Recommended** in the dropdown. **Custom Advanced (Current RWPH)** remains selected by default on a fresh v1.1.464 install so existing users are not silently moved to a different payout formula.
+1. Choose a calculation system.
+2. RWPH automatically fills the shared settings with that system's recommended values.
+3. Leave the values alone to use the normal preset.
+4. Change any value to create your faction's customised version of that selected system.
+5. Choosing another system loads that other system's recommended values into the same fields.
 
-### Available calculation systems
+There is **no separate Custom Advanced system** in v1.1.465. Customisation is done directly by editing the shared settings after selecting any preset.
 
-| System | Main scoring rule |
+The small **`?`** button in the Advanced Calculations header toggles the detailed setup guide for the same live settings. It does not create a second copy of the controls.
+
+### Available calculation-system presets
+
+| Preset | Recommended/default behaviour |
 | --- | --- |
-| **Hybrid — Hits + Performance (Recommended)** | 50% participation + 30% weighted FF performance + 15% war-hit contribution + 5% verified support. Empty components redistribute their percentage across active components. |
-| **Weighted Points** | War hit = exact FF; war retal ×1.25; overseas war hit ×1.25; assist 0.65; outside/non-war retal 0.35. Retal + overseas can stack. |
-| **Exact Fair Fight** | War hit = exact FF; war retal ×1.25; overseas ×1.25; assist 0.60; outside/non-war retal 0.30. |
-| **Fixed Pay Per Hit** | War hit 1.00; war retal ×1.25; overseas ×1.25; assist 0.50; outside/non-war retal 0.25. |
-| **Adjusted Respect Share** | Payout share follows respect earned against the ranked-war opponent. When Torn exposes a chain-bonus multiplier, RWPH removes that multiplier before scoring the respect. |
-| **Tiered Fair Fight** | FF brackets score 1.00 / 1.10 / 1.25 / 1.40 / 1.60 / 1.80 / 2.10 / 2.40 / 2.75; retal and overseas each ×1.25; assist 0.60; outside 0.30. |
-| **Base Pay + Bonus Points** | War hit starts at 1.00; FF bonus = +0.50 per +1.00 FF above 1.00; war retal +0.25; overseas +0.25; verified hospitalize +0.10; assist 0.50; outside 0.30. |
-| **Energy / Efficiency** | War hit uses exact FF; war retal +0.25; assist 0.50; outside chain-maintenance hit 0.30; other outside hits 0. |
-| **Turtling / Defence** | Verified-data proxy: war hit 1.00; war retal +0.50; assist 0.50; outside 0; plus +0.25 per unique 15-minute activity block containing a war hit/assist. |
-| **Equal / Participation Pay** | Every member with at least one successful tracked contribution receives one equal payout share; extra hits do not increase the share. |
-| **RWPH Recommended** | War hit = exact FF; war retal +0.25; overseas +0.25; assist 0.60; outside/non-war retal 0.30. |
-| **Custom Advanced** | The original configurable RWPH Advanced calculation described below. |
+| **Hybrid — Hits + Performance (Recommended)** | 50% participation + 30% exact-FF performance + 15% war contribution + 5% verified support. War-retal and overseas modifiers default to ×1.25. |
+| **Weighted Points** | War hit uses exact FF; war retal ×1.25; overseas war hit ×1.25; assist 0.65; outside 0.35. |
+| **Exact Fair Fight** | War hit uses exact FF; war retal ×1.25; overseas ×1.25; assist 0.60; outside 0.30. |
+| **Fixed Pay Per Hit** | War hit 1.00; war retal ×1.25; overseas ×1.25; assist 0.50; outside 0.25; FF disabled. |
+| **Adjusted Respect Share** | War action values default to 0; respect defaults to 1 point per 1 adjusted war respect; chain-bonus multiplier is removed where Torn exposes it. |
+| **Tiered Fair Fight** | War hits use the RWPH FF brackets; retal/overseas ×1.25; assist 0.60; outside 0.30. |
+| **Base Pay + Bonus Points** | War hit 1.00; Linear FF bonus 0.50 per +1.00 FF; retal +0.25; overseas +0.25; hospitalize +0.10; assist 0.50; outside 0.30. |
+| **Energy / Efficiency** | Exact-FF war scoring; retal +0.25; assist 0.50; only chain-maintenance outside hits score 0.30 by default. |
+| **Turtling / Defence** | War hit 1.00; retal +0.50; assist 0.50; outside 0; +0.25 per unique 15-minute payable activity block. |
+| **Equal / Participation Pay** | War/assist/outside values default to 1 and each qualifying member receives one equal share. |
+| **RWPH Recommended** | Exact FF +0.25 war-retal +0.25 overseas; assist 0.60; outside 0.30. |
+| **RWPH Classic Advanced** | Loads the old Advanced defaults: War 10, Assist 3, Outside 2, retal +0.20, hospital/respect settings and Avg-FF step scoring. |
 
-### Hybrid — Hits + Performance
+### Shared editable settings
 
-Hybrid calculates four faction-wide components:
+The same controls are available regardless of which preset is selected:
 
-```text
-50%  Participation
-30%  Weighted FF performance
-15%  War-hit contribution
- 5%  Verified support
-```
+- **War hit points**
+- **Assist points**
+- **Outside hit points**
+- **War-faction retal value** and **Add / Multiplier** mode
+- **Overseas value** and **Add / Multiplier** mode
+- **Outside chain-only** switch
+- **Hospitalize bonus**
+- **Enemy war-faction hospital adjustment** (can be negative)
+- **Respect points** and **respect step**
+- **Ignore chain-bonus multiplier for respect**
+- **War-only respect**
+- **Fair Fight enabled**
+- **Fair Fight mode:** None, Exact, Tiered, Linear, or Average-FF Step
+- **Linear FF rate**
+- **Average-FF step size** and **bonus per step**
+- **Hybrid allocation percentages** and retal support value
+- **Defence activity-block minutes/value**
 
-Participation counts successful tracked contribution events. Weighted performance rewards exact FF and the preset retal/overseas treatment. War contribution uses war hits. Verified support uses data RWPH can verify from attack logs, such as war retals, assists, and outside chain-maintenance hits.
+Some controls naturally matter only to a particular formula shape—for example, Hybrid percentages are used by Hybrid and Defence activity-block values are used by Turtling / Defence—but they remain part of the same shared settings panel.
 
-If one component has no qualifying activity for the faction, that component's percentage is redistributed proportionally across the remaining active components instead of leaving part of the Member Payout unallocated.
+### Retal and overseas modifier modes
+
+For both war retals and overseas war hits you can choose:
+
+- **Add points** — a value of `0.25` adds `+0.25` to that hit.
+- **Multiply by 1 + value** — a value of `0.25` applies `×1.25`.
+
+If a war hit qualifies for both retal and overseas modifiers, both configured adjustments are applied in sequence.
+
+### Fair Fight modes
+
+- **None** — the base war-hit value is used with no FF adjustment.
+- **Exact FF** — base war-hit value × exact FF.
+- **Tiered FF** — base war-hit value × the RWPH FF bracket value.
+- **Linear FF bonus** — base war-hit value + `(FF - 1) × Linear Rate`.
+- **Average FF step bonus** — uses the member's average FF and adds the configured per-payable-hit step bonus after tracked contributions are built.
+
+FF values are capped to the normal 1.00–3.00 scoring range used by RWPH.
 
 ### Tiered Fair Fight table
 
-| Fair Fight | Points before retal/overseas modifiers |
+| Fair Fight | Tier value |
 | --- | ---: |
 | 1.00–1.24 | 1.00 |
 | 1.25–1.49 | 1.10 |
@@ -306,59 +355,37 @@ If one component has no qualifying activity for the faction, that component's pe
 | 2.75–2.99 | 2.40 |
 | 3.00 | 2.75 |
 
-### Adjusted Respect Share
+### Hybrid allocation
 
-Only ranked-war-opponent war-hit respect contributes to the Respect Share score. Assists and outside hits do not add Respect Share score.
+Hybrid defaults to:
 
-If the attack data exposes a chain-bonus multiplier greater than 1, RWPH divides the attack respect by that multiplier before adding it to the member's adjusted-respect score. If Torn does not expose a usable chain multiplier for a particular record, RWPH uses the respect value available in that record rather than guessing.
+```text
+50%  Participation
+30%  Performance
+15%  War contribution
+ 5%  Support
+```
+
+All four percentages are editable. If they do not total exactly 100, RWPH normalises them. If an entire component has no qualifying faction activity, its share is redistributed across the active components so the Member Payout remains fully allocated.
+
+### Adjusted Respect
+
+Respect can be added to **any** Advanced preset through the shared respect controls. **Adjusted Respect Share** simply loads defaults that make respect the primary score and enables:
+
+- Ignore chain-bonus multiplier for respect.
+- Apply respect score to war hits only.
+
+If Torn does not expose a usable chain multiplier for a record, RWPH uses the respect value available rather than guessing.
 
 ### Turtling / Defence limitation
 
-The Turtling / Defence option is deliberately a **verified-data proxy**, not a claim to measure true defensive/turtle time. RWPH's current report source cannot reliably prove how long somebody was online, hospitalized, unavailable, or intentionally turtling. It therefore scores only attack-log contribution plus unique 15-minute activity blocks and clearly labels the limitation in the report metadata.
+Turtling / Defence remains a **verified-data proxy**. RWPH does not claim to know true online time, hospital duration, or intentional turtle time. It can only award activity credit from verifiable payable war-hit/assist timestamps in the attack data.
 
-### Custom Advanced — original RWPH formula
+### RWPH Classic Advanced migration
 
-Selecting **Custom Advanced (Current RWPH)** preserves the existing Advanced formula and controls from v1.1.463.
+Old saved **Custom Advanced** configurations are migrated to **RWPH Classic Advanced**. If you had manually changed the old Custom Advanced values, RWPH preserves those saved values during the migration instead of overwriting them with a new preset.
 
-#### Recommended/default Custom Advanced values
-
-| Setting | Default |
-| --- | ---: |
-| War hit | 10 points |
-| Assist | 3 points |
-| Outside hit | 2 points |
-| War-faction retal bonus | +0.2 points |
-| Own-faction hospital bonus | +2 points |
-| Enemy war-faction hospital bonus | -1 point |
-| Respect score | +0.01 point per 0.01 respect |
-| Fair Fight | Enabled |
-| Avg FF step | +0.02 |
-| FF point bonus | +0.01 per payable hit per step |
-| Avg FF cap | 3.00 |
-
-#### Retal handling in Custom Advanced
-
-- A retal against the war faction still counts as the normal **War Hit** and then receives the configured **retal bonus**.
-- A retal against a non-war faction is treated as an **Outside Hit**.
-
-#### Hospital bonuses in Custom Advanced
-
-- Own-faction hospital bonus defaults to **+2**.
-- Enemy war-faction hospital bonus defaults to **-1** and may be changed to a negative, zero, or positive value.
-
-#### Respect Score in Custom Advanced
-
-The default is **+0.01 point for every 0.01 respect earned**. Example: 2.50 respect adds 2.50 Custom Advanced points. Set **Respect score to add** to `0` if you do not want respect to affect Custom Advanced payouts.
-
-#### Fair Fight bonus in Custom Advanced
-
-With defaults, Avg FF 1.00 gives no FF bonus. Every +0.02 Avg FF over 1.00 adds +0.01 point per payable hit, capped at Avg FF 3.00. Untick **Use fair-fight modifier** to disable this custom FF bonus.
-
-#### Custom Advanced setup guide
-
-Clicking the `?` button while Custom Advanced is selected reveals explanations, examples, recommended values, and **Restore Recommended Defaults**. Restore Recommended Defaults resets only the Custom Advanced scoring settings/Fair Fight option; it does not change war times, Member Payout, Total Payout, or Member Management adjustments.
-
----
+RWPH Classic is now just another preset in the shared engine. Select another system to load that system's defaults, or edit Classic's loaded fields directly to customise it.
 
 ## Member Management
 
@@ -382,7 +409,7 @@ RWPH uses Torn ranked-war report data where available and attack logs where need
 
 ### Calculation data behaviour
 
-Basic and Custom Advanced keep their existing ranked-war-report/attack-log behaviour. The new fixed Advanced presets use the finished-war attack dataset because they need per-attack FF/modifier/category information consistently.
+Basic keeps its existing ranked-war-report/attack-log behaviour. All v1.1.465 Advanced presets use the shared attack-data scoring engine so the current editable FF, retal, overseas, respect, hospital and support settings can be applied consistently per tracked contribution.
 
 When Torn exposes a usable ranked-war report for the existing report-backed paths, RWPH can use it for authoritative ranked-war values such as:
 
@@ -850,7 +877,7 @@ Versions **1.1.459–1.1.461** are userscript/UI changes built on the v1.1.457 c
 
 Version **1.1.463** keeps the current production Worker address and performs a conservative userscript-only cleanup. No backend redeploy is required for v1.1.463 alone.
 
-Version **1.1.464** adds the selectable payout-system engine to both the userscript and Worker. **Redeploy the supplied v1.1.464 backend** before using the new Advanced presets.
+Version **1.1.464** introduced the selectable payout-system engine. Version **1.1.465** changes those systems into preset loaders for one shared editable settings engine and fixes the Results variable error. **Redeploy the supplied v1.1.465 backend** before using the shared Advanced settings.
 
 ---
 
@@ -868,31 +895,29 @@ RWPH produces calculation assistance, not a guarantee that every payout configur
 
 ---
 
-## Current Version Summary — v1.1.464
+## Current Version Summary — v1.1.465
 
-RWPH v1.1.464 currently combines:
+RWPH v1.1.465 currently combines:
 
 - Standalone Cloudflare Worker + Aiven MySQL backend.
 - Backend-verified licences and Xanax payment challenges.
 - One-time 7-day trial.
-- Basic per-hit calculations.
-- Basic Fast Mode.
-- Advanced calculation-system dropdown with **11 preset systems + Custom Advanced** (12 Advanced choices total).
-- Original Custom Advanced formula preserved unchanged.
+- Basic per-hit calculations and Basic Fast Mode.
+- **12 Advanced preset choices feeding one shared editable settings panel.**
+- No separate Custom Advanced mode; edit any preset's loaded values to customise it.
+- **RWPH Classic Advanced** migration/preset for old Advanced users.
 - Optional `?` Advanced setup guide inside the Advanced header.
-- Member Management.
-- Ranked-war report + attack-log hybrid processing.
-- Faster `attacksfull` attack retrieval with compatibility fallback.
-- Warm attack-range reuse between calculations.
-- Backend/database cached reports.
+- Member Management with recalculation after exclusions/hit/respect adjustments.
+- Advanced per-attack scoring for FF, retals, overseas hits, respect, hospital adjustments, Hybrid allocation, and Defence activity credit.
+- Faster `attacksfull` retrieval with compatibility fallback and warm attack-range reuse.
+- Backend/database cached reports with system + customised-settings isolation.
 - Cached-report deletion cooldown.
-- Results/loading workflow.
-- Payments Copy Panel.
+- Results/loading workflow and Payments Copy Panel.
 - Export/newsletter helpers.
-- Theme / Colours and custom colour picker.
-- Logo Selector.
+- Theme / Colours and Logo Selector.
 - Movable/resizable panels with resize-based text scaling.
 - Desktop/PDA/phone launcher/layout handling.
 - Admin licence tools.
 - Reduced unnecessary backend polling/requests.
+- Fix for the v1.1.464 Results error `includeLeftFactionMembers is not defined`.
 

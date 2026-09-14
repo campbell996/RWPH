@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.464
+// @version      1.1.465
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.464: adds selectable Advanced payout systems while preserving Custom Advanced and Basic behavior.
+  // v1.1.465: Advanced systems are presets for one shared editable settings panel; fixes Results includeLeftFactionMembers error.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -2417,7 +2417,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-activity-block-minutes", "rw-activity-block-value", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -2438,9 +2438,22 @@
     if (state["rw-points-total"] && !state["rw-points-total-overall"]) state["rw-points-total-overall"] = state["rw-points-total"];
     if (state["rw-from"] && !state["rw-points-from"]) state["rw-points-from"] = state["rw-from"];
     if (state["rw-to"] && !state["rw-points-to"]) state["rw-points-to"] = state["rw-to"];
-    if (GM_getValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "") !== "retal-bonus-v255") {
+    if (GM_getValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "") !== "shared-advanced-presets-v2") {
       if (String(state["rw-point-retal"] ?? "").trim() === "4") state["rw-point-retal"] = "0.2";
-      GM_setValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "retal-bonus-v255");
+      const previousSystem = String(state["rw-calculation-system"] || "").trim();
+      const legacySettingIds = ["rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step"];
+      const hadLegacyAdvancedSettings = legacySettingIds.some((id) => Object.prototype.hasOwnProperty.call(state, id));
+      const preserveExistingValues = previousSystem === "custom_advanced" || (!previousSystem && hadLegacyAdvancedSettings);
+      const migratedSystem = preserveExistingValues ? "rwph_classic" : rwphNormalizeAdvancedCalculationSystem(previousSystem || "hybrid_hit_performance");
+      state["rw-calculation-system"] = migratedSystem;
+      const preset = RWPH_ADVANCED_SYSTEM_PRESETS[migratedSystem] || RWPH_ADVANCED_SYSTEM_PRESETS.hybrid_hit_performance;
+      for (const [key, [id, property]] of Object.entries(RWPH_ADVANCED_PRESET_FIELD_MAP)) {
+        if (!(key in preset)) continue;
+        if (preserveExistingValues && Object.prototype.hasOwnProperty.call(state, id)) continue;
+        state[id] = property === "checked" ? !!preset[key] : String(preset[key]);
+      }
+      GM_setValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "shared-advanced-presets-v2");
+      rwphSafeJsonSet(PAYOUT_FORM_STATE_STORAGE_KEY, state);
     }
     for (const [id, value] of Object.entries(state)) {
       const el = document.getElementById(id);
@@ -2451,7 +2464,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-activity-block-minutes", "rw-activity-block-value", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -3996,8 +4009,7 @@
       toggle.classList.toggle("primary", active);
       toggle.classList.toggle("secondary", !active);
     }
-    const run = panel.querySelector("#rw-points-run");
-    if (run) run.textContent = active ? "Calculate Advanced Payout" : "Calculate";
+    rwphUpdateAdvancedCalculationSystemUI();
     if (openAdvanced && active) {
       const details = panel.querySelector("details.rw-points-settings");
       if (details) {
@@ -4008,31 +4020,7 @@
   }
 
   function rwphRestoreAdvancedRecommendedDefaults() {
-    const recommended = {
-      "rw-point-war-hit": "10",
-      "rw-point-assist": "3",
-      "rw-point-outside": "2",
-      "rw-point-retal": "0.2",
-      "rw-point-hospital": "2",
-      "rw-point-enemy-hospital": "-1",
-      "rw-point-respect": "0.01",
-      "rw-point-respect-step": "0.01",
-      "rw-point-fair-fight-avg-step": "0.02",
-      "rw-point-fair-fight-bonus-step": "0.01",
-    };
-    Object.entries(recommended).forEach(([id, value]) => {
-      const input = document.getElementById(id);
-      if (!input) return;
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    const ffToggle = document.getElementById("rw-point-fair-fight");
-    if (ffToggle) {
-      ffToggle.checked = true;
-      ffToggle.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    rwphToastPanelInfo(document.getElementById("rw-status"), "Advanced settings restored to the recommended defaults. War times, payout amounts, and Member Management were not changed.", "info", "RWPH Advanced");
+    rwphApplyAdvancedSystemPreset(rwphAdvancedCalculationSystem(), { notify: true });
   }
 
   function attachAdvancedGuideToggleButton() {
@@ -8452,7 +8440,7 @@
 
   function buildFullscreenResultsHtml(rows, summary) {
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
-    const calculationSystemLabel = String(summary?.calculationSystemLabel || (pointsMode ? rwphAdvancedCalculationSystemLabel(summary?.calculationSystem || "custom_advanced") : "Per Hit"));
+    const calculationSystemLabel = String(summary?.calculationSystemLabel || (pointsMode ? rwphAdvancedCalculationSystemLabel(summary?.calculationSystem || "rwph_classic") : "Per Hit"));
     const list = (rows || []).map((r, index) => ({
       rank: index + 1,
       id: String(r.id || "unknown"),
@@ -11847,95 +11835,196 @@
   }
 
   const RWPH_ADVANCED_CALCULATION_SYSTEM_INFO = Object.freeze({
-    custom_advanced: {
-      label: "Custom Advanced",
-      summary: "Your existing RWPH Advanced formula. Configure War Hit, Assist, Outside, Retal, hospital, Respect Score and Avg FF values below.",
-      details: "Best when your faction already has its own point rules and wants full control over every Advanced value.",
+    hybrid_hit_performance: {
+      label: "Hybrid — Hits + Performance",
+      summary: "Recommended balanced preset: 50% participation, 30% FF performance, 15% war contribution, 5% support.",
+      details: "Selecting this loads Hybrid defaults into the shared settings below. Change any value after selection to make your own Hybrid setup.",
     },
     weighted_points: {
       label: "Weighted Points",
-      summary: "Exact FF for war hits; war retal and overseas each x1.25; assist 0.65; outside/non-war retal 0.35.",
-      details: "Performance-focused scoring that rewards difficult targets while still giving useful support and outside activity a smaller value.",
-    },
-    hybrid_hit_performance: {
-      label: "Hybrid — Hits + Performance",
-      summary: "Recommended balanced preset: 50% participation, 30% weighted FF performance, 15% war hits, 5% verified support.",
-      details: "Designed to keep lower-stat members competitive through participation while still rewarding harder FF targets and useful retals/assists.",
+      summary: "Exact FF war scoring with 1.25x retal/overseas modifiers, assist 0.65 and outside 0.35.",
+      details: "Performance-focused. The shared values below are the actual values sent to the calculation engine and can be edited after the preset loads.",
     },
     exact_ff: {
       label: "Exact Fair Fight",
-      summary: "War hit = exact FF; retal and overseas each x1.25; assist 0.60; outside/non-war retal 0.30.",
-      details: "A 1.08 FF hit scores 1.08 before modifiers, a 2.34 FF hit scores 2.34, and a 3.00 FF hit scores 3.00.",
+      summary: "War hits use exact FF; retal/overseas default to 1.25x; assist 0.60; outside 0.30.",
+      details: "The preset loads exact-FF settings, but every visible Advanced setting remains editable.",
     },
     fixed_pay_per_hit: {
       label: "Fixed Pay Per Hit",
-      summary: "War hit 1.00; retal x1.25; overseas x1.25; assist 0.50; outside/non-war retal 0.25.",
-      details: "The easiest weighted-hit system to explain. Fair Fight does not change the base hit value.",
+      summary: "War hit 1.00; retal/overseas 1.25x; assist 0.50; outside 0.25; FF disabled.",
+      details: "Simple weighted hits. Change the shared values to customise the selected system without needing a separate Custom mode.",
     },
     respect_share: {
       label: "Adjusted Respect Share",
-      summary: "Splits payout by war-opponent respect, removing Torn's exposed chain-bonus multiplier where available.",
-      details: "Outside hits and assists do not add Respect Share score. This avoids paying directly for large chain-bonus spikes where RWPH can identify the modifier.",
+      summary: "War contribution is scored from adjusted respect; chain-bonus multiplier is ignored by default.",
+      details: "Respect defaults to 1 point per 1 adjusted respect and war-only. Both respect switches and values are editable below.",
     },
     tiered_ff: {
       label: "Tiered Fair Fight",
-      summary: "Uses FF brackets from 1.00 points at 1.00–1.24 FF up to 2.75 points at 3.00 FF.",
-      details: "Retal and overseas each x1.25; assist 0.60; outside 0.30. Easier to predict than exact FF while still rewarding difficult targets.",
+      summary: "War hits use the RWPH FF brackets, with editable hit/support values and retal/overseas modifiers.",
+      details: "The FF bracket curve stays the Tiered mode, while its base/action/modifier settings can be changed below.",
     },
     base_bonus: {
       label: "Base Pay + Bonus Points",
-      summary: "War hit starts at 1.00, then adds FF, retal, overseas and hospital bonuses; assist 0.50; outside 0.30.",
-      details: "FF adds +0.50 per +1.00 above 1.00; war retal +0.25; overseas +0.25; verified hospitalize +0.10.",
+      summary: "War hit starts at 1.00 then adds FF, retal, overseas and hospital bonuses.",
+      details: "Uses Linear FF Bonus by default. The linear rate, modifiers, hospital bonus, support values and other shared settings are editable.",
     },
     energy_efficiency: {
       label: "Energy / Efficiency",
-      summary: "War hit uses exact FF performance; war retal +0.25; assist 0.50; outside chain-maintenance hit 0.30; other outside hits 0.",
-      details: "A contribution-oriented preset for factions that value useful energy and assists more than general outside activity.",
+      summary: "Exact FF war score, retal +0.25, assist 0.50 and only chain-maintenance outside hits at 0.30.",
+      details: "Outside chain-only is enabled by default. Untick it if you want all outside hits to use the configured Outside value.",
     },
     turtling_defence: {
       label: "Turtling / Defence",
-      summary: "Verified-data defence proxy: war hit 1.00, war retal +0.50, assist 0.50, outside 0, plus sustained activity credit.",
-      details: "Adds 0.25 per unique 15-minute activity block containing a war hit or assist. RWPH cannot reliably measure true online/hospital turtle duration, so it does not invent it.",
+      summary: "War hit 1.00, retal +0.50, assist 0.50, outside 0, plus configurable activity-block credit.",
+      details: "The activity block length/value are shared editable settings. RWPH still does not invent unavailable online/hospital duration data.",
     },
     equal_participation: {
       label: "Equal / Participation Pay",
-      summary: "Every member with at least one successful tracked contribution gets one equal share of the Member Payout pool.",
-      details: "Extra hits do not increase the share. Useful for casual factions that want participation to matter more than stats or target difficulty.",
+      summary: "Every member with at least one configured payable contribution receives one equal share.",
+      details: "The action values decide what qualifies as a contribution; payout remains equal between qualifying members.",
     },
     rwph_recommended: {
       label: "RWPH Recommended",
-      summary: "Exact FF war points, then +0.25 war retal, +0.25 overseas, assist 0.60 and outside/non-war retal 0.30.",
-      details: "A clear all-round points system: 1.00 FF = 1.00 point, 2.50 FF = 2.50 points, with useful war bonuses added separately.",
+      summary: "Exact FF war score +0.25 retal +0.25 overseas, assist 0.60 and outside 0.30.",
+      details: "A clear all-round preset. Change any loaded setting to customise it directly.",
+    },
+    rwph_classic: {
+      label: "RWPH Classic Advanced",
+      summary: "The pre-v1.1.464 Advanced formula: War Hit 10, Assist 3, Outside 2, retal +0.2, hospital/respect and Avg FF step bonus.",
+      details: "Backwards-compatible preset for old Custom Advanced users. It is a normal preset now; there is no separate Custom system.",
     },
   });
 
+  const RWPH_ADVANCED_SYSTEM_PRESETS = Object.freeze({
+    hybrid_hit_performance: { pointWarHitValue:1, pointAssistValue:0.60, pointOutsideHitValue:0.30, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    weighted_points: { pointWarHitValue:1, pointAssistValue:0.65, pointOutsideHitValue:0.35, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    exact_ff: { pointWarHitValue:1, pointAssistValue:0.60, pointOutsideHitValue:0.30, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    fixed_pay_per_hit: { pointWarHitValue:1, pointAssistValue:0.50, pointOutsideHitValue:0.25, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    respect_share: { pointWarHitValue:0, pointAssistValue:0, pointOutsideHitValue:0, pointRetaliationHitValue:0, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:1, pointRespectStep:1, pointRespectIgnoreChainBonus:true, pointRespectWarOnly:true, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    tiered_ff: { pointWarHitValue:1, pointAssistValue:0.60, pointOutsideHitValue:0.30, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"tiered", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    base_bonus: { pointWarHitValue:1, pointAssistValue:0.50, pointOutsideHitValue:0.30, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0.10, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"linear", pointFairFightLinearRate:0.50, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    energy_efficiency: { pointWarHitValue:1, pointAssistValue:0.50, pointOutsideHitValue:0.30, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"additive", pointOutsideChainOnly:true, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    turtling_defence: { pointWarHitValue:1, pointAssistValue:0.50, pointOutsideHitValue:0, pointRetaliationHitValue:0.50, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    equal_participation: { pointWarHitValue:1, pointAssistValue:1, pointOutsideHitValue:1, pointRetaliationHitValue:0, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    rwph_recommended: { pointWarHitValue:1, pointAssistValue:0.60, pointOutsideHitValue:0.30, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:1, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+    rwph_classic: { pointWarHitValue:10, pointAssistValue:3, pointOutsideHitValue:2, pointRetaliationHitValue:0.2, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:2, pointEnemyHospitalBonus:-1, pointRespectValue:0.01, pointRespectStep:0.01, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"avg_step", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:15, activityBlockValue:0.25 },
+  });
+
+  const RWPH_ADVANCED_PRESET_FIELD_MAP = Object.freeze({
+    pointWarHitValue: ["rw-point-war-hit", "value"], pointAssistValue: ["rw-point-assist", "value"], pointOutsideHitValue: ["rw-point-outside", "value"],
+    pointRetaliationHitValue: ["rw-point-retal", "value"], pointRetaliationMode: ["rw-point-retal-mode", "value"], pointOverseasValue: ["rw-point-overseas", "value"], pointOverseasMode: ["rw-point-overseas-mode", "value"],
+    pointOutsideChainOnly: ["rw-point-outside-chain-only", "checked"], pointHospitalBonus: ["rw-point-hospital", "value"], pointEnemyHospitalBonus: ["rw-point-enemy-hospital", "value"],
+    pointRespectValue: ["rw-point-respect", "value"], pointRespectStep: ["rw-point-respect-step", "value"], pointRespectIgnoreChainBonus: ["rw-point-respect-ignore-chain", "checked"], pointRespectWarOnly: ["rw-point-respect-war-only", "checked"],
+    pointFairFightEnabled: ["rw-point-fair-fight", "checked"], pointFairFightMode: ["rw-point-fair-fight-mode", "value"], pointFairFightLinearRate: ["rw-point-fair-fight-linear-rate", "value"], pointFairFightAvgStep: ["rw-point-fair-fight-avg-step", "value"], pointFairFightBonusPerStep: ["rw-point-fair-fight-bonus-step", "value"],
+    hybridParticipationPct: ["rw-hybrid-participation-pct", "value"], hybridPerformancePct: ["rw-hybrid-performance-pct", "value"], hybridWarPct: ["rw-hybrid-war-pct", "value"], hybridSupportPct: ["rw-hybrid-support-pct", "value"], hybridRetalSupportValue: ["rw-hybrid-retal-support", "value"],
+    activityBlockMinutes: ["rw-activity-block-minutes", "value"], activityBlockValue: ["rw-activity-block-value", "value"],
+  });
+
   function rwphNormalizeAdvancedCalculationSystem(value) {
-    const key = String(value || "custom_advanced").trim().toLowerCase().replace(/[\s-]+/g, "_");
-    return RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[key] ? key : "custom_advanced";
+    const raw = String(value || "hybrid_hit_performance").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const key = raw === "custom_advanced" ? "rwph_classic" : raw;
+    return RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[key] ? key : "hybrid_hit_performance";
   }
 
   function rwphAdvancedCalculationSystem() {
-    return rwphNormalizeAdvancedCalculationSystem(document.getElementById("rw-calculation-system")?.value || "custom_advanced");
+    return rwphNormalizeAdvancedCalculationSystem(document.getElementById("rw-calculation-system")?.value || "hybrid_hit_performance");
   }
 
   function rwphAdvancedCalculationSystemLabel(value = null) {
     const key = rwphNormalizeAdvancedCalculationSystem(value || rwphAdvancedCalculationSystem());
-    return RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[key]?.label || "Custom Advanced";
+    return RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[key]?.label || "Hybrid — Hits + Performance";
+  }
+
+  function rwphReadAdvancedSharedSettings() {
+    const num = (id, fallback = 0) => {
+      const n = Number(document.getElementById(id)?.value);
+      return Number.isFinite(n) ? n : fallback;
+    };
+    return {
+      pointWarHitValue: num("rw-point-war-hit", 1),
+      pointAssistValue: num("rw-point-assist", 0.6),
+      pointOutsideHitValue: num("rw-point-outside", 0.3),
+      pointRetaliationHitValue: num("rw-point-retal", 0.25),
+      pointRetaliationMode: String(document.getElementById("rw-point-retal-mode")?.value || "additive"),
+      pointOverseasValue: num("rw-point-overseas", 0.25),
+      pointOverseasMode: String(document.getElementById("rw-point-overseas-mode")?.value || "additive"),
+      pointOutsideChainOnly: document.getElementById("rw-point-outside-chain-only")?.checked === true,
+      pointHospitalBonus: num("rw-point-hospital", 0),
+      pointEnemyHospitalBonus: num("rw-point-enemy-hospital", 0),
+      pointRespectValue: num("rw-point-respect", 0),
+      pointRespectStep: num("rw-point-respect-step", 1),
+      pointRespectIgnoreChainBonus: document.getElementById("rw-point-respect-ignore-chain")?.checked === true,
+      pointRespectWarOnly: document.getElementById("rw-point-respect-war-only")?.checked === true,
+      pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
+      pointFairFightMode: String(document.getElementById("rw-point-fair-fight-mode")?.value || "none"),
+      pointFairFightLinearRate: num("rw-point-fair-fight-linear-rate", 0.5),
+      pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
+      pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
+      hybridParticipationPct: num("rw-hybrid-participation-pct", 50),
+      hybridPerformancePct: num("rw-hybrid-performance-pct", 30),
+      hybridWarPct: num("rw-hybrid-war-pct", 15),
+      hybridSupportPct: num("rw-hybrid-support-pct", 5),
+      hybridRetalSupportValue: num("rw-hybrid-retal-support", 1),
+      activityBlockMinutes: num("rw-activity-block-minutes", 15),
+      activityBlockValue: num("rw-activity-block-value", 0.25),
+    };
+  }
+
+  function rwphAdvancedSettingsValidationError(settings = rwphReadAdvancedSharedSettings()) {
+    const nonNegative = ["pointWarHitValue","pointAssistValue","pointOutsideHitValue","pointRetaliationHitValue","pointOverseasValue","pointHospitalBonus","pointRespectValue","pointFairFightLinearRate","pointFairFightBonusPerStep","hybridParticipationPct","hybridPerformancePct","hybridWarPct","hybridSupportPct","hybridRetalSupportValue","activityBlockValue"];
+    for (const key of nonNegative) if (!Number.isFinite(Number(settings[key])) || Number(settings[key]) < 0) return "Advanced Calculation values cannot be negative.";
+    if (!Number.isFinite(Number(settings.pointEnemyHospitalBonus))) return "Enemy hospital bonus must be a number.";
+    if (!Number.isFinite(Number(settings.pointRespectStep)) || Number(settings.pointRespectStep) <= 0) return "Per respect earned must be greater than 0.";
+    if (settings.pointFairFightEnabled && settings.pointFairFightMode === "avg_step" && (!Number.isFinite(Number(settings.pointFairFightAvgStep)) || Number(settings.pointFairFightAvgStep) <= 0)) return "Avg FF required per bonus step must be greater than 0.";
+    if (!Number.isFinite(Number(settings.activityBlockMinutes)) || Number(settings.activityBlockMinutes) <= 0) return "Defence activity block minutes must be greater than 0.";
+    if (["hybrid_hit_performance"].includes(rwphAdvancedCalculationSystem())) {
+      const split = Number(settings.hybridParticipationPct)+Number(settings.hybridPerformancePct)+Number(settings.hybridWarPct)+Number(settings.hybridSupportPct);
+      if (!(split > 0)) return "Hybrid split percentages must total more than 0%.";
+    }
+    return "";
+  }
+
+  function rwphApplyAdvancedSystemPreset(value = null, { notify = false } = {}) {
+    const system = rwphNormalizeAdvancedCalculationSystem(value || rwphAdvancedCalculationSystem());
+    const preset = RWPH_ADVANCED_SYSTEM_PRESETS[system] || RWPH_ADVANCED_SYSTEM_PRESETS.hybrid_hit_performance;
+    for (const [key, [id, property]] of Object.entries(RWPH_ADVANCED_PRESET_FIELD_MAP)) {
+      const el = document.getElementById(id);
+      if (!el || !(key in preset)) continue;
+      if (property === "checked") el.checked = !!preset[key];
+      else el.value = String(preset[key]);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    rwphUpdateAdvancedCalculationSystemUI();
+    rwphSavePayoutFormState();
+    rwphScheduleAutoCacheCheck(180, "points");
+    if (notify) rwphToastPanelInfo(document.getElementById("rw-status"), `${rwphAdvancedCalculationSystemLabel(system)} defaults loaded. Change any Advanced setting to customise this system.`, "info", "RWPH Advanced");
   }
 
   function rwphUpdateAdvancedCalculationSystemUI() {
     const panel = document.getElementById("rw-payout-helper");
     if (!panel) return;
     const system = rwphAdvancedCalculationSystem();
-    const info = RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[system] || RWPH_ADVANCED_CALCULATION_SYSTEM_INFO.custom_advanced;
+    const info = RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[system] || RWPH_ADVANCED_CALCULATION_SYSTEM_INFO.hybrid_hit_performance;
+    const preset = RWPH_ADVANCED_SYSTEM_PRESETS[system] || RWPH_ADVANCED_SYSTEM_PRESETS.hybrid_hit_performance;
     const summary = panel.querySelector("#rw-calculation-system-summary");
     const details = panel.querySelector("#rw-calculation-system-details");
     if (summary) summary.innerHTML = `<b>${rwphHtmlEscape(info.label)}:</b> ${rwphHtmlEscape(info.summary)}`;
     if (details) details.textContent = info.details;
-    const custom = system === "custom_advanced";
-    panel.querySelectorAll(".rw-custom-advanced-only").forEach((node) => { node.hidden = !custom; node.style.display = custom ? "" : "none"; });
+    panel.querySelectorAll("[data-rwph-preset-for]").forEach((node) => {
+      const key = node.dataset.rwphPresetFor;
+      if (!(key in preset)) return;
+      const value = preset[key];
+      node.textContent = `Preset: ${typeof value === "boolean" ? (value ? "On" : "Off") : value}`;
+    });
+    const reset = panel.querySelector("#rw-points-reset-recommended");
+    if (reset) reset.textContent = `Reload ${info.label} Defaults`;
     const run = panel.querySelector("#rw-points-run");
-    if (run) run.textContent = system === "custom_advanced" ? "Calculate" : `Calculate — ${info.label}`;
+    if (run) run.textContent = `Calculate — ${info.label}`;
+    const customised = panel.querySelector("#rw-advanced-custom-status");
+    if (customised) customised.textContent = `Preset values are editable. Changing any setting customises ${info.label}; there is no separate Custom system.`;
   }
 
   function rwphModeLabel(mode) {
@@ -12429,25 +12518,8 @@
 
     if (!mode || mode === "points") {
       const calculationSystem = rwphAdvancedCalculationSystem();
-      signatureParts.push("points", `system:${calculationSystem}`, "advanced-multi-system-v1");
-      if (calculationSystem === "custom_advanced") {
-        signatureParts.push(
-          Number(document.getElementById("rw-point-war-hit")?.value || 10),
-          Number(document.getElementById("rw-point-assist")?.value || 3),
-          Number(document.getElementById("rw-point-outside")?.value || 2),
-          Number(document.getElementById("rw-point-retal")?.value || 0.2),
-          Number(document.getElementById("rw-point-hospital")?.value || 2),
-          rwphPointEnemyHospitalBonusValue(),
-          rwphPointRespectScoreValue(),
-          rwphPointRespectStepValue(),
-          "advanced-respect-score-step-v2",
-          document.getElementById("rw-point-fair-fight")?.checked !== false ? "ff" : "no-ff",
-          rwphPointFairFightAvgStepValue(),
-          rwphPointFairFightBonusStepValue(),
-          "avg-ff-custom-step-per-payable-hit-v2",
-          "war-faction-retals-war-hit-plus-bonus-v1",
-        );
-      }
+      const advanced = rwphReadAdvancedSharedSettings();
+      signatureParts.push("points", `system:${calculationSystem}`, "advanced-shared-settings-v1", JSON.stringify(advanced));
       signatureParts.push(
         "member-management-v1",
         `exclude:${rwphExcludedMembersSignature("points")}`,
@@ -12476,17 +12548,7 @@
       respectWeight: rwphFixedPerHitWeight("rw-respect-weight", 0),
       basicFastMode: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasicFastModeEnabled(),
       basic120ResultsPage: false,
-      pointWarHitValue: Number(document.getElementById("rw-point-war-hit")?.value || 10),
-      pointAssistValue: Number(document.getElementById("rw-point-assist")?.value || 3),
-      pointOutsideHitValue: Number(document.getElementById("rw-point-outside")?.value || 2),
-      pointRetaliationHitValue: Number(document.getElementById("rw-point-retal")?.value || 0.2),
-      pointHospitalBonus: Number(document.getElementById("rw-point-hospital")?.value || 2),
-      pointEnemyHospitalBonus: rwphPointEnemyHospitalBonusValue(),
-      pointRespectValue: rwphPointRespectScoreValue(),
-      pointRespectStep: rwphPointRespectStepValue(),
-      pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
-      pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
-      pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
+      ...rwphReadAdvancedSharedSettings(),
       includeLeftFactionMembers: false,
       excludedMembersText: rwphGetExcludedMembersTextForMode(calculationMode),
       memberManagement: rwphGetMemberManagementPayload(calculationMode),
@@ -12500,8 +12562,8 @@
     // The saved cached report keeps its own Member Payout and Total Payout values.
     const sharedInvalid = !payload.userKey;
     const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0 || payload.respectWeight < 0;
-    const pointsInvalid = payload.calculationSystem === "custom_advanced" && (payload.pointWarHitValue < 0 || payload.pointAssistValue < 0 || payload.pointOutsideHitValue < 0 || payload.pointRetaliationHitValue < 0 || payload.pointHospitalBonus < 0 || payload.pointRespectValue < 0 || payload.pointRespectStep <= 0 || (payload.pointFairFightEnabled !== false && (payload.pointFairFightAvgStep <= 0 || payload.pointFairFightBonusPerStep < 0)));
-    if (sharedInvalid || (mode === "standard" && perHitInvalid) || (mode === "points" && pointsInvalid)) {
+    const pointsInvalid = mode === "points" && !!rwphAdvancedSettingsValidationError(payload);
+    if (sharedInvalid || (mode === "standard" && perHitInvalid) || pointsInvalid) {
       return { ok: false, payload };
     }
     return { ok: true, payload };
@@ -15088,11 +15150,11 @@
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
             <summary class="rw-api-tos-title"><span class="rwph-advanced-summary-title">Advanced Calculations</span><button id="rw-advanced-guide-toggle" class="secondary rw-advanced-guide-toggle" type="button" title="Show the easy Advanced Calculations setup guide" aria-label="Advanced Calculations setup guide" aria-pressed="false">?</button></summary>
             <div class="rw-api-tos-content">
-              <div class="rw-calc-brief"><b>Advanced:</b> choose a payout system below. Custom Advanced keeps the existing configurable RWPH formula.</div>
+              <div class="rw-calc-brief"><b>Advanced:</b> choose a payout system preset. RWPH loads that system's settings below; change any setting to customise it.</div>
               <div class="rw-advanced-system-picker">
                 <label>Calculation System
                   <select id="rw-calculation-system">
-                    <option value="hybrid_hit_performance">Hybrid — Hits + Performance (Recommended)</option>
+                    <option value="hybrid_hit_performance" selected>Hybrid — Hits + Performance (Recommended)</option>
                     <option value="weighted_points">Weighted Points</option>
                     <option value="exact_ff">Exact Fair Fight</option>
                     <option value="fixed_pay_per_hit">Fixed Pay Per Hit</option>
@@ -15103,7 +15165,7 @@
                     <option value="turtling_defence">Turtling / Defence</option>
                     <option value="equal_participation">Equal / Participation Pay</option>
                     <option value="rwph_recommended">RWPH Recommended</option>
-                    <option value="custom_advanced" selected>Custom Advanced (Current RWPH)</option>
+                    <option value="rwph_classic">RWPH Classic Advanced</option>
                   </select>
                 </label>
                 <div id="rw-calculation-system-summary" class="rw-calc-brief rw-calculation-system-summary"></div>
@@ -15114,18 +15176,18 @@
                 <div id="rw-cache-status-points" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
               </div>
 
-              <div class="rw-advanced-guide-only rw-advanced-easy-guide rw-custom-advanced-only">
-                <div class="rw-advanced-guide-title">Easy Advanced Setup</div>
-                <div class="rw-advanced-guide-text">Advanced mode gives each member <b>points for what they did</b>, then splits the Member Payout using each member's share of the final points.</div>
+              <div class="rw-advanced-guide-only rw-advanced-easy-guide">
+                <div class="rw-advanced-guide-title">Shared Advanced Settings</div>
+                <div class="rw-advanced-guide-text">Select a system to load its preset values. <b>All settings below stay editable</b>; changing them customises the selected system.</div>
                 <div class="rw-advanced-guide-steps">
                   <span><b>1.</b> Pick the finished war/time.</span>
                   <span><b>2.</b> Enter the Member Payout pool.</span>
-                  <span><b>3.</b> Leave the recommended point values alone unless you want different weighting.</span>
-                  <span><b>4.</b> Click Calculate and RWPH splits the pool by each member's points.</span>
+                  <span><b>3.</b> The selected system auto-fills every setting below.</span>
+                  <span><b>4.</b> Change any value if wanted, then Calculate. No separate Custom mode is required.</span>
                 </div>
-                <div class="rw-advanced-default-summary"><b>Recommended defaults:</b> War Hit 10 · Assist 3 · Outside 2 · War Retal +0.2 · Own Hosp +2 · Enemy Hosp -1 · Respect 0.01 per 0.01 · FF +0.01 per hit for every +0.02 Avg FF.</div>
+                <div id="rw-advanced-custom-status" class="rw-advanced-default-summary">Preset values are editable. Select a system to load its defaults.</div>
                 <div class="rw-actions rw-advanced-guide-actions">
-                  <button id="rw-points-reset-recommended" class="secondary" type="button">Restore Recommended Defaults</button>
+                  <button id="rw-points-reset-recommended" class="secondary" type="button">Reload Selected System Defaults</button>
                 </div>
               </div>
 
@@ -15165,85 +15227,136 @@
                 <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Open Member Management to remove a member completely, remove payable hits, or subtract respect from a member before points payouts are recalculated.</div>
               </div>
 
-              <div class="rw-advanced-section rw-custom-advanced-only" data-rwph-advanced-step="3">
+              <div class="rw-advanced-section" data-rwph-advanced-step="3">
                 <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">3</span><span>Main Point Values</span></div>
                 <div class="rw-advanced-guide-only rw-advanced-setting-help">Higher numbers make that action worth more of the payout. Leave the recommended values if you do not want to customise the weighting.</div>
                 <div class="rw-row">
-                  <label>War hit points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 10</span>
-                    <input id="rw-point-war-hit" type="number" value="10" step="0.1" min="0">
+                  <label>War hit points <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointWarHitValue">Preset</span>
+                    <input id="rw-point-war-hit" type="number" value="1" step="0.1" min="0">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">A normal hit on the selected ranked-war opponent.</span>
                   </label>
-                  <label>Assist points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 3</span>
-                    <input id="rw-point-assist" type="number" value="3" step="0.1" min="0">
+                  <label>Assist points <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointAssistValue">Preset</span>
+                    <input id="rw-point-assist" type="number" value="0.6" step="0.1" min="0">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">Points awarded for an assist.</span>
                   </label>
                 </div>
                 <div class="rw-row">
-                  <label>Outside hit points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 2</span>
-                    <input id="rw-point-outside" type="number" value="2" step="0.1" min="0">
+                  <label>Outside hit points <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointOutsideHitValue">Preset</span>
+                    <input id="rw-point-outside" type="number" value="0.3" step="0.1" min="0">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">A payable hit that is not against the selected war faction.</span>
                   </label>
-                  <label>War-faction retal bonus points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: +0.2</span>
-                    <input id="rw-point-retal" type="number" value="0.2" step="0.1" min="0">
+                  <label>War-faction retal modifier / bonus <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointRetaliationHitValue">Preset</span>
+                    <input id="rw-point-retal" type="number" value="0.25" step="0.1" min="0">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">Extra points added on top of the war-hit value when the retaliation is against the war faction.</span>
                   </label>
                 </div>
-                <div class="rw-advanced-guide-only rw-advanced-example"><b>Example:</b> with defaults, a normal war hit is 10 points. A war-faction retal is the normal war hit plus the +0.2 retal bonus.</div>
+                <div class="rw-row">
+                  <label>Retal modifier type
+                    <select id="rw-point-retal-mode"><option value="additive">Add points</option><option value="multiplier" selected>Multiply by 1 + value</option></select>
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Multiplier +0.25 means 1.25x. Add points +0.25 means add 0.25 after the war-hit score.</span>
+                  </label>
+                  <label>Overseas modifier / bonus <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointOverseasValue">Preset</span>
+                    <input id="rw-point-overseas" type="number" value="0.25" step="0.05" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Used for overseas war hits when the selected system supports that modifier.</span>
+                  </label>
+                </div>
+                <div class="rw-row">
+                  <label>Overseas modifier type
+                    <select id="rw-point-overseas-mode"><option value="additive">Add points</option><option value="multiplier" selected>Multiply by 1 + value</option></select>
+                  </label>
+                  <label class="rw-inline-check"><input id="rw-point-outside-chain-only" type="checkbox"> Outside value applies to chain-maintenance hits only</label>
+                </div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>Preset behaviour:</b> the selected system fills these values and modifier types automatically. Change them to create your own version of that system.</div>
               </div>
 
-              <div class="rw-advanced-section rw-custom-advanced-only" data-rwph-advanced-step="4">
+              <div class="rw-advanced-section" data-rwph-advanced-step="4">
                 <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">4</span><span>Hospital Bonuses</span></div>
                 <div class="rw-advanced-guide-only rw-advanced-setting-help">These are extra points for verified hospitalizing results. The enemy-war-faction value can be negative if you want it to reduce the member's score.</div>
                 <div class="rw-row">
-                  <label>Own-faction hospital bonus points <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: +2</span>
-                    <input id="rw-point-hospital" type="number" value="2" step="0.1" min="0">
-                    <span class="rw-advanced-guide-only rw-advanced-field-help">Extra points for a verified own-faction hospitalizing result.</span>
+                  <label>Hospitalize bonus points <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointHospitalBonus">Preset</span>
+                    <input id="rw-point-hospital" type="number" value="0" step="0.1" min="0">
+                    <span class="rw-advanced-guide-only rw-advanced-field-help">Extra points for a verified hospitalizing result in preset scoring. RWPH Classic keeps its legacy hospital behaviour.</span>
                   </label>
-                  <label>Enemy war faction hospital bonus points (can be negative) <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: -1</span>
-                    <input id="rw-point-enemy-hospital" type="number" value="-1" step="0.1">
+                  <label>Enemy war faction hospital bonus points (can be negative) <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointEnemyHospitalBonus">Preset</span>
+                    <input id="rw-point-enemy-hospital" type="number" value="0" step="0.1">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">Use a negative number to subtract points, 0 for no adjustment, or a positive number to reward it.</span>
                   </label>
                 </div>
               </div>
 
-              <div class="rw-advanced-section rw-custom-advanced-only" data-rwph-advanced-step="5">
+              <div class="rw-advanced-section" data-rwph-advanced-step="5">
                 <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">5</span><span>Respect Score</span></div>
                 <div class="rw-advanced-guide-only rw-advanced-setting-help">This converts earned respect into Advanced points. The first box is the points to add; the second box is how much respect earns that amount.</div>
                 <div class="rw-row">
-                  <label>Respect score to add <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.01</span>
-                    <input id="rw-point-respect" type="number" value="0.01" step="0.01" min="0">
+                  <label>Respect score to add <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointRespectValue">Preset</span>
+                    <input id="rw-point-respect" type="number" value="0" step="0.01" min="0">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">How many points the member receives each time the configured respect amount is earned.</span>
                   </label>
-                  <label>Per respect earned <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.01</span>
-                    <input id="rw-point-respect-step" type="number" value="0.01" step="0.01" min="0.01">
+                  <label>Per respect earned <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointRespectStep">Preset</span>
+                    <input id="rw-point-respect-step" type="number" value="1" step="0.01" min="0.01">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">How much respect is needed to earn the points from the first box.</span>
                   </label>
                 </div>
-                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Default: every <b>0.01</b> respect earned adds <b>0.01</b> score. You can change both the score added and the respect amount.</div>
-                <div class="rw-advanced-guide-only rw-advanced-example"><b>Default example:</b> 0.01 points for every 0.01 respect means 2.50 respect adds 2.50 Advanced points. Set Respect score to add to 0 if you do not want respect to affect payouts.</div>
+                <div class="rw-compact-check-grid">
+                  <label><input id="rw-point-respect-ignore-chain" type="checkbox"> Ignore chain-bonus multiplier for respect</label>
+                  <label><input id="rw-point-respect-war-only" type="checkbox"> Apply respect score to war hits only</label>
+                </div>
+                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Respect can be added to any system. Adjusted Respect Share enables both the adjusted-respect and war-only switches automatically.</div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>How it works:</b> the selected preset fills both respect fields. For example, 1 point per 1 respect makes 2.50 respect worth 2.50 points. Set Respect score to add to 0 if you do not want respect to affect payouts.</div>
               </div>
 
-              <div class="rw-advanced-section rw-custom-advanced-only" data-rwph-advanced-step="6">
+              <div class="rw-advanced-section" data-rwph-advanced-step="6">
                 <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">6</span><span>Fair Fight Bonus</span></div>
-                <div class="rw-advanced-guide-only rw-advanced-setting-help">Optional. This rewards higher average Fair Fight (Avg FF). Avg FF 1.00 gives no bonus and the calculation is capped at Avg FF 3.00.</div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Choose how Fair Fight affects war-hit scoring. Exact, Tiered and Linear score each war hit; Avg Step uses the member's average FF. FF is capped at 3.00.</div>
                 <div class="rw-compact-check-grid rw-compact-check-grid-single">
                   <label><input id="rw-point-fair-fight" type="checkbox" checked> Use fair-fight modifier</label>
                 </div>
                 <div class="rw-row">
-                  <label>Avg FF required per bonus step <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.02</span>
+                  <label>Fair Fight mode
+                    <select id="rw-point-fair-fight-mode">
+                      <option value="none">None</option><option value="exact" selected>Exact FF multiplier</option><option value="tiered">Tiered FF brackets</option><option value="linear">Linear FF bonus</option><option value="avg_step">Average FF step bonus</option>
+                    </select>
+                  </label>
+                  <label>Linear FF bonus per +1.00 FF <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointFairFightLinearRate">Preset</span>
+                    <input id="rw-point-fair-fight-linear-rate" type="number" value="0.5" step="0.05" min="0">
+                  </label>
+                </div>
+                <div class="rw-row">
+                  <label>Avg FF required per bonus step <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointFairFightAvgStep">Preset</span>
                     <input id="rw-point-fair-fight-avg-step" type="number" value="0.02" step="0.01" min="0.01">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">How far Avg FF must rise above 1.00 for each bonus step.</span>
                   </label>
-                  <label>Point bonus per payable hit per step <span class="rw-advanced-guide-only-inline rw-advanced-recommended">Recommended: 0.01</span>
+                  <label>Point bonus per payable hit per step <span class="rw-advanced-guide-only-inline rw-advanced-recommended" data-rwph-preset-for="pointFairFightBonusPerStep">Preset</span>
                     <input id="rw-point-fair-fight-bonus-step" type="number" value="0.01" step="0.01" min="0">
                     <span class="rw-advanced-guide-only rw-advanced-field-help">How many extra points each payable hit gets for every Fair Fight step.</span>
                   </label>
                 </div>
-                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Avg FF over 1.00 adds the configured bonus per payable hit. Capped at 3.00; untick for no FF bonus.</div>
-                <div class="rw-advanced-guide-only rw-advanced-example"><b>Default example:</b> Avg FF 1.40 is 0.40 above 1.00. At 0.02 per step that is 20 steps, so each payable hit gets +0.20 points. Untick the checkbox to disable this completely.</div>
+                <div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Fair Fight behaviour follows the selected FF mode. Exact, Tiered, Linear and Avg Step can all be selected manually; untick to disable FF scoring.</div>
+                <div class="rw-advanced-guide-only rw-advanced-example"><b>Avg Step example:</b> if Avg FF is 1.40, step size is 0.02 and bonus is 0.01, that is 20 steps and +0.20 points per payable hit. Exact/Tiered/Linear modes use their own scoring instead.</div>
               </div>
 
-              <div class="rw-advanced-guide-only rw-advanced-ready-box rw-custom-advanced-only"><b>Ready:</b> If you are unsure what to change, leave the recommended values as they are, set the war and payout, then click Calculate.</div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="7">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">7</span><span>Hybrid Allocation</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Used by Hybrid. The four percentages are normalised automatically if they do not total exactly 100.</div>
+                <div class="rw-row">
+                  <label>Participation % <input id="rw-hybrid-participation-pct" type="number" value="50" step="1" min="0"></label>
+                  <label>Performance % <input id="rw-hybrid-performance-pct" type="number" value="30" step="1" min="0"></label>
+                </div>
+                <div class="rw-row">
+                  <label>War contribution % <input id="rw-hybrid-war-pct" type="number" value="15" step="1" min="0"></label>
+                  <label>Support % <input id="rw-hybrid-support-pct" type="number" value="5" step="1" min="0"></label>
+                </div>
+                <label>Hybrid retal support value <input id="rw-hybrid-retal-support" type="number" value="1" step="0.1" min="0"></label>
+              </div>
+              <div class="rw-advanced-section" data-rwph-advanced-step="8">
+                <div class="rw-advanced-guide-only rw-advanced-setting-title"><span class="rw-advanced-step-number">8</span><span>Defence Activity Credit</span></div>
+                <div class="rw-advanced-guide-only rw-advanced-setting-help">Used by Turtling / Defence. A member gets the configured credit for each unique activity block containing a payable war hit or assist.</div>
+                <div class="rw-row">
+                  <label>Activity block minutes <input id="rw-activity-block-minutes" type="number" value="15" step="1" min="1"></label>
+                  <label>Points per activity block <input id="rw-activity-block-value" type="number" value="0.25" step="0.05" min="0"></label>
+                </div>
+              </div>
+              <div class="rw-advanced-guide-only rw-advanced-ready-box"><b>Ready:</b> The dropdown is a preset loader. Any setting you change becomes your custom version of that selected system.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-points-run" class="secondary" type="button">Calculate</button>
                 <button id="rw-use-points-cache" class="secondary" type="button" disabled>Use Cached Report</button>
@@ -15476,10 +15589,8 @@
     rwphFormatPayoutMoneyInputs();
     rwphAttachPayoutFormPersistence();
     rwphUpdateAdvancedCalculationSystemUI();
-    document.getElementById("rw-calculation-system")?.addEventListener("change", () => {
-      rwphUpdateAdvancedCalculationSystemUI();
-      rwphSavePayoutFormState();
-      rwphScheduleAutoCacheCheck(120, "points");
+    document.getElementById("rw-calculation-system")?.addEventListener("change", (event) => {
+      rwphApplyAdvancedSystemPreset(event.currentTarget?.value || rwphAdvancedCalculationSystem(), { notify: true });
     });
     switchTab(rwphGetActiveTab("main", "payout"));
 
@@ -15512,7 +15623,7 @@
       });
     };
     attachModeCacheWatchers(["rw-from", "rw-to", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-excluded-members"], "standard");
-    attachModeCacheWatchers(["rw-points-from", "rw-points-to", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-fair-fight", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-points-excluded-members"], "points");
+    attachModeCacheWatchers(["rw-points-from", "rw-points-to", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-activity-block-minutes", "rw-activity-block-value", "rw-points-excluded-members"], "points");
     const keyInputForCache = document.getElementById("rw-key");
     if (keyInputForCache) {
       const onKeyChange = () => {
@@ -15732,27 +15843,18 @@
       const basicFastMode = !isPointsMode && rwphBasicFastModeEnabled();
       const basic120ResultsPage = false;
       const calculationSystem = isPointsMode ? rwphAdvancedCalculationSystem() : "basic_per_hit";
-      const pointWarHitValue = Number(document.getElementById("rw-point-war-hit")?.value || 10);
-      const pointAssistValue = Number(document.getElementById("rw-point-assist")?.value || 3);
-      const pointOutsideHitValue = Number(document.getElementById("rw-point-outside")?.value || 2);
-      const pointRetaliationHitValue = Number(document.getElementById("rw-point-retal")?.value || 0.2);
-      const pointHospitalBonus = Number(document.getElementById("rw-point-hospital")?.value || 2);
-      const pointEnemyHospitalBonus = rwphPointEnemyHospitalBonusValue();
-      const pointRespectValue = rwphPointRespectScoreValue();
-      const pointRespectStep = rwphPointRespectStepValue();
-      const pointFairFightEnabled = document.getElementById("rw-point-fair-fight")?.checked !== false;
-      const pointFairFightAvgStep = rwphPointFairFightAvgStepValue();
-      const pointFairFightBonusPerStep = rwphPointFairFightBonusStepValue();
-        const excludedMembersText = rwphGetExcludedMembersTextForMode(mode);
+      const advancedSettings = rwphReadAdvancedSharedSettings();
+      const { pointWarHitValue, pointAssistValue, pointOutsideHitValue, pointRetaliationHitValue, pointHospitalBonus, pointEnemyHospitalBonus, pointRespectValue, pointRespectStep, pointFairFightEnabled, pointFairFightAvgStep, pointFairFightBonusPerStep } = advancedSettings;
+      const includeLeftFactionMembers = false;
+      const excludedMembersText = rwphGetExcludedMembersTextForMode(mode);
       const memberAdjustments = rwphGetMemberManagementPayload(mode);
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
       if (warHitWeight < 0 || outsideHitWeight < 0 || retaliationHitWeight < 0 || assistWeight < 0 || respectWeight < 0) return alert("Weights cannot be negative.");
-      if (calculationSystem === "custom_advanced") {
-        if (pointWarHitValue < 0 || pointAssistValue < 0 || pointOutsideHitValue < 0 || pointRetaliationHitValue < 0 || pointHospitalBonus < 0 || pointRespectValue < 0 || pointRespectStep <= 0) return alert("Advanced Calculation values cannot be negative.");
-        if (pointFairFightEnabled && (!Number.isFinite(pointFairFightAvgStep) || pointFairFightAvgStep <= 0)) return alert("Avg FF required per bonus step must be greater than 0.");
-        if (pointFairFightEnabled && (!Number.isFinite(pointFairFightBonusPerStep) || pointFairFightBonusPerStep < 0)) return alert("Point bonus per payable hit per step cannot be negative.");
+      if (isPointsMode) {
+        const advancedError = rwphAdvancedSettingsValidationError(advancedSettings);
+        if (advancedError) return alert(advancedError);
       }
 
       let preOpenedResultsTab = null;
@@ -15803,17 +15905,7 @@
           respectWeight,
           basicFastMode,
           basic120ResultsPage,
-          pointWarHitValue,
-          pointAssistValue,
-          pointOutsideHitValue,
-          pointRetaliationHitValue,
-          pointHospitalBonus,
-          pointEnemyHospitalBonus,
-          pointRespectValue,
-          pointRespectStep,
-          pointFairFightEnabled,
-          pointFairFightAvgStep,
-          pointFairFightBonusPerStep,
+          ...advancedSettings,
           includeLeftFactionMembers,
           excludedMembersText,
           memberManagement: memberAdjustments,
