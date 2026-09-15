@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, reopening cached reports, and preparing manual faction payments.
 
-Current userscript version: **1.1.470**  
+Current userscript version: **1.1.471**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,14 +19,15 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.470
+## What's New in v1.1.471
 
-Advanced setting help and dropdown styling were tightened without changing calculation behaviour.
+Advanced setting labels are easier to read inside narrow cards.
 
-- Every Advanced setting name and its `?` help control are kept together on the **same line**, for example **Calculation System ?**.
-- The `?` stays immediately to the right of the setting name/text and keeps the same label-sized appearance introduced in v1.1.469.
-- **Retal Modifier Type**, **Overseas Modifier Type**, and **Fair Fight Mode** dropdowns now follow the active RWPH theme colours for their background, border, text and focus styling.
-- Advanced help notifications still stay open until you press **×** or click the same `?` again.
+- Each Advanced setting name and its `?` help control are treated as one combined label block.
+- Setting names and their `?` are slightly larger for readability.
+- The `?` uses the same text size as the setting name and stays visually attached to it.
+- Long setting names can wrap naturally onto a second line instead of overflowing the card.
+- Persistent Advanced help behaviour is unchanged: press **×** or click the same `?` again to close it.
 - All normal RWPH notifications still close automatically after **5 seconds**.
 - Calculation formulas, presets, caching and backend behaviour are unchanged.
 
@@ -399,8 +400,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.470
+## Current Version Summary — v1.1.471
 
-RWPH v1.1.470 is a UI-only update continuing the v1.1.467 calculation/backend base. Advanced setting names and `?` help controls now stay together on the same line, and the Retal, Overseas, and Fair Fight mode dropdowns follow the active RWPH theme colours.
+RWPH v1.1.471 is a userscript/UI-only update continuing the v1.1.467 calculation/backend base. Advanced setting names and their `?` help controls now form one slightly larger wrapping label block, so long names can use a second line inside narrow setting cards without the help control drifting away.
 
-Setting-help notifications are persistent until closed with **×** or toggled off by clicking the same `?` again. Every other RWPH notification continues using the existing 5-second timeout. Advanced preset values, shared settings, calculation formulas, cache identity, licensing, payment tools, and backend behaviour are unchanged.
+Persistent setting-help notifications, themed Advanced dropdowns, preset values, shared settings, calculation formulas, cache identity, licensing, payment tools, and backend behaviour are unchanged.

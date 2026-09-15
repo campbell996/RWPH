@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.470
+// @version      1.1.471
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.470: Advanced help labels keep the setting name and ? on one inline row; retal/overseas/Fair Fight selectors follow the active theme.
+  // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -17342,9 +17342,9 @@
 
   function rwphInjectAdvancedSettingHelpStylesV1466() {
     try {
-      if (document.getElementById("rwph-advanced-setting-help-styles-v1470")) return;
+      if (document.getElementById("rwph-advanced-setting-help-styles-v1471")) return;
       const style = document.createElement("style");
-      style.id = "rwph-advanced-setting-help-styles-v1470";
+      style.id = "rwph-advanced-setting-help-styles-v1471";
       style.textContent = `
         #rw-payout-helper .rwph-logo-selector-action-row{
           display:flex!important;
@@ -17435,57 +17435,60 @@
           font-weight:900!important;
         }
 
-        /* Keep every setting name and its help ? together on the same line. */
+        /* v1.1.471: setting name + ? are one larger wrapping title block. */
         #rw-payout-helper details.rw-points-settings .rwph-setting-label-line{
-          display:inline-flex!important;
-          align-items:baseline!important;
-          justify-content:flex-start!important;
-          gap:0!important;
-          width:max-content!important;
-          max-width:none!important;
+          display:block!important;
+          width:100%!important;
+          max-width:100%!important;
           min-width:0!important;
           margin:0!important;
           padding:0!important;
           border:0!important;
           background:transparent!important;
           color:inherit!important;
-          font:inherit!important;
-          line-height:inherit!important;
-          white-space:nowrap!important;
+          font-family:inherit!important;
+          font-size:1.15em!important;
+          line-height:1.24!important;
+          font-weight:850!important;
+          white-space:normal!important;
+          overflow-wrap:normal!important;
+          word-break:normal!important;
           box-shadow:none!important;
         }
         #rw-payout-helper details.rw-points-settings label:has(> input[type="checkbox"]) .rwph-setting-label-line{
-          display:inline-flex!important;
-          flex:0 1 auto!important;
-          align-items:baseline!important;
+          display:block!important;
+          flex:1 1 auto!important;
+          width:auto!important;
+          max-width:100%!important;
           min-width:0!important;
+          white-space:normal!important;
         }
 
-        /* Compact inline per-setting help buttons: label text followed immediately by ?. */
+        /* The ? is visually part of the setting name and matches its text size. */
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button{
           display:inline!important;
-          flex:0 0 auto!important;
           width:auto!important;
           min-width:0!important;
           max-width:none!important;
           height:auto!important;
           min-height:0!important;
           max-height:none!important;
-          padding:0 1px!important;
-          margin:0 0 0 4px!important;
+          padding:0!important;
+          margin:0 0 0 3px!important;
           border:0!important;
           border-radius:0!important;
           background:transparent!important;
           color:var(--rwph-theme-gold)!important;
-          font:inherit!important;
+          font-family:inherit!important;
           font-size:1em!important;
-          line-height:1!important;
+          line-height:inherit!important;
           font-weight:950!important;
           vertical-align:baseline!important;
           cursor:pointer!important;
           box-shadow:none!important;
           position:relative!important;
           z-index:3!important;
+          white-space:nowrap!important;
         }
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button:hover,
         #rw-payout-helper details.rw-points-settings .rwph-setting-help-button:focus-visible{
@@ -17497,7 +17500,7 @@
           transform:none!important;
         }
         #rw-payout-helper details.rw-points-settings label:has(> input[type="checkbox"]) .rwph-setting-help-button{
-          margin-left:4px!important;
+          margin-left:3px!important;
         }
         #rw-payout-helper .rw-advanced-section{
           display:contents!important;
