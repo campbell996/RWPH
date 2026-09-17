@@ -66,7 +66,7 @@ The backend may use the key to:
 
 - verify licence state;
 - fetch Torn data needed for the selected calculation;
-- save, list, open, or delete one of the faction’s three saved reports;
+- save, list, open, delete, or apply faction-level Auto Delete settings to one of the faction’s three saved reports;
 - process licence payment/extension checks;
 - support admin licence tools when enabled.
 
@@ -88,7 +88,7 @@ Cached report data may include:
 - final payout rows;
 - cache creation and expiry times.
 
-Each faction can keep up to three saved reports. When all three slots are occupied, RWPH will not start another calculation until one saved report is deleted.
+Each faction can keep up to three saved reports. When all three slots are occupied, RWPH will not start another calculation until one saved report is deleted or an enabled Auto Delete policy removes an expired report. Auto Delete is optional and its expiry age is stored as a faction-level backend setting.
 
 ---
 

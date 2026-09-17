@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.474
+// @version      1.1.475
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2430,7 +2430,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-activity-block-minutes", "rw-activity-block-value", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -2477,7 +2477,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-activity-block-minutes", "rw-activity-block-value", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -4130,14 +4130,6 @@
     "rw-hybrid-retal-support": {
       title: "Hybrid Retal Support Value",
       message: "Support credit assigned to qualifying retals inside the Hybrid support component. Increase it if your faction wants retals to carry more of the support allocation.",
-    },
-    "rw-activity-block-minutes": {
-      title: "Activity Block Minutes",
-      message: "Used by Turtling / Defence. RWPH groups qualifying war activity into blocks of this many minutes and counts unique active blocks for the member.",
-    },
-    "rw-activity-block-value": {
-      title: "Points Per Activity Block",
-      message: "Used by Turtling / Defence. Each unique activity block containing qualifying contribution adds this many points. RWPH uses this as a verifiable activity proxy and does not invent online/hospital duration data.",
     },
   });
 
@@ -12056,11 +12048,6 @@
       summary: "Exact FF war score, retal +0.25, assist 0.50 and only chain-maintenance outside hits at 0.30.",
       details: "Outside chain-only is enabled by default. Untick it if you want all outside hits to use the configured Outside value.",
     },
-    turtling_defence: {
-      label: "Turtling / Defence",
-      summary: "War hit 1.00, retal +0.50, assist 0.50, outside 0, plus configurable activity-block credit.",
-      details: "The activity block length/value are shared editable settings. RWPH still does not invent unavailable online/hospital duration data.",
-    },
     equal_participation: {
       label: "Equal / Participation Pay",
       summary: "Every member with at least one configured payable contribution receives one equal share.",
@@ -12079,18 +12066,17 @@
   });
 
   const RWPH_ADVANCED_SYSTEM_PRESETS = Object.freeze({
-    hybrid_hit_performance: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1, activityBlockMinutes:0, activityBlockValue:0 },
-    weighted_points: { pointWarHitValue:1, pointAssistValue:0.65, pointOutsideHitValue:0.35, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    exact_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    fixed_pay_per_hit: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.25, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    respect_share: { pointWarHitValue:0, pointAssistValue:0, pointOutsideHitValue:0, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:1, pointRespectStep:1, pointRespectIgnoreChainBonus:true, pointRespectWarOnly:true, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    tiered_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"tiered", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    base_bonus: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0.1, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"linear", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    energy_efficiency: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:true, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    turtling_defence: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0, pointRetaliationHitValue:0.5, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:15, activityBlockValue:0.25 },
-    equal_participation: { pointWarHitValue:1, pointAssistValue:1, pointOutsideHitValue:1, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    rwph_recommended: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
-    rwph_classic: { pointWarHitValue:10, pointAssistValue:3, pointOutsideHitValue:2, pointRetaliationHitValue:0.2, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:2, pointEnemyHospitalBonus:-1, pointRespectValue:0.01, pointRespectStep:0.01, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"avg_step", pointFairFightLinearRate:0, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, activityBlockMinutes:0, activityBlockValue:0 },
+    hybrid_hit_performance: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1 },
+    weighted_points: { pointWarHitValue:1, pointAssistValue:0.65, pointOutsideHitValue:0.35, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    exact_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    fixed_pay_per_hit: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.25, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    respect_share: { pointWarHitValue:0, pointAssistValue:0, pointOutsideHitValue:0, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:1, pointRespectStep:1, pointRespectIgnoreChainBonus:true, pointRespectWarOnly:true, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    tiered_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"tiered", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    base_bonus: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0.1, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"linear", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    energy_efficiency: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:true, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    equal_participation: { pointWarHitValue:1, pointAssistValue:1, pointOutsideHitValue:1, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    rwph_recommended: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    rwph_classic: { pointWarHitValue:10, pointAssistValue:3, pointOutsideHitValue:2, pointRetaliationHitValue:0.2, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:2, pointEnemyHospitalBonus:-1, pointRespectValue:0.01, pointRespectStep:0.01, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"avg_step", pointFairFightLinearRate:0, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
   });
 
   const RWPH_ADVANCED_PRESET_FIELD_MAP = Object.freeze({
@@ -12100,7 +12086,6 @@
     pointRespectValue: ["rw-point-respect", "value"], pointRespectStep: ["rw-point-respect-step", "value"], pointRespectIgnoreChainBonus: ["rw-point-respect-ignore-chain", "checked"], pointRespectWarOnly: ["rw-point-respect-war-only", "checked"],
     pointFairFightEnabled: ["rw-point-fair-fight", "checked"], pointFairFightMode: ["rw-point-fair-fight-mode", "value"], pointFairFightLinearRate: ["rw-point-fair-fight-linear-rate", "value"], pointFairFightAvgStep: ["rw-point-fair-fight-avg-step", "value"], pointFairFightBonusPerStep: ["rw-point-fair-fight-bonus-step", "value"],
     hybridParticipationPct: ["rw-hybrid-participation-pct", "value"], hybridPerformancePct: ["rw-hybrid-performance-pct", "value"], hybridWarPct: ["rw-hybrid-war-pct", "value"], hybridSupportPct: ["rw-hybrid-support-pct", "value"], hybridRetalSupportValue: ["rw-hybrid-retal-support", "value"],
-    activityBlockMinutes: ["rw-activity-block-minutes", "value"], activityBlockValue: ["rw-activity-block-value", "value"],
   });
 
   function rwphNormalizeAdvancedCalculationSystem(value) {
@@ -12148,18 +12133,15 @@
       hybridWarPct: num("rw-hybrid-war-pct", 15),
       hybridSupportPct: num("rw-hybrid-support-pct", 5),
       hybridRetalSupportValue: num("rw-hybrid-retal-support", 1),
-      activityBlockMinutes: num("rw-activity-block-minutes", 15),
-      activityBlockValue: num("rw-activity-block-value", 0.25),
     };
   }
 
   function rwphAdvancedSettingsValidationError(settings = rwphReadAdvancedSharedSettings()) {
-    const nonNegative = ["pointWarHitValue","pointAssistValue","pointOutsideHitValue","pointRetaliationHitValue","pointOverseasValue","pointHospitalBonus","pointRespectValue","pointFairFightLinearRate","pointFairFightBonusPerStep","hybridParticipationPct","hybridPerformancePct","hybridWarPct","hybridSupportPct","hybridRetalSupportValue","activityBlockValue"];
+    const nonNegative = ["pointWarHitValue","pointAssistValue","pointOutsideHitValue","pointRetaliationHitValue","pointOverseasValue","pointHospitalBonus","pointRespectValue","pointFairFightLinearRate","pointFairFightBonusPerStep","hybridParticipationPct","hybridPerformancePct","hybridWarPct","hybridSupportPct","hybridRetalSupportValue"];
     for (const key of nonNegative) if (!Number.isFinite(Number(settings[key])) || Number(settings[key]) < 0) return "Advanced Calculation values cannot be negative.";
     if (!Number.isFinite(Number(settings.pointEnemyHospitalBonus))) return "Enemy hospital bonus must be a number.";
     if (Number(settings.pointRespectValue) > 0 && (!Number.isFinite(Number(settings.pointRespectStep)) || Number(settings.pointRespectStep) <= 0)) return "Per respect earned must be greater than 0 when Respect Score is enabled.";
     if (settings.pointFairFightEnabled && settings.pointFairFightMode === "avg_step" && (!Number.isFinite(Number(settings.pointFairFightAvgStep)) || Number(settings.pointFairFightAvgStep) <= 0)) return "Avg FF required per bonus step must be greater than 0.";
-    if (rwphAdvancedCalculationSystem() === "turtling_defence" && Number(settings.activityBlockValue) > 0 && (!Number.isFinite(Number(settings.activityBlockMinutes)) || Number(settings.activityBlockMinutes) <= 0)) return "Defence activity block minutes must be greater than 0 when Defence activity credit is enabled.";
     if (["hybrid_hit_performance"].includes(rwphAdvancedCalculationSystem())) {
       const split = Number(settings.hybridParticipationPct)+Number(settings.hybridPerformancePct)+Number(settings.hybridWarPct)+Number(settings.hybridSupportPct);
       if (!(split > 0)) return "Hybrid split percentages must total more than 0%.";
@@ -12695,6 +12677,9 @@
       #rwph-saved-reports-panel .rwph-saved-reports-head-actions{display:flex;gap:5px;flex:0 0 auto}.rwph-saved-reports-head-actions button{min-width:32px!important;padding:5px 7px!important;margin:0!important}
       #rwph-saved-reports-panel .rwph-saved-reports-body{flex:1 1 auto;min-height:0;overflow:auto;padding:9px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box}
       #rwph-saved-reports-panel .rwph-saved-report-intro{font-size:11px;line-height:1.4;padding:7px 8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:8px;background:var(--rwph-theme-panel2,#2b1d18);color:var(--rwph-theme-soft,#c9b7a4)}
+      #rwph-saved-reports-panel .rwph-saved-report-auto-delete{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;align-items:center;padding:8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:9px;background:var(--rwph-theme-panel2,#2b1d18)}
+      #rwph-saved-reports-panel .rwph-saved-report-auto-delete-copy{min-width:0}.rwph-saved-report-auto-delete-copy b{display:block;font-size:12px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-report-auto-delete-copy span{display:block;margin-top:2px;font-size:10px;line-height:1.35;color:var(--rwph-theme-soft,#c9b7a4)}
+      #rwph-saved-reports-panel .rwph-saved-report-auto-delete-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}.rwph-saved-report-auto-delete-controls button{min-width:76px!important;margin:0!important;padding:6px 8px!important}.rwph-saved-report-auto-delete-controls select{min-width:112px;padding:6px 8px;background:var(--rwph-theme-panel3,#3a241c)!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-button-radius,8px)!important;font-weight:800}.rwph-saved-report-auto-delete-controls select:disabled{opacity:.5;cursor:not-allowed}.rwph-saved-report-auto-delete-controls option{background:var(--rwph-theme-panel3,#3a241c)!important;color:var(--rwph-theme-text,#fff2dd)!important}
       #rwph-saved-reports-panel .rwph-saved-report-slot{padding:9px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:10px;background:linear-gradient(180deg,var(--rwph-theme-panel2,#2b1d18),var(--rwph-theme-panel,#211714));box-shadow:0 8px 18px rgba(0,0,0,.22)}
       #rwph-saved-reports-panel .rwph-saved-report-slot.empty{opacity:.82}.rwph-saved-report-slot-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.rwph-saved-report-slot-head b{font-size:13px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-report-badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));color:var(--rwph-theme-gold,#fbbf24);white-space:nowrap}
       #rwph-saved-reports-panel .rwph-saved-report-meta{font-size:11px;line-height:1.42;color:var(--rwph-theme-soft,#c9b7a4);overflow-wrap:anywhere}.rwph-saved-report-meta b{color:var(--rwph-theme-text,#fff2dd)}
@@ -12747,6 +12732,57 @@
     </div>`;
   }
 
+  function rwphApplySavedReportsAutoDeleteUi(setting = {}) {
+    const panel = rwphSavedReportsPanel();
+    if (!panel) return;
+    const enabled = !!setting.enabled;
+    const allowed = [1,3,6,12,24,48,72,168];
+    const requested = Math.floor(Number(setting.hours || 24));
+    const hours = allowed.includes(requested) ? requested : 24;
+    const toggle = panel.querySelector("#rwph-saved-reports-auto-delete-toggle");
+    const select = panel.querySelector("#rwph-saved-reports-auto-delete-hours");
+    if (toggle) {
+      toggle.dataset.enabled = enabled ? "1" : "0";
+      toggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+      toggle.textContent = enabled ? "On" : "Off";
+      toggle.title = enabled ? `Auto Delete is on. Reports older than ${hours} hour(s) are removed.` : "Auto Delete is off.";
+    }
+    if (select) {
+      select.value = String(hours);
+      select.disabled = !enabled;
+    }
+  }
+
+  async function rwphSaveSavedReportsAutoDeleteSetting(next = {}) {
+    const panel = rwphSavedReportsPanel();
+    if (!panel) return;
+    const status = panel.querySelector("#rwph-saved-reports-status");
+    const toggle = panel.querySelector("#rwph-saved-reports-auto-delete-toggle");
+    const select = panel.querySelector("#rwph-saved-reports-auto-delete-hours");
+    const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!userKey) return rwphToastPanelError(document.getElementById("rw-status"), "Enter your Torn API key first.", "RWPH Saved Reports");
+    const enabled = Object.prototype.hasOwnProperty.call(next, "enabled") ? !!next.enabled : (toggle?.dataset?.enabled === "1");
+    const hours = Object.prototype.hasOwnProperty.call(next, "hours") ? Number(next.hours) : Number(select?.value || 24);
+    try {
+      if (toggle) toggle.disabled = true;
+      if (select) select.disabled = true;
+      if (status) status.textContent = "Saving Auto Delete setting...";
+      const result = await apiPost("/api/calc/saved-reports/settings", { userKey, token, enabled, hours });
+      rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled, hours });
+      if (status) status.textContent = result.autoDelete?.enabled
+        ? `Auto Delete is on: reports are removed after ${Number(result.autoDelete.hours || hours)} hour(s).`
+        : "Auto Delete is off. Saved reports remain until manually deleted or replaced by a future policy change.";
+    } catch (e) {
+      if (status) status.textContent = `Could not save Auto Delete setting: ${e.message || e}`;
+      rwphToastPanelError(document.getElementById("rw-status"), `Auto Delete setting error: ${e.message || e}`, "RWPH Saved Reports");
+    } finally {
+      if (toggle) toggle.disabled = false;
+      const currentEnabled = toggle?.dataset?.enabled === "1";
+      if (select) select.disabled = !currentEnabled;
+    }
+  }
+
   async function rwphRefreshSavedReportsPanel({ quiet = false, prefetchedResult = null } = {}) {
     const panel = rwphSavedReportsPanel();
     if (!panel) return;
@@ -12763,6 +12799,7 @@
       if (status && !quiet && !prefetchedResult) status.textContent = "Loading saved reports...";
       const result = prefetchedResult || await apiPost("/api/calc/saved-reports/list", { userKey, token });
       const reports = Array.isArray(result.reports) ? result.reports : [];
+      rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled: false, hours: 24 });
       const factionTitle = panel.querySelector("#rwph-saved-reports-faction");
       if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"} · up to ${Number(result.maxReports || 3)} reports`;
       if (list) list.innerHTML = [1,2,3].map((slot) => rwphSavedReportSlotHtml(reports.find((r) => Number(r.slot) === slot) || { empty:true }, slot)).join("");
@@ -12845,10 +12882,26 @@
     panel.innerHTML = `
       <div class="rwph-saved-reports-head">
         <div class="rwph-saved-reports-title"><b>Cached Reports</b><span id="rwph-saved-reports-faction">Loading faction...</span></div>
-        <div class="rwph-saved-reports-head-actions"><button type="button" id="rwph-saved-reports-refresh">Refresh</button><button type="button" id="rwph-saved-reports-close" aria-label="Close">×</button></div>
+        <div class="rwph-saved-reports-head-actions"><button type="button" id="rwph-saved-reports-close" aria-label="Close">×</button></div>
       </div>
       <div class="rwph-saved-reports-body">
         <div class="rwph-saved-report-intro">Your faction can keep up to <b>3 completed reports</b>. When all 3 slots are full, start a new calculation only after deleting one report. Loading a report opens the exact saved result; it does not recalculate it.</div>
+        <div class="rwph-saved-report-auto-delete">
+          <div class="rwph-saved-report-auto-delete-copy"><b>Auto Delete</b><span>Optional faction setting. When enabled, reports older than the selected age are removed by the backend before they count toward the 3 saved slots.</span></div>
+          <div class="rwph-saved-report-auto-delete-controls">
+            <button type="button" id="rwph-saved-reports-auto-delete-toggle" aria-pressed="false">Off</button>
+            <select id="rwph-saved-reports-auto-delete-hours" disabled>
+              <option value="1">After 1 hour</option>
+              <option value="3">After 3 hours</option>
+              <option value="6">After 6 hours</option>
+              <option value="12">After 12 hours</option>
+              <option value="24" selected>After 24 hours</option>
+              <option value="48">After 48 hours</option>
+              <option value="72">After 3 days</option>
+              <option value="168">After 7 days</option>
+            </select>
+          </div>
+        </div>
         <div id="rwph-saved-reports-list"><div class="rwph-saved-report-intro">Loading saved reports...</div></div>
         <div id="rwph-saved-reports-status">Loading...</div>
       </div>`;
@@ -12856,7 +12909,13 @@
     try { rwphApplyPanelLayout(panel); } catch (_) {}
     try { rwphEnablePanelMoveResize(panel, ".rwph-saved-reports-head"); } catch (_) {}
     panel.querySelector("#rwph-saved-reports-close")?.addEventListener("click", rwphCloseSavedReportsPanel);
-    panel.querySelector("#rwph-saved-reports-refresh")?.addEventListener("click", () => rwphRefreshSavedReportsPanel());
+    panel.querySelector("#rwph-saved-reports-auto-delete-toggle")?.addEventListener("click", () => {
+      const toggle = panel.querySelector("#rwph-saved-reports-auto-delete-toggle");
+      rwphSaveSavedReportsAutoDeleteSetting({ enabled: toggle?.dataset?.enabled !== "1" });
+    });
+    panel.querySelector("#rwph-saved-reports-auto-delete-hours")?.addEventListener("change", (event) => {
+      rwphSaveSavedReportsAutoDeleteSetting({ hours: Number(event.target?.value || 24) });
+    });
     panel.addEventListener("click", (event) => {
       const load = event.target?.closest?.("[data-rwph-saved-load]");
       if (load) { rwphLoadSavedReportSlot(load.getAttribute("data-rwph-saved-load")); return; }
@@ -15171,7 +15230,6 @@
 <option value="tiered_ff">Tiered Fair Fight</option>
 <option value="base_bonus">Base Pay + Bonus Points</option>
 <option value="energy_efficiency">Energy / Efficiency</option>
-<option value="turtling_defence">Turtling / Defence</option>
 <option value="equal_participation">Equal / Participation Pay</option>
 <option value="rwph_recommended">RWPH Recommended</option>
 <option value="rwph_classic">RWPH Classic Advanced</option>
@@ -15332,15 +15390,6 @@
 </div>
 <label>Hybrid retal support value <input id="rw-hybrid-retal-support" min="0" step="0.1" type="number" value="1"/></label>
 </div>
-<div class="rw-advanced-section" data-rwph-advanced-step="8">
-
-
-<div class="rw-row">
-<label>Activity block minutes <input id="rw-activity-block-minutes" min="0" step="1" type="number" value="15"/></label>
-<label>Points per activity block <input id="rw-activity-block-value" min="0" step="0.05" type="number" value="0.25"/></label>
-</div>
-</div>
-
 <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
 <button class="secondary" id="rw-points-run" type="button">Calculate</button>
 </div>
@@ -15855,6 +15904,34 @@
           memberAdjustments,
         }, { timeout: 600000 });
         const result = await calcRequest.promise;
+        let savedReportSaveWarning = "";
+        if (!Number(result?.savedReport?.slot || result?.summary?.savedReportSlot || 0)) {
+          try {
+            if (status) status.textContent = "Calculation complete. Retrying Saved Reports save...";
+            const retrySave = await apiPost("/api/calc/saved-reports/save", {
+              userKey,
+              token,
+              calculationMode: isPointsMode ? "points" : "standard",
+              calculationSystem,
+              from,
+              to,
+              memberPayout: totalPayout,
+              overallTotalPayout,
+              resultPayload: result,
+            });
+            if (retrySave?.savedReport?.slot) {
+              result.savedReport = retrySave.savedReport;
+              result.summary ||= {};
+              result.summary.savedReportSlot = Number(retrySave.savedReport.slot || 0);
+              result.summary.savedReportSavedAtMs = Number(retrySave.savedReport.savedAtMs || retrySave.savedReport.updatedAtMs || Date.now());
+              delete result.savedReportError;
+            } else {
+              savedReportSaveWarning = "The calculation finished, but RWPH could not confirm that the report was saved.";
+            }
+          } catch (saveRetryError) {
+            savedReportSaveWarning = `The calculation finished, but the report could not be saved: ${saveRetryError?.message || saveRetryError}`;
+          }
+        }
         calculationFinished = true;
         if (stopTabCloseWatcher) {
           stopTabCloseWatcher();
@@ -15895,6 +15972,9 @@
             resultsPanel.scrollTop = 0;
           }
           rwphToastPanelInfo(status, `${isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done"}${Number(result.savedReport?.slot || lastSummary?.savedReportSlot || 0) ? ` · saved report ${Number(result.savedReport?.slot || lastSummary?.savedReportSlot || 0)}` : ""}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Popup blocked, so results opened in the panel.`, "warn", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
+        }
+        if (savedReportSaveWarning) {
+          rwphToastPanelError(status, savedReportSaveWarning, "RWPH Saved Reports");
         }
       } catch (e) {
         if (stopProgressPolling) {

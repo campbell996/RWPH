@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.474**  
+Current userscript version: **1.1.475**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,26 +19,15 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.474
+## What's New in v1.1.475
 
-- Before starting a calculation, RWPH checks the faction's three Saved Reports slots.
-- If all 3 slots are occupied, RWPH opens **Cached Reports** instead of opening the calculation loading panel.
-- Delete one saved report to make room, then run the calculation again.
-- Existing saved reports are never automatically overwritten by a new calculation.
-
-RWPH now uses a dedicated **Cached Reports panel** instead of the old automatic matching cache system.
-
-- The old hidden cache matching/checking system has been removed.
-- The old **Use Cached Report** and **Delete Cache** buttons inside Basic/Advanced are gone.
-- The unlocked main panel now has one **Cached Reports** button.
-- Each faction can keep up to **3 saved reports**.
-- Successful calculations save automatically.
-- If all three slots are occupied, RWPH opens Cached Reports instead of starting another calculation. Delete one report to make room.
-- Saved reports can be loaded or deleted directly from the panel.
-- Loading a saved report opens the exact saved result; it does not recalculate using the current form values.
-- Normal **Calculate** always performs a fresh calculation.
-- There is no saved-report expiry timer and no old cache-delete cooldown.
-
+- Fixed Saved Reports so a completed calculation gets a second save attempt if the first backend write fails.
+- If both save attempts fail, RWPH now shows the Saved Reports error instead of silently leaving the report unsaved.
+- Added faction-level **Auto Delete** controls to the Cached Reports panel.
+- Auto Delete can be turned on/off and set to remove reports after **1h, 3h, 6h, 12h, 24h, 48h, 3 days, or 7 days**.
+- Expired reports are removed by the backend before they count toward the faction's 3 saved slots.
+- Cached Reports refreshes when the panel is first opened and immediately after deleting a report. It does not poll continuously.
+- Existing 3-slot behaviour remains: if all active slots are full, RWPH opens Cached Reports instead of starting another calculation.
 
 ---
 
@@ -103,7 +92,6 @@ RWPH currently includes:
 - **Tiered Fair Fight**
 - **Base Pay + Bonus Points**
 - **Energy / Efficiency**
-- **Turtling / Defence**
 - **Equal / Participation Pay**
 - **RWPH Recommended**
 - **RWPH Classic Advanced**
@@ -142,7 +130,6 @@ Help is available for settings including:
 - Average FF step settings
 - Hybrid allocation percentages
 - Hybrid retal support
-- Defence activity-block length/value
 
 These setting-help notifications follow the selected RWPH colour theme and stay open until you press **×** or click the same `?` again. Other normal RWPH notifications still close after about five seconds.
 
@@ -209,15 +196,6 @@ Hybrid has editable allocation percentages for:
 
 The percentages are normalised automatically when necessary.
 
-### Defence activity credit
-
-The Turtling / Defence preset can use:
-
-- Activity block length in minutes
-- Points per unique activity block
-
-This is based on contribution that RWPH can verify from available war activity. It does not invent unavailable online/hospital-duration data.
-
 ---
 
 ## RWPH Classic Advanced
@@ -246,7 +224,7 @@ Saved Member Management adjustments are temporary and are intended for the curre
 
 ## Cached Reports
 
-The unlocked main panel has a dedicated **Cached Reports** button. This is now RWPH's only completed-report storage system.
+The unlocked main panel has a dedicated **Cached Reports** button. This is RWPH's completed-report storage system.
 
 Each faction has **3 saved report slots**.
 
@@ -254,19 +232,26 @@ After a successful calculation:
 
 - RWPH saves the completed Basic or Advanced report automatically.
 - RWPH uses the first empty slot.
-- If all 3 slots are full, RWPH opens Cached Reports and does not start the calculation until you delete one report.
+- If the first save attempt fails, RWPH retries once.
+- If both save attempts fail, RWPH shows the save error so you know the report was not stored.
+- If all 3 slots are full, RWPH opens Cached Reports and does not start another calculation until you delete one report or Auto Delete frees a slot.
 
-The Cached Reports panel shows each slot with useful details such as the calculation type, war period, save time, member count and report totals.
+The Cached Reports panel shows each slot with the calculation type, war period, save time, member count and report totals.
 
 From the panel you can:
 
 - **Load Report** — open the exact report that was saved.
 - **Delete** — immediately clear that slot.
-- **Refresh** — reload the faction's three saved slots.
+- **Auto Delete** — turn automatic expiry on/off for the faction.
+- **Delete after** — choose 1h, 3h, 6h, 12h, 24h, 48h, 3 days, or 7 days.
+
+Auto Delete is a faction-level setting. When enabled, reports older than the selected age are removed by the backend before they count toward the 3 saved slots.
+
+The panel refreshes when it is first opened and after a report is deleted. It does **not** continuously poll the backend.
 
 Saved reports are shared at the **faction level**, so licensed users calculating for the same faction see that faction's slots. Loading a saved report does not apply whatever settings are currently visible in Basic/Advanced; it loads the saved result exactly as it was calculated.
 
-The previous automatic cache matching, cache expiry, duplicate blocking, mode-specific Use Cached Report buttons, and Delete Cache cooldown are no longer used.
+The previous automatic cache matching, mode-specific Use Cached Report buttons, and Delete Cache cooldown are no longer used.
 
 ---
 
@@ -381,7 +366,7 @@ Wait briefly and try again. RWPH uses request spacing/retry handling, but Torn m
 
 ### A saved report is not available
 
-Open **Cached Reports** and press **Refresh**. If a slot is empty, run a successful calculation to save a report. Each faction has its own three slots.
+Open **Cached Reports**. The panel refreshes when it opens. If a slot is empty, run a successful calculation to save a report. Each faction has its own three slots.
 
 ### All three saved-report slots are full
 
@@ -417,8 +402,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.474
+## Current Version Summary — v1.1.475
 
-RWPH v1.1.474 uses the faction-level Cached Reports workflow with a visible faction-level **Cached Reports** panel. Each faction keeps up to three reports, successful calculations save automatically, and saved reports can be loaded or deleted directly from the unlocked main panel. Normal calculations always run fresh and no longer perform automatic saved-report matching before calculation.
+RWPH v1.1.475 uses the faction-level **Cached Reports** panel with three saved-report slots per faction. Completed calculations save automatically, and RWPH retries the save once if the first database write fails. The panel refreshes only when opened and after deleting a report. Optional faction-level Auto Delete can remove reports after 1, 3, 6, 12, 24, 48, 72, or 168 hours. Normal calculations always run fresh and require an empty saved-report slot before starting.
 
 The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, and Torn attack-data speed cache remain available.
