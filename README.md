@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.477**  
+Current userscript version: **1.1.478**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,15 +19,15 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.477
+## What's New in v1.1.478
 
-- Fixed reports not appearing in **Cached Reports** after a calculation.
-- RWPH now uses a clean Saved Reports v2 storage table for all three faction report slots.
-- Compatible saved rows from the previous Saved Reports table are imported once where possible.
-- A completed calculation is only marked as saved after the Worker immediately reads the saved row back successfully.
-- Cached Reports list, load, delete, Auto Delete, exact-settings matching and the three-slot capacity check all use the same storage path.
-- Exact-settings matches still open Cached Reports and highlight the matching report instead of recalculating.
-- Existing Auto Delete and refresh-on-open/delete behaviour remain unchanged.
+- Saved Reports are now owned and queried by the **faction ID**.
+- The same faction ID is used for save, list, load, delete, Auto Delete, exact-settings matching and the three-slot capacity check.
+- The Cached Reports panel shows the faction ID it loaded, so users can verify which faction owns the three slots.
+- The userscript remembers the last server-confirmed faction ID and sends it with Saved Reports actions; the Worker always verifies it against the faction attached to the current Torn API key.
+- Compatible rows still sitting in the previous Saved Reports table are reconciled into the active three slots for that faction ID before the panel is rendered.
+- Saved report slot field names are normalized in the userscript so a real database row cannot render as Empty because of a slot-name mismatch.
+- Exact-settings matching, Auto Delete, the three-report limit and refresh-on-open/delete behavior remain unchanged.
 
 ---
 
@@ -373,7 +373,7 @@ Wait briefly and try again. RWPH uses request spacing/retry handling, but Torn m
 
 ### A saved report is not available
 
-Open **Cached Reports**. The panel refreshes when it opens. If a slot is empty, run a successful calculation to save a report. Each faction has its own three slots.
+Open **Cached Reports**. The panel refreshes when it opens and loads the three slots for the faction ID shown in the panel header. If a slot is empty, run a successful calculation to save a report. Each faction ID has its own three slots.
 
 ### All three saved-report slots are full
 
@@ -409,8 +409,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.477
+## Current Version Summary — v1.1.478
 
-RWPH v1.1.477 uses the faction-level **Cached Reports** panel with three saved-report slots per faction. Saved Reports now use a clean v2 storage table, with a one-time import of compatible rows from the previous table where possible. Every completed calculation is verified by reading the saved row back before RWPH reports that it was cached. Exact-settings matching, three-slot capacity, Auto Delete, and refresh-on-open/delete behavior remain available.
+RWPH v1.1.478 uses the faction-level **Cached Reports** panel with three saved-report slots keyed by faction ID. Save, list, load, delete, Auto Delete and matching all use the same server-verified faction ID. Compatible legacy Saved Reports rows for that faction ID are reconciled into the active slots before listing. Every completed calculation is still verified by reading the saved row back before RWPH reports that it was cached.
 
 The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, and Torn attack-data speed cache remain available.

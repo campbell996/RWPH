@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.477
+// @version      1.1.478
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.477: Saved Reports v2 storage + read-after-write verification + exact-settings matching.
+  // v1.1.478: faction-ID-owned Saved Reports + legacy faction-slot reconciliation + faction-scoped panel loading.
   // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
@@ -12698,6 +12698,20 @@
     return "Basic — Per Hit";
   }
 
+  let rwphSavedReportsFactionId = String(GM_getValue("rwph_saved_reports_faction_id", "") || "").trim();
+
+  function rwphRememberSavedReportsFactionId(value) {
+    const id = String(value || "").trim();
+    if (!/^\d+$/.test(id) || id === "0") return rwphSavedReportsFactionId;
+    rwphSavedReportsFactionId = id.replace(/^0+(?=\d)/, "");
+    GM_setValue("rwph_saved_reports_faction_id", rwphSavedReportsFactionId);
+    return rwphSavedReportsFactionId;
+  }
+
+  function rwphSavedReportsRequestBody(userKey, token, extra = {}) {
+    return { userKey, token, ...(rwphSavedReportsFactionId ? { factionId: rwphSavedReportsFactionId } : {}), ...extra };
+  }
+
   function rwphEnsureSavedReportsPanelStyles() {
     if (document.getElementById("rwph-saved-reports-style")) return;
     const style = document.createElement("style");
@@ -12801,7 +12815,8 @@
       if (toggle) toggle.disabled = true;
       if (select) select.disabled = true;
       if (status) status.textContent = "Saving Auto Delete setting...";
-      const result = await apiPost("/api/calc/saved-reports/settings", { userKey, token, enabled, hours });
+      const result = await apiPost("/api/calc/saved-reports/settings", rwphSavedReportsRequestBody(userKey, token, { enabled, hours }));
+      rwphRememberSavedReportsFactionId(result.factionId);
       rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled, hours });
       if (status) status.textContent = result.autoDelete?.enabled
         ? `Auto Delete is on: reports are removed after ${Number(result.autoDelete.hours || hours)} hour(s).`
@@ -12830,11 +12845,15 @@
     }
     try {
       if (status && !quiet && !prefetchedResult) status.textContent = "Loading saved reports...";
-      const result = prefetchedResult || await apiPost("/api/calc/saved-reports/list", { userKey, token });
-      const reports = Array.isArray(result.reports) ? result.reports : [];
+      const result = prefetchedResult || await apiPost("/api/calc/saved-reports/list", rwphSavedReportsRequestBody(userKey, token));
+      rwphRememberSavedReportsFactionId(result.factionId);
+      const reports = (Array.isArray(result.reports) ? result.reports : []).map((report) => ({
+        ...report,
+        slot: Number(report?.slot ?? report?.slotNo ?? report?.slot_no ?? 0),
+      }));
       rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled: false, hours: 24 });
       const factionTitle = panel.querySelector("#rwph-saved-reports-faction");
-      if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"} · up to ${Number(result.maxReports || 3)} reports`;
+      if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"}${result.factionId ? ` · ID ${result.factionId}` : ""} · up to ${Number(result.maxReports || 3)} reports`;
       const safeHighlightSlot = Math.max(0, Math.min(3, Math.floor(Number(highlightSlot || 0))));
       if (list) list.innerHTML = [1,2,3].map((slot) => rwphSavedReportSlotHtml(reports.find((r) => Number(r.slot) === slot) || { empty:true }, slot, slot === safeHighlightSlot)).join("");
       const occupiedCount = reports.filter((report) => report && !report.empty).length;
@@ -12870,7 +12889,8 @@
       if (panelStatus) panelStatus.textContent = `Loading saved report ${safeSlot}...`;
       preOpenedResultsTab = openBlankResultsTab(progressId);
       stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
-      const result = await apiPost("/api/calc/saved-reports/open", { userKey, token, slot: safeSlot, progressId });
+      const result = await apiPost("/api/calc/saved-reports/open", rwphSavedReportsRequestBody(userKey, token, { slot: safeSlot, progressId }));
+      rwphRememberSavedReportsFactionId(result.factionId || result.savedReport?.factionId || result.factionId);
       lastRows = result.rows || [];
       lastSummary = result.summary || {};
       rwphStorePayAllRows(lastRows);
@@ -12906,7 +12926,8 @@
     if (!userKey) return rwphToastPanelError(mainStatus, "Enter your Torn API key first.", "RWPH Saved Reports");
     try {
       if (panelStatus) panelStatus.textContent = `Deleting saved report ${safeSlot}...`;
-      const result = await apiPost("/api/calc/saved-reports/delete", { userKey, token, slot: safeSlot });
+      const result = await apiPost("/api/calc/saved-reports/delete", rwphSavedReportsRequestBody(userKey, token, { slot: safeSlot }));
+      rwphRememberSavedReportsFactionId(result.factionId);
       rwphToastPanelInfo(mainStatus, result.message || `Saved report ${safeSlot} deleted.`, result.deleted ? "info" : "warn", "RWPH Saved Reports");
       await rwphRefreshSavedReportsPanel({ quiet: true });
     } catch (e) {
@@ -15897,7 +15918,7 @@
 
       try {
         if (status) status.textContent = "Checking Saved Reports slots...";
-        const savedReportState = await apiPost("/api/calc/saved-reports/list", { userKey, token });
+        const savedReportState = await apiPost("/api/calc/saved-reports/list", rwphSavedReportsRequestBody(userKey, token));
         const savedReports = Array.isArray(savedReportState?.reports) ? savedReportState.reports : [];
         const maxSavedReports = Math.max(1, Number(savedReportState?.maxReports || 3));
         const matchingSavedReport = savedReports.find((report) => report && !report.empty && String(report.calculationSignature || "") === calculationSignature);
@@ -15974,13 +15995,12 @@
           memberAdjustments,
         }, { timeout: 600000 });
         const result = await calcRequest.promise;
+        rwphRememberSavedReportsFactionId(result?.factionId || result?.savedReport?.factionId);
         let savedReportSaveWarning = "";
         if (!Number(result?.savedReport?.slot || result?.summary?.savedReportSlot || 0)) {
           try {
             if (status) status.textContent = "Calculation complete. Retrying Saved Reports save...";
-            const retrySave = await apiPost("/api/calc/saved-reports/save", {
-              userKey,
-              token,
+            const retrySave = await apiPost("/api/calc/saved-reports/save", rwphSavedReportsRequestBody(userKey, token, {
               calculationMode: isPointsMode ? "points" : "standard",
               calculationSystem,
               calculationSignature,
@@ -15989,7 +16009,8 @@
               memberPayout: totalPayout,
               overallTotalPayout,
               resultPayload: result,
-            });
+            }));
+            rwphRememberSavedReportsFactionId(retrySave?.factionId || retrySave?.savedReport?.factionId);
             if (retrySave?.savedReport?.slot) {
               result.savedReport = retrySave.savedReport;
               result.summary ||= {};
