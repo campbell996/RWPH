@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.478**  
+Current userscript version: **1.1.479**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,7 +19,11 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.478
+## What's New in v1.1.479
+
+- **Fresh database check before Cached Reports opens:** RWPH now queries the current faction ID directly and waits for the Saved Reports database response before creating the panel.
+- **Verified database rows drive the three cards:** the panel renders from the actual rows returned by `rwph_saved_reports_v2`; it no longer opens first with default empty slots.
+- If the database says rows exist but cannot return their row data, RWPH shows an error instead of falsely displaying the slots as empty.
 
 - Saved Reports are now owned and queried by the **faction ID**.
 - The same faction ID is used for save, list, load, delete, Auto Delete, exact-settings matching and the three-slot capacity check.
@@ -409,8 +413,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.478
+## Current Version Summary — v1.1.479
 
-RWPH v1.1.478 uses the faction-level **Cached Reports** panel with three saved-report slots keyed by faction ID. Save, list, load, delete, Auto Delete and matching all use the same server-verified faction ID. Compatible legacy Saved Reports rows for that faction ID are reconciled into the active slots before listing. Every completed calculation is still verified by reading the saved row back before RWPH reports that it was cached.
+RWPH v1.1.479 uses the faction-level **Cached Reports** panel with three saved-report slots keyed by faction ID. Opening Cached Reports now waits for a fresh database check and renders from the verified rows returned for that faction ID. Save, list, load, delete, Auto Delete and matching all use the same server-verified faction ID. Compatible legacy Saved Reports rows for that faction ID are reconciled into the active slots before listing. Every completed calculation is still verified by reading the saved row back before RWPH reports that it was cached.
 
 The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, and Torn attack-data speed cache remain available.

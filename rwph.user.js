@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.478
+// @version      1.1.479
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.478: faction-ID-owned Saved Reports + legacy faction-slot reconciliation + faction-scoped panel loading.
+  // v1.1.479: Cached Reports now performs a fresh faction-ID database check before the panel opens and renders directly from verified database rows.
   // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
@@ -12847,7 +12847,10 @@
       if (status && !quiet && !prefetchedResult) status.textContent = "Loading saved reports...";
       const result = prefetchedResult || await apiPost("/api/calc/saved-reports/list", rwphSavedReportsRequestBody(userKey, token));
       rwphRememberSavedReportsFactionId(result.factionId);
-      const reports = (Array.isArray(result.reports) ? result.reports : []).map((report) => ({
+      const reportSource = Array.isArray(result.databaseRows) && result.databaseRows.length
+        ? result.databaseRows
+        : (Array.isArray(result.reports) ? result.reports : []);
+      const reports = reportSource.map((report) => ({
         ...report,
         slot: Number(report?.slot ?? report?.slotNo ?? report?.slot_no ?? 0),
       }));
@@ -12936,7 +12939,33 @@
     }
   }
 
-  function rwphOpenSavedReportsPanel(prefetchedResult = null, { highlightSlot = 0 } = {}) {
+  async function rwphOpenSavedReportsPanel(prefetchedResult = null, { highlightSlot = 0 } = {}) {
+    const mainStatus = document.getElementById("rw-status");
+    const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!userKey) {
+      rwphToastPanelError(mainStatus, "Enter your Torn API key first.", "RWPH Saved Reports");
+      return;
+    }
+
+    let verifiedResult = prefetchedResult;
+    if (!verifiedResult?.databaseChecked) {
+      try {
+        if (mainStatus) mainStatus.textContent = "Checking Saved Reports database...";
+        verifiedResult = await apiPost("/api/calc/saved-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: Date.now() }));
+      } catch (e) {
+        rwphToastPanelError(mainStatus, `Could not check Saved Reports database: ${e.message || e}`, "RWPH Saved Reports");
+        return;
+      }
+    }
+
+    rwphRememberSavedReportsFactionId(verifiedResult?.factionId);
+    const verifiedRows = Array.isArray(verifiedResult?.databaseRows) ? verifiedResult.databaseRows : [];
+    if (Number(verifiedResult?.storedRows || 0) > 0 && verifiedRows.length === 0) {
+      rwphToastPanelError(mainStatus, `RWPH found ${Number(verifiedResult.storedRows)} database row(s) for faction ${verifiedResult?.factionId || "unknown"}, but the row data could not be read.`, "RWPH Saved Reports");
+      return;
+    }
+
     rwphEnsureSavedReportsPanelStyles();
     rwphCloseSavedReportsPanel();
     const panel = document.createElement("section");
@@ -12985,7 +13014,7 @@
       const del = event.target?.closest?.("[data-rwph-saved-delete]");
       if (del) rwphDeleteSavedReportSlot(del.getAttribute("data-rwph-saved-delete"));
     });
-    rwphRefreshSavedReportsPanel({ prefetchedResult, highlightSlot });
+    rwphRefreshSavedReportsPanel({ prefetchedResult: verifiedResult, highlightSlot });
   }
 
   function rwphWarSourceLabel(value) {
