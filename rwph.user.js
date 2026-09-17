@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.471
+// @version      1.1.474
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -4296,7 +4296,7 @@
           }
         },
         onerror: () => reject(new Error("Failed to reach paywall server.")),
-        ontimeout: () => reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")),
+        ontimeout: () => reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again in a moment.")),
       });
     });
 
@@ -4339,7 +4339,7 @@
           }
         },
         onerror: () => { settled = true; reject(new Error("Failed to reach paywall server.")); },
-        ontimeout: () => { settled = true; reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again or use a cached report if available.")); },
+        ontimeout: () => { settled = true; reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again in a moment.")); },
         onabort: () => { settled = true; const err = new Error("Calculation cancelled because the results loading tab was closed."); err.cancelled = true; reject(err); },
       });
     });
@@ -4817,8 +4817,8 @@
     return `
       <div class="rw-admin-status-grid">
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Calculations</div><div class="rw-admin-status-value">${Number(calculations.active || 0)} active / direct start</div></div>
-        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Report cache</div><div class="rw-admin-status-value">${Number(cache.reportCacheEntries || 0)} saved</div></div>
-        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Saved reports</div><div class="rw-admin-status-value">${Number(result.savedReports?.entries || 0)} stored</div></div>
+        <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports loaded</div><div class="rw-admin-status-value">${Number(stats.savedReportsLoaded || 0)}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Torn cache</div><div class="rw-admin-status-value">${Number(cache.tornMemoryEntries || 0)} live</div></div>
         <div class="rw-admin-status-card"><div class="rw-admin-status-label">Storage</div><div class="rw-admin-status-value">${esc(result.storage?.mode || "json")}</div></div>
@@ -4852,7 +4852,7 @@
     if (status) status.textContent = "Loading server status...";
     const result = await adminRequest("POST", "/api/admin/status", adminKey);
     if (box) box.innerHTML = rwphRenderAdminStatusSummary(result);
-    rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
+    rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Saved Reports has ${Number(result.savedReports?.entries || 0)} stored report(s).`, "info", "RWPH Admin");
     return result;
   }
 
@@ -9691,7 +9691,7 @@
         <img class="results-hero-logo rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH">
         <div class="results-hero-copy">
           <h1>${pointsMode ? `${esc(calculationSystemLabel)} Results` : "Per Hit Results"}</h1>
-          <p class="results-mode-note">${pointsMode ? `Completed ranked-war contribution report using ${esc(calculationSystemLabel)}. Payout is split by the selected system score.` : "Completed ranked-war payout report. Uses backend/database cache only, expires cached reports after 24 hours, and keeps payments manual-review only."}</p>
+          <p class="results-mode-note">${pointsMode ? `Completed ranked-war contribution report using ${esc(calculationSystemLabel)}. Payout is split by the selected system score.` : "Completed ranked-war payout report. The completed result is saved in your faction Cached Reports panel, and payments remain manual-review only."}</p>
         </div>
       </div>
       <div class="results-hero-meta" aria-label="Report details">
@@ -9707,7 +9707,7 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
         ${rwphNewsletterButtonsHtml}
       </div>
-      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. After Calculate, the matching settings dropdown shows <b>Use Cached Report</b> when a cached report is available. Cached reports are kept in the backend/database for 24 hours, then deleted automatically.</p>
+      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 3 saved reports.</p>
     </aside>
 
     ${rwphNewsletterPanelsHtml}
@@ -10732,7 +10732,7 @@
         <div>
           <div class="eyebrow">RWPH</div>
           <h1>Building Results</h1>
-          <div class="sub">Calculating the selected war with the same panel theme and backend cache rules.</div>
+          <div class="sub">Calculating the selected war. When complete, RWPH saves the result in the faction Cached Reports panel.</div>
         </div>
       </div>
       <div class="loading-time">
@@ -10759,7 +10759,7 @@
         <aside class="rwph-side-card" aria-label="Loading notes">
           <div class="side-title">What RWPH is doing</div>
           <div class="mini-grid">
-            <div class="mini"><b>Cache first</b><span>Uses the backend cache when a matching war report is already saved.</span></div>
+            <div class="mini"><b>Saved reports</b><span>Completed calculations are saved into one of the faction’s three report slots.</span></div>
             <div class="mini"><b>Safe fetch</b><span>Retries Torn API delays and keeps progress updated while it works.</span></div>
             <div class="mini"><b>Manual open</b><span>The button stays visible, locked while loading, then unlocks when data is complete.</span></div>
             <div class="mini"><b>Same rules</b><span>Basic and Advanced cache blocking stays controlled by the backend.</span></div>
@@ -10769,7 +10769,7 @@
 
       <ul class="loading-list" aria-label="What RWPH is loading">
         <li class="rwph-load-step-active" data-rwph-load-step="0">Verifies your licence and confirms server access.</li>
-        <li data-rwph-load-step="1">Checks the backend/database report cache for this finished war and payout setup.</li>
+        <li data-rwph-load-step="1">Confirms the selected finished-war window.</li>
         <li data-rwph-load-step="2">Fetches and sorts war hits, outside hits, retals, and assists.</li>
         <li data-rwph-load-step="3">Applies your weights and splits the Member Payout across members.</li>
       </ul>
@@ -11985,7 +11985,7 @@
   }
 
   function rwphClearLastResults() {
-    // Clear any old browser-saved report so RWPH cannot reopen stale local cache data.
+    // Clear the obsolete browser-local last-report snapshot. Faction reports are stored only in Cached Reports.
     GM_setValue(LAST_RESULTS_STORAGE_KEY, "");
   }
 
@@ -12000,13 +12000,13 @@
     if (runBtn) {
       runBtn.disabled = false;
       runBtn.textContent = "Calculate";
-      runBtn.title = "Create the normal per-hit payout report for the last finished ranked war. If a matching cached report exists, RWPH will ask you to open it instead.";
+      runBtn.title = "Create a fresh normal per-hit payout report for the selected finished ranked war. The completed report is saved automatically in Cached Reports.";
     }
-    rwphRenderCacheButtonStates(true);
+
   }
 
   function rwphSaveLastResults(rows, summary) {
-    // Reports can only be reopened through the backend/database cache.
+    // Completed reports are reopened from the faction Cached Reports panel.
     rwphClearLastResults();
     rwphUpdateLastResultsButton();
   }
@@ -12180,7 +12180,7 @@
     }
     rwphUpdateAdvancedCalculationSystemUI();
     rwphSavePayoutFormState();
-    rwphScheduleAutoCacheCheck(180, "points");
+
     if (notify) rwphToastPanelInfo(document.getElementById("rw-status"), `${rwphAdvancedCalculationSystemLabel(system)} defaults loaded. Change any Advanced setting to customise this system.`, "info", "RWPH Advanced");
   }
 
@@ -12262,7 +12262,7 @@
       updatedAtMs: Date.now(),
     };
     GM_setValue(MEMBER_MANAGEMENT_STORAGE_KEY, JSON.stringify(all));
-    rwphScheduleAutoCacheCheck(250, mode);
+
   }
 
   function rwphMemberManagementMemberKey(member = {}) {
@@ -12667,366 +12667,203 @@
     await reload();
   }
 
-  function rwphEnsureCacheState(mode) {
-    const safeMode = rwphNormalizeCalculationMode(mode);
-    rwphCachedReports ||= {};
-    rwphCachedReports[safeMode] ||= { available: false, info: null };
-    return rwphCachedReports[safeMode];
+  function rwphSavedReportDateTime(seconds) {
+    const value = Number(seconds || 0);
+    return value > 0 ? new Date(value * 1000).toLocaleString() : "Unknown";
   }
 
-  function rwphGetPayoutCacheSignature(calculationMode = null) {
-    const userKey = document.getElementById("rw-key")?.value?.trim() || "";
-    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const standardTime = rwphGetTimeWindowForMode("standard");
-    const pointsTime = rwphGetTimeWindowForMode("points");
-    const timeSignatureFor = (time) => time.from && time.to && time.to > time.from ? `manual-time:${time.from}-${time.to}` : "auto-last-finished-war";
-    const selectedTimeSignature = mode === "points" ? timeSignatureFor(pointsTime) : mode === "standard" ? timeSignatureFor(standardTime) : `standard:${timeSignatureFor(standardTime)}|points:${timeSignatureFor(pointsTime)}`;
-    const signatureParts = [userKey ? "key" : "no-key", selectedTimeSignature, "ignore-payout-settings-v1"];
+  function rwphSavedReportSavedTime(ms) {
+    const value = Number(ms || 0);
+    return value > 0 ? new Date(value).toLocaleString() : "Unknown";
+  }
 
-    if (!mode || mode === "standard") {
-      signatureParts.push(
-        "standard",
-        rwphFixedPerHitWeight("rw-war-hit-weight", 1),
-        rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
-        rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
-        rwphFixedPerHitWeight("rw-assist-weight", 0),
-        rwphFixedPerHitWeight("rw-respect-weight", 0),
-        "basic-respect-weight-v1",
-        rwphBasicFastModeEnabled() ? "basic-fast-report-only-v1" : "basic-normal-hybrid-v1",
-        "member-management-v1",
-        `exclude:${rwphExcludedMembersSignature("standard")}`,
-        `memberManagement:${rwphMemberManagementSignature("standard")}`,
-      );
+  function rwphSavedReportModeText(report = {}) {
+    if (String(report.calculationMode || "") === "points") {
+      return report.calculationSystemLabel || rwphAdvancedCalculationSystemLabel(report.calculationSystem || "") || "Advanced";
     }
+    return "Basic — Per Hit";
+  }
 
-    if (!mode || mode === "points") {
-      const calculationSystem = rwphAdvancedCalculationSystem();
-      const advanced = rwphReadAdvancedSharedSettings();
-      signatureParts.push("points", `system:${calculationSystem}`, "advanced-shared-settings-v1", JSON.stringify(advanced));
-      signatureParts.push(
-        "member-management-v1",
-        `exclude:${rwphExcludedMembersSignature("points")}`,
-        `memberManagement:${rwphMemberManagementSignature("points")}`,
-      );
+  function rwphEnsureSavedReportsPanelStyles() {
+    if (document.getElementById("rwph-saved-reports-style")) return;
+    const style = document.createElement("style");
+    style.id = "rwph-saved-reports-style";
+    style.textContent = `
+      #rwph-saved-reports-panel{position:fixed;z-index:2147483647;left:50%;top:110px;transform:translateX(-50%);width:min(520px,calc(100vw - 18px));height:min(620px,calc(100vh - 140px));min-width:300px;min-height:330px;display:flex;flex-direction:column;overflow:hidden;resize:both;box-sizing:border-box;background:linear-gradient(180deg,var(--rwph-theme-panel,#211714),var(--rwph-theme-bg,#0b0705));color:var(--rwph-theme-text,#fff2dd);border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));border-radius:var(--rwph-theme-radius,14px);box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72));font-family:Arial,Helvetica,sans-serif;}
+      #rwph-saved-reports-panel .rwph-saved-reports-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:7px 9px;background:linear-gradient(135deg,var(--rwph-theme-panel3,#3a241c),var(--rwph-theme-panel,#211714));border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));cursor:grab;touch-action:none;user-select:none;box-sizing:border-box;}
+      #rwph-saved-reports-panel .rwph-saved-reports-title{display:flex;flex-direction:column;min-width:0;line-height:1.15}.rwph-saved-reports-title b{font-size:14px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-reports-title span{font-size:10px;color:var(--rwph-theme-soft,#c9b7a4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #rwph-saved-reports-panel .rwph-saved-reports-head-actions{display:flex;gap:5px;flex:0 0 auto}.rwph-saved-reports-head-actions button{min-width:32px!important;padding:5px 7px!important;margin:0!important}
+      #rwph-saved-reports-panel .rwph-saved-reports-body{flex:1 1 auto;min-height:0;overflow:auto;padding:9px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box}
+      #rwph-saved-reports-panel .rwph-saved-report-intro{font-size:11px;line-height:1.4;padding:7px 8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:8px;background:var(--rwph-theme-panel2,#2b1d18);color:var(--rwph-theme-soft,#c9b7a4)}
+      #rwph-saved-reports-panel .rwph-saved-report-slot{padding:9px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:10px;background:linear-gradient(180deg,var(--rwph-theme-panel2,#2b1d18),var(--rwph-theme-panel,#211714));box-shadow:0 8px 18px rgba(0,0,0,.22)}
+      #rwph-saved-reports-panel .rwph-saved-report-slot.empty{opacity:.82}.rwph-saved-report-slot-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.rwph-saved-report-slot-head b{font-size:13px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-report-badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));color:var(--rwph-theme-gold,#fbbf24);white-space:nowrap}
+      #rwph-saved-reports-panel .rwph-saved-report-meta{font-size:11px;line-height:1.42;color:var(--rwph-theme-soft,#c9b7a4);overflow-wrap:anywhere}.rwph-saved-report-meta b{color:var(--rwph-theme-text,#fff2dd)}
+      #rwph-saved-reports-panel .rwph-saved-report-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.rwph-saved-report-actions button{flex:1 1 120px!important;margin:0!important;padding:7px 8px!important}
+      #rwph-saved-reports-panel button{background:linear-gradient(180deg,var(--rwph-theme-panel3,#3a241c),var(--rwph-theme-panel2,#2b1d18))!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-button-radius,8px)!important;font-weight:800!important;cursor:pointer!important}.rwph-saved-reports-head-actions button:hover,.rwph-saved-report-actions button:hover{filter:brightness(1.1)}
+      #rwph-saved-reports-panel button.danger{border-color:var(--rwph-theme-red,#ef4444)!important;color:var(--rwph-theme-red,#ef4444)!important}
+      #rwph-saved-reports-panel button:disabled{opacity:.5!important;cursor:not-allowed!important}
+      #rwph-saved-reports-status{font-size:11px;line-height:1.35;color:var(--rwph-theme-soft,#c9b7a4);padding:2px 1px}
+      @media(max-width:600px){#rwph-saved-reports-panel{left:6px!important;right:6px!important;top:74px!important;transform:none!important;width:auto!important;height:min(620px,calc(100vh - 88px))!important;min-width:0!important}.rwph-saved-report-actions button{flex:1 1 100px!important}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function rwphSavedReportsPanel() {
+    return document.getElementById("rwph-saved-reports-panel");
+  }
+
+  function rwphCloseSavedReportsPanel() {
+    const panel = rwphSavedReportsPanel();
+    if (!panel) return;
+    try { rwphSavePanelLayout(panel); } catch (_) {}
+    panel.remove();
+  }
+
+  function rwphSavedReportSlotHtml(report = {}, slot) {
+    if (!report || report.empty) {
+      return `<div class="rwph-saved-report-slot empty" data-saved-report-slot="${slot}">
+        <div class="rwph-saved-report-slot-head"><b>Saved Report ${slot}</b><span class="rwph-saved-report-badge">EMPTY</span></div>
+        <div class="rwph-saved-report-meta">This slot is empty. Completed calculations are saved automatically. RWPH keeps up to three reports for your faction. Delete a saved report to make room for another calculation.</div>
+      </div>`;
     }
-
-    return signatureParts.join("|");
+    const mode = rwphHtmlEscape(rwphSavedReportModeText(report));
+    const faction = rwphHtmlEscape(report.factionName || "Faction");
+    const total = Number(report.overallTotalPayout || report.memberPayout || 0);
+    const metric = String(report.calculationMode || "") === "points"
+      ? `${Number(report.totalPoints || 0).toFixed(2)} points`
+      : `${Number(report.totalWarHits || 0)} war hits`;
+    return `<div class="rwph-saved-report-slot" data-saved-report-slot="${slot}">
+      <div class="rwph-saved-report-slot-head"><b>Saved Report ${slot}</b><span class="rwph-saved-report-badge">${mode}</span></div>
+      <div class="rwph-saved-report-meta">
+        <b>${faction}</b><br>
+        War: ${rwphHtmlEscape(rwphSavedReportDateTime(report.start))} → ${rwphHtmlEscape(rwphSavedReportDateTime(report.end))}<br>
+        Saved: ${rwphHtmlEscape(rwphSavedReportSavedTime(report.updatedAtMs || report.createdAtMs))}<br>
+        Members: ${Number(report.memberCount || 0)} · ${rwphHtmlEscape(metric)}${total > 0 ? ` · Total payout: ${money(total)}` : ""}
+      </div>
+      <div class="rwph-saved-report-actions">
+        <button type="button" data-rwph-saved-load="${slot}">Load Report</button>
+        <button type="button" class="danger" data-rwph-saved-delete="${slot}">Delete</button>
+      </div>
+    </div>`;
   }
 
-  function rwphBuildCacheRequestPayload(calculationMode = "standard") {
-    return {
-      userKey: document.getElementById("rw-key")?.value?.trim() || "",
-      token: GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, ""),
-      from: rwphGetTimeWindowForMode(calculationMode).from,
-      to: rwphGetTimeWindowForMode(calculationMode).to,
-      calculationMode: rwphNormalizeCalculationMode(calculationMode),
-      calculationSystem: rwphNormalizeCalculationMode(calculationMode) === "points" ? rwphAdvancedCalculationSystem() : "basic_per_hit",
-      memberPayout: rwphGetTotalPayoutForMode(calculationMode),
-      totalPayout: rwphGetTotalPayoutForMode(calculationMode),
-      overallTotalPayout: rwphGetOverallTotalPayoutForMode(calculationMode),
-      warHitWeight: rwphFixedPerHitWeight("rw-war-hit-weight", 1),
-      outsideHitWeight: rwphFixedPerHitWeight("rw-outside-hit-weight", 1),
-      retaliationHitWeight: rwphFixedPerHitWeight("rw-retaliation-hit-weight", 1),
-      assistWeight: rwphFixedPerHitWeight("rw-assist-weight", 0),
-      respectWeight: rwphFixedPerHitWeight("rw-respect-weight", 0),
-      basicFastMode: rwphNormalizeCalculationMode(calculationMode) === "standard" && rwphBasicFastModeEnabled(),
-      basic120ResultsPage: false,
-      ...rwphReadAdvancedSharedSettings(),
-      includeLeftFactionMembers: false,
-      excludedMembersText: rwphGetExcludedMembersTextForMode(calculationMode),
-      memberManagement: rwphGetMemberManagementPayload(calculationMode),
-    };
-  }
-
-  function rwphValidateCacheFormForMode(calculationMode = "standard") {
-    const payload = rwphBuildCacheRequestPayload(calculationMode);
-    const mode = rwphNormalizeCalculationMode(calculationMode);
-    // Cache lookup/open/delete should not be blocked by changed payout fields.
-    // The saved cached report keeps its own Member Payout and Total Payout values.
-    const sharedInvalid = !payload.userKey;
-    const perHitInvalid = payload.warHitWeight < 0 || payload.outsideHitWeight < 0 || payload.retaliationHitWeight < 0 || payload.assistWeight < 0 || payload.respectWeight < 0;
-    const pointsInvalid = mode === "points" && !!rwphAdvancedSettingsValidationError(payload);
-    if (sharedInvalid || (mode === "standard" && perHitInvalid) || pointsInvalid) {
-      return { ok: false, payload };
+  async function rwphRefreshSavedReportsPanel({ quiet = false, prefetchedResult = null } = {}) {
+    const panel = rwphSavedReportsPanel();
+    if (!panel) return;
+    const list = panel.querySelector("#rwph-saved-reports-list");
+    const status = panel.querySelector("#rwph-saved-reports-status");
+    const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!userKey) {
+      if (list) list.innerHTML = `<div class="rwph-saved-report-intro">Enter your Torn API key in the main panel first.</div>`;
+      if (status) status.textContent = "API key required.";
+      return;
     }
-    return { ok: true, payload };
-  }
-
-  function rwphCacheStateSummaryText(calculationMode = null) {
-    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const modes = mode ? [mode] : ["standard", "points"];
-    const parts = [];
-    for (const currentMode of modes) {
-      const state = rwphEnsureCacheState(currentMode);
-      if (!state.available) continue;
-      const info = state.info || {};
-      const cachedAtMs = Number(info?.cachedAtMs || info?.cache?.cachedAtMs || info?.summary?.cachedAtMs || 0);
-      const expiresAtMs = Number(info?.expiresAtMs || info?.cache?.expiresAtMs || info?.summary?.cacheExpiresAtMs || 0);
-      const savedText = cachedAtMs ? ` saved ${new Date(cachedAtMs).toLocaleString()}` : "";
-      const expiryText = expiresAtMs ? ` expires ${new Date(expiresAtMs).toLocaleString()}` : "";
-      parts.push(`${rwphModeLabel(currentMode)}${savedText}${expiryText}`);
-    }
-    if (parts.length) return `Database cached ${mode ? rwphModeLabel(mode) + " " : ""}report${parts.length === 1 ? "" : "s"} found: ${parts.join(" | ")}. Open it from the matching settings dropdown.`;
-    if (mode) return `No matching ${rwphModeLabel(mode)} database cached report found yet. Calculate in ${rwphModeLabel(mode)} Settings will create one.`;
-    return "No matching database cached reports found yet. Calculate in Basic Calculations or Advanced Calculations will create one.";
-  }
-
-  function rwphCacheStatusElements(calculationMode = null) {
-    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const ids = mode === "standard"
-      ? ["rw-cache-status-per-hit"]
-      : mode === "points"
-        ? ["rw-cache-status-points"]
-        : ["rw-cache-status-per-hit", "rw-cache-status-points"];
-    return ids.map((id) => document.getElementById(id)).filter(Boolean);
-  }
-
-  function rwphSetCacheStatusText(text, calculationMode = null) {
-    for (const el of rwphCacheStatusElements(calculationMode)) {
-      el.textContent = text;
+    try {
+      if (status && !quiet && !prefetchedResult) status.textContent = "Loading saved reports...";
+      const result = prefetchedResult || await apiPost("/api/calc/saved-reports/list", { userKey, token });
+      const reports = Array.isArray(result.reports) ? result.reports : [];
+      const factionTitle = panel.querySelector("#rwph-saved-reports-faction");
+      if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"} · up to ${Number(result.maxReports || 3)} reports`;
+      if (list) list.innerHTML = [1,2,3].map((slot) => rwphSavedReportSlotHtml(reports.find((r) => Number(r.slot) === slot) || { empty:true }, slot)).join("");
+      const occupiedCount = reports.filter((report) => report && !report.empty).length;
+      if (status) status.textContent = occupiedCount >= Number(result.maxReports || 3)
+        ? "All 3 saved report slots are full. Delete one report before starting another calculation."
+        : `Saved reports: ${occupiedCount}/${Number(result.maxReports || 3)}. Completed calculations save here automatically.`;
+    } catch (e) {
+      if (list) list.innerHTML = `<div class="rwph-saved-report-intro">${rwphHtmlEscape(e.message || e)}</div>`;
+      if (status) status.textContent = "Could not load saved reports.";
     }
   }
 
-  function rwphRenderCacheButtonStates(silent = false) {
-    const buttonPairs = [
-      { mode: "standard", useId: "rw-use-cache", deleteId: "rw-delete-cache" },
-      { mode: "points", useId: "rw-use-points-cache", deleteId: "rw-delete-points-cache" },
-    ];
-
-    for (const pair of buttonPairs) {
-      const state = rwphEnsureCacheState(pair.mode);
-      const label = rwphModeLabel(pair.mode);
-      const useBtn = document.getElementById(pair.useId);
-      const deleteBtn = document.getElementById(pair.deleteId);
-      if (useBtn) {
-        useBtn.hidden = false;
-        useBtn.disabled = !state.available;
-        useBtn.textContent = "Use Cached Report";
-        useBtn.title = state.available ? `Open the matching backend/database cached ${label} report for the selected war/time window.` : `RWPH auto-checks the backend/database for a matching ${label} cached report when your key and calculation settings are ready. Payout fields do not block cache matching.`;
-      }
-      if (deleteBtn) {
-        deleteBtn.hidden = false;
-        deleteBtn.disabled = !state.available;
-        deleteBtn.textContent = "Delete Cache";
-        deleteBtn.title = state.available ? `Delete the matching backend/database cached ${label} report. You can delete one cached report every 10 minutes.` : `Delete becomes available when RWPH finds a matching ${label} backend/database cached report.`;
-      }
-    }
-
-    if (!silent || rwphEnsureCacheState("standard").available || rwphEnsureCacheState("points").available) {
-      rwphSetCacheStatusText(rwphCacheStateSummaryText("standard"), "standard");
-      rwphSetCacheStatusText(rwphCacheStateSummaryText("points"), "points");
-    }
-  }
-
-  function rwphSetCacheButtonState(calculationMode, available, info = null, silent = false) {
-    rwphClearLastResults();
-    const mode = rwphNormalizeCalculationMode(calculationMode);
-    const state = rwphEnsureCacheState(mode);
-    state.available = !!available;
-    state.info = info || null;
-    if (mode === "standard") {
-    }
-    rwphRenderCacheButtonStates(silent);
-  }
-
-  function rwphScheduleAutoCacheCheck(delayMs = 650, calculationMode = null) {
-    const mode = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : null;
-    const timerKey = mode || "both";
-    if (rwphAutoCacheCheckTimers[timerKey]) clearTimeout(rwphAutoCacheCheckTimers[timerKey]);
-    rwphAutoCacheCheckTimers[timerKey] = setTimeout(() => {
-      rwphAutoCacheCheckTimers[timerKey] = null;
-      rwphAutoCheckCompletedWarCache(true, mode);
-    }, Math.max(100, Number(delayMs) || 650));
-  }
-
-  async function rwphAutoCheckCompletedWarCache(silent = true, calculationMode = null) {
-    const status = document.getElementById("rw-status");
-    const modes = calculationMode ? [rwphNormalizeCalculationMode(calculationMode)] : ["standard", "points"];
-    const signature = `${calculationMode ? rwphNormalizeCalculationMode(calculationMode) : "both"}|${rwphGetPayoutCacheSignature(calculationMode)}`;
-
-    const signatureKey = calculationMode ? rwphNormalizeCalculationMode(calculationMode) : "both";
-    if (silent && signature === rwphLastCacheCheckSignatures[signatureKey]) return;
-    rwphLastCacheCheckSignatures[signatureKey] = signature;
-
-    let checkedAny = false;
-    let foundAny = false;
-
-    for (const mode of modes) {
-      const validation = rwphValidateCacheFormForMode(mode);
-      const label = rwphModeLabel(mode);
-
-      if (!validation.ok) {
-        rwphSetCacheButtonState(mode, false, null, true);
-        rwphSetCacheStatusText(`${label} cache auto-check waits for your API key and valid ${label} calculation settings.`, mode);
-        continue;
-      }
-
-      checkedAny = true;
-      try {
-        rwphSetCacheStatusText(`Auto-checking ${label} report cache...`, mode);
-        const result = await apiPost("/api/calc/report-cache", validation.payload);
-        const isCached = !!result.cached;
-        foundAny = foundAny || isCached;
-        rwphSetCacheButtonState(mode, isCached, result, true);
-        rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
-      } catch (e) {
-        rwphSetCacheButtonState(mode, false, null, true);
-        const useId = mode === "points" ? "rw-use-points-cache" : "rw-use-cache";
-        const deleteId = mode === "points" ? "rw-delete-points-cache" : "rw-delete-cache";
-        for (const id of [useId, deleteId]) {
-          const btn = document.getElementById(id);
-          if (btn) {
-            btn.disabled = true;
-            if (id.includes("use")) btn.textContent = "Use Cached Report";
-            if (id.includes("delete")) btn.textContent = "Delete Cache";
-            btn.title = e.message || `${label} cache auto-check failed.`;
-          }
-        }
-        const transientTorn = /temporary backend error|Backend error occurred|Torn is still busy|tornCode.?17|Torn returned a temporary backend error/i.test(String(e.message || ""));
-        rwphSetCacheStatusText(transientTorn ? `${label} cache auto-check skipped: Torn is temporarily busy. Calculate can be tried again in 30-60 seconds.` : `${label} cache auto-check failed: ${e.message}`, mode);
-        if (!silent) rwphToastPanelError(status, transientTorn ? `${label} cache auto-check skipped because Torn is temporarily busy. Wait 30-60 seconds, then try again.` : `${label} cache auto-check error: ${e.message}`, "RWPH Cache");
-      }
-    }
-
-    rwphRenderCacheButtonStates(true);
-
-    if (!checkedAny && !calculationMode) {
-      rwphSetCacheStatusText("Cache auto-check waits for your API key and valid calculation settings.");
-    }
-
-    if (!silent && status) {
-      rwphToastPanelInfo(status, foundAny ? "Cached report found and ready to open." : "No matching cached reports found yet.", foundAny ? "info" : "warn", "RWPH Cache");
-    }
-  }
-
-  async function rwphOpenCachedReport(calculationMode = "standard") {
-    const mode = rwphNormalizeCalculationMode(calculationMode);
-    const label = rwphModeLabel(mode);
-    const status = document.getElementById("rw-status");
-    const results = document.getElementById("rw-results");
-    rwphClearLastResults();
-
-    const validation = rwphValidateCacheFormForMode(mode);
-    if (!validation.ok) {
-      return rwphToastPanelError(status, `Enter your API key and valid ${label} calculation settings before opening a cached report. Payout fields do not need to match the saved cache.`, "RWPH Cache");
-    }
-
-    // This avoids running the normal calculation route and lets the tab pre-open immediately
-    // from the click handler, which fixes popup blockers for both Per Hit and Points System.
-    const progressId = `rwph-cache-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  async function rwphLoadSavedReportSlot(slot) {
+    const safeSlot = Math.max(1, Math.min(3, Math.floor(Number(slot || 0))));
+    const panel = rwphSavedReportsPanel();
+    const panelStatus = panel?.querySelector("#rwph-saved-reports-status");
+    const mainStatus = document.getElementById("rw-status");
+    const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!userKey) return rwphToastPanelError(mainStatus, "Enter your Torn API key first.", "RWPH Saved Reports");
+    const progressId = `rwph-saved-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
     let preOpenedResultsTab = null;
     let stopProgressPolling = null;
-
     try {
-      if (status) status.textContent = `Opening matching cached ${label} report...`;
-      rwphSetCacheStatusText(`Opening matching cached ${label} report...`, mode);
+      if (panelStatus) panelStatus.textContent = `Loading saved report ${safeSlot}...`;
       preOpenedResultsTab = openBlankResultsTab(progressId);
       stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId);
-      rwphSetResultsLoadingStepDone(preOpenedResultsTab, 0);
-
-      const result = await apiPost("/api/calc/report-cache/open", {
-        ...validation.payload,
-        progressId,
-      });
-
+      const result = await apiPost("/api/calc/saved-reports/open", { userKey, token, slot: safeSlot, progressId });
       lastRows = result.rows || [];
       lastSummary = result.summary || {};
       rwphStorePayAllRows(lastRows);
       rwphSaveLastResults(lastRows, lastSummary);
-      rwphSetCacheButtonState(mode, true, {
-        factionName: lastSummary?.factionName || result.factionName || "",
-        cache: result.cache || null,
-        expiresAtMs: result.cache?.expiresAtMs || 0,
-        cachedAtMs: result.cache?.cachedAtMs || 0,
-        summary: lastSummary,
-      }, true);
+      const results = document.getElementById("rw-results");
       if (results) results.innerHTML = renderRows(lastRows, lastSummary);
-
       const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
-      if (stopProgressPolling) {
-        stopProgressPolling();
-        stopProgressPolling = null;
-      }
+      if (stopProgressPolling) { stopProgressPolling(); stopProgressPolling = null; }
       if (manualOpenReady) {
-        rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, "Results data complete. Click Open Results Page when you are ready.");
+        rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, `Saved report ${safeSlot} ready. Click Open Results Page.`);
       } else {
         await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
       }
-      if (manualOpenReady) {
-        const resultsPanel = document.getElementById("rw-results-panel");
-        if (resultsPanel) {
-          resultsPanel.hidden = true;
-          resultsPanel.setAttribute("hidden", "");
-          resultsPanel.style.display = "none";
-        }
-        rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
-        rwphToastPanelInfo(status, `Cached ${label} report loaded. Click Open Results Page in the loading panel when ready.`, "info", "RWPH Cache");
-      } else {
-        const resultsPanel = document.getElementById("rw-results-panel");
-        if (resultsPanel) {
-          resultsPanel.hidden = false;
-          resultsPanel.removeAttribute("hidden");
-          resultsPanel.style.display = "block";
-          resultsPanel.style.visibility = "visible";
-          resultsPanel.style.opacity = "1";
-          resultsPanel.scrollTop = 0;
-        }
-        rwphSetCacheStatusText(rwphCacheStateSummaryText(mode), mode);
-        rwphToastPanelInfo(status, `Cached ${label} report loaded in the panel because the loading panel was blocked.`, "warn", "RWPH Cache");
-      }
+      if (panelStatus) panelStatus.textContent = `Saved report ${safeSlot} loaded.`;
+      rwphToastPanelInfo(mainStatus, `Saved report ${safeSlot} loaded. ${lastRows.length} member(s).`, "info", "RWPH Saved Reports");
     } catch (e) {
-      if (stopProgressPolling) {
-        stopProgressPolling();
-        stopProgressPolling = null;
-      }
+      if (stopProgressPolling) { stopProgressPolling(); stopProgressPolling = null; }
       if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
-        try {
-          preOpenedResultsTab.document.open();
-          preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Cached Report</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121212;color:#d7d7d7;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center}.box{max-width:560px;border:1px solid #474747;border-radius:8px;background:linear-gradient(180deg,#242424,#1a1a1a);padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#f2f2f2}p{color:#c8c8c8;font-weight:800}</style></head><body><div class="box"><h1>Cached Report Not Opened</h1><p>${esc(e.message || e)}</p><p>Close this tab, then use ${label} Settings Calculate to create or refresh the cached report.</p></div></body></html>`);
-          preOpenedResultsTab.document.close();
-        } catch (_) {}
+        try { preOpenedResultsTab.close(); } catch (_) {}
       }
-      rwphSetCacheButtonState(mode, false, null, true);
-      rwphSetCacheStatusText(`${label} cached report open failed: ${e.message}`, mode);
-      rwphToastPanelError(status, `${label} cached report open failed: ${e.message}`, "RWPH Cache");
+      if (panelStatus) panelStatus.textContent = `Could not load saved report ${safeSlot}: ${e.message}`;
+      rwphToastPanelError(mainStatus, `Could not load saved report ${safeSlot}: ${e.message}`, "RWPH Saved Reports");
     }
   }
 
-  async function rwphDeleteMatchingCachedReport(calculationMode = "standard") {
-    const mode = rwphNormalizeCalculationMode(calculationMode);
-    const modeLabel = rwphModeLabel(mode);
-    const status = document.getElementById("rw-status");
-    const deleteBtn = document.getElementById(mode === "points" ? "rw-delete-points-cache" : "rw-delete-cache");
-    const validation = rwphValidateCacheFormForMode(mode);
-
-    if (!rwphEnsureCacheState(mode).available) {
-      await rwphAutoCheckCompletedWarCache(false, mode);
-    }
-    if (!rwphEnsureCacheState(mode).available) {
-      return rwphToastPanelError(status, `No matching ${modeLabel} database cached report was found to delete.`, "RWPH Cache");
-    }
-    if (!validation.payload.userKey) return rwphToastPanelError(status, "Enter your Torn API key before deleting a cached report.", "RWPH Cache");
-    if (validation.payload.totalPayout <= 0) return rwphToastPanelError(status, "Enter a Member Payout greater than 0 before deleting a cached report.", "RWPH Cache");
-
+  async function rwphDeleteSavedReportSlot(slot) {
+    const safeSlot = Math.max(1, Math.min(3, Math.floor(Number(slot || 0))));
+    const panel = rwphSavedReportsPanel();
+    const panelStatus = panel?.querySelector("#rwph-saved-reports-status");
+    const mainStatus = document.getElementById("rw-status");
+    const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!userKey) return rwphToastPanelError(mainStatus, "Enter your Torn API key first.", "RWPH Saved Reports");
     try {
-      if (deleteBtn) {
-        deleteBtn.disabled = true;
-        deleteBtn.textContent = "Deleting...";
-      }
-      rwphSetCacheStatusText(`Deleting matching ${modeLabel} database cached report...`, mode);
-      const result = await apiPost("/api/calc/report-cache/delete", validation.payload);
-      rwphLastCacheCheckSignatures[mode] = "";
-      rwphLastCacheCheckSignatures.both = "";
-      rwphSetCacheButtonState(mode, false, null, false);
-      rwphSetCacheStatusText(result.deleted ? `Cached ${modeLabel} report deleted. ${modeLabel} Settings Calculate can create a fresh report.` : (result.message || `No matching ${modeLabel} database cached report was found to delete.`), mode);
-      rwphToastPanelInfo(status, result.message || `Cached ${modeLabel} report deleted.`, result.deleted ? "info" : "warn", "RWPH Cache");
+      if (panelStatus) panelStatus.textContent = `Deleting saved report ${safeSlot}...`;
+      const result = await apiPost("/api/calc/saved-reports/delete", { userKey, token, slot: safeSlot });
+      rwphToastPanelInfo(mainStatus, result.message || `Saved report ${safeSlot} deleted.`, result.deleted ? "info" : "warn", "RWPH Saved Reports");
+      await rwphRefreshSavedReportsPanel({ quiet: true });
     } catch (e) {
-      const wait = Number(e?.retryAfterSeconds || 0);
-      const msg = wait > 0 ? `You can delete one cached report every 10 minutes. Wait ${wait} seconds, then try again.` : `Delete cached report error: ${e.message}`;
-      rwphSetCacheStatusText(msg);
-      rwphToastPanelError(status, msg, "RWPH Cache");
-      rwphRenderCacheButtonStates(true);
+      if (panelStatus) panelStatus.textContent = `Delete failed: ${e.message}`;
+      rwphToastPanelError(mainStatus, `Delete saved report error: ${e.message}`, "RWPH Saved Reports");
     }
+  }
+
+  function rwphOpenSavedReportsPanel(prefetchedResult = null) {
+    rwphEnsureSavedReportsPanelStyles();
+    rwphCloseSavedReportsPanel();
+    const panel = document.createElement("section");
+    panel.id = "rwph-saved-reports-panel";
+    panel.className = "rwph-floating-panel";
+    panel.innerHTML = `
+      <div class="rwph-saved-reports-head">
+        <div class="rwph-saved-reports-title"><b>Cached Reports</b><span id="rwph-saved-reports-faction">Loading faction...</span></div>
+        <div class="rwph-saved-reports-head-actions"><button type="button" id="rwph-saved-reports-refresh">Refresh</button><button type="button" id="rwph-saved-reports-close" aria-label="Close">×</button></div>
+      </div>
+      <div class="rwph-saved-reports-body">
+        <div class="rwph-saved-report-intro">Your faction can keep up to <b>3 completed reports</b>. When all 3 slots are full, start a new calculation only after deleting one report. Loading a report opens the exact saved result; it does not recalculate it.</div>
+        <div id="rwph-saved-reports-list"><div class="rwph-saved-report-intro">Loading saved reports...</div></div>
+        <div id="rwph-saved-reports-status">Loading...</div>
+      </div>`;
+    document.body.appendChild(panel);
+    try { rwphApplyPanelLayout(panel); } catch (_) {}
+    try { rwphEnablePanelMoveResize(panel, ".rwph-saved-reports-head"); } catch (_) {}
+    panel.querySelector("#rwph-saved-reports-close")?.addEventListener("click", rwphCloseSavedReportsPanel);
+    panel.querySelector("#rwph-saved-reports-refresh")?.addEventListener("click", () => rwphRefreshSavedReportsPanel());
+    panel.addEventListener("click", (event) => {
+      const load = event.target?.closest?.("[data-rwph-saved-load]");
+      if (load) { rwphLoadSavedReportSlot(load.getAttribute("data-rwph-saved-load")); return; }
+      const del = event.target?.closest?.("[data-rwph-saved-delete]");
+      if (del) rwphDeleteSavedReportSlot(del.getAttribute("data-rwph-saved-delete"));
+    });
+    rwphRefreshSavedReportsPanel({ prefetchedResult });
   }
 
   function rwphWarSourceLabel(value) {
@@ -14720,7 +14557,7 @@
           This version is server-locked. The backend verifies your license and performs the payout calculation server-side.
         </div>
         <div class="rw-small">
-          After unlocking, RWPH only creates reports for the latest completed ranked war. Current/active wars must finish first. If a matching backend/database cached report exists, RWPH shows a popup and the matching cached-report button opens the backend/database cached report. Delete Cache inside the matching settings dropdown removes that database cached report with a one-delete-per-10-minutes limit.
+          After unlocking, RWPH creates reports for completed ranked wars. Every successful calculation is stored in the faction Cached Reports panel. Each faction keeps up to three reports, which can be loaded or deleted from that panel. When all three are full, RWPH opens Cached Reports instead of starting another calculation.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Locked panel tabs">
@@ -14854,10 +14691,10 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Cache and Results</div>
             <ul class="rw-how-list">
-              <li><b>Separate caches:</b> Basic and Advanced reports use separate backend/database caches.</li>
-              <li><b>Duplicate protection:</b> if a matching cached report already exists, RWPH asks you to use that report instead of starting a duplicate calculation.</li>
-              <li><b>Use Cached Report:</b> opens the matching cached Basic or Advanced report when available.</li>
-              <li><b>Delete Cache:</b> removes the matching cached report. Successful deletes are limited to one every 10 minutes.</li>
+              <li><b>Three saved reports:</b> Basic and Advanced completed reports share the same three faction-level Saved Report slots.</li>
+              <li><b>Fresh calculations:</b> Calculate always runs the selected calculation instead of silently opening an old report.</li>
+              <li><b>Cached Reports:</b> open the Cached Reports button on the main panel to see your faction’s three saved reports.</li>
+              <li><b>Saved report controls:</b> load or delete any saved slot directly from the Cached Reports panel.</li>
               <li><b>Results panel:</b> shows all result stats, member cards, CSV export, Export Html, Payments, and Newsletter tools.</li>
             </ul>
           </div>
@@ -14891,7 +14728,7 @@
               <li><b>Resize panels:</b> use the resize handles. Layout is remembered for supported panels.</li>
               <li><b>Loading panel:</b> shows stages and progress. Closing it cancels the running backend calculation where supported.</li>
               <li><b>If a button does nothing:</b> refresh Torn/PDA, reopen RWPH, and confirm you installed the newest userscript.</li>
-              <li><b>If API calls slow down:</b> Torn may be rate-limiting. Wait, use cached reports, and avoid repeated calculations.</li>
+              <li><b>If API calls slow down:</b> Torn may be rate-limiting. Wait before starting another fresh calculation; previously saved reports can still be loaded from Cached Reports.</li>
               <li><b>If the server fails:</b> check that PAYWALL_API_BASE points to your running backend and that the /health endpoint works.</li>
             </ul>
           </div>
@@ -15088,8 +14925,8 @@
       return `
         <div class="rw-admin-status-grid">
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Calculations</div><div class="rw-admin-status-value">${Number(calculations.active || 0)} active / direct start</div></div>
-          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Report cache</div><div class="rw-admin-status-value">${Number(cache.reportCacheEntries || 0)} saved</div></div>
-          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
+          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Saved reports</div><div class="rw-admin-status-value">${Number(result.savedReports?.entries || 0)} stored</div></div>
+          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports loaded</div><div class="rw-admin-status-value">${Number(stats.savedReportsLoaded || 0)}</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Torn cache</div><div class="rw-admin-status-value">${Number(cache.tornMemoryEntries || 0)} live</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Storage</div><div class="rw-admin-status-value">${esc(result.storage?.mode || "json")}</div></div>
@@ -15104,7 +14941,7 @@
       status.textContent = "Loading server status...";
       const result = await adminRequest("POST", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
-      rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
+      rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Saved Reports has ${Number(result.savedReports?.entries || 0)} stored report(s).`, "info", "RWPH Admin");
     }
 
     async function refreshAdminLicenses() {
@@ -15208,14 +15045,6 @@
     });
   }
 
-  let rwphNextUseCacheOnly = false;
-  let rwphNextUseCacheOnlyMode = "standard";
-  let rwphAutoCacheCheckTimers = { standard: null, points: null, both: null };
-  let rwphLastCacheCheckSignatures = { standard: "", points: "", both: "" };
-  let rwphCachedReports = {
-    standard: { available: false, info: null },
-    points: { available: false, info: null },
-  };
 
   function showMainScreen(panel) {
     const savedKey = GM_getValue(STORAGE_KEY, "");
@@ -15235,7 +15064,7 @@
           Server-side locked version. Your backend verifies the license and calculates payouts.
         </div>
         <div class="rw-small">
-          Completed-war mode: use the highlighted Basic Calculations or Advanced Calculations dropdown. Each dropdown has its own times, payout amount, cache controls, exclusions, and Calculate button.
+          Completed-war mode: use Basic Calculations or Advanced Calculations. Each has its own times, payout amount, member controls, and Calculate button. Completed results are saved in Cached Reports.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Main panel tabs">
@@ -15278,14 +15107,13 @@
               </div>
             </div>
           </div>
-          <div class="rw-small">RWPH only creates payout reports for the latest completed ranked war. Active/current wars cannot be calculated until they finish. If a matching backend/database cached report exists, RWPH shows a popup and the matching cached-report button opens the backend/database cached result.</div>
+          <div class="rw-actions" style="margin-top:8px;">
+            <button id="rw-open-saved-reports" class="secondary" type="button">Cached Reports</button>
+          </div>
+          <div class="rw-small">RWPH only creates payout reports for completed ranked wars. Every successful calculation is saved automatically in your faction Cached Reports panel. Each faction keeps up to 3 reports; when all 3 are full, delete one before calculating another report.</div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
             <summary class="rw-api-tos-title">Basic Calculations</summary>
             <div class="rw-api-tos-content">
-              <div class="rw-cache-tools rw-mode-cache-tools">
-                <div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
-                <div id="rw-cache-status-per-hit" class="rw-muted rw-compact-cache-status">Cache waits for key/settings.</div>
-              </div>
               <div class="rw-row">
                 <label>War start date/time
                   <input id="rw-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
@@ -15325,8 +15153,6 @@
               <div class="rw-calc-brief rw-calc-mini-note">Open Member Management to remove a member completely, remove payable hits, or subtract respect from a member before payouts are recalculated.</div>
               <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
                 <button id="rw-run" type="button">Calculate</button>
-                <button id="rw-use-cache" class="secondary" type="button" disabled>Use Cached Report</button>
-                <button id="rw-delete-cache" class="danger" type="button" disabled>Delete Cache</button>
               </div>
             </div>
           </details>
@@ -15353,10 +15179,6 @@
 </label>
 <div class="rw-calc-brief rw-calculation-system-summary" id="rw-calculation-system-summary"></div><div class="rw-actions rw-advanced-preset-actions"><button class="secondary" id="rw-points-reset-recommended" type="button">Reload Selected Preset Defaults</button></div>
 
-</div>
-<div class="rw-cache-tools rw-mode-cache-tools">
-<div class="rw-calc-brief"><b>Cache:</b> auto-checks matching reports. Use/Delete below; deletes are limited to 1 per 10 minutes.</div>
-<div class="rw-muted rw-compact-cache-status" id="rw-cache-status-points">Cache waits for key/settings.</div>
 </div>
 
 <div class="rw-advanced-section" data-rwph-advanced-step="1">
@@ -15521,8 +15343,6 @@
 
 <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
 <button class="secondary" id="rw-points-run" type="button">Calculate</button>
-<button class="secondary" disabled="" id="rw-use-points-cache" type="button">Use Cached Report</button>
-<button class="danger" disabled="" id="rw-delete-points-cache" type="button">Delete Cache</button>
 </div>
 </div>
 </details>
@@ -15547,10 +15367,6 @@
               <button id="rw-admin-status-load" class="secondary" type="button">Server Status</button>
             </div>
             <div class="rw-admin-advanced-box">
-              <div class="rw-small"><b>Admin-only advanced mode:</b> force refresh bypasses the completed-war report cache for the next Fetch + Calculate only. Use it only if you believe cached results are wrong.</div>
-              <label style="display:flex;align-items:center;gap:6px;margin-top:6px;">
-                <input id="rw-admin-force-refresh" type="checkbox" style="width:auto;margin:0;"> Force refresh next report
-              </label>
               <div id="rw-admin-status-summary" class="rw-small">Server status will appear here.</div>
             </div>
 
@@ -15639,10 +15455,10 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Cache and Results</div>
             <ul class="rw-how-list">
-              <li><b>Separate caches:</b> Basic and Advanced reports use separate backend/database caches.</li>
-              <li><b>Duplicate protection:</b> if a matching cached report already exists, RWPH asks you to use that report instead of starting a duplicate calculation.</li>
-              <li><b>Use Cached Report:</b> opens the matching cached Basic or Advanced report when available.</li>
-              <li><b>Delete Cache:</b> removes the matching cached report. Successful deletes are limited to one every 10 minutes.</li>
+              <li><b>Three saved reports:</b> Basic and Advanced completed reports share the same three faction-level Saved Report slots.</li>
+              <li><b>Fresh calculations:</b> Calculate always runs the selected calculation instead of silently opening an old report.</li>
+              <li><b>Cached Reports:</b> open the Cached Reports button on the main panel to see your faction’s three saved reports.</li>
+              <li><b>Saved report controls:</b> load or delete any saved slot directly from the Cached Reports panel.</li>
               <li><b>Results panel:</b> shows all result stats, member cards, CSV export, Export Html, Payments, and Newsletter tools.</li>
             </ul>
           </div>
@@ -15676,7 +15492,7 @@
               <li><b>Resize panels:</b> use the resize handles. Layout is remembered for supported panels.</li>
               <li><b>Loading panel:</b> shows stages and progress. Closing it cancels the running backend calculation where supported.</li>
               <li><b>If a button does nothing:</b> refresh Torn/PDA, reopen RWPH, and confirm you installed the newest userscript.</li>
-              <li><b>If API calls slow down:</b> Torn may be rate-limiting. Wait, use cached reports, and avoid repeated calculations.</li>
+              <li><b>If API calls slow down:</b> Torn may be rate-limiting. Wait before starting another fresh calculation; previously saved reports can still be loaded from Cached Reports.</li>
               <li><b>If the server fails:</b> check that PAYWALL_API_BASE points to your running backend and that the /health endpoint works.</li>
             </ul>
           </div>
@@ -15769,37 +15585,9 @@
     });
 
     rwphUpdateLastResultsButton();
-    const standardDetails = panel.querySelector("details.rw-per-hit-settings");
-    const pointsDetails = panel.querySelector("details.rw-points-settings");
-    const detailsForMode = (mode) => rwphNormalizeCalculationMode(mode) === "points" ? pointsDetails : standardDetails;
-    const scheduleCacheIfOpen = (mode, delay = 700) => {
-      const details = detailsForMode(mode);
-      if (details?.open) rwphScheduleAutoCacheCheck(delay, mode);
-    };
-    const attachModeCacheWatchers = (ids, mode) => {
-      ids.forEach((id) => {
-        const input = document.getElementById(id);
-        if (!input) return;
-        input.addEventListener("input", () => scheduleCacheIfOpen(mode, 700));
-        input.addEventListener("change", () => scheduleCacheIfOpen(mode, 700));
-      });
-    };
-    attachModeCacheWatchers(["rw-from", "rw-to", "rw-war-hit-weight", "rw-outside-hit-weight", "rw-retaliation-hit-weight", "rw-assist-weight", "rw-respect-weight", "rw-basic-fast-mode", "rw-excluded-members"], "standard");
-    attachModeCacheWatchers(["rw-points-from", "rw-points-to", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-activity-block-minutes", "rw-activity-block-value", "rw-points-excluded-members"], "points");
-    const keyInputForCache = document.getElementById("rw-key");
-    if (keyInputForCache) {
-      const onKeyChange = () => {
-        scheduleCacheIfOpen("standard", 700);
-        scheduleCacheIfOpen("points", 700);
-      };
-      keyInputForCache.addEventListener("input", onKeyChange);
-      keyInputForCache.addEventListener("change", onKeyChange);
-    }
-    standardDetails?.addEventListener("toggle", () => { if (standardDetails.open) rwphScheduleAutoCacheCheck(120, "standard"); });
-    pointsDetails?.addEventListener("toggle", () => { if (pointsDetails.open) rwphScheduleAutoCacheCheck(120, "points"); });
-
     document.getElementById("rw-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("standard"));
     document.getElementById("rw-points-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("points"));
+    document.getElementById("rw-open-saved-reports")?.addEventListener("click", rwphOpenSavedReportsPanel);
 
     const legacyCsvBtn = document.getElementById("rw-csv");
     if (legacyCsvBtn) legacyCsvBtn.addEventListener("click", () => downloadCSV(lastRows));
@@ -15946,7 +15734,7 @@
         const war = result.war;
         rwphSetTimeWindowForMode(mode, war.start, war.end);
         rwphSavePayoutFormState();
-        rwphScheduleAutoCacheCheck(250, mode);
+
         const msg = `${rwphModeLabel(mode)} times auto-filled: ${readableTime(war.start)} to ${readableTime(war.end)}.`;
         rwphToastPanelInfo(status, msg, "info", "RWPH Info");
       } catch (e) {
@@ -15957,22 +15745,6 @@
     document.getElementById("rw-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("standard"));
     document.getElementById("rw-points-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("points"));
 
-    document.getElementById("rw-use-cache")?.addEventListener("click", async () => {
-      await rwphOpenCachedReport("standard");
-    });
-
-    document.getElementById("rw-use-points-cache")?.addEventListener("click", async () => {
-      await rwphOpenCachedReport("points");
-    });
-
-    document.getElementById("rw-delete-cache")?.addEventListener("click", async () => {
-      await rwphDeleteMatchingCachedReport("standard");
-    });
-
-    document.getElementById("rw-delete-points-cache")?.addEventListener("click", async () => {
-      await rwphDeleteMatchingCachedReport("points");
-    });
-
     async function rwphRunCalculation(calculationMode = "standard", runOptions = {}) {
       rwphFormatPayoutMoneyInputs();
       rwphSavePayoutFormState();
@@ -15982,15 +15754,9 @@
       const isPointsMode = mode === "points";
       const userKey = document.getElementById("rw-key").value.trim();
       const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
-      const useCacheOnly = !!runOptions.useCacheOnly || (rwphNextUseCacheOnly && rwphNormalizeCalculationMode(rwphNextUseCacheOnlyMode) === mode);
-      rwphNextUseCacheOnly = false;
-      rwphNextUseCacheOnlyMode = "standard";
-      const forceRefresh = !!document.getElementById("rw-admin-force-refresh")?.checked;
-      const adminKeyForRefresh = forceRefresh ? (GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || document.getElementById("rw-admin-key")?.value?.trim() || "") : "";
 
       // Mobile/Torn PDA treats window.open after an awaited request as non-user-initiated,
-      // which can make Calculate look like it never starts. The backend still checks the
-      // matching report cache and returns cacheExists when needed.
+      // so the loading/results tab is opened before the calculation request starts.
 
       const selectedTimeWindow = rwphGetTimeWindowForMode(mode);
       const from = selectedTimeWindow.from;
@@ -16019,6 +15785,23 @@
         if (advancedError) return alert(advancedError);
       }
 
+      try {
+        if (status) status.textContent = "Checking Saved Reports slots...";
+        const savedReportState = await apiPost("/api/calc/saved-reports/list", { userKey, token });
+        const savedReports = Array.isArray(savedReportState?.reports) ? savedReportState.reports : [];
+        const maxSavedReports = Math.max(1, Number(savedReportState?.maxReports || 3));
+        const occupiedSavedReports = savedReports.filter((report) => report && !report.empty).length;
+        if (occupiedSavedReports >= maxSavedReports) {
+          if (status) status.textContent = `All ${maxSavedReports} Saved Reports slots are full. Delete a saved report before calculating another one.`;
+          rwphOpenSavedReportsPanel(savedReportState);
+          rwphToastPanelInfo(status, `All ${maxSavedReports} Saved Reports slots are full. Delete one report before starting a new calculation.`, "warn", "RWPH Saved Reports");
+          return;
+        }
+      } catch (e) {
+        rwphToastPanelError(status, `Could not check Saved Reports slots: ${e.message || e}`, "RWPH Saved Reports");
+        return;
+      }
+
       let preOpenedResultsTab = null;
       let stopProgressPolling = null;
       let stopTabCloseWatcher = null;
@@ -16030,13 +15813,11 @@
       try {
         GM_setValue(STORAGE_KEY, userKey);
         results.innerHTML = "";
-        status.textContent = useCacheOnly
-          ? "Opening matching cached completed-war report..."
-          : (isPointsMode
-            ? `Server is verifying licence, fetching the selected finished-war data, and calculating ${rwphAdvancedCalculationSystemLabel(calculationSystem)}. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...`
-            : (basicFastMode
-              ? "Server is verifying licence, checking the report cache, then using Torn rankedwarreport only for a much faster Basic result. Attack-log extras are skipped in Fast Mode..."
-              : "Server is verifying licence, checking the report cache, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away..."));
+        status.textContent = isPointsMode
+          ? `Server is verifying licence, fetching the selected finished-war data, and calculating ${rwphAdvancedCalculationSystemLabel(calculationSystem)}. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...`
+          : (basicFastMode
+            ? "Server is verifying licence, then using Torn rankedwarreport only for a much faster Basic result. Attack-log extras are skipped in Fast Mode..."
+            : "Server is verifying licence, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
         const cancelBecauseTabClosed = () => {
           if (calculationFinished || calculationCancelledByClosedTab) return;
@@ -16072,9 +15853,6 @@
           excludedMembersText,
           memberManagement: memberAdjustments,
           memberAdjustments,
-          useCacheOnly,
-          forceRefresh,
-          adminKey: adminKeyForRefresh,
         }, { timeout: 600000 });
         const result = await calcRequest.promise;
         calculationFinished = true;
@@ -16082,22 +15860,10 @@
           stopTabCloseWatcher();
           stopTabCloseWatcher = null;
         }
-
-        if (result.cacheExists) {
-          if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
-            try { preOpenedResultsTab.close(); } catch (_) {}
-          }
-          rwphSetCacheButtonState(result.calculationMode || (isPointsMode ? "points" : "standard"), true, result, false);
-          rwphToastPanelInfo(status, result.message || "There is already a cached report. Open the matching settings dropdown and click Use Cached Report.", "warn", "RWPH Cached Report");
-          return;
-        }
-
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
         rwphStorePayAllRows(lastRows);
         rwphSaveLastResults(lastRows, lastSummary);
-        const reportCacheReady = !!(result.cached || result.cache?.hit || result.cache?.saved || lastSummary?.cacheSaved);
-        rwphSetCacheButtonState(isPointsMode ? "points" : "standard", reportCacheReady, { factionName: lastSummary?.factionName || result.factionName || "", cache: result.cache || null, expiresAtMs: result.cache?.expiresAtMs || 0, cachedAtMs: result.cache?.cachedAtMs || 0, summary: lastSummary }, false);
         results.innerHTML = renderRows(lastRows, lastSummary);
 
         const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
@@ -16117,7 +15883,7 @@
             resultsPanel.setAttribute("hidden", "");
             resultsPanel.style.display = "none";
           }
-          rwphToastPanelInfo(status, `${result.cached ? "Cached report loaded" : (isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done")}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Click Open Results Page in the loading panel when ready.`, "info", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
+          rwphToastPanelInfo(status, `${isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done"}${Number(result.savedReport?.slot || lastSummary?.savedReportSlot || 0) ? ` · saved report ${Number(result.savedReport?.slot || lastSummary?.savedReportSlot || 0)}` : ""}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Click Open Results Page in the loading panel when ready.`, "info", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
         } else {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
@@ -16128,7 +15894,7 @@
             resultsPanel.style.opacity = "1";
             resultsPanel.scrollTop = 0;
           }
-          rwphToastPanelInfo(status, `${result.cached ? "Cached report loaded" : (isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done")}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Popup blocked, so results opened in the panel.`, "warn", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
+          rwphToastPanelInfo(status, `${isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done"}${Number(result.savedReport?.slot || lastSummary?.savedReportSlot || 0) ? ` · saved report ${Number(result.savedReport?.slot || lastSummary?.savedReportSlot || 0)}` : ""}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Popup blocked, so results opened in the panel.`, "warn", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
         }
       } catch (e) {
         if (stopProgressPolling) {
@@ -16185,8 +15951,8 @@
       return `
         <div class="rw-admin-status-grid">
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Calculations</div><div class="rw-admin-status-value">${Number(calculations.active || 0)} active / direct start</div></div>
-          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Report cache</div><div class="rw-admin-status-value">${Number(cache.reportCacheEntries || 0)} saved</div></div>
-          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Cache hits</div><div class="rw-admin-status-value">${Number(stats.reportCacheHits || 0)}</div></div>
+          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Saved reports</div><div class="rw-admin-status-value">${Number(result.savedReports?.entries || 0)} stored</div></div>
+          <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports loaded</div><div class="rw-admin-status-value">${Number(stats.savedReportsLoaded || 0)}</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Reports made</div><div class="rw-admin-status-value">${Number(stats.reportsCreated || 0)}</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Torn cache</div><div class="rw-admin-status-value">${Number(cache.tornMemoryEntries || 0)} live</div></div>
           <div class="rw-admin-status-card"><div class="rw-admin-status-label">Storage</div><div class="rw-admin-status-value">${esc(result.storage?.mode || "json")}</div></div>
@@ -16201,7 +15967,7 @@
       status.textContent = "Loading server status...";
       const result = await adminRequest("POST", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
-      rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Report cache has ${Number(result.cache?.reportCacheEntries || 0)} saved item(s).`, "info", "RWPH Admin");
+      rwphToastPanelInfo(status, `Server online. ${Number(result.calculations?.active || 0)} calculation(s) active. Saved Reports has ${Number(result.savedReports?.entries || 0)} stored report(s).`, "info", "RWPH Admin");
     }
 
     async function refreshAdminLicenses() {

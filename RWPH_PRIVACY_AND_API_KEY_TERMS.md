@@ -66,7 +66,7 @@ The backend may use the key to:
 
 - verify licence state;
 - fetch Torn data needed for the selected calculation;
-- create or open backend cached reports;
+- save, list, open, or delete one of the faction’s three saved reports;
 - process licence payment/extension checks;
 - support admin licence tools when enabled.
 
@@ -88,7 +88,7 @@ Cached report data may include:
 - final payout rows;
 - cache creation and expiry times.
 
-Backend cached reports are intended to expire automatically based on the server configuration.
+Each faction can keep up to three saved reports. When all three slots are occupied, RWPH will not start another calculation until one saved report is deleted.
 
 ---
 
@@ -128,7 +128,7 @@ RWPH results can be affected by:
 - Torn API rate limits;
 - Torn API changes;
 - backend downtime;
-- cached report state;
+- faction saved-report state;
 - excluded members;
 - changed faction membership;
 - browser or Torn PDA behaviour.
