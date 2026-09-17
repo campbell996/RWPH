@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.475
+// @version      1.1.476
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.476: Saved Reports schema self-repair + exact-settings duplicate detection/highlight.
   // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
@@ -12426,6 +12427,37 @@
     return document.getElementById("rw-basic-fast-mode")?.checked === true;
   }
 
+  function rwphCanonicalCalculationValue(value) {
+    if (Array.isArray(value)) return value.map((entry) => rwphCanonicalCalculationValue(entry));
+    if (value && typeof value === "object") {
+      const result = {};
+      for (const key of Object.keys(value).sort()) result[key] = rwphCanonicalCalculationValue(value[key]);
+      return result;
+    }
+    if (typeof value === "number") {
+      if (!Number.isFinite(value)) return null;
+      return Object.is(value, -0) ? 0 : value;
+    }
+    if (typeof value === "boolean" || typeof value === "string" || value == null) return value;
+    return String(value);
+  }
+
+  function rwphCalculationSignature(config = {}) {
+    return JSON.stringify(rwphCanonicalCalculationValue(config));
+  }
+
+  function rwphNormalizedMemberAdjustmentsForSignature(entries = []) {
+    return (Array.isArray(entries) ? entries : [])
+      .map((entry) => ({
+        id: String(entry?.id || "").trim(),
+        name: String(entry?.name || "").trim(),
+        exclude: !!entry?.exclude,
+        hitsToRemove: Math.max(0, Math.floor(Number(entry?.hitsToRemove || 0) || 0)),
+        respectToRemove: Math.max(0, Number(entry?.respectToRemove || 0) || 0),
+      }))
+      .sort((a, b) => `${a.id}|${a.name}`.localeCompare(`${b.id}|${b.name}`));
+  }
+
   function rwphCloseMemberManagementPanel() {
     const panel = document.getElementById("rwph-member-management-panel");
     if (panel) panel.remove();
@@ -12681,6 +12713,7 @@
       #rwph-saved-reports-panel .rwph-saved-report-auto-delete-copy{min-width:0}.rwph-saved-report-auto-delete-copy b{display:block;font-size:12px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-report-auto-delete-copy span{display:block;margin-top:2px;font-size:10px;line-height:1.35;color:var(--rwph-theme-soft,#c9b7a4)}
       #rwph-saved-reports-panel .rwph-saved-report-auto-delete-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}.rwph-saved-report-auto-delete-controls button{min-width:76px!important;margin:0!important;padding:6px 8px!important}.rwph-saved-report-auto-delete-controls select{min-width:112px;padding:6px 8px;background:var(--rwph-theme-panel3,#3a241c)!important;color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;border-radius:var(--rwph-theme-button-radius,8px)!important;font-weight:800}.rwph-saved-report-auto-delete-controls select:disabled{opacity:.5;cursor:not-allowed}.rwph-saved-report-auto-delete-controls option{background:var(--rwph-theme-panel3,#3a241c)!important;color:var(--rwph-theme-text,#fff2dd)!important}
       #rwph-saved-reports-panel .rwph-saved-report-slot{padding:9px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:10px;background:linear-gradient(180deg,var(--rwph-theme-panel2,#2b1d18),var(--rwph-theme-panel,#211714));box-shadow:0 8px 18px rgba(0,0,0,.22)}
+      #rwph-saved-reports-panel .rwph-saved-report-slot.rwph-saved-report-match{border-color:var(--rwph-theme-gold,#fbbf24)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--rwph-theme-gold,#fbbf24) 45%,transparent),0 10px 24px rgba(0,0,0,.34)!important}
       #rwph-saved-reports-panel .rwph-saved-report-slot.empty{opacity:.82}.rwph-saved-report-slot-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.rwph-saved-report-slot-head b{font-size:13px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-report-badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));color:var(--rwph-theme-gold,#fbbf24);white-space:nowrap}
       #rwph-saved-reports-panel .rwph-saved-report-meta{font-size:11px;line-height:1.42;color:var(--rwph-theme-soft,#c9b7a4);overflow-wrap:anywhere}.rwph-saved-report-meta b{color:var(--rwph-theme-text,#fff2dd)}
       #rwph-saved-reports-panel .rwph-saved-report-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.rwph-saved-report-actions button{flex:1 1 120px!important;margin:0!important;padding:7px 8px!important}
@@ -12704,7 +12737,7 @@
     panel.remove();
   }
 
-  function rwphSavedReportSlotHtml(report = {}, slot) {
+  function rwphSavedReportSlotHtml(report = {}, slot, highlighted = false) {
     if (!report || report.empty) {
       return `<div class="rwph-saved-report-slot empty" data-saved-report-slot="${slot}">
         <div class="rwph-saved-report-slot-head"><b>Saved Report ${slot}</b><span class="rwph-saved-report-badge">EMPTY</span></div>
@@ -12717,8 +12750,8 @@
     const metric = String(report.calculationMode || "") === "points"
       ? `${Number(report.totalPoints || 0).toFixed(2)} points`
       : `${Number(report.totalWarHits || 0)} war hits`;
-    return `<div class="rwph-saved-report-slot" data-saved-report-slot="${slot}">
-      <div class="rwph-saved-report-slot-head"><b>Saved Report ${slot}</b><span class="rwph-saved-report-badge">${mode}</span></div>
+    return `<div class="rwph-saved-report-slot${highlighted ? " rwph-saved-report-match" : ""}" data-saved-report-slot="${slot}">
+      <div class="rwph-saved-report-slot-head"><b>Saved Report ${slot}${highlighted ? " — Exact Settings Match" : ""}</b><span class="rwph-saved-report-badge">${mode}${highlighted ? " · MATCH" : ""}</span></div>
       <div class="rwph-saved-report-meta">
         <b>${faction}</b><br>
         War: ${rwphHtmlEscape(rwphSavedReportDateTime(report.start))} → ${rwphHtmlEscape(rwphSavedReportDateTime(report.end))}<br>
@@ -12783,7 +12816,7 @@
     }
   }
 
-  async function rwphRefreshSavedReportsPanel({ quiet = false, prefetchedResult = null } = {}) {
+  async function rwphRefreshSavedReportsPanel({ quiet = false, prefetchedResult = null, highlightSlot = 0 } = {}) {
     const panel = rwphSavedReportsPanel();
     if (!panel) return;
     const list = panel.querySelector("#rwph-saved-reports-list");
@@ -12802,11 +12835,20 @@
       rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled: false, hours: 24 });
       const factionTitle = panel.querySelector("#rwph-saved-reports-faction");
       if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"} · up to ${Number(result.maxReports || 3)} reports`;
-      if (list) list.innerHTML = [1,2,3].map((slot) => rwphSavedReportSlotHtml(reports.find((r) => Number(r.slot) === slot) || { empty:true }, slot)).join("");
+      const safeHighlightSlot = Math.max(0, Math.min(3, Math.floor(Number(highlightSlot || 0))));
+      if (list) list.innerHTML = [1,2,3].map((slot) => rwphSavedReportSlotHtml(reports.find((r) => Number(r.slot) === slot) || { empty:true }, slot, slot === safeHighlightSlot)).join("");
       const occupiedCount = reports.filter((report) => report && !report.empty).length;
-      if (status) status.textContent = occupiedCount >= Number(result.maxReports || 3)
-        ? "All 3 saved report slots are full. Delete one report before starting another calculation."
-        : `Saved reports: ${occupiedCount}/${Number(result.maxReports || 3)}. Completed calculations save here automatically.`;
+      if (status) status.textContent = safeHighlightSlot
+        ? `Saved report ${safeHighlightSlot} exactly matches the current calculation settings. Load that report instead of recalculating.`
+        : (occupiedCount >= Number(result.maxReports || 3)
+          ? "All 3 saved report slots are full. Delete one report before starting another calculation."
+          : `Saved reports: ${occupiedCount}/${Number(result.maxReports || 3)}. Completed calculations save here automatically.`);
+      if (safeHighlightSlot && list) {
+        requestAnimationFrame(() => {
+          const match = list.querySelector(`[data-saved-report-slot="${safeHighlightSlot}"]`);
+          try { match?.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {}
+        });
+      }
     } catch (e) {
       if (list) list.innerHTML = `<div class="rwph-saved-report-intro">${rwphHtmlEscape(e.message || e)}</div>`;
       if (status) status.textContent = "Could not load saved reports.";
@@ -12873,7 +12915,7 @@
     }
   }
 
-  function rwphOpenSavedReportsPanel(prefetchedResult = null) {
+  function rwphOpenSavedReportsPanel(prefetchedResult = null, { highlightSlot = 0 } = {}) {
     rwphEnsureSavedReportsPanelStyles();
     rwphCloseSavedReportsPanel();
     const panel = document.createElement("section");
@@ -12922,7 +12964,7 @@
       const del = event.target?.closest?.("[data-rwph-saved-delete]");
       if (del) rwphDeleteSavedReportSlot(del.getAttribute("data-rwph-saved-delete"));
     });
-    rwphRefreshSavedReportsPanel({ prefetchedResult });
+    rwphRefreshSavedReportsPanel({ prefetchedResult, highlightSlot });
   }
 
   function rwphWarSourceLabel(value) {
@@ -15825,6 +15867,25 @@
       const includeLeftFactionMembers = false;
       const excludedMembersText = rwphGetExcludedMembersTextForMode(mode);
       const memberAdjustments = rwphGetMemberManagementPayload(mode);
+      const calculationSignature = rwphCalculationSignature({
+        signatureVersion: 1,
+        calculationMode: isPointsMode ? "points" : "standard",
+        calculationSystem,
+        from,
+        to,
+        memberPayout: totalPayout,
+        overallTotalPayout,
+        warHitWeight,
+        outsideHitWeight,
+        retaliationHitWeight,
+        assistWeight,
+        respectWeight,
+        basicFastMode,
+        basic120ResultsPage,
+        advancedSettings: isPointsMode ? advancedSettings : null,
+        includeLeftFactionMembers,
+        memberManagement: rwphNormalizedMemberAdjustmentsForSignature(memberAdjustments),
+      });
       if (!userKey) return alert("Enter your Torn API key.");
       if (totalPayout <= 0) return alert("Enter a Member Payout greater than 0.");
       if (overallTotalPayout < 0) return alert("Total Payout cannot be negative.");
@@ -15839,6 +15900,14 @@
         const savedReportState = await apiPost("/api/calc/saved-reports/list", { userKey, token });
         const savedReports = Array.isArray(savedReportState?.reports) ? savedReportState.reports : [];
         const maxSavedReports = Math.max(1, Number(savedReportState?.maxReports || 3));
+        const matchingSavedReport = savedReports.find((report) => report && !report.empty && String(report.calculationSignature || "") === calculationSignature);
+        if (matchingSavedReport) {
+          const matchingSlot = Math.max(1, Math.min(maxSavedReports, Number(matchingSavedReport.slot || 1)));
+          if (status) status.textContent = `Saved report ${matchingSlot} exactly matches these calculation settings.`;
+          rwphOpenSavedReportsPanel(savedReportState, { highlightSlot: matchingSlot });
+          rwphToastPanelInfo(status, `Saved report ${matchingSlot} already uses these exact settings. It has been highlighted in Cached Reports.`, "info", "RWPH Saved Reports");
+          return;
+        }
         const occupiedSavedReports = savedReports.filter((report) => report && !report.empty).length;
         if (occupiedSavedReports >= maxSavedReports) {
           if (status) status.textContent = `All ${maxSavedReports} Saved Reports slots are full. Delete a saved report before calculating another one.`;
@@ -15885,6 +15954,7 @@
           progressId,
           calculationMode: isPointsMode ? "points" : "standard",
           calculationSystem,
+          calculationSignature,
           from,
           to,
           memberPayout: totalPayout,
@@ -15913,6 +15983,7 @@
               token,
               calculationMode: isPointsMode ? "points" : "standard",
               calculationSystem,
+              calculationSignature,
               from,
               to,
               memberPayout: totalPayout,
