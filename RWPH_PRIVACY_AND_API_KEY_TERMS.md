@@ -88,7 +88,7 @@ Cached report data may include:
 - final payout rows;
 - cache creation and expiry times.
 
-Each faction can keep up to three saved reports. When all three slots are occupied, RWPH will not start another calculation until one saved report is deleted or an enabled Auto Delete policy removes an expired report. Auto Delete is optional and its expiry age is stored as a faction-level backend setting.
+Each faction can keep up to three cached reports. When three reports already exist, RWPH will not start a different calculation until one cached report is deleted or an enabled Auto Delete policy removes an expired report. Auto Delete is optional and its expiry age is stored as a faction-level backend setting.
 
 ---
 
