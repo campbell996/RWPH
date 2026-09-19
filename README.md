@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.481**  
+Current userscript version: **1.1.480**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,12 +19,7 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.481
-
-- Cached Reports panel renders instantly, then verifies/loads the database contents in-place.
-- User and faction identity checks are memory-cached to remove repeated Torn API delays from cache operations.
-- Duplicate calculation protection now works immediately in the userscript and across faction members through MySQL calculation locks.
-- Exact settings already being calculated return `IN_PROGRESS` instead of launching another expensive report.
+## What's New in v1.1.480
 
 - **Cached Reports rebuilt from scratch:** report storage is now simpler and more reliable, with one saved entry per completed report.
 - **No hidden report slots:** the panel simply shows the three newest reports for the current faction ID.
@@ -406,8 +401,8 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.481
+## Current Version Summary — v1.1.480
 
-RWPH v1.1.481 keeps the faction-level **Cached Reports** panel responsive by opening it immediately, uses fast cached identity checks, and blocks duplicate exact-setting calculations both locally and across faction members.
+RWPH v1.1.480 uses the faction-level **Cached Reports** panel to show the three newest reports, checks exact calculation settings before a new run, and verifies each save before reporting that the result was cached.
 
 The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, and Torn attack-data speed cache remain available.
