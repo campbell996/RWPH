@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.480
+// @version      1.1.481
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.480: Cached Reports rebuilt on one-row-per-report faction storage with exact-settings preflight and no database slot keys.
+  // v1.1.481: Faster Cached Reports with instant panel rendering, cached identity/faction checks, and duplicate-calculation locking.
   // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
@@ -12699,6 +12699,7 @@
   }
 
   let rwphSavedReportsFactionId = String(GM_getValue("rwph_saved_reports_faction_id", "") || "").trim();
+  const rwphCalculationInFlightSignatures = new Set();
 
   function rwphRememberSavedReportsFactionId(value) {
     const id = String(value || "").trim();
@@ -12943,17 +12944,7 @@
       return;
     }
 
-    let verifiedResult = prefetchedResult;
-    if (!verifiedResult?.databaseChecked) {
-      try {
-        if (mainStatus) mainStatus.textContent = "Checking Cached Reports database...";
-        verifiedResult = await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: Date.now() }));
-      } catch (e) {
-        rwphToastPanelError(mainStatus, `Could not check Cached Reports database: ${e.message || e}`, "RWPH Cached Reports");
-        return;
-      }
-    }
-
+    const verifiedResult = prefetchedResult;
     rwphRememberSavedReportsFactionId(verifiedResult?.factionId);
     rwphEnsureSavedReportsPanelStyles();
     rwphCloseSavedReportsPanel();
@@ -12983,8 +12974,8 @@
             </select>
           </div>
         </div>
-        <div id="rwph-saved-reports-list"><div class="rwph-saved-report-intro">Loading cached reports...</div></div>
-        <div id="rwph-saved-reports-status">Loading...</div>
+        <div id="rwph-saved-reports-list">${[0,1,2].map((index) => rwphSavedReportSlotHtml({ empty: true }, index + 1, false)).join("")}</div>
+        <div id="rwph-saved-reports-status">Checking database...</div>
       </div>`;
     document.body.appendChild(panel);
     try { rwphApplyPanelLayout(panel); } catch (_) {}
@@ -15939,6 +15930,12 @@
         if (advancedError) return alert(advancedError);
       }
 
+      if (rwphCalculationInFlightSignatures.has(calculationSignature)) {
+        rwphToastPanelInfo(status, "This exact report is already being checked or calculated. RWPH blocked the duplicate request.", "warn", "RWPH Cached Reports");
+        return;
+      }
+      rwphCalculationInFlightSignatures.add(calculationSignature);
+
       try {
         if (status) status.textContent = "Checking Cached Reports...";
         const cachedReportState = await apiPost("/api/calc/cached-reports/preflight", rwphSavedReportsRequestBody(userKey, token, { calculationSignature }));
@@ -15947,15 +15944,24 @@
           if (status) status.textContent = "An exact cached report already exists for these calculation settings.";
           rwphOpenSavedReportsPanel(cachedReportState, { highlightReportId: Number(cachedReportState.matchId) });
           rwphToastPanelInfo(status, "An exact cached report already uses these settings. It has been highlighted in Cached Reports.", "info", "RWPH Cached Reports");
+          rwphCalculationInFlightSignatures.delete(calculationSignature);
           return;
         }
         if (String(cachedReportState?.state || "") === "FULL") {
           if (status) status.textContent = `All ${maxCachedReports} Cached Reports are full. Delete one before calculating a different setup.`;
           rwphOpenSavedReportsPanel(cachedReportState);
           rwphToastPanelInfo(status, `All ${maxCachedReports} Cached Reports are full. Delete one report before starting a different calculation.`, "warn", "RWPH Cached Reports");
+          rwphCalculationInFlightSignatures.delete(calculationSignature);
+          return;
+        }
+        if (String(cachedReportState?.state || "") === "IN_PROGRESS") {
+          if (status) status.textContent = "This exact report is already being calculated by another faction member.";
+          rwphToastPanelInfo(status, "This exact report is already being calculated. Wait for it to finish and it will appear in Cached Reports.", "warn", "RWPH Cached Reports");
+          rwphCalculationInFlightSignatures.delete(calculationSignature);
           return;
         }
       } catch (e) {
+        rwphCalculationInFlightSignatures.delete(calculationSignature);
         rwphToastPanelError(status, `Could not check Cached Reports: ${e.message || e}`, "RWPH Cached Reports");
         return;
       }
@@ -16123,6 +16129,8 @@
         if (String(e.message).toLowerCase().includes("license") || String(e.message).toLowerCase().includes("licence")) {
           returnToLockedPanel(String(e.message).toLowerCase().includes("revoked") ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again." : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
         }
+      } finally {
+        rwphCalculationInFlightSignatures.delete(calculationSignature);
       }
     }
 
