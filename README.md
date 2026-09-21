@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.486**  
+Current userscript version: **1.1.487**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -18,6 +18,14 @@ Author: **Evil_Panda_420**
 > **Important:** RWPH is a manual helper. It does not automatically attack, send money/items, confirm Torn payments, buy, sell, or perform gameplay actions for you. Always review the results before acting on them.
 
 ---
+
+## What's New in v1.1.487
+
+- Payment-helper timers no longer sit on a stale **Expired** state while RWPH waits for the backend. They switch to **Syncing...** immediately and update as soon as the live database expiry returns.
+- The visible helper timer is updated immediately whenever RWPH saves/refreshes the current database-backed pending payment.
+- **Buy Licence** and **Extend Licence** no longer auto-open the **Your Expiration / Licence Info** panel after payment succeeds.
+- Extend success still reports the new expiry in the normal status area.
+- No database migration is required.
 
 ## What's New in v1.1.486
 
@@ -409,9 +417,15 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.486
+## Current Version Summary — v1.1.487
 
-RWPH v1.1.486 keeps the v1.1.485 layout and fixes stale/expired Buy/Extend payment-helper handoffs so the current database-backed payment code is automatically restored or recreated when necessary.
+RWPH v1.1.487 keeps the v1.1.486 payment-helper recovery flow, makes stale expiry displays switch to Syncing immediately, applies the live database expiry as soon as it returns, and stops Buy/Extend from automatically opening the Your Expiration panel.
+
+## v1.1.487 - Payment Timer / Expiration Panel Fix
+
+- Stale payment-helper timers change to **Syncing...** immediately while the backend restores/repairs the current challenge.
+- Live expiry values are pushed into the visible helper as soon as they are received.
+- Buy/Extend payment success no longer automatically opens the Your Expiration panel.
 
 ## v1.1.486 - Payment Helper Recovery
 

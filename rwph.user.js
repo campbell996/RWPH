@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.486
+// @version      1.1.487
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.487: Payment-helper expiry immediately shows Syncing while backend state refreshes, live expiry replaces stale timers as soon as it arrives, and Buy/Extend no longer auto-open Your Expiration.
   // v1.1.486: Expired/stale Buy/Extend payment-helper handoffs self-heal by restoring the current database code or creating a fresh payment code for the original Buy/Extend intent.
   // v1.1.485: Cached Reports button moved between the Basic Calculations and Advanced Calculations dropdowns; no calculation, cache, licence, or backend logic changed.
   // v1.1.484: Fast-path licence/payment backend calls now use targeted indexed SQL instead of full-state loads; Buy/Extend are click-locked and successful extension display reuses the confirmation response.
@@ -1055,6 +1056,7 @@
     };
 
     GM_setValue(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(pending));
+    rwphApplyLivePaymentExpiry(pending.code, pending.expiresAtMs);
   }
 
   function clearPendingPayment() {
@@ -1115,14 +1117,56 @@
   function rwphUpdateExpiryTimers() {
     const nodes = Array.from(document.querySelectorAll("[data-rwph-expire-at]"));
     for (const node of nodes) {
-      const expiresAtMs = Number(node.dataset.rwphExpireAt || 0);
-      const msLeft = expiresAtMs - Date.now();
       const count = node.querySelector("[data-rwph-expire-count]");
       const clock = node.querySelector("[data-rwph-expire-clock]");
+
+      if (node.dataset.rwphExpirySyncing === "1") {
+        if (count) count.textContent = "Syncing...";
+        if (clock) clock.textContent = "";
+        node.classList.remove("rwph-expired");
+        continue;
+      }
+
+      const expiresAtMs = Number(node.dataset.rwphExpireAt || 0);
+      const msLeft = expiresAtMs - Date.now();
       if (count) count.textContent = msLeft <= 0 ? "expired" : rwphFormatCountdownMs(msLeft);
       if (clock) clock.textContent = expiresAtMs ? `at ${rwphFormatExpiryClock(expiresAtMs)}` : "";
       node.classList.toggle("rwph-expired", msLeft <= 0);
     }
+  }
+
+  function rwphSetPaymentExpirySyncing(code = "") {
+    const panel = document.getElementById("rwph-xanax-send-status");
+    if (!panel) return;
+    const panelCode = String(panel.dataset?.rwphPaymentCode || "");
+    if (code && panelCode && panelCode !== String(code)) return;
+    const node = panel.querySelector("[data-rwph-expire-at]");
+    if (!node) return;
+    node.dataset.rwphExpirySyncing = "1";
+    const count = node.querySelector("[data-rwph-expire-count]");
+    const clock = node.querySelector("[data-rwph-expire-clock]");
+    if (count) count.textContent = "Syncing...";
+    if (clock) clock.textContent = "";
+    node.classList.remove("rwph-expired");
+  }
+
+  function rwphApplyLivePaymentExpiry(code, expiresAtMs) {
+    const exp = Number(expiresAtMs || 0);
+    if (!Number.isFinite(exp) || exp <= 0) return;
+
+    const panel = document.getElementById("rwph-xanax-send-status");
+    if (panel) {
+      const panelCode = String(panel.dataset?.rwphPaymentCode || "");
+      if (!panelCode || panelCode === String(code || "")) {
+        const node = panel.querySelector("[data-rwph-expire-at]");
+        if (node) {
+          node.dataset.rwphExpireAt = String(exp);
+          delete node.dataset.rwphExpirySyncing;
+        }
+      }
+    }
+
+    rwphUpdateExpiryTimers();
   }
 
   function rwphStartExpiryTimer() {
@@ -1508,19 +1552,12 @@
       if (paywallCode) paywallCode.innerHTML = "";
       if (mainCode) mainCode.innerHTML = "";
 
-      if (mode === "extend" || document.getElementById("rw-key")) {
+      if (mode === "extend") {
         const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
         rwphToastPanelInfo(status, `Licence extended.${paidQtyText}`, "info", "RWPH Payment");
-        if (result.expiresAt) {
-          rwphOpenLicenceInfoPanel({
-            valid: true,
-            tornId: result.tornId || "unknown",
-            name: result.name || "this user",
-            expiresAt: result.expiresAt,
-            token: result.token,
-            source: "payment-confirmation",
-          });
-          if (status) status.textContent = "Licence extended. Licence info updated from the payment confirmation.";
+        if (status) {
+          const expiryText = result.expiresAt ? ` New expiry: ${formatUnixDate(result.expiresAt)}.` : "";
+          status.textContent = `Licence extended.${paidQtyText}${expiryText}`;
         }
       } else {
         rwphShowToast(`Unlocked.${paidQtyText} Loading tool...`, "info", 10000, "RWPH Payment");
@@ -14289,6 +14326,9 @@
     let recoveredPayment = false;
     let helperConfirmed = saveXanaxPaymentHelper(code);
     if (!helperConfirmed) {
+      // Never leave a stale "expired" timer visible while RWPH is waiting for the
+      // database to restore/replace the current payment challenge.
+      rwphSetPaymentExpirySyncing(code);
       let restored = null;
 
       // A fresh helper handoff already came from a successful /start response. If its
