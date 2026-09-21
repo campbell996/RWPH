@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.488
+// @version      1.1.489
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.489: Removed payment-code expiry/timer UI. Pending codes live only in MySQL for 30 minutes; Buy/Extend reuses the same code and restarts its 30-minute database lifetime.
   // v1.1.488: Buy/Extend payment helpers start a visible 5:00 timer immediately; backend payment checks then replace it with the authoritative live expiry. Removed the Syncing timer state.
   // v1.1.487: Payment-helper expiry immediately showed Syncing while backend state refreshed, live expiry replaced stale timers as soon as it arrived, and Buy/Extend no longer auto-open Your Expiration.
   // v1.1.486: Expired/stale Buy/Extend payment-helper handoffs self-heal by restoring the current database code or creating a fresh payment code for the original Buy/Extend intent.
@@ -53,7 +54,6 @@
   const FIRST_TUTORIAL_SHOWN_STORAGE_KEY = "rw_payout_helper_first_tutorial_shown";
   const MEMBER_MANAGEMENT_STORAGE_KEY = "rw_payout_helper_member_management_state";
   const MEMBER_MANAGEMENT_EXPIRY_MS = 20 * 60 * 1000;
-  const PENDING_PAYMENT_TTL_MS = 5 * 60 * 1000;
 
   const RWPH_PAYMENTS_ONLY_SESSION_KEY = "rwph_payments_only_tab";
 
@@ -1043,21 +1043,17 @@
     if (!result || !result.code) return;
 
     const createdAtMs = Number(result.createdAtMs || (Number(result.createdAt || 0) ? Number(result.createdAt) * 1000 : 0)) || Date.now();
-    const expiresAtMs = Number(result.expiresAtMs || (Number(result.expiresAt || 0) ? Number(result.expiresAt) * 1000 : 0)) || (Date.now() + PENDING_PAYMENT_TTL_MS);
-
     const pending = {
       code: String(result.code),
       instructions: String(result.instructions || ""),
       tornId: result.tornId ? String(result.tornId) : "",
       name: result.name ? String(result.name) : "",
       createdAtMs,
-      expiresAtMs,
       source: String(result.source || "database-pending-payment"),
       databaseBacked: true,
     };
 
     GM_setValue(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(pending));
-    rwphApplyLivePaymentExpiry(pending.code, pending.expiresAtMs);
   }
 
   function clearPendingPayment() {
@@ -1070,21 +1066,14 @@
       raw = GM_getValue(PENDING_PAYMENT_STORAGE_KEY, "");
       if (!raw) return null;
       const pending = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (!pending || !pending.code || !pending.expiresAtMs) return null;
+      if (!pending || !pending.code) return null;
 
-      // A current payment code must have come from /api/paywall/start or /api/paywall/pending.
+      // Browser storage never decides when a payment code expires. MySQL is authoritative.
       if (!pending.databaseBacked && pending.source !== "database-pending-payment") {
         clearPendingPayment();
         GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
         return null;
       }
-
-      if (Date.now() > Number(pending.expiresAtMs)) {
-        clearPendingPayment();
-        GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
-        return null;
-      }
-
       return pending;
     } catch (e) {
       console.warn("Could not read saved payment code:", e);
@@ -1093,136 +1082,11 @@
     }
   }
 
-  function pendingPaymentMinutesLeft(pending) {
-    if (!pending) return 0;
-    return Math.max(0, Math.ceil((Number(pending.expiresAtMs) - Date.now()) / 60000));
-  }
-
-  function rwphFormatCountdownMs(msLeft) {
-    const totalSeconds = Math.max(0, Math.ceil(Number(msLeft || 0) / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${String(seconds).padStart(2, "0")}`;
-  }
-
-  function rwphFormatExpiryClock(expiresAtMs) {
-    const exp = Number(expiresAtMs || 0);
-    if (!exp) return "unknown time";
-    try {
-      return new Date(exp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    } catch (_) {
-      return new Date(exp).toLocaleTimeString();
-    }
-  }
-
-  function rwphUpdateExpiryTimers() {
-    const nodes = Array.from(document.querySelectorAll("[data-rwph-expire-at]"));
-    for (const node of nodes) {
-      const count = node.querySelector("[data-rwph-expire-count]");
-      const clock = node.querySelector("[data-rwph-expire-clock]");
-
-      const expiresAtMs = Number(node.dataset.rwphExpireAt || 0);
-      const msLeft = expiresAtMs - Date.now();
-      if (count) count.textContent = msLeft <= 0 ? "expired" : rwphFormatCountdownMs(msLeft);
-      if (clock) clock.textContent = expiresAtMs ? `at ${rwphFormatExpiryClock(expiresAtMs)}` : "";
-      node.classList.toggle("rwph-expired", msLeft <= 0);
-    }
-  }
-
-  function rwphStartFiveMinutePaymentTimer(code = "", createdAtMs = Date.now()) {
-    const startedAt = Number(createdAtMs || 0) || Date.now();
-    let expiresAtMs = startedAt + PENDING_PAYMENT_TTL_MS;
-    // If navigation/re-rendering took unusually long, still give the newly created
-    // helper an immediate visible 5-minute countdown until the backend check replies.
-    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
-      expiresAtMs = Date.now() + PENDING_PAYMENT_TTL_MS;
-    }
-
-    window.__rwphProvisionalPaymentExpiry = {
-      code: String(code || ""),
-      expiresAtMs,
-    };
-
-    const panel = document.getElementById("rwph-xanax-send-status");
-    if (panel) {
-      const panelCode = String(panel.dataset?.rwphPaymentCode || "");
-      if (!code || !panelCode || panelCode === String(code)) {
-        const node = panel.querySelector("[data-rwph-expire-at]");
-        if (node) node.dataset.rwphExpireAt = String(expiresAtMs);
-      }
-    }
-
-    rwphUpdateExpiryTimers();
-    return expiresAtMs;
-  }
-
-  function rwphApplyLivePaymentExpiry(code, expiresAtMs) {
-    const exp = Number(expiresAtMs || 0);
-    if (!Number.isFinite(exp) || exp <= 0) return;
-
-    if (window.__rwphProvisionalPaymentExpiry?.code === String(code || "")) {
-      window.__rwphProvisionalPaymentExpiry = null;
-    }
-
-    const panel = document.getElementById("rwph-xanax-send-status");
-    if (panel) {
-      const panelCode = String(panel.dataset?.rwphPaymentCode || "");
-      if (!panelCode || panelCode === String(code || "")) {
-        const node = panel.querySelector("[data-rwph-expire-at]");
-        if (node) {
-          node.dataset.rwphExpireAt = String(exp);
-        }
-      }
-    }
-
-    rwphUpdateExpiryTimers();
-  }
-
-  function rwphStartExpiryTimer() {
-    rwphUpdateExpiryTimers();
-    if (window.__rwphExpiryTimer) return;
-    window.__rwphExpiryTimer = setInterval(rwphUpdateExpiryTimers, 1000);
-  }
-
-  function rwphPaymentExpiryHtml(expiresAtMs, className = "rw-payment-expiry") {
-    const exp = Number(expiresAtMs || 0) || (Date.now() + PENDING_PAYMENT_TTL_MS);
-    const left = rwphFormatCountdownMs(exp - Date.now());
-    const clock = rwphFormatExpiryClock(exp);
-    return `<div class="${className}" data-rwph-expire-at="${exp}"><b>Expires in:</b> <span data-rwph-expire-count>${esc(left)}</span> <span class="rwph-expire-clock" data-rwph-expire-clock>at ${esc(clock)}</span></div>`;
-  }
-
-  function rwphPaymentExpiryForCode(code) {
-    const normalizedCode = String(code || "");
-    const pending = getPendingPayment();
-    if (pending?.code && String(pending.code) === normalizedCode && Number(pending.expiresAtMs || 0) > Date.now()) {
-      return Number(pending.expiresAtMs);
-    }
-
-    const provisional = window.__rwphProvisionalPaymentExpiry;
-    if (provisional?.code && String(provisional.code) === normalizedCode && Number(provisional.expiresAtMs || 0) > Date.now()) {
-      return Number(provisional.expiresAtMs);
-    }
-
-    const freshOpenRequest = rwphGetFreshPaymentHelperOpenRequest(normalizedCode);
-    if (freshOpenRequest?.createdAtMs) {
-      return rwphStartFiveMinutePaymentTimer(normalizedCode, freshOpenRequest.createdAtMs);
-    }
-
-    return 0;
-  }
-
   function saveXanaxPaymentHelper(code) {
     if (!code) return false;
     const normalizedCode = String(code);
     const pending = getPendingPayment();
-    const expiryFromMainPaymentCard = pending?.code && String(pending.code) === normalizedCode
-      ? Number(pending.expiresAtMs || 0)
-      : 0;
-    const expiresAtMs = expiryFromMainPaymentCard > Date.now()
-      ? expiryFromMainPaymentCard
-      : rwphPaymentExpiryForCode(normalizedCode);
-
-    if (!pending || String(pending.code) !== normalizedCode || !expiresAtMs) {
+    if (!pending || String(pending.code) !== normalizedCode) {
       GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
       return false;
     }
@@ -1235,7 +1099,6 @@
       itemId: PAYMENT_ITEM_ID,
       itemName: PAYMENT_ITEM_NAME,
       createdAtMs: pending.createdAtMs || Date.now(),
-      expiresAtMs,
       source: pending.source || "database-pending-payment",
       databaseBacked: true,
     };
@@ -1248,12 +1111,8 @@
       const raw = GM_getValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
       if (!raw) return null;
       const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (!payload || !payload.code || !payload.expiresAtMs) return null;
+      if (!payload || !payload.code) return null;
       if (!payload.databaseBacked && payload.source !== "database-pending-payment") {
-        GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
-        return null;
-      }
-      if (Date.now() > Number(payload.expiresAtMs)) {
         GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
         return null;
       }
@@ -1320,7 +1179,6 @@
     savePendingPayment(result);
     saveXanaxPaymentHelper(result.code);
 
-    const pending = getPendingPayment();
     const existingText = result.existingPending
       ? "Existing pending payment code found. Opening the Xanax Payment Helper in this tab instead of creating a new code."
       : "Payment code ready. Opening the Xanax send page in this tab. RWPH will check automatically after you send the Xanax.";
@@ -1331,9 +1189,8 @@
       codeBox.innerHTML = renderPaymentCodeCard(
         result.code,
         result.existingPending
-          ? "Existing database payment code restored. Auto-check is running."
-          : "Saved for 5 minutes. Auto-check is running. Xanax page should now be open.",
-        pending?.expiresAtMs
+          ? "Existing database payment code reused. Its 30-minute database lifetime was restarted. Auto-check is running."
+          : "Saved in the database. Auto-check is running. Xanax page should now be open."
       );
     }
 
@@ -1350,10 +1207,8 @@
     return openedPaymentHelper;
   }
 
-  function renderPaymentCodeCard(code, minutesLeftText = "Saved for 5 minutes.", expiresAtMs = 0) {
+  function renderPaymentCodeCard(code, noteText = "Saved in the database. Auto-check is running.") {
     const safeCode = esc(code || "");
-    const exp = Number(expiresAtMs || (Date.now() + PENDING_PAYMENT_TTL_MS));
-    setTimeout(rwphStartExpiryTimer, 0);
     return `
       <div class="rw-payment-card">
         <div class="rw-payment-title">Payment Code Ready</div>
@@ -1361,8 +1216,7 @@
         <div class="rw-payment-recipient">${esc(PAYMENT_RECEIVER_TEXT)}</div>
         <div class="rw-payment-instruction">Use this exact message:</div>
         <div class="rw-payment-code">${safeCode}</div>
-        ${rwphPaymentExpiryHtml(exp)}
-        <div class="rw-payment-note">${esc(minutesLeftText)} RWPH only adds licence days when <b>${esc(PAYMENT_ITEM_NAME)}</b> is sent with the exact payment code as the message. Other items do not count. If you send ${esc(PAYMENT_ITEM_NAME)} without the code, it will need manual review. You still review and press Send yourself in Torn.</div>
+        <div class="rw-payment-note">${esc(noteText)} Pending codes are kept in the database for 30 minutes. Clicking Buy/Extend again reuses this code and restarts the 30-minute lifetime. RWPH only adds licence days when <b>${esc(PAYMENT_ITEM_NAME)}</b> is sent with the exact payment code as the message. Other items do not count. If you send ${esc(PAYMENT_ITEM_NAME)} without the code, it will need manual review. You still review and press Send yourself in Torn.</div>
         <button type="button" data-open-xanax-payment="${safeCode}">Open ${esc(PAYMENT_ITEM_NAME)} Send Page</button>
       </div>`;
   }
@@ -1378,8 +1232,7 @@
       if (pending) {
         box.innerHTML = renderPaymentCodeCard(
           pending.code,
-          `Saved payment code. Auto-check is running while this timer is active.`,
-          pending.expiresAtMs
+          `Saved payment code. Auto-check is running.`
         );
       } else if (box.dataset?.rwphAutoPaymentBox === "1") {
         box.innerHTML = "";
@@ -1552,8 +1405,7 @@
         }
         if (result.pending && result.code) savePendingPayment(result);
         else { clearPendingPayment(); GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, ""); }
-        const mins = pendingPaymentMinutesLeft(getPendingPayment());
-        setPaymentStatus(result.error || `Waiting for Xanax payment. Auto-checking every 15 seconds. Code expires in ${mins} minute(s).`, mode);
+        setPaymentStatus(result.error || `Waiting for Xanax payment. Auto-checking every 15 seconds.`, mode);
         updatePendingPaymentUi();
         return false;
       }
@@ -14174,8 +14026,6 @@
   }
 
   function rwphPaymentHelperHtml(code, message, isError = false) {
-    const expiresAtMs = Number(rwphPaymentExpiryForCode(code));
-    setTimeout(rwphStartExpiryTimer, 0);
     return `
       <button id="rwph-close-helper" class="danger" type="button" title="Close" aria-label="Close Xanax Payment Helper">×</button>
       <div id="rwph-payment-helper-title"><img class="rwph-dynamic-logo-icon rwph-payment-helper-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span class="rwph-payment-helper-title-text">Payment Helper</span></div>
@@ -14186,8 +14036,7 @@
         <div class="rwph-xanax-detail-card">
           <div class="rwph-xanax-detail-title">Required payment details</div>
 
-          ${rwphPaymentExpiryHtml(expiresAtMs, "rw-payment-expiry rwph-xanax-expiry rwph-xanax-expiry-hero")}
-          <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send while this timer is active.</div>
+          <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send. The pending code is managed by the backend/database.</div>
 
           <div class="rwph-xanax-actions" aria-label="Xanax payment helper actions">
             <button id="rwph-copy-receiver" type="button">Copy Receiver</button>
@@ -14342,15 +14191,9 @@
     const originallyRequestedCode = String(code);
     const freshOpenRequest = rwphGetFreshPaymentHelperOpenRequest(originallyRequestedCode);
     const helperMode = freshOpenRequest?.mode === "extend" ? "extend" : "unlock";
-    if (freshOpenRequest) {
-      rwphStartFiveMinutePaymentTimer(originallyRequestedCode, freshOpenRequest.createdAtMs);
-    }
     let recoveredPayment = false;
     let helperConfirmed = saveXanaxPaymentHelper(code);
     if (!helperConfirmed) {
-      // Keep a live five-minute countdown visible while RWPH asks the backend for
-      // the authoritative current payment expiry. The backend reply replaces it.
-      if (!freshOpenRequest) rwphStartFiveMinutePaymentTimer(code);
       let restored = null;
 
       // A fresh helper handoff already came from a successful /start response. If its

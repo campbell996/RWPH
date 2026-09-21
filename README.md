@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.487**  
+Current userscript version: **1.1.489**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,13 +19,17 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.488
+## What's New in v1.1.489
 
-- Payment-helper timers no longer sit on a stale **Expired** state while RWPH waits for the backend. They switch to **Syncing...** immediately and update as soon as the live database expiry returns.
-- The visible helper timer is updated immediately whenever RWPH saves/refreshes the current database-backed pending payment.
-- **Buy Licence** and **Extend Licence** no longer auto-open the **Your Expiration / Licence Info** panel after payment succeeds.
-- Extend success still reports the new expiry in the normal status area.
-- No database migration is required.
+- Removed the payment-code expiry/countdown UI from Buy Licence, Extend Licence, and the Xanax Payment Helper.
+- Pending payment codes are now managed only by the backend/database.
+- A pending code is kept for **30 minutes**.
+- Clicking **Buy Licence** or **Extend Licence** again while that code still exists reuses the **same code** and restarts its 30-minute database lifetime.
+- If the code is missing or stale, RWPH creates a new one automatically.
+- Stale pending-payment rows are deleted by the backend payment flow; an open helper's automatic checks also clear the row once its 30-minute lifetime is over.
+- Browser storage no longer decides whether a payment code is valid.
+- The **Your Expiration** panel still does not auto-open after Buy/Extend succeeds.
+- No database schema migration is required, but the backend must be redeployed for the new 30-minute lifecycle.
 
 ## What's New in v1.1.486
 
