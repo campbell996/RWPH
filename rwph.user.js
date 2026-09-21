@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.480
+// @version      1.1.484
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,9 @@
 (function () {
   "use strict";
 
-  // v1.1.480: Cached Reports rebuilt on one-row-per-report faction storage with exact-settings preflight and no database slot keys.
+  // v1.1.484: Fast-path licence/payment backend calls now use targeted indexed SQL instead of full-state loads; Buy/Extend are click-locked and successful extension display reuses the confirmation response.
+  // v1.1.483: Admin Key save is now a single fast verify + owner-licence grant request; admin access and the local owner token unlock immediately after confirmation.
+  // v1.1.482: Cached Reports hot path now reads the faction's newest 3 rows directly from MySQL with no Torn lookup on normal opens; calculation saves remain database-backed.
   // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
@@ -1426,6 +1428,7 @@
   }
 
   async function autoCheckPaymentOnce(userKey, mode = "unlock") {
+    if (window.__rwphPaymentCheckInFlight) return false;
     const pending = getPendingPayment();
     if (!pending) {
       stopAutoPaymentCheck();
@@ -1438,6 +1441,7 @@
       return false;
     }
 
+    window.__rwphPaymentCheckInFlight = true;
     try {
       setPaymentStatus(`Checking automatically for payment code ${pending.code}...`, mode);
       const result = await apiPost("/api/paywall/check", { userKey });
@@ -1476,7 +1480,17 @@
       if (mode === "extend" || document.getElementById("rw-key")) {
         const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
         rwphToastPanelInfo(status, `Licence extended.${paidQtyText}`, "info", "RWPH Payment");
-        if (status) await showLicenseDays(status, { openPanel: true });
+        if (result.expiresAt) {
+          rwphOpenLicenceInfoPanel({
+            valid: true,
+            tornId: result.tornId || "unknown",
+            name: result.name || "this user",
+            expiresAt: result.expiresAt,
+            token: result.token,
+            source: "payment-confirmation",
+          });
+          if (status) status.textContent = "Licence extended. Licence info updated from the payment confirmation.";
+        }
       } else {
         rwphShowToast(`Unlocked.${paidQtyText} Loading tool...`, "info", 10000, "RWPH Payment");
         setPaymentStatus("Ready.", mode);
@@ -1489,6 +1503,8 @@
       setPaymentStatus("Auto payment check error: " + (e.message || e), mode);
       updatePendingPaymentUi();
       return false;
+    } finally {
+      window.__rwphPaymentCheckInFlight = false;
     }
   }
 
@@ -4280,6 +4296,8 @@
               err.retryAfterSeconds = Number(json.retryAfterSeconds || 0);
               err.cooldownEndsAtMs = Number(json.cooldownEndsAtMs || 0);
               err.status = Number(res.status || 0);
+              err.code = String(json.code || "");
+              err.cacheId = Number(json.cacheId || 0);
               reject(err);
             } else {
               resolve(json);
@@ -4322,6 +4340,8 @@
               err.retryAfterSeconds = Number(json.retryAfterSeconds || 0);
               err.cooldownEndsAtMs = Number(json.cooldownEndsAtMs || 0);
               err.status = Number(res.status || 0);
+              err.code = String(json.code || "");
+              err.cacheId = Number(json.cacheId || 0);
               err.cancelled = !!json.cancelled;
               reject(err);
             } else {
@@ -4454,10 +4474,17 @@
 
     const result = await adminRequest("POST", "/api/admin/grant-owner", adminKey, { days: 10000 });
 
+    // v1.1.483: grant-owner now returns a freshly signed owner token in the same
+    // response. Store it immediately so the 9999+ day licence is available
+    // locally without a second paywall verification round-trip.
+    if (result?.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
+    if (result?.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
+
     if (statusEl) {
+      const timeLeft = result?.expiresAt ? formatLicenseDaysLeft(result.expiresAt) : "active";
       rwphToastPanelInfo(
         statusEl,
-        `Admin key saved. Owner license granted to ${result.name || "Owner"} (${result.tornId}) until ${formatUnixDate(result.expiresAt)}.`,
+        `Admin access unlocked. Owner licence active for ${timeLeft}.`,
         "info",
         "RWPH Admin"
       );
@@ -4911,34 +4938,62 @@
 
   async function rwphSaveAdminKeyAndRevealTools(root, options = {}) {
     const status = rwphAdminQuery(root, "#rw-admin-status");
+    const saveButton = rwphAdminQuery(root, "#rw-admin-save-key");
     const adminKey = rwphGetAdminKeyFromPanel(root);
+
+    // Prevent impatient/double clicks from creating overlapping verification,
+    // grant and licence-list requests.
+    if (saveButton?.dataset?.rwphSaving === "1") return null;
+    if (saveButton) {
+      saveButton.dataset.rwphSaving = "1";
+      saveButton.disabled = true;
+      saveButton.dataset.rwphOriginalText = saveButton.dataset.rwphOriginalText || saveButton.textContent || "Save Admin Key";
+      saveButton.textContent = "Checking...";
+    }
+
     GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
     rwphSetAdminToolsVisible(root, false, "Checking admin key with the server...");
-    if (status) status.textContent = "Checking admin key with the server...";
+    if (status) status.textContent = "Checking admin key...";
 
-    const serverStatus = await adminRequest("POST", "/api/admin/status", adminKey);
-    rwphSetAdminToolsVisible(root, true);
-    const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
-    if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(serverStatus);
+    try {
+      // v1.1.483: when owner auto-grant is enabled this ONE request both
+      // verifies ADMIN_KEY and grants/refreshes the owner licence. The old
+      // status -> grant-owner -> licences three-request chain was the delay.
+      const result = options.grantOwner !== false
+        ? await grantOwnerLicenseFromAdminKey(adminKey, null)
+        : await adminRequest("POST", "/api/admin/status", adminKey);
 
-    if (options.grantOwner !== false) {
-      try {
-        await grantOwnerLicenseFromAdminKey(adminKey, status);
-      } catch (e) {
-        rwphToastPanelInfo(status, `Admin key verified. Owner licence auto-grant was skipped: ${e.message}`, "warn", "RWPH Admin");
+      rwphSetAdminToolsVisible(root, true);
+
+      const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
+      if (summary) {
+        if (result?.calculations || result?.storage) summary.innerHTML = rwphRenderAdminStatusSummary(result);
+        else summary.innerHTML = `<div class="rw-admin-status-grid"><div class="rw-admin-status-card"><div class="rw-admin-status-label">Admin</div><div class="rw-admin-status-value">Access unlocked</div></div><div class="rw-admin-status-card"><div class="rw-admin-status-label">Owner licence</div><div class="rw-admin-status-value">${esc(result?.expiresAt ? formatLicenseDaysLeft(result.expiresAt) : "Active")}</div></div></div>`;
       }
-    } else {
-      rwphToastPanelInfo(status, "Admin key verified. Admin tools unlocked.", "info", "RWPH Admin");
-    }
 
-    if (options.refreshLicenses !== false) {
-      try {
-        await rwphRefreshAdminLicensesFromPanel(root);
-      } catch (e) {
-        rwphToastPanelInfo(status, `Admin tools unlocked, but licence list could not load: ${e.message}`, "warn", "RWPH Admin");
+      if (result?.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
+      if (result?.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
+
+      if (options.grantOwner !== false && result?.expiresAt) {
+        rwphToastPanelInfo(status, `Admin access unlocked. Owner licence active for ${formatLicenseDaysLeft(result.expiresAt)}.`, "info", "RWPH Admin");
+      } else {
+        rwphToastPanelInfo(status, "Admin key verified. Admin tools unlocked.", "info", "RWPH Admin");
+      }
+
+      // Do not auto-load the full licence table here. It is intentionally a
+      // separate List Licences action so Save Admin Key stays fast and stable.
+      return result;
+    } catch (e) {
+      GM_setValue(ADMIN_KEY_STORAGE_KEY, "");
+      rwphSetAdminToolsVisible(root, false, "Invalid admin key. Admin tools are still hidden.");
+      throw e;
+    } finally {
+      if (saveButton) {
+        saveButton.dataset.rwphSaving = "0";
+        saveButton.disabled = false;
+        saveButton.textContent = saveButton.dataset.rwphOriginalText || "Save Admin Key";
       }
     }
-    return serverStatus;
   }
 
   function rwphBindAdminControls(root) {
@@ -4980,7 +5035,7 @@
         }
 
         if (adminAction.id === "rw-admin-save-key") {
-          await rwphSaveAdminKeyAndRevealTools(rootScope, { grantOwner: true, refreshLicenses: true });
+          await rwphSaveAdminKeyAndRevealTools(rootScope, { grantOwner: true, refreshLicenses: false });
           return;
         }
 
@@ -12699,6 +12754,8 @@
   }
 
   let rwphSavedReportsFactionId = String(GM_getValue("rwph_saved_reports_faction_id", "") || "").trim();
+  let rwphSavedReportsListRequestSerial = 0;
+  const rwphCalculationInFlightSignatures = new Set();
 
   function rwphRememberSavedReportsFactionId(value) {
     const id = String(value || "").trim();
@@ -12833,7 +12890,7 @@
     }
   }
 
-  async function rwphRefreshSavedReportsPanel({ quiet = false, prefetchedResult = null, highlightReportId = 0 } = {}) {
+  async function rwphRefreshSavedReportsPanel({ quiet = false, highlightReportId = 0 } = {}) {
     const panel = rwphSavedReportsPanel();
     if (!panel) return;
     const list = panel.querySelector("#rwph-saved-reports-list");
@@ -12846,8 +12903,10 @@
       return;
     }
     try {
-      if (status && !quiet && !prefetchedResult) status.textContent = "Loading cached reports from the database...";
-      const result = prefetchedResult || await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: Date.now() }));
+      const startedAt = performance.now();
+      if (status && !quiet) status.textContent = "Loading the newest 3 reports directly from MySQL...";
+      const result = await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: `${Date.now()}-${++rwphSavedReportsListRequestSerial}` }));
+      const loadMs = Math.max(0, Math.round(performance.now() - startedAt));
       rwphRememberSavedReportsFactionId(result.factionId);
       const reports = Array.isArray(result.reports) ? result.reports.slice(0, 3) : [];
       rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled: false, hours: 24 });
@@ -12857,10 +12916,10 @@
       const cards = [0,1,2].map((index) => rwphSavedReportSlotHtml(reports[index] || { empty: true }, index + 1, Number(reports[index]?.cacheId || reports[index]?.id || 0) === safeHighlightId));
       if (list) list.innerHTML = cards.join("");
       if (status) status.textContent = safeHighlightId
-        ? "The highlighted cached report exactly matches the current calculation settings. Load it instead of recalculating."
+        ? `Loaded ${reports.length} report(s) from MySQL in ${loadMs} ms. The highlighted report exactly matches these settings.`
         : (reports.length >= Number(result.maxReports || 3)
-          ? "All 3 Cached Reports are full. Delete one report before starting a different calculation."
-          : `Cached reports: ${reports.length}/${Number(result.maxReports || 3)}. Completed calculations save here automatically.`);
+          ? `Loaded 3/3 reports from MySQL in ${loadMs} ms. All Cached Reports are full.`
+          : `Loaded ${reports.length}/${Number(result.maxReports || 3)} report(s) from MySQL in ${loadMs} ms. Completed calculations save here automatically.`);
       if (safeHighlightId && list) {
         requestAnimationFrame(() => {
           const match = list.querySelector(`[data-cached-report-id="${safeHighlightId}"]`);
@@ -12934,7 +12993,7 @@
     }
   }
 
-  async function rwphOpenSavedReportsPanel(prefetchedResult = null, { highlightReportId = 0 } = {}) {
+  async function rwphOpenSavedReportsPanel({ highlightReportId = 0 } = {}) {
     const mainStatus = document.getElementById("rw-status");
     const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
     const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
@@ -12943,18 +13002,6 @@
       return;
     }
 
-    let verifiedResult = prefetchedResult;
-    if (!verifiedResult?.databaseChecked) {
-      try {
-        if (mainStatus) mainStatus.textContent = "Checking Cached Reports database...";
-        verifiedResult = await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: Date.now() }));
-      } catch (e) {
-        rwphToastPanelError(mainStatus, `Could not check Cached Reports database: ${e.message || e}`, "RWPH Cached Reports");
-        return;
-      }
-    }
-
-    rwphRememberSavedReportsFactionId(verifiedResult?.factionId);
     rwphEnsureSavedReportsPanelStyles();
     rwphCloseSavedReportsPanel();
     const panel = document.createElement("section");
@@ -12983,8 +13030,8 @@
             </select>
           </div>
         </div>
-        <div id="rwph-saved-reports-list"><div class="rwph-saved-report-intro">Loading cached reports...</div></div>
-        <div id="rwph-saved-reports-status">Loading...</div>
+        <div id="rwph-saved-reports-list">${[0,1,2].map((index) => rwphSavedReportSlotHtml({ empty: true }, index + 1, false)).join("")}</div>
+        <div id="rwph-saved-reports-status">Loading the newest 3 reports from MySQL...</div>
       </div>`;
     document.body.appendChild(panel);
     try { rwphApplyPanelLayout(panel); } catch (_) {}
@@ -13006,7 +13053,7 @@
       const del = event.target?.closest?.("[data-rwph-saved-delete]");
       if (del) rwphDeleteSavedReportSlot(del.getAttribute("data-rwph-saved-delete"), del.getAttribute("data-rwph-report-position"));
     });
-    rwphRefreshSavedReportsPanel({ prefetchedResult: verifiedResult, highlightReportId });
+    rwphRefreshSavedReportsPanel({ highlightReportId });
   }
 
   function rwphWarSourceLabel(value) {
@@ -14981,14 +15028,18 @@
       });
     }
 
-    document.getElementById("rw-start-payment").addEventListener("click", async () => {
+    document.getElementById("rw-start-payment").addEventListener("click", async (event) => {
       const status = document.getElementById("rw-paywall-status");
       const codeBox = document.getElementById("rw-paywall-code");
       const userKey = document.getElementById("rw-paywall-key").value.trim();
+      const button = event.currentTarget;
       if (!userKey) return alert("Enter your Torn API key first.");
+      if (button?.dataset?.rwphBusy === "1") return;
       const paymentTab = null;
+      const previousText = button?.textContent || "Buy Licence";
 
       try {
+        if (button) { button.dataset.rwphBusy = "1"; button.disabled = true; button.textContent = "Creating..."; }
         GM_setValue(STORAGE_KEY, userKey);
         status.textContent = "Creating payment code and changing this tab to the Xanax send page...";
         codeBox.innerHTML = "";
@@ -15009,6 +15060,8 @@
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
         rwphToastPanelError(status, "Payment start error: " + e.message, "RWPH Payment");
+      } finally {
+        if (button?.isConnected) { button.dataset.rwphBusy = "0"; button.disabled = false; button.textContent = previousText; }
       }
     });
 
@@ -15127,7 +15180,7 @@
     document.getElementById("rw-admin-save-key").addEventListener("click", async () => {
       const status = document.getElementById("rw-admin-status");
       try {
-        await rwphSaveAdminKeyAndRevealTools(panel, { grantOwner: true, refreshLicenses: true });
+        await rwphSaveAdminKeyAndRevealTools(panel, { grantOwner: true, refreshLicenses: false });
       } catch (e) {
         GM_setValue(ADMIN_KEY_STORAGE_KEY, "");
         rwphSetAdminToolsVisible(panel, false, "Invalid admin key. Admin tools are still hidden.");
@@ -15720,7 +15773,7 @@
     rwphUpdateLastResultsButton();
     document.getElementById("rw-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("standard"));
     document.getElementById("rw-points-member-management")?.addEventListener("click", () => rwphOpenMemberManagementPanel("points"));
-    document.getElementById("rw-open-saved-reports")?.addEventListener("click", rwphOpenSavedReportsPanel);
+    document.getElementById("rw-open-saved-reports")?.addEventListener("click", () => rwphOpenSavedReportsPanel());
 
     const legacyCsvBtn = document.getElementById("rw-csv");
     if (legacyCsvBtn) legacyCsvBtn.addEventListener("click", () => downloadCSV(lastRows));
@@ -15822,14 +15875,18 @@
       if (button?.isConnected) button.disabled = false;
     });
 
-    document.getElementById("rw-extend-licence").addEventListener("click", async () => {
+    document.getElementById("rw-extend-licence").addEventListener("click", async (event) => {
       const status = document.getElementById("rw-status");
       const codeBox = document.getElementById("rw-main-payment-code");
       const userKey = document.getElementById("rw-key").value.trim();
+      const button = event.currentTarget;
       if (!userKey) return alert("Enter your Torn API key first.");
+      if (button?.dataset?.rwphBusy === "1") return;
       const paymentTab = null;
+      const previousText = button?.textContent || "Extend Licence";
 
       try {
+        if (button) { button.dataset.rwphBusy = "1"; button.disabled = true; button.textContent = "Creating..."; }
         GM_setValue(STORAGE_KEY, userKey);
         status.textContent = "Creating extension payment code and changing this tab to the Xanax send page...";
         if (codeBox) codeBox.innerHTML = "";
@@ -15840,6 +15897,8 @@
       } catch (e) {
         closePreOpenedPaymentTab(paymentTab);
         rwphToastPanelError(status, "Extend licence error: " + e.message, "RWPH Payment");
+      } finally {
+        if (button?.isConnected) { button.dataset.rwphBusy = "0"; button.disabled = false; button.textContent = previousText; }
       }
     });
 
@@ -15939,26 +15998,11 @@
         if (advancedError) return alert(advancedError);
       }
 
-      try {
-        if (status) status.textContent = "Checking Cached Reports...";
-        const cachedReportState = await apiPost("/api/calc/cached-reports/preflight", rwphSavedReportsRequestBody(userKey, token, { calculationSignature }));
-        const maxCachedReports = Math.max(1, Number(cachedReportState?.maxReports || 3));
-        if (String(cachedReportState?.state || "") === "MATCH" && Number(cachedReportState?.matchId || 0) > 0) {
-          if (status) status.textContent = "An exact cached report already exists for these calculation settings.";
-          rwphOpenSavedReportsPanel(cachedReportState, { highlightReportId: Number(cachedReportState.matchId) });
-          rwphToastPanelInfo(status, "An exact cached report already uses these settings. It has been highlighted in Cached Reports.", "info", "RWPH Cached Reports");
-          return;
-        }
-        if (String(cachedReportState?.state || "") === "FULL") {
-          if (status) status.textContent = `All ${maxCachedReports} Cached Reports are full. Delete one before calculating a different setup.`;
-          rwphOpenSavedReportsPanel(cachedReportState);
-          rwphToastPanelInfo(status, `All ${maxCachedReports} Cached Reports are full. Delete one report before starting a different calculation.`, "warn", "RWPH Cached Reports");
-          return;
-        }
-      } catch (e) {
-        rwphToastPanelError(status, `Could not check Cached Reports: ${e.message || e}`, "RWPH Cached Reports");
+      if (rwphCalculationInFlightSignatures.has(calculationSignature)) {
+        rwphToastPanelInfo(status, "This exact report is already being checked or calculated. RWPH blocked the duplicate request.", "warn", "RWPH Cached Reports");
         return;
       }
+      rwphCalculationInFlightSignatures.add(calculationSignature);
 
       let preOpenedResultsTab = null;
       let stopProgressPolling = null;
@@ -16096,6 +16140,21 @@
           stopTabCloseWatcher();
           stopTabCloseWatcher = null;
         }
+        if (["RWPH_CACHED_REPORT_MATCH", "RWPH_CACHED_REPORTS_FULL", "RWPH_CACHED_REPORT_IN_PROGRESS"].includes(String(e?.code || ""))) {
+          if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
+            try { preOpenedResultsTab.close(); } catch (_) {}
+          }
+          if (e.code === "RWPH_CACHED_REPORT_MATCH") {
+            rwphOpenSavedReportsPanel({ highlightReportId: Number(e.cacheId || 0) });
+            rwphToastPanelInfo(status, "An exact cached report already exists. Cached Reports was opened and refreshed directly from MySQL.", "info", "RWPH Cached Reports");
+          } else if (e.code === "RWPH_CACHED_REPORTS_FULL") {
+            rwphOpenSavedReportsPanel();
+            rwphToastPanelInfo(status, "All 3 Cached Reports are full. Delete one report before calculating another setup.", "warn", "RWPH Cached Reports");
+          } else {
+            rwphToastPanelInfo(status, "This exact report is already being calculated. It will appear in Cached Reports when the database save finishes.", "warn", "RWPH Cached Reports");
+          }
+          return;
+        }
         if (calculationCancelledByClosedTab || e?.cancelled || /cancelled/i.test(String(e?.message || ""))) {
           rwphToastPanelInfo(status, "Calculation stopped because the results loading tab was closed before it finished.", "warn", "RWPH Results");
           return;
@@ -16123,6 +16182,8 @@
         if (String(e.message).toLowerCase().includes("license") || String(e.message).toLowerCase().includes("licence")) {
           returnToLockedPanel(String(e.message).toLowerCase().includes("revoked") ? "Your licence was revoked by an admin. Buy Licence or contact the owner to unlock RWPH again." : "Your licence has expired. Buy Licence or extend your licence to unlock RWPH again.");
         }
+      } finally {
+        rwphCalculationInFlightSignatures.delete(calculationSignature);
       }
     }
 
@@ -16201,7 +16262,7 @@
     document.getElementById("rw-admin-save-key").addEventListener("click", async () => {
       const status = document.getElementById("rw-admin-status");
       try {
-        await rwphSaveAdminKeyAndRevealTools(panel, { grantOwner: true, refreshLicenses: true });
+        await rwphSaveAdminKeyAndRevealTools(panel, { grantOwner: true, refreshLicenses: false });
       } catch (e) {
         GM_setValue(ADMIN_KEY_STORAGE_KEY, "");
         rwphSetAdminToolsVisible(panel, false, "Invalid admin key. Admin tools are still hidden.");

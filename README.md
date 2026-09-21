@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.480**  
+Current userscript version: **1.1.484**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,19 +19,18 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.480
+## What's New in v1.1.484
 
-- **Cached Reports rebuilt from scratch:** report storage is now simpler and more reliable, with one saved entry per completed report.
-- **No hidden report slots:** the panel simply shows the three newest reports for the current faction ID.
-- **Exact-settings preflight:** before the loading panel opens, RWPH checks whether one of the saved reports already uses the exact same effective calculation settings.
-  - Exact match → Cached Reports opens and highlights the matching report.
-  - Different settings + fewer than 3 reports → a new calculation starts.
-  - Different settings + 3 reports → Cached Reports opens so one can be deleted first.
-- **Faction-owned storage:** save, list, load and delete are all scoped to the faction ID verified from the current Torn API key.
-- **Verified saving:** RWPH only confirms a report was cached after it verifies that the saved report can be loaded again.
-- **Auto Delete uses real expiry timestamps:** enabling Auto Delete assigns `expires_at` to each report; expired rows are removed before list/preflight/save operations.
-- **Panel refresh remains lightweight:** it refreshes when opened and after deleting a report; there is no polling loop.
-- The previous slot-based Saved Reports tables are not used by v1.1.480.
+- **Buy Licence / Extend Licence are now direct SQL hot paths:** creating or restoring a payment code no longer loads every RWPH licence, payment, trial, setting, and admin record.
+- **Payment confirmation is targeted:** RWPH checks used payment fingerprints directly, then updates only the affected user's licence, payment, and challenge rows in one transaction.
+- **Licence checks are lighter everywhere:** calculations, war auto-fill, Cached Reports authorization, Unlock Panel, and licence-info checks now read only the current user's indexed licence row.
+- **Free Trial is direct too:** activation checks and writes only that user's trial/licence records.
+- **Admin licence operations are faster:** list, grant, extend, remove-days, and status counts use targeted SQL rather than the old full-state loader.
+- **Duplicate-click protection:** Buy Licence and Extend Licence disable while their payment-code request is running.
+- **No overlapping payment polls:** if a live payment check takes longer than the 15-second interval, RWPH waits for it to finish instead of starting another one.
+- **Faster extension completion:** after a payment is confirmed, the Licence Info panel uses the expiry returned by that same response instead of making an immediate second licence request.
+- **Legacy bulk loader isolated:** full-state load/save remains only for the explicit legacy JSON import route.
+- No database schema migration is required from v1.1.483. Redeploy the backend and install/update `rwph.user.js`.
 
 ---
 
@@ -401,8 +400,17 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.480
+## Current Version Summary — v1.1.484
 
-RWPH v1.1.480 uses the faction-level **Cached Reports** panel to show the three newest reports, checks exact calculation settings before a new run, and verifies each save before reporting that the result was cached.
+RWPH v1.1.484 keeps the v1.1.482 fast Cached Reports system and v1.1.483 fast Admin Key activation, while converting the remaining common licence/payment/admin hot paths to targeted indexed MySQL operations. Buy/Extend, licence checks, payment confirmation, trial activation, and admin licence changes no longer need the legacy full-state database loader.
 
-The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, and Torn attack-data speed cache remain available.
+The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, Cached Reports, and Torn attack-data speed cache remain available.
+
+
+## v1.1.484 - Faster Licence, Payment, and Admin Hot Paths
+
+Buy/Extend, pending-payment lookup, payment confirmation, licence verification, Free Trial, admin licence list/grant/extend/remove, and admin status counts now use targeted indexed MySQL operations. Buy/Extend requests are click-locked, payment auto-checks cannot overlap, and extension completion reuses the returned licence expiry instead of immediately checking the licence again. The legacy full-state loader remains only for legacy JSON import. No schema migration is required from v1.1.483.
+
+## v1.1.483 - Faster Admin Key activation
+
+Saving the Admin Key now performs one verify + owner-licence grant request. The backend writes only the owner user/licence/metadata rows directly, returns a fresh signed licence token, and the userscript unlocks the admin controls immediately. The full licence list is no longer loaded automatically during key save. No schema migration is required from v1.1.482.
