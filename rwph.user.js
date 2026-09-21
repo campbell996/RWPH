@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.484
+// @version      1.1.486
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.486: Expired/stale Buy/Extend payment-helper handoffs self-heal by restoring the current database code or creating a fresh payment code for the original Buy/Extend intent.
+  // v1.1.485: Cached Reports button moved between the Basic Calculations and Advanced Calculations dropdowns; no calculation, cache, licence, or backend logic changed.
   // v1.1.484: Fast-path licence/payment backend calls now use targeted indexed SQL instead of full-state loads; Buy/Extend are click-locked and successful extension display reuses the confirmation response.
   // v1.1.483: Admin Key save is now a single fast verify + owner-licence grant request; admin access and the local owner token unlock immediately after confirmation.
   // v1.1.482: Cached Reports hot path now reads the faction's newest 3 rows directly from MySQL with no Torn lookup on normal opens; calculation saves remain database-backed.
@@ -1219,10 +1221,15 @@
     } catch (_) {}
   }
 
-  function openXanaxPaymentPage(code, preOpenedTab = null) {
+  function openXanaxPaymentPage(code, preOpenedTab = null, mode = "unlock") {
     sessionStorage.removeItem("rwph_xanax_helper_closed");
     saveXanaxPaymentHelper(code);
-    GM_setValue("rwph_xanax_helper_open_request", JSON.stringify({ code: String(code || ""), createdAtMs: Date.now(), source: "open-xanax-payment-page" }));
+    GM_setValue("rwph_xanax_helper_open_request", JSON.stringify({
+      code: String(code || ""),
+      mode: mode === "extend" ? "extend" : "unlock",
+      createdAtMs: Date.now(),
+      source: "open-xanax-payment-page",
+    }));
     copyText(`Send ${PAYMENT_ITEM_NAME} to ${PAYMENT_RECEIVER_TEXT} with message: ${code}`).catch(() => false);
     const url = buildXanaxPaymentUrl(code);
 
@@ -1267,7 +1274,7 @@
       );
     }
 
-    const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab);
+    const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab, mode);
     if (!openedPaymentHelper) {
       rwphClearCrossTabPopup("xanax-payment");
       rwphToastPanelInfo(status, "Payment code is ready, but RWPH could not navigate to the Xanax send page. Click the helper button in the payment card.", "warn", "RWPH Payment");
@@ -1356,13 +1363,16 @@
     if (status) status.textContent = message;
   }
 
-  async function restorePendingPaymentFromDatabase(userKey, mode = "unlock") {
+  async function restorePendingPaymentFromDatabase(userKey, mode = "unlock", options = {}) {
     const key = userKey || getPaymentUserKey();
     if (!key) {
       clearPendingPayment();
       updatePendingPaymentUi();
       return null;
     }
+
+    const createIfMissing = options?.createIfMissing === true;
+    const extendIfCreated = options?.extend === true || mode === "extend";
 
     try {
       const result = await apiPost("/api/paywall/pending", { userKey: key });
@@ -1377,10 +1387,31 @@
       clearPendingPayment();
       GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
       updatePendingPaymentUi();
+
+      // v1.1.486: A just-opened payment helper may arrive after the previous challenge
+      // expired/was replaced. Repair that fresh handoff instead of making the user go
+      // back to the RWPH panel and click Buy/Extend again.
+      if (createIfMissing) {
+        const restarted = await apiPost("/api/paywall/start", { userKey: key, extend: extendIfCreated });
+        if (restarted?.code) {
+          savePendingPayment(restarted);
+          saveXanaxPaymentHelper(restarted.code);
+          updatePendingPaymentUi();
+          startAutoPaymentCheck(key, extendIfCreated ? "extend" : mode);
+          return { ...restarted, rwphRecoveredPayment: true };
+        }
+
+        if (restarted?.alreadyPaid && restarted?.token) {
+          GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, restarted.token);
+          return { ...restarted, rwphRecoveredPayment: true };
+        }
+      }
+
       return null;
     } catch (e) {
       // Do not trust a browser-only payment cache when the database lookup fails.
       clearPendingPayment();
+      GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
       updatePendingPaymentUi();
       console.warn("Could not restore pending payment from backend/database:", e);
       return null;
@@ -14197,6 +14228,30 @@
     });
   }
 
+  function rwphGetFreshPaymentHelperOpenRequest(expectedCode = "") {
+    try {
+      const raw = GM_getValue("rwph_xanax_helper_open_request", "");
+      if (!raw) return null;
+      const request = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!request || !request.code || !request.createdAtMs) return null;
+      const ageMs = Date.now() - Number(request.createdAtMs || 0);
+      if (!Number.isFinite(ageMs) || ageMs < -5000 || ageMs > 90 * 1000) return null;
+      if (expectedCode && String(request.code) !== String(expectedCode)) return null;
+      return request;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphReplacePaymentHelperUrlCode(code) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("rwphSendXanax", "1");
+      url.searchParams.set("rwphCode", String(code || ""));
+      history.replaceState(history.state, "", url.toString());
+    } catch (_) {}
+  }
+
   function shouldRunXanaxPaymentAutofill() {
     try {
       const params = new URLSearchParams(window.location.search || "");
@@ -14228,12 +14283,41 @@
       return;
     }
 
+    const originallyRequestedCode = String(code);
+    const freshOpenRequest = rwphGetFreshPaymentHelperOpenRequest(originallyRequestedCode);
+    const helperMode = freshOpenRequest?.mode === "extend" ? "extend" : "unlock";
+    let recoveredPayment = false;
     let helperConfirmed = saveXanaxPaymentHelper(code);
     if (!helperConfirmed) {
-      const restored = await restorePendingPaymentFromDatabase(getPaymentUserKey(), "helper");
+      let restored = null;
+
+      // A fresh helper handoff already came from a successful /start response. If its
+      // browser copy vanished or its DB row changed, ask /start again with the same
+      // Buy/Extend intent. That endpoint reuses the live row or creates one in one call.
+      if (freshOpenRequest) {
+        try {
+          restored = await apiPost("/api/paywall/start", {
+            userKey: getPaymentUserKey(),
+            extend: freshOpenRequest.mode === "extend",
+          });
+          if (restored?.code) {
+            savePendingPayment(restored);
+            saveXanaxPaymentHelper(restored.code);
+            updatePendingPaymentUi();
+            restored = { ...restored, rwphRecoveredPayment: true };
+          }
+        } catch (e) {
+          console.warn("Could not repair fresh RWPH payment-helper handoff:", e);
+        }
+      } else {
+        restored = await restorePendingPaymentFromDatabase(getPaymentUserKey(), "helper");
+      }
+
       if (restored?.code) {
         code = String(restored.code);
+        recoveredPayment = !!restored.rwphRecoveredPayment || code !== originallyRequestedCode;
         helperConfirmed = saveXanaxPaymentHelper(code);
+        if (helperConfirmed && code !== originallyRequestedCode) rwphReplacePaymentHelperUrlCode(code);
       }
     }
 
@@ -14253,8 +14337,11 @@
     await copyText(code).catch(() => false);
     rwphRenderPaymentHelperPanel(
       code,
-      `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the receiver and code.`
+      recoveredPayment
+        ? `The previous payment code was no longer active, so RWPH restored/created the current database-backed code automatically. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the new code.`
+        : `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the receiver and code.`
     );
+    startAutoPaymentCheck(getPaymentUserKey(), helperMode);
     rwphConsumeCrossTabPopup("xanax-payment", "#rwph-xanax-send-status", 650);
   }
 
@@ -15303,9 +15390,6 @@
               </div>
             </div>
           </div>
-          <div class="rw-actions" style="margin-top:8px;">
-            <button id="rw-open-saved-reports" class="secondary" type="button">Cached Reports</button>
-          </div>
           <div class="rw-small">RWPH only creates payout reports for completed ranked wars. Every successful calculation is saved automatically in your faction Cached Reports panel. Each faction keeps up to 3 reports; when all 3 are full, delete one before calculating another report.</div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
             <summary class="rw-api-tos-title">Basic Calculations</summary>
@@ -15352,6 +15436,9 @@
               </div>
             </div>
           </details>
+          <div class="rw-actions" style="margin-top:8px; margin-bottom:8px;">
+            <button id="rw-open-saved-reports" class="secondary" type="button">Cached Reports</button>
+          </div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-points-settings">
 <summary class="rw-api-tos-title"><span class="rwph-advanced-summary-title">Advanced Calculations</span></summary>
 <div class="rw-api-tos-content">

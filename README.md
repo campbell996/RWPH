@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.484**  
+Current userscript version: **1.1.486**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -18,6 +18,15 @@ Author: **Evil_Panda_420**
 > **Important:** RWPH is a manual helper. It does not automatically attack, send money/items, confirm Torn payments, buy, sell, or perform gameplay actions for you. Always review the results before acting on them.
 
 ---
+
+## What's New in v1.1.486
+
+- Fixed the **expired/stale Extend Licence payment-code handoff** that could open Torn's Xanax helper and then say RWPH could not confirm the payment code in the backend/database.
+- The helper remembers whether the payment was started from **Buy Licence** or **Extend Licence**.
+- If a just-opened helper finds that its original database challenge is missing, expired, or replaced, RWPH automatically repeats the same Buy/Extend start action so the backend can reuse the current challenge or create a fresh one.
+- If the current database payment code differs from the code in the Torn helper URL, RWPH switches the helper to the current code automatically.
+- Payment auto-check runs on the Torn item helper page once the current database-backed code is confirmed.
+- No MySQL schema migration is required. If the v1.1.484+ backend is already deployed, this fix only requires updating the userscript.
 
 ## What's New in v1.1.484
 
@@ -400,7 +409,17 @@ Saved local settings are preserved where possible between versions.
 
 ---
 
-## Current Version Summary — v1.1.484
+## Current Version Summary — v1.1.486
+
+RWPH v1.1.486 keeps the v1.1.485 layout and fixes stale/expired Buy/Extend payment-helper handoffs so the current database-backed payment code is automatically restored or recreated when necessary.
+
+## v1.1.486 - Payment Helper Recovery
+
+- Keeps the v1.1.485 layout where Cached Reports sits between Basic Calculations and Advanced Calculations.
+- Fixes stale/expired Buy/Extend helper handoffs by remembering the original payment intent and repairing a missing/replaced payment challenge automatically.
+- If the backend supplies a replacement payment code, the Torn helper switches to that current code and updates its URL instead of continuing with the stale code.
+- Starts payment auto-check on the Torn item/helper page after the database-backed payment code is confirmed.
+- Backend v1.1.484 remains compatible and does not need redeploying; no database migration is required.
 
 RWPH v1.1.484 keeps the v1.1.482 fast Cached Reports system and v1.1.483 fast Admin Key activation, while converting the remaining common licence/payment/admin hot paths to targeted indexed MySQL operations. Buy/Extend, licence checks, payment confirmation, trial activation, and admin licence changes no longer need the legacy full-state database loader.
 
