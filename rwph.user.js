@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.489
+// @version      1.1.490
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.490: Payment Helper opens instantly from a successful Buy/Extend handoff and uses a direct indexed payment-code lookup when browser state is missing; no Torn identity lookup blocks helper rendering.
   // v1.1.489: Removed payment-code expiry/timer UI. Pending codes live only in MySQL for 30 minutes; Buy/Extend reuses the same code and restarts its 30-minute database lifetime.
   // v1.1.488: Buy/Extend payment helpers start a visible 5:00 timer immediately; backend payment checks then replace it with the authoritative live expiry. Removed the Syncing timer state.
   // v1.1.487: Payment-helper expiry immediately showed Syncing while backend state refreshed, live expiry replaced stale timers as soon as it arrived, and Buy/Extend no longer auto-open Your Expiration.
@@ -1277,6 +1278,18 @@
         ? (document.getElementById("rw-status") || document.getElementById("rw-paywall-status"))
         : (document.getElementById("rw-paywall-status") || document.getElementById("rw-status"));
     if (status) status.textContent = message;
+  }
+
+  async function rwphFastConfirmPendingPaymentCode(code) {
+    const normalizedCode = String(code || "").trim();
+    if (!normalizedCode) return null;
+    try {
+      const result = await apiPost("/api/paywall/pending-code", { code: normalizedCode });
+      return result && result.pending && result.code ? result : null;
+    } catch (e) {
+      console.warn("Fast payment-code lookup failed:", e);
+      return null;
+    }
   }
 
   async function restorePendingPaymentFromDatabase(userKey, mode = "unlock", options = {}) {
@@ -14140,7 +14153,7 @@
       const request = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (!request || !request.code || !request.createdAtMs) return null;
       const ageMs = Date.now() - Number(request.createdAtMs || 0);
-      if (!Number.isFinite(ageMs) || ageMs < -5000 || ageMs > 90 * 1000) return null;
+      if (!Number.isFinite(ageMs) || ageMs < -5000 || ageMs > 30 * 60 * 1000) return null;
       if (expectedCode && String(request.code) !== String(expectedCode)) return null;
       return request;
     } catch (_) {
@@ -14192,14 +14205,38 @@
     const freshOpenRequest = rwphGetFreshPaymentHelperOpenRequest(originallyRequestedCode);
     const helperMode = freshOpenRequest?.mode === "extend" ? "extend" : "unlock";
     let recoveredPayment = false;
+
+    // A successful Buy/Extend /start already created/refreshed this database row before
+    // Torn navigation began. Seed the browser copy from that handoff so the Payment Helper
+    // can render immediately instead of waiting on another network/database round trip.
+    if (freshOpenRequest) {
+      const pending = getPendingPayment();
+      if (!pending || String(pending.code || "") !== originallyRequestedCode) {
+        savePendingPayment({
+          code: originallyRequestedCode,
+          createdAtMs: Number(freshOpenRequest.createdAtMs || Date.now()),
+          source: "database-pending-payment",
+        });
+      }
+    }
+
     let helperConfirmed = saveXanaxPaymentHelper(code);
     if (!helperConfirmed) {
       let restored = null;
 
-      // A fresh helper handoff already came from a successful /start response. If its
-      // browser copy vanished or its DB row changed, ask /start again with the same
-      // Buy/Extend intent. That endpoint reuses the live row or creates one in one call.
-      if (freshOpenRequest) {
+      // Fast path: the payment code has its own UNIQUE MySQL index, so confirm the exact
+      // URL code directly without a Torn API identity lookup or a licence-state read.
+      restored = await rwphFastConfirmPendingPaymentCode(code);
+      if (restored?.code) {
+        savePendingPayment(restored);
+        saveXanaxPaymentHelper(restored.code);
+        updatePendingPaymentUi();
+      }
+
+      // Only use the heavier recovery path when the direct indexed lookup says the row
+      // really is missing. A fresh handoff preserves Buy/Extend intent for the full
+      // 30-minute pending-code window.
+      if (!restored && freshOpenRequest) {
         try {
           restored = await apiPost("/api/paywall/start", {
             userKey: getPaymentUserKey(),
@@ -14214,7 +14251,7 @@
         } catch (e) {
           console.warn("Could not repair fresh RWPH payment-helper handoff:", e);
         }
-      } else {
+      } else if (!restored) {
         restored = await restorePendingPaymentFromDatabase(getPaymentUserKey(), "helper");
       }
 

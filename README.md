@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.489**  
+Current userscript version: **1.1.490**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -19,7 +19,7 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.489
+## What's New in v1.1.490
 
 - Removed the payment-code expiry/countdown UI from Buy Licence, Extend Licence, and the Xanax Payment Helper.
 - Pending payment codes are now managed only by the backend/database.
