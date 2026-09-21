@@ -19,7 +19,7 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.487
+## What's New in v1.1.488
 
 - Payment-helper timers no longer sit on a stale **Expired** state while RWPH waits for the backend. They switch to **Syncing...** immediately and update as soon as the live database expiry returns.
 - The visible helper timer is updated immediately whenever RWPH saves/refreshes the current database-backed pending payment.
