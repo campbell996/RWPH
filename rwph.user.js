@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.490
+// @version      1.1.492
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
+  // v1.1.491: Full clean-panel UI refresh across RWPH. All movable panels keep Close, Fit-to-screen, drag, and resize controls while calculations/licensing/cache/backend behavior remains unchanged.
   // v1.1.490: Payment Helper opens instantly from a successful Buy/Extend handoff and uses a direct indexed payment-code lookup when browser state is missing; no Torn identity lookup blocks helper rendering.
   // v1.1.489: Removed payment-code expiry/timer UI. Pending codes live only in MySQL for 30 minutes; Buy/Extend reuses the same code and restarts its 30-minute database lifetime.
   // v1.1.488: Buy/Extend payment helpers start a visible 5:00 timer immediately; backend payment checks then replace it with the authoritative live expiry. Removed the Syncing timer state.
@@ -3755,6 +3757,7 @@
     document.documentElement.setAttribute("data-rwph-panel-theme", themeKey);
     rwphApplyGlobalButtonColourSync(theme);
     rwphUpdateLayoutThemeButtons();
+    try { if (document.getElementById("rwph-clean-ui-v1491")) rwphInstallCleanUiV1491(); } catch (_) {}
   }
 
   function rwphClosePanelThemePicker() {
@@ -8619,6 +8622,159 @@
     }
   } catch (_) {}
 
+  function rwphResultScoringContext(summary = {}) {
+    const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
+    const meta = summary?.calcMeta || {};
+    const options = { ...(meta?.options || {}), ...(summary?.options || {}) };
+    const settings = pointsMode ? { ...options, ...(meta?.settings || {}) } : options;
+    const system = pointsMode ? String(summary?.calculationSystem || options?.calculationSystem || meta?.calculationSystem || "rwph_classic") : "basic_per_hit";
+    const fairFightMode = pointsMode && settings.pointFairFightEnabled !== false ? String(settings.pointFairFightMode || "none").toLowerCase() : "none";
+    const fairFight = pointsMode && settings.pointFairFightEnabled !== false && fairFightMode !== "none";
+    const basicFastMode = !pointsMode && !!(summary?.reportOnlyFastMode || options?.basicFastMode);
+    const retalMode = String(settings.pointRetaliationMode || "none").toLowerCase();
+    const overseasMode = String(settings.pointOverseasMode || "none").toLowerCase();
+    const respectEnabled = pointsMode ? Number(settings.pointRespectValue || 0) !== 0 : Number(options.respectWeight || 0) > 0;
+    return {
+      pointsMode, meta, options, settings, system, fairFightMode, fairFight, basicFastMode,
+      hybrid: pointsMode && system === "hybrid_hit_performance",
+      equalParticipation: pointsMode && system === "equal_participation",
+      showWar: basicFastMode || (!pointsMode ? Number(options.warHitWeight ?? 1) > 0 : (Number(settings.pointWarHitValue || 0) !== 0 || respectEnabled || system === "equal_participation")),
+      showAssists: !basicFastMode && (!pointsMode ? Number(options.assistWeight || 0) > 0 : (Number(settings.pointAssistValue || 0) !== 0 || (!settings.pointRespectWarOnly && respectEnabled))),
+      showOutside: !basicFastMode && (!pointsMode ? Number(options.outsideHitWeight || 0) > 0 : (Number(settings.pointOutsideHitValue || 0) !== 0 || (!settings.pointRespectWarOnly && respectEnabled))),
+      showRetals: !basicFastMode && (!pointsMode ? Number(options.retaliationHitWeight || 0) > 0 : (retalMode !== "none" && Number(settings.pointRetaliationHitValue || 0) !== 0) || (system === "hybrid_hit_performance" && Number(settings.hybridRetalSupportValue || 0) !== 0)),
+      showChainOutside: pointsMode && !!settings.pointOutsideChainOnly,
+      showOverseas: pointsMode && overseasMode !== "none" && Number(settings.pointOverseasValue || 0) !== 0,
+      showHospital: pointsMode && Number(settings.pointHospitalBonus || 0) !== 0,
+      showEnemyHospital: pointsMode && Number(settings.pointEnemyHospitalBonus || 0) !== 0,
+      showRespect: respectEnabled,
+    };
+  }
+
+  function rwphFairFightModeText(ctx) {
+    if (!ctx?.fairFight) return "Disabled";
+    const s = ctx.settings || {};
+    if (ctx.fairFightMode === "exact") return "Exact FF";
+    if (ctx.fairFightMode === "tiered") return "Tiered FF";
+    if (ctx.fairFightMode === "linear") return `Linear · ${Number(s.pointFairFightLinearRate || 0).toFixed(2)} rate`;
+    if (ctx.fairFightMode === "avg_step") return `Avg FF · +${Number(s.pointFairFightBonusPerStep || 0).toFixed(2)} every ${Number(s.pointFairFightAvgStep || 0).toFixed(2)}`;
+    return String(ctx.fairFightMode || "Fair Fight").replaceAll("_", " ");
+  }
+
+  function rwphRowMetricTotal(row = {}, key = "score") {
+    const metrics = row?.systemMetrics || {};
+    return ["war", "assist", "outside"].reduce((sum, category) => sum + Number(metrics?.[category]?.[key] || 0), 0);
+  }
+
+  function rwphResultRowsTotal(rows = [], key = "") {
+    return (rows || []).reduce((sum, row) => sum + Number(row?.[key] || 0), 0);
+  }
+
+  function rwphWarInfoMetrics(rows = [], summary = {}) {
+    const ctx = rwphResultScoringContext(summary);
+    const s = ctx.settings || {};
+    const meta = ctx.meta || {};
+    const metrics = [];
+    const add = (label, value) => metrics.push({ label, value: String(value) });
+
+    if (ctx.pointsMode) add("Total Points", Number(summary?.totalPoints ?? summary?.totalWeight ?? 0).toFixed(2));
+    else add("Total Weight", Number(summary?.totalWeight || 0).toFixed(2));
+
+    if (ctx.fairFight) {
+      add("Fair Fight", rwphFairFightModeText(ctx));
+      add("FF Bonus", Number(summary?.totalFairFightBonusPoints ?? rwphResultRowsTotal(rows, "fairFightBonusPoints")).toFixed(2));
+      const applied = Number(meta?.fairFightAppliedHits || 0);
+      if (applied > 0) add("FF Applied Hits", applied);
+    }
+
+    if (ctx.hybrid) {
+      add("Participation", `${Number(s.hybridParticipationPct || 0).toFixed(0)}%`);
+      add("Performance", `${Number(s.hybridPerformancePct || 0).toFixed(0)}%`);
+      add("War Share", `${Number(s.hybridWarPct || 0).toFixed(0)}%`);
+      add("Support", `${Number(s.hybridSupportPct || 0).toFixed(0)}%`);
+    }
+
+    if (ctx.showWar) add("War Hits", Number(summary?.totalWarHits ?? summary?.totalHits ?? rwphResultRowsTotal(rows, "warHits")));
+    if (ctx.showAssists) add("Assists", Number(summary?.totalAssists ?? rwphResultRowsTotal(rows, "assists")));
+    if (ctx.showOutside) add(ctx.showChainOutside ? "Eligible Chain Outside" : "Outside Hits", ctx.showChainOutside ? rwphResultRowsTotal(rows, "chainMaintenanceHits") : Number(summary?.totalOutsideHits ?? rwphResultRowsTotal(rows, "outsideHits")));
+    if (ctx.showRetals) {
+      add("Retals", Number(summary?.totalRetaliationHits ?? rwphResultRowsTotal(rows, "retaliationHits")));
+      const retalBonus = Number(meta?.retaliationBonusPoints ?? rwphResultRowsTotal(rows, "retaliationBonusPoints"));
+      if (ctx.pointsMode && retalBonus !== 0) add("Retal Bonus", retalBonus.toFixed(2));
+    }
+    if (ctx.showOverseas) {
+      add("Overseas Hits", Number(meta?.overseasHits ?? rwphResultRowsTotal(rows, "overseasHits")));
+      const overseasBonus = rwphResultRowsTotal(rows, "overseasBonusPoints");
+      if (overseasBonus !== 0) add("Overseas Bonus", overseasBonus.toFixed(2));
+    }
+    if (ctx.showHospital) add("Hospital Bonus", rwphResultRowsTotal(rows, "hospitalBonusPoints").toFixed(2));
+    if (ctx.showEnemyHospital) {
+      add("Enemy Hosp Hits", Number(summary?.totalEnemyFactionHospitalizingHits ?? rwphResultRowsTotal(rows, "enemyFactionHospitalizingHits")));
+      add("Enemy Hosp Bonus", Number(summary?.totalEnemyFactionHospitalBonusPoints ?? rwphResultRowsTotal(rows, "enemyFactionHospitalBonusPoints")).toFixed(2));
+    }
+    if (ctx.showRespect) {
+      add("Total Respect", Number(summary?.totalRespect ?? rwphResultRowsTotal(rows, "totalRespect")).toFixed(2));
+      if (ctx.pointsMode) add("Respect Score", Number(summary?.totalRespectBonusPoints ?? rwphResultRowsTotal(rows, "respectBonusPoints")).toFixed(2));
+    }
+    if (ctx.equalParticipation) add("Paid Participants", (rows || []).filter((row) => Number(row?.points ?? row?.weight ?? 0) > 0).length);
+    add(ctx.pointsMode ? "Scored Events" : "Payable Events", Number(summary?.calcMeta?.payableEvents ?? rwphResultRowsTotal(rows, "payableEvents")));
+    return metrics;
+  }
+
+  function rwphMemberInfoMetrics(row = {}, summary = {}) {
+    const ctx = rwphResultScoringContext(summary);
+    const metrics = [];
+    const add = (label, value) => metrics.push({ label, value: String(value) });
+
+    if (ctx.fairFight) {
+      add("Avg FF", `${Number(row.avgFairFight || 1).toFixed(2)}x`);
+      add("Best FF", `${Number(row.bestFairFight || 1).toFixed(2)}x`);
+      add("FF Bonus", Number(row.fairFightBonusPoints || 0).toFixed(2));
+      if (ctx.fairFightMode === "avg_step") add("FF / Hit", Number(row.fairFightPerPayableHitBonus || 0).toFixed(2));
+    }
+
+    if (ctx.hybrid) {
+      add("Participation", rwphRowMetricTotal(row, "participation").toFixed(2));
+      add("Performance", rwphRowMetricTotal(row, "performance").toFixed(2));
+      add("War Score", rwphRowMetricTotal(row, "warOnly").toFixed(2));
+      add("Support", rwphRowMetricTotal(row, "support").toFixed(2));
+    }
+
+    if (ctx.showWar) add("War Hits", Number(row.warHits ?? row.attacks ?? 0));
+    if (ctx.showAssists) add("Assists", Number(row.assists || 0));
+    if (ctx.showOutside) add(ctx.showChainOutside ? "Chain Outside" : "Outside Hits", ctx.showChainOutside ? Number(row.chainMaintenanceHits || 0) : Number(row.outsideHits || 0));
+    if (ctx.showRetals) {
+      add("Retals", Number(row.retaliationHits || 0));
+      if (ctx.pointsMode && Number(row.retaliationBonusPoints || 0) !== 0) add("Retal Bonus", Number(row.retaliationBonusPoints || 0).toFixed(2));
+    }
+    if (ctx.showOverseas) {
+      add("Overseas", Number(row.overseasHits || 0));
+      if (Number(row.overseasBonusPoints || 0) !== 0) add("Overseas Bonus", Number(row.overseasBonusPoints || 0).toFixed(2));
+    }
+    if (ctx.showHospital) add("Hospital Bonus", Number(row.hospitalBonusPoints || 0).toFixed(2));
+    if (ctx.showEnemyHospital) {
+      add("Enemy Hosp", Number(row.enemyFactionHospitalizingHits || 0));
+      add("Enemy Hosp Bonus", Number(row.enemyFactionHospitalBonusPoints || 0).toFixed(2));
+    }
+    if (ctx.showRespect) {
+      add("Respect", Number(row.totalRespect ?? row.respect ?? 0).toFixed(2));
+      if (ctx.pointsMode) add("Respect Score", Number(row.respectBonusPoints || 0).toFixed(2));
+    }
+    if (!ctx.pointsMode) add("Payable", Number(row.payableEvents || 0));
+    return metrics;
+  }
+
+  function rwphInlineMetricBoxes(metrics = []) {
+    return metrics.map((metric) => `<div class="rw-stat-box"><div class="rw-stat-label">${esc(metric.label)}</div><div class="rw-stat-value">${esc(metric.value)}</div></div>`).join("");
+  }
+
+  function rwphFullscreenMetricBoxes(metrics = []) {
+    return metrics.map((metric) => `<div><span>${esc(metric.label)}</span><b>${esc(metric.value)}</b></div>`).join("");
+  }
+
+  function rwphFullscreenSummaryCards(metrics = []) {
+    return metrics.map((metric) => `<div class="summary-card"><span>${esc(metric.label)}</span><b>${esc(metric.value)}</b></div>`).join("");
+  }
+
   function buildFullscreenResultsHtml(rows, summary) {
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
     const calculationSystemLabel = String(summary?.calculationSystemLabel || (pointsMode ? rwphAdvancedCalculationSystemLabel(summary?.calculationSystem || "rwph_classic") : "Per Hit"));
@@ -8632,6 +8788,7 @@
       outsideHits: Number(r.outsideHits || 0),
       retaliationHits: Number(r.retaliationHits || 0),
       chainMaintenanceHits: Number(r.chainMaintenanceHits || 0),
+      overseasHits: Number(r.overseasHits || 0),
       hospitalizingHits: Number(r.hospitalizingHits || 0),
       enemyFactionHospitalizingHits: Number(r.enemyFactionHospitalizingHits || 0),
       weight: Number(r.weight || 0),
@@ -8639,10 +8796,16 @@
       basePoints: Number(r.basePoints || 0),
       hospitalBonusPoints: Number(r.hospitalBonusPoints || 0),
       enemyFactionHospitalBonusPoints: Number(r.enemyFactionHospitalBonusPoints || 0),
+      retaliationBonusPoints: Number(r.retaliationBonusPoints || 0),
+      overseasBonusPoints: Number(r.overseasBonusPoints || 0),
+      respectBonusPoints: Number(r.respectBonusPoints || 0),
+      adjustedRespect: Number(r.adjustedRespect || 0),
       fairFightBonusPoints: Number(r.fairFightBonusPoints || 0),
       fairFightPerPayableHitBonus: Number(r.fairFightPerPayableHitBonus || 0),
       avgFairFight: Number(r.avgFairFight || 1),
       bestFairFight: Number(r.bestFairFight || 1),
+      fairFightSamples: Number(r.fairFightSamples || 0),
+      systemMetrics: r.systemMetrics && typeof r.systemMetrics === "object" ? r.systemMetrics : {},
       totalRespect: Number(r.totalRespect ?? r.respect ?? 0),
       respect: Number(r.respect || 0),
       payout: Number(r.payout || 0),
@@ -8811,20 +8974,7 @@
           <div class="result-highlight"><span>${secondaryMetricLabel}</span><b>${secondaryMetricValue}</b></div>
         </div>
         <div class="stats">
-          <div><span>War</span><b>${r.warHits}</b></div>
-          <div><span>Assists</span><b>${r.assists}</b></div>
-          <div><span>Outside</span><b>${r.outsideHits}</b></div>
-          <div><span>Retals</span><b>${r.retaliationHits}</b></div>
-          ${pointsMode ? `<div><span>Own Hosp</span><b>${r.hospitalizingHits}</b></div>
-          <div><span>Enemy Hosp</span><b>${r.enemyFactionHospitalizingHits}</b></div>
-          <div><span>Base</span><b>${r.basePoints.toFixed(2)}</b></div>
-          <div><span>Fair Bonus</span><b>${r.fairFightBonusPoints.toFixed(2)}</b></div>
-          <div><span>FF / Hit</span><b>${r.fairFightPerPayableHitBonus.toFixed(2)}</b></div>
-          <div><span>Own Bonus</span><b>${r.hospitalBonusPoints.toFixed(2)}</b></div>
-          <div><span>Enemy Bonus</span><b>${r.enemyFactionHospitalBonusPoints.toFixed(2)}</b></div>
-          <div><span>Avg FF</span><b>${r.avgFairFight.toFixed(2)}x</b></div>` : `<div><span>Tracked</span><b>${r.totalTrackedHits}</b></div>
-          <div><span>Payable</span><b>${r.payableEvents}</b></div>
-          <div><span>Respect</span><b>${r.respect.toFixed(2)}</b></div>`}
+          ${rwphFullscreenMetricBoxes(rwphMemberInfoMetrics(r, summary))}
         </div>
       </article>`;
     }).join("");
@@ -9717,16 +9867,7 @@
       <div class="summary-card"><span>Total Payout</span><b>${esc(money(overallTotalPayout))}</b></div>
       ${pointsMode ? `<div class="summary-card"><span>Per Point Amount</span><b>${esc(money(perPointAmount))}</b></div>` : `<div class="summary-card"><span>Per Hit Amount</span><b>${esc(money(perHitAmount))}</b></div>`}
       <div class="summary-card"><span>War Source</span><b>${rwphWarSourceLabel(summary?.selectedWar?.timeSource)}</b></div>
-      <div class="summary-card"><span>${pointsMode ? "Total Points" : "Total weight"}</span><b>${Number(pointsMode ? (summary?.totalPoints ?? summary?.totalWeight ?? 0) : (summary?.totalWeight || 0)).toFixed(2)}</b></div>
-      <div class="summary-card"><span>Total Respect</span><b>${Number(summary?.totalRespect || 0).toFixed(2)}</b></div>
-      <div class="summary-card"><span>War Hits</span><b>${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)}</b></div>
-      <div class="summary-card"><span>Assists</span><b>${Number(summary?.totalAssists || 0)}</b></div>
-      <div class="summary-card"><span>Outside Hits</span><b>${Number(summary?.totalOutsideHits || 0)}</b></div>
-      <div class="summary-card"><span>Retals</span><b>${Number(summary?.totalRetaliationHits || 0)}</b></div>
-      <div class="summary-card"><span>${pointsMode ? "Own-Faction Hospital Hits" : "Tracked"}</span><b>${Number(pointsMode ? (summary?.totalHospitalizingHits || 0) : (summary?.totalTrackedHits || 0))}</b></div>
-      ${pointsMode ? `<div class="summary-card"><span>Enemy War Hospital Hits</span><b>${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}</b></div>` : ""}
-      ${pointsMode ? `<div class="summary-card"><span>Enemy Hospital Bonus</span><b>${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)}</b></div>` : ""}
-      <div class="summary-card"><span>${pointsMode ? "Fair Bonus" : "Payable"}</span><b>${pointsMode ? Number(summary?.totalFairFightBonusPoints || 0).toFixed(2) : Number(summary?.calcMeta?.payableEvents || 0)}</b></div>
+      ${rwphFullscreenSummaryCards(rwphWarInfoMetrics(list, summary))}
       <div class="summary-card"><span>Removed Member Hits</span><b>${removedLeftFactionHits}</b></div>
       <div class="summary-card"><span>Members</span><b>${list.length}</b></div>
     </section>
@@ -13026,16 +13167,7 @@
       <div class="rw-summary">
         <b>Member Payout:</b> ${money(rwphSummaryMemberPayout(summary, rows))} | <b>Total Payout:</b> ${money(rwphSummaryOverallTotalPayout(summary, rows))}<br>
         ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(rwphWarSourceLabel(summary.selectedWar.timeSource))}<br>` : ""}
-        <b>${pointsMode ? "Total points" : "Total weight"}:</b> ${Number(pointsMode ? (summary?.totalPoints ?? summary?.totalWeight ?? 0) : (summary?.totalWeight || 0)).toFixed(2)} |
-        <b>${pointsMode ? "Scored events" : "Payable events"}:</b> ${Number(summary?.calcMeta?.payableEvents || 0)}<br>
-        ${pointsMode ? `<b>Own-faction hospital hits:</b> ${Number(summary?.totalHospitalizingHits || 0)} | <b>Enemy war hospital hits:</b> ${Number(summary?.totalEnemyFactionHospitalizingHits || 0)}<br><b>Own hospital bonus:</b> ${Number(summary?.totalHospitalBonusPoints || summary?.totalOwnFactionHospitalBonusPoints || 0).toFixed(2)} | <b>Enemy hospital bonus:</b> ${Number(summary?.totalEnemyFactionHospitalBonusPoints || 0).toFixed(2)} | <b>Fair-fight bonus:</b> ${Number(summary?.totalFairFightBonusPoints || 0).toFixed(2)}<br>` : ""}
-        <b>Total respect:</b> ${Number(summary?.totalRespect || 0).toFixed(2)} |
-        <b>Respect:</b> ${Number(summary?.payoutRespect ?? summary?.respect ?? 0).toFixed(2)}<br>
-        <b>War hits:</b> ${Number(summary?.totalWarHits ?? summary?.totalHits ?? 0)} |
-        <b>Assists:</b> ${Number(summary?.totalAssists || 0)}<br>
-        <b>Outside hits:</b> ${Number(summary?.totalOutsideHits || 0)} |
-        <b>Retaliation hits:</b> ${Number(summary?.totalRetaliationHits || 0)}<br>
-        <b>Tracked hits:</b> ${Number(summary?.totalTrackedHits || 0)} |
+        <div class="rw-stat-grid rwph-context-war-info">${rwphInlineMetricBoxes(rwphWarInfoMetrics(rows, summary))}</div>
         <b>Removed member hits:</b> ${removedLeftFactionHits}<br>
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)}<br>
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
@@ -13070,15 +13202,8 @@
                 <div class="rw-result-payout">${money(payout)}</div>
               </div>
               <div class="rw-stat-grid">
-                <div class="rw-stat-box"><div class="rw-stat-label">War Hits</div><div class="rw-stat-value">${attacks}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Assists</div><div class="rw-stat-value">${assists}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Outside Hits</div><div class="rw-stat-value">${outsideHits}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Retals</div><div class="rw-stat-value">${retaliationHits}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Tracked</div><div class="rw-stat-value">${Number(r.totalTrackedHits || 0)}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">Payable</div><div class="rw-stat-value">${Number(r.payableEvents || 0)}</div></div>
                 <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Points" : "Weight"}</div><div class="rw-stat-value">${pointsMode ? points.toFixed(2) : weight.toFixed(2)}</div></div>
-                <div class="rw-stat-box"><div class="rw-stat-label">${pointsMode ? "Own-Faction Hospital Hits" : "Respect"}</div><div class="rw-stat-value">${pointsMode ? Number(r.hospitalizingHits || 0) : respect.toFixed(2)}</div></div>
-                ${pointsMode ? `<div class="rw-stat-box"><div class="rw-stat-label">Enemy War Hospital Hits</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalizingHits || 0)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Enemy Hospital Bonus</div><div class="rw-stat-value">${Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Fair Bonus</div><div class="rw-stat-value">${Number(r.fairFightBonusPoints || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">FF/Payable Hit</div><div class="rw-stat-value">${Number(r.fairFightPerPayableHitBonus || 0).toFixed(2)}</div></div><div class="rw-stat-box"><div class="rw-stat-label">Avg FF</div><div class="rw-stat-value">${Number(r.avgFairFight || 1).toFixed(2)}x</div></div>` : ""}
+                ${rwphInlineMetricBoxes(rwphMemberInfoMetrics(r, summary))}
               </div>
             </div>`;
         }).join("")}
@@ -14714,6 +14839,7 @@
     makeResizable(panel);
     rwphApplyPanelLayout(panel);
     rwphEnsurePanelTextScale(panel);
+    try { rwphDecorateCleanPanelV1491(panel, handleSelector); } catch (_) {}
   }
 
   function rwphMakeHelpPanelCardsDropdowns(root = document) {
@@ -17856,10 +17982,471 @@
     }
   }
 
+
+  function rwphFitPanelToViewportV1491(panel) {
+    if (!panel || !panel.isConnected) return;
+    const viewportW = Math.max(280, window.innerWidth || 0);
+    const viewportH = Math.max(320, window.innerHeight || 0);
+    const margin = viewportW <= 760 ? 7 : 12;
+    const rect = panel.getBoundingClientRect();
+    const mobile = viewportW <= 760 || window.matchMedia?.("(pointer: coarse)")?.matches;
+    const minW = panel.id === "rw-results-panel" ? 300 : (mobile ? 270 : 300);
+    const minH = panel.id === "rwph-xanax-send-status" ? (mobile ? 300 : 340) : 220;
+    const maxW = Math.max(minW, viewportW - margin * 2);
+    const maxH = Math.max(minH, viewportH - margin * 2);
+    const width = Math.min(maxW, Math.max(minW, Math.min(Number(rect.width) || 420, maxW)));
+    const height = Math.min(maxH, Math.max(minH, Math.min(Number(rect.height) || Math.min(680, maxH), maxH)));
+    const left = Math.max(margin, Math.round((viewportW - width) / 2));
+    const top = Math.max(margin, Math.round((viewportH - height) / 2));
+    rwphSetPanelStyle(panel, "position", "fixed");
+    rwphSetPanelStyle(panel, "left", `${left}px`);
+    rwphSetPanelStyle(panel, "top", `${top}px`);
+    rwphSetPanelStyle(panel, "right", "auto");
+    rwphSetPanelStyle(panel, "bottom", "auto");
+    rwphSetPanelStyle(panel, "width", `${width}px`);
+    rwphSetPanelStyle(panel, "height", `${height}px`);
+    rwphSetPanelStyle(panel, "max-width", `${maxW}px`);
+    rwphSetPanelStyle(panel, "max-height", `${maxH}px`);
+    rwphSetPanelStyle(panel, "transform", "none");
+    rwphSetPanelStyle(panel, "overflow", "hidden");
+    rwphEnsurePanelTextScale(panel);
+    rwphSavePanelLayout(panel);
+  }
+
+  function rwphDecorateCleanPanelV1491(panel, handleSelector = "") {
+    if (!panel || !panel.querySelector) return;
+    panel.classList.add("rwph-clean-panel-v1491");
+    const headerSelectors = [
+      handleSelector,
+      ".rw-head",
+      ".rw-pay-all-head",
+      "#rwph-payment-helper-title",
+      ".rwph-floating-panel-head",
+      ".rwph-panel-head",
+      ".rwph-saved-reports-head",
+      ".rwph-results-loading-head",
+      ".rwph-results-html-head"
+    ].filter(Boolean).join(",");
+    const head = panel.querySelector(headerSelectors);
+    if (head) {
+      head.classList.add("rwph-clean-panel-head-v1491");
+      let close = head.querySelector('[aria-label*="close" i], [title*="close" i], .rwph-results-html-close, .rw-pay-all-close, #rw-close, #rwph-close-helper, #rwph-saved-reports-close');
+      if (!close) {
+        close = Array.from(head.querySelectorAll("button,a")).find((el) => String(el.textContent || "").trim() === "×") || null;
+      }
+      if (close) close.classList.add("rwph-clean-close-v1491");
+
+      if (!head.querySelector(".rwph-fit-control-v1491")) {
+        const fit = document.createElement("button");
+        fit.type = "button";
+        fit.className = "rwph-fit-control-v1491 secondary";
+        fit.setAttribute("aria-label", "Fit panel to screen");
+        fit.title = "Fit panel to screen";
+        fit.textContent = "⛶";
+        fit.addEventListener("click", (ev) => {
+          ev.preventDefault?.();
+          ev.stopPropagation?.();
+          rwphFitPanelToViewportV1491(panel);
+        });
+        if (close?.parentNode === head) head.insertBefore(fit, close);
+        else head.appendChild(fit);
+      }
+    }
+    panel.querySelectorAll(":scope > .rw-resize-handle").forEach((h) => h.classList.add("rwph-clean-resize-v1491"));
+  }
+
+  function rwphCleanUiCssV1491() {
+    return `
+      /* v1.1.491 — cleaner, flatter, consistent RWPH panel system. */
+      :root{
+        --rwph-ui-gap:10px;
+        --rwph-ui-gap-lg:14px;
+        --rwph-ui-control-h:36px;
+      }
+      #rw-payout-helper,
+      #rw-pay-all-panel,.rw-pay-all-panel,
+      #rwph-xanax-send-status,
+      #rwph-member-management-panel,.rwph-member-management-panel,
+      #rwph-saved-reports-panel,
+      #rwph-layout-theme-panel,
+      #rwph-logo-picker-panel,
+      #rwph-licence-info-panel,
+      #rw-wrong-payment-panel,
+      .rwph-floating-panel,
+      .rwph-results-loading-panel,
+      .rwph-results-html-panel,
+      .rw-results-panel{
+        background:linear-gradient(180deg,var(--rwph-theme-panel,#111827),var(--rwph-theme-bg,#020617))!important;
+        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:16px!important;
+        box-shadow:0 24px 64px rgba(0,0,0,.48),0 1px 0 rgba(255,255,255,.04) inset!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        backdrop-filter:blur(12px)!important;
+      }
+      #rw-payout-helper::before,#rw-payout-helper::after,
+      #rwph-xanax-send-status::before,.rwph-floating-panel::before{
+        display:none!important;
+      }
+      #rw-payout-helper{
+        width:min(420px,calc(100vw - 24px))!important;
+        min-width:min(320px,calc(100vw - 16px))!important;
+        min-height:300px!important;
+        overflow:hidden!important;
+      }
+      #rw-payout-helper>.rw-body,
+      #rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
+      #rwph-xanax-send-status .rwph-xanax-scroll,
+      #rwph-member-management-panel .rwph-floating-panel-body,
+      #rwph-saved-reports-panel .rwph-saved-reports-body,
+      #rwph-layout-theme-panel .rwph-layout-theme-body,
+      #rwph-logo-picker-panel .rwph-floating-panel-body,
+      #rwph-licence-info-panel .rwph-floating-panel-body,
+      #rw-wrong-payment-panel .rwph-floating-panel-body,
+      .rwph-floating-panel .rwph-floating-panel-body{
+        padding:14px!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        overscroll-behavior:contain!important;
+      }
+      #rw-payout-helper>.rw-body{max-height:calc(100vh - 150px)!important;}
+
+      #rw-payout-helper .rw-head,
+      #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head,
+      #rwph-xanax-send-status #rwph-payment-helper-title,
+      #rwph-member-management-panel .rwph-floating-panel-head,.rwph-member-management-panel .rwph-floating-panel-head,
+      #rwph-saved-reports-panel .rwph-saved-reports-head,
+      #rwph-layout-theme-panel .rwph-layout-theme-head,
+      #rwph-logo-picker-panel .rwph-panel-head,
+      #rwph-licence-info-panel .rwph-panel-head,
+      #rw-wrong-payment-panel .rwph-floating-panel-head,
+      .rwph-floating-panel .rwph-floating-panel-head,
+      .rwph-floating-panel .rwph-panel-head,
+      .rwph-results-loading-panel .rwph-results-loading-head,
+      .rwph-results-loading-panel .rwph-results-loading-panel-head,
+      .rwph-results-html-panel .rwph-results-html-head,
+      .rw-results-panel .rw-head,
+      .rwph-clean-panel-head-v1491{
+        position:relative!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        gap:8px!important;
+        min-height:64px!important;
+        padding:9px 82px 9px 12px!important;
+        background:var(--rwph-theme-panel2,#111827)!important;
+        border:0!important;
+        border-bottom:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:15px 15px 0 0!important;
+        box-shadow:0 1px 0 rgba(255,255,255,.035) inset!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        text-transform:none!important;
+        letter-spacing:.01em!important;
+      }
+      #rw-payout-helper .rw-head::before,#rw-payout-helper .rw-head::after{display:none!important;}
+      #rw-payout-helper .rw-head .rwph-header-logo{height:56px!important;width:min(250px,calc(100% - 12px))!important;}
+      #rw-pay-all-panel .rw-pay-all-logo,.rw-pay-all-panel .rw-pay-all-logo,
+      #rwph-xanax-send-status .rwph-payment-helper-logo,
+      #rwph-member-management-panel .rwph-mm-panel-logo,
+      #rwph-logo-picker-panel .rwph-dynamic-logo-icon,
+      #rwph-licence-info-panel .rwph-panel-title img{
+        height:56px!important;
+        max-height:56px!important;
+        width:min(250px,72vw)!important;
+        object-fit:contain!important;
+        filter:drop-shadow(0 4px 12px rgba(0,0,0,.28))!important;
+      }
+
+      .rwph-fit-control-v1491,.rwph-clean-close-v1491{
+        position:absolute!important;
+        top:50%!important;
+        transform:translateY(-50%)!important;
+        width:32px!important;
+        height:32px!important;
+        min-width:32px!important;
+        min-height:32px!important;
+        margin:0!important;
+        padding:0!important;
+        display:grid!important;
+        place-items:center!important;
+        border-radius:9px!important;
+        font-size:17px!important;
+        line-height:1!important;
+        z-index:90!important;
+      }
+      .rwph-fit-control-v1491{right:46px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;}
+      .rwph-clean-close-v1491{right:10px!important;background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border:1px solid rgba(248,113,113,.42)!important;}
+      .rwph-fit-control-v1491:hover,.rwph-clean-close-v1491:hover{filter:brightness(1.15)!important;}
+      #rw-pay-all-panel>.rw-pay-all-close,.rw-pay-all-panel>.rw-pay-all-close{
+        position:absolute!important;top:10px!important;right:10px!important;z-index:95!important;
+        width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;
+        margin:0!important;padding:0!important;border-radius:9px!important;line-height:1!important;font-size:19px!important;
+        background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border:1px solid rgba(248,113,113,.42)!important;
+      }
+      .rwph-results-loading-panel .rwph-results-loading-panel-head{
+        height:64px!important;min-height:64px!important;padding:9px 10px 9px 14px!important;
+        background:var(--rwph-theme-panel2,#111827)!important;border-bottom:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;box-shadow:0 1px 0 rgba(255,255,255,.035) inset!important;
+      }
+      .rwph-results-loading-panel .rwph-results-loading-panel-head button{
+        width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:0!important;margin:0!important;
+        border-radius:9px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;
+        border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;box-shadow:none!important;
+      }
+      .rwph-results-loading-panel .rwph-results-loading-panel-head button:last-child{
+        background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border-color:rgba(248,113,113,.42)!important;
+      }
+      .rwph-results-loading-panel>.rwph-results-resize-handle{background:transparent!important;opacity:.82!important;filter:none!important;}
+      .rwph-results-loading-panel>.rwph-results-resize-se{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
+      .rwph-results-loading-panel>.rwph-results-resize-sw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
+      .rwph-results-loading-panel>.rwph-results-resize-nw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
+
+      #rw-payout-helper :where(button,.btn,a.btn,input[type="button"],input[type="submit"]),
+      #rw-pay-all-panel :where(button,.btn,a.btn),.rw-pay-all-panel :where(button,.btn,a.btn),
+      #rwph-xanax-send-status :where(button,.btn,a.btn),
+      #rwph-member-management-panel :where(button,.btn,a.btn),
+      #rwph-saved-reports-panel :where(button,.btn,a.btn),
+      #rwph-layout-theme-panel :where(button,.btn,a.btn),
+      #rwph-logo-picker-panel :where(button,.btn,a.btn),
+      #rwph-licence-info-panel :where(button,.btn,a.btn),
+      .rwph-floating-panel :where(button,.btn,a.btn),
+      .rw-results-panel :where(button,.btn,a.btn){
+        min-height:var(--rwph-ui-control-h)!important;
+        padding:8px 11px!important;
+        margin:0!important;
+        border-radius:9px!important;
+        border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;
+        background:var(--rwph-theme-panel3,#1f2937)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 5px 14px rgba(0,0,0,.18)!important;
+        font-weight:800!important;
+        text-transform:none!important;
+        letter-spacing:.01em!important;
+      }
+      #rw-payout-helper :where(button.primary,.primary,.rw-primary,.rw-tab.active,[aria-selected="true"]),
+      #rw-pay-all-panel :where(button.primary,.primary),.rw-pay-all-panel :where(button.primary,.primary),
+      #rwph-xanax-send-status :where(button.primary,.primary),
+      #rwph-member-management-panel :where(button.primary,.primary),
+      #rwph-saved-reports-panel :where(button.primary,.primary),
+      .rwph-floating-panel :where(button.primary,.primary){
+        background:linear-gradient(135deg,var(--rwph-theme-gold,#f59e0b),var(--rwph-theme-orange,#f97316))!important;
+        color:#111827!important;
+        border-color:transparent!important;
+        box-shadow:0 8px 20px rgba(0,0,0,.22)!important;
+      }
+      #rw-payout-helper :where(button.secondary,.secondary),
+      #rw-pay-all-panel :where(button.secondary,.secondary),.rw-pay-all-panel :where(button.secondary,.secondary),
+      #rwph-xanax-send-status :where(button.secondary,.secondary),
+      #rwph-member-management-panel :where(button.secondary,.secondary),
+      #rwph-saved-reports-panel :where(button.secondary,.secondary),
+      .rwph-floating-panel :where(button.secondary,.secondary){
+        background:var(--rwph-theme-panel3,#1f2937)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+      }
+      #rw-payout-helper :where(button.danger,.danger),
+      #rw-pay-all-panel :where(button.danger,.danger),.rw-pay-all-panel :where(button.danger,.danger),
+      #rwph-xanax-send-status :where(button.danger,.danger),
+      #rwph-member-management-panel :where(button.danger,.danger),
+      #rwph-saved-reports-panel :where(button.danger,.danger),
+      .rwph-floating-panel :where(button.danger,.danger){
+        background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border-color:rgba(248,113,113,.36)!important;
+      }
+      #rw-payout-helper :where(button:hover,.btn:hover,a.btn:hover),
+      .rwph-floating-panel :where(button:hover,.btn:hover,a.btn:hover){transform:translateY(-1px)!important;filter:brightness(1.08)!important;}
+
+      #rw-payout-helper :where(input,textarea,select),
+      #rw-pay-all-panel :where(input,textarea,select),.rw-pay-all-panel :where(input,textarea,select),
+      #rwph-xanax-send-status :where(input,textarea,select),
+      #rwph-member-management-panel :where(input,textarea,select),
+      #rwph-saved-reports-panel :where(input,textarea,select),
+      .rwph-floating-panel :where(input,textarea,select){
+        min-height:36px!important;
+        margin-top:5px!important;
+        padding:8px 10px!important;
+        border-radius:9px!important;
+        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        background:var(--rwph-theme-bg2,#0f172a)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        box-shadow:none!important;
+        outline:none!important;
+      }
+      #rw-payout-helper :where(input,textarea,select):focus,
+      .rwph-floating-panel :where(input,textarea,select):focus{
+        border-color:var(--rwph-theme-gold,#f59e0b)!important;
+        box-shadow:0 0 0 2px color-mix(in srgb,var(--rwph-theme-gold,#f59e0b) 20%,transparent)!important;
+      }
+      #rw-payout-helper label,.rwph-floating-panel label{margin-top:10px!important;color:var(--rwph-theme-soft,#cbd5e1)!important;font-weight:700!important;}
+
+      #rw-payout-helper .rw-tabs{
+        position:sticky!important;
+        top:0!important;
+        z-index:12!important;
+        display:grid!important;
+        grid-template-columns:repeat(3,minmax(0,1fr))!important;
+        gap:6px!important;
+        margin:0 0 12px!important;
+        padding:6px!important;
+        background:var(--rwph-theme-bg2,#0f172a)!important;
+        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:11px!important;
+      }
+      #rw-payout-helper .rw-tab-btn{min-height:34px!important;padding:7px 8px!important;box-shadow:none!important;}
+
+      #rw-payout-helper :where(.rw-summary,.rw-card,.rw-box,.rw-section,.rw-admin-box,.rw-how-box,.rw-payment-card,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-calc-brief),
+      #rw-pay-all-panel :where(.rw-pay-all-row,.rw-pay-all-info),.rw-pay-all-panel :where(.rw-pay-all-row,.rw-pay-all-info),
+      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message),
+      #rwph-member-management-panel :where(.rwph-mm-card,.rwph-mm-stats,.rwph-mm-toolbar),
+      #rwph-saved-reports-panel :where(.rwph-saved-report-card,.rwph-saved-reports-slot),
+      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section){
+        background:var(--rwph-theme-panel2,#111827)!important;
+        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:11px!important;
+        box-shadow:none!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+      }
+      #rw-payout-helper .rw-summary,#rw-payout-helper .rw-admin-box,#rw-payout-helper .rw-how-box{padding:12px!important;margin:10px 0!important;}
+      #rw-payout-helper .rw-small,#rw-payout-helper .rw-muted,.rwph-floating-panel .rw-small,.rwph-floating-panel .muted{color:var(--rwph-theme-soft,#cbd5e1)!important;line-height:1.45!important;}
+
+      #rw-payout-helper details.rw-per-hit-settings,
+      #rw-payout-helper details.rw-points-settings,
+      #rw-payout-helper details.rw-help-dropdown,
+      #rw-payout-helper details{
+        margin:10px 0!important;
+        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:11px!important;
+        background:var(--rwph-theme-panel2,#111827)!important;
+        box-shadow:none!important;
+        overflow:hidden!important;
+      }
+      #rw-payout-helper details>summary{
+        min-height:40px!important;
+        padding:10px 12px!important;
+        background:var(--rwph-theme-panel3,#1f2937)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border:0!important;
+        border-bottom:1px solid transparent!important;
+        font-weight:850!important;
+      }
+      #rw-payout-helper details[open]>summary{border-bottom-color:var(--rwph-theme-line,rgba(148,163,184,.22))!important;}
+      #rw-payout-helper details::before{display:none!important;}
+
+      #rw-payout-helper .rw-actions,
+      #rw-payout-helper .rw-licence-control-grid,
+      #rw-payout-helper .rw-settings-calc-actions,
+      #rw-payout-helper .rw-settings-time-actions{
+        display:grid!important;
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+        gap:8px!important;
+        margin-top:10px!important;
+      }
+      #rw-payout-helper .rw-primary-calc-actions{
+        display:grid!important;
+        grid-template-columns:1fr!important;
+        gap:8px!important;
+        margin:10px 0!important;
+      }
+      #rw-payout-helper .rw-primary-calc-actions>button,
+      #rw-payout-helper .rw-primary-calc-actions>details{width:100%!important;}
+
+      #rwph-saved-reports-panel .rwph-saved-reports-list{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:0!important;}
+      #rwph-saved-reports-panel .rwph-saved-report-card,
+      #rwph-saved-reports-panel [class*="slot"]{padding:12px!important;}
+      #rwph-member-management-panel .rwph-mm-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))!important;gap:10px!important;}
+      #rwph-member-management-panel .rwph-mm-toolbar{gap:8px!important;}
+      #rw-pay-all-panel .rw-pay-all-list,.rw-pay-all-panel .rw-pay-all-list{display:flex!important;flex-direction:column!important;gap:8px!important;}
+      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row{padding:10px!important;}
+
+      #rwph-xanax-send-status{width:min(480px,calc(100vw - 20px))!important;min-width:min(320px,calc(100vw - 14px))!important;overflow:hidden!important;}
+      #rwph-xanax-send-status #rwph-payment-helper-title{min-height:70px!important;padding:8px 82px 8px 12px!important;}
+      #rwph-xanax-send-status .rwph-payment-helper-title-text{font-size:14px!important;text-transform:none!important;letter-spacing:.01em!important;}
+      #rwph-xanax-send-status .rwph-xanax-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+
+      .rwph-results-loading-panel .rwph-loading-shell,
+      .rw-results-panel .summary-card,.rw-results-panel .result-card,
+      .rwph-results-html-panel .rwph-results-html-preview-wrap,
+      .rwph-results-html-panel .rwph-results-html-preview{
+        background:var(--rwph-theme-panel2,#111827)!important;
+        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:11px!important;
+        box-shadow:none!important;
+      }
+
+      #rw-payout-helper>.rw-resize-handle,
+      #rw-pay-all-panel>.rw-resize-handle,.rw-pay-all-panel>.rw-resize-handle,
+      #rwph-xanax-send-status>.rw-resize-handle,
+      #rwph-member-management-panel>.rw-resize-handle,
+      #rwph-saved-reports-panel>.rw-resize-handle,
+      #rwph-layout-theme-panel>.rw-resize-handle,
+      #rwph-logo-picker-panel>.rw-resize-handle,
+      #rwph-licence-info-panel>.rw-resize-handle,
+      #rw-wrong-payment-panel>.rw-resize-handle,
+      .rwph-floating-panel>.rw-resize-handle{
+        width:20px!important;height:20px!important;opacity:.78!important;background:transparent!important;z-index:100!important;
+      }
+      .rw-resize-handle-se{border-right:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
+      .rw-resize-handle-sw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
+      .rw-resize-handle-nw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
+      .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 5px var(--rwph-theme-gold,#f59e0b))!important;}
+
+      @media (max-width:760px),(pointer:coarse){
+        #rw-payout-helper{width:calc(100vw - 14px)!important;min-width:0!important;}
+        #rw-payout-helper>.rw-body,
+        #rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
+        #rwph-xanax-send-status .rwph-xanax-scroll,
+        .rwph-floating-panel .rwph-floating-panel-body{padding:10px!important;}
+        #rw-payout-helper .rw-head,
+        #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head,
+        #rwph-xanax-send-status #rwph-payment-helper-title,
+        .rwph-floating-panel .rwph-floating-panel-head,
+        .rwph-floating-panel .rwph-panel-head,
+        .rwph-clean-panel-head-v1491{min-height:58px!important;padding:7px 80px 7px 8px!important;}
+        #rw-payout-helper .rw-head .rwph-header-logo,
+        #rw-pay-all-panel .rw-pay-all-logo,.rw-pay-all-panel .rw-pay-all-logo,
+        #rwph-xanax-send-status .rwph-payment-helper-logo,
+        #rwph-member-management-panel .rwph-mm-panel-logo{height:48px!important;max-height:48px!important;}
+        .rwph-fit-control-v1491,.rwph-clean-close-v1491{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;}
+        .rwph-fit-control-v1491{right:47px!important}.rwph-clean-close-v1491{right:8px!important}
+        #rw-payout-helper .rw-actions,#rw-payout-helper .rw-licence-control-grid,#rw-payout-helper .rw-settings-calc-actions,#rw-payout-helper .rw-settings-time-actions{grid-template-columns:1fr!important;}
+        #rwph-xanax-send-status .rwph-xanax-actions{grid-template-columns:1fr!important;}
+        #rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr!important;}
+        #rw-payout-helper>.rw-resize-handle,#rw-pay-all-panel>.rw-resize-handle,.rw-pay-all-panel>.rw-resize-handle,#rwph-xanax-send-status>.rw-resize-handle,.rwph-floating-panel>.rw-resize-handle{width:30px!important;height:30px!important;}
+      }
+    `;
+  }
+
+  function rwphInstallCleanUiV1491() {
+    try {
+      let style = document.getElementById("rwph-clean-ui-v1491");
+      if (!style) {
+        style = document.createElement("style");
+        style.id = "rwph-clean-ui-v1491";
+        (document.head || document.documentElement).appendChild(style);
+      }
+      style.textContent = rwphCleanUiCssV1491();
+      (document.head || document.documentElement).appendChild(style);
+      const decorate = (root = document) => {
+        const selectors = [
+          "#rw-payout-helper","#rw-pay-all-panel",".rw-pay-all-panel","#rwph-xanax-send-status",
+          "#rwph-member-management-panel",".rwph-member-management-panel","#rwph-saved-reports-panel",
+          "#rwph-layout-theme-panel","#rwph-logo-picker-panel","#rwph-licence-info-panel","#rw-wrong-payment-panel",
+          ".rwph-floating-panel"
+        ];
+        selectors.forEach((selector) => {
+          if (root.matches?.(selector)) rwphDecorateCleanPanelV1491(root);
+          root.querySelectorAll?.(selector).forEach((panel) => rwphDecorateCleanPanelV1491(panel));
+        });
+      };
+      decorate(document);
+    } catch (e) {
+      console.warn("RWPH clean UI v1.1.491 failed:", e);
+    }
+  }
+
   rwphInjectPanelTitlesUnderLogoV1450();
   rwphInjectMainPanelLogoOnlyGuardV1451();
   rwphApplyPanelThemeChoice();
   rwphApplyLogoChoice();
+  rwphInstallCleanUiV1491();
   if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();

@@ -1,3 +1,23 @@
+
+
+## v1.1.492 — Context-aware results reports
+
+- War summary cards now show scoring information relevant to the settings actually used for that report.
+- Member cards now show only relevant scoring/detail fields for those settings.
+- Fair Fight reports prioritize FF mode, Avg/Best FF and FF bonus information instead of unrelated generic fields.
+- Hybrid reports show participation/performance/war/support contribution data.
+- Respect, hospital, enemy-hospital, retal, overseas and chain-only fields appear when those settings are active.
+- Basic reports show only the selected hit types; Fast Mode does not pretend skipped attack-log extras were scored.
+- Cached reports use their saved calculation metadata, so reopening them keeps the original report context even if current UI settings have changed.
+
+## v1.1.491 — Clean UI refresh
+
+- Reworked the visual layout/theme across RWPH panels for a cleaner, flatter and more consistent interface.
+- Standardised spacing, inputs, action buttons, tabs, cards and scroll areas across desktop and phone/PDA layouts.
+- Every movable panel keeps drag + resize handles and its existing Close control.
+- Added a consistent **Fit panel to screen** (`⛶`) header control to movable panels.
+- No calculation, licence, payment, cache or backend behaviour was intentionally changed in this release.
+
 # Ranked War Payout Helper — RWPH
 
 <p align="center">
@@ -10,7 +30,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.490**  
+Current userscript version: **1.1.492**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -18,6 +38,15 @@ Author: **Evil_Panda_420**
 > **Important:** RWPH is a manual helper. It does not automatically attack, send money/items, confirm Torn payments, buy, sell, or perform gameplay actions for you. Always review the results before acting on them.
 
 ---
+
+## What's New in v1.1.492
+
+- Results reports now adapt their war information and member-card details to the exact scoring settings used.
+- Fair Fight reports prioritize Fair Fight mode, Avg FF, Best FF, and Fair Fight bonus values.
+- Hybrid reports show participation, performance, war-share, and support contribution information.
+- Respect, hospital, enemy-hospital, retal, overseas, chain-only, and Basic hit-type information appears only when relevant to the selected settings.
+- Cached reports render from their saved calculation metadata, so their original scoring context is preserved.
+- No backend runtime or database schema change is required from v1.1.491.
 
 ## What's New in v1.1.490
 
