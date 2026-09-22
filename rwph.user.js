@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.494
+// @version      1.1.495
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.494: Admin Default Setup wizard adds separate global PC and Phone/PDA panel layouts saved in MySQL; guided Next Panel flow captures position/size for each RWPH panel.
+  // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
   // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
   // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
   // v1.1.491: Full clean-panel UI refresh across RWPH. All movable panels keep Close, Fit-to-screen, drag, and resize controls while calculations/licensing/cache/backend behavior remains unchanged.
@@ -44,6 +44,7 @@
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
   const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
   const PANEL_LAYOUT_STORAGE_KEY = "rw_payout_helper_panel_layout";
+  const DEFAULT_SETUP_WIZARD_STORAGE_KEY = "rw_payout_helper_default_setup_wizard_v1";
   const GLOBAL_PANEL_LAYOUT_ENDPOINT = "/api/ui/default-panel-layouts";
   const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
@@ -2525,6 +2526,162 @@
 
   let rwphDefaultSetupState = null;
 
+  function rwphReadPersistedDefaultSetupWizard() {
+    try {
+      const raw = GM_getValue(DEFAULT_SETUP_WIZARD_STORAGE_KEY, "");
+      if (!raw) return null;
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!parsed || parsed.active !== true) return null;
+      const updatedAt = Number(parsed.updatedAt || 0);
+      if (!updatedAt || Date.now() - updatedAt > 2 * 60 * 60 * 1000) {
+        GM_setValue(DEFAULT_SETUP_WIZARD_STORAGE_KEY, "");
+        return null;
+      }
+      const index = Math.max(0, Math.min(RWPH_DEFAULT_SETUP_PANEL_TARGETS.length - 1, Number(parsed.index || 0)));
+      return {
+        active: true,
+        device: String(parsed.device || "pc").toLowerCase() === "mobile" ? "mobile" : "pc",
+        index,
+        panels: parsed.panels && typeof parsed.panels === "object" ? parsed.panels : {},
+        homeUrl: String(parsed.homeUrl || ""),
+        updatedAt,
+      };
+    } catch (e) {
+      console.warn("Could not restore RWPH Default Setup wizard state:", e);
+      try { GM_setValue(DEFAULT_SETUP_WIZARD_STORAGE_KEY, ""); } catch (_) {}
+      return null;
+    }
+  }
+
+  function rwphDefaultSetupWizardActive() {
+    return !!rwphDefaultSetupState || !!rwphReadPersistedDefaultSetupWizard();
+  }
+
+  function rwphPersistDefaultSetupWizard() {
+    const state = rwphDefaultSetupState;
+    if (!state) return;
+    const payload = {
+      active: true,
+      version: 1,
+      device: state.device,
+      index: Math.max(0, Number(state.index || 0)),
+      panels: state.panels || {},
+      homeUrl: String(state.homeUrl || ""),
+      updatedAt: Date.now(),
+    };
+    try { GM_setValue(DEFAULT_SETUP_WIZARD_STORAGE_KEY, JSON.stringify(payload)); } catch (e) {
+      console.warn("Could not persist RWPH Default Setup wizard state:", e);
+    }
+  }
+
+  function rwphClearPersistedDefaultSetupWizard() {
+    try { GM_setValue(DEFAULT_SETUP_WIZARD_STORAGE_KEY, ""); } catch (_) {}
+  }
+
+  function rwphDefaultSetupCleanHomeUrl(rawUrl = window.location.href) {
+    try {
+      const url = new URL(String(rawUrl || window.location.href), window.location.origin);
+      const path = String(url.pathname || "").toLowerCase();
+      if (path.endsWith("/item.php")) return "https://www.torn.com/factions.php?step=your";
+      url.searchParams.delete("rwphDefaultSetup");
+      url.searchParams.delete("rwphSendXanax");
+      url.searchParams.delete("rwphCode");
+      url.searchParams.delete("rwphTo");
+      url.searchParams.delete("rwphName");
+      url.searchParams.delete("rwphItemId");
+      return url.toString();
+    } catch (_) {
+      return "https://www.torn.com/factions.php?step=your";
+    }
+  }
+
+  function rwphDefaultSetupPaymentsRoute() {
+    return "https://www.torn.com/factions.php?step=your&rwphDefaultSetup=payments#/tab=controls&rwphPayAll=1";
+  }
+
+  function rwphDefaultSetupPaymentHelperRoute() {
+    try {
+      const url = new URL(buildXanaxPaymentUrl("RWPH-SETUP-CODE"));
+      url.searchParams.set("rwphDefaultSetup", "payment-helper");
+      return url.toString();
+    } catch (_) {
+      return "https://www.torn.com/item.php?rwphSendXanax=1&rwphCode=RWPH-SETUP-CODE&rwphDefaultSetup=payment-helper&step=inventory#inventory";
+    }
+  }
+
+  function rwphDefaultSetupRouteMatchesTarget(target) {
+    if (!target) return true;
+    try {
+      const url = new URL(window.location.href);
+      const path = String(url.pathname || "").toLowerCase();
+      const marker = String(url.searchParams.get("rwphDefaultSetup") || "");
+      const hash = String(url.hash || "").toLowerCase();
+      if (target.id === "rw-pay-all-panel") {
+        return path.endsWith("/factions.php") && marker === "payments" && hash.includes("tab=controls") && hash.includes("rwphpayall=1");
+      }
+      if (target.id === "rwph-xanax-send-status") {
+        return path.endsWith("/item.php") && marker === "payment-helper";
+      }
+      // All other panels are configured on the page where the admin started the wizard.
+      return marker !== "payments" && marker !== "payment-helper" && !path.endsWith("/item.php");
+    } catch (_) {
+      return target.id !== "rw-pay-all-panel" && target.id !== "rwph-xanax-send-status";
+    }
+  }
+
+  function rwphDefaultSetupNavigateForTarget(target) {
+    const state = rwphDefaultSetupState;
+    if (!state || !target || rwphDefaultSetupRouteMatchesTarget(target)) return false;
+    let destination = "";
+    if (target.id === "rw-pay-all-panel") destination = rwphDefaultSetupPaymentsRoute();
+    else if (target.id === "rwph-xanax-send-status") destination = rwphDefaultSetupPaymentHelperRoute();
+    else destination = state.homeUrl || "https://www.torn.com/factions.php?step=your";
+    if (!destination) return false;
+
+    rwphPersistDefaultSetupWizard();
+    const controller = document.getElementById("rwph-default-setup-controller");
+    const status = controller?.querySelector("#rwph-default-setup-controller-status");
+    if (status) {
+      status.textContent = target.id === "rw-pay-all-panel"
+        ? "Opening Torn faction controls for the real Payments Copy Panel..."
+        : target.id === "rwph-xanax-send-status"
+          ? "Opening Torn Items for the real Xanax Payment Helper..."
+          : "Returning to the Torn page where Default Setup started...";
+    }
+    setTimeout(() => {
+      try { window.location.assign(destination); }
+      catch (_) { window.location.href = destination; }
+    }, 40);
+    return true;
+  }
+
+  function rwphRestoreDefaultSetupWizardFromStorage() {
+    if (rwphDefaultSetupState) return true;
+    const saved = rwphReadPersistedDefaultSetupWizard();
+    if (!saved) return false;
+    const adminKey = String(GM_getValue(ADMIN_KEY_STORAGE_KEY, "") || "");
+    if (!adminKey) {
+      rwphClearPersistedDefaultSetupWizard();
+      return false;
+    }
+    rwphDefaultSetupState = {
+      device: saved.device,
+      adminKey,
+      index: saved.index,
+      currentTarget: null,
+      panels: saved.panels || {},
+      homeUrl: saved.homeUrl || "https://www.torn.com/factions.php?step=your",
+    };
+    rwphSetPanelOpenState(false);
+    setLauncherOpenState(false);
+    setTimeout(async () => {
+      if (!rwphDefaultSetupState) return;
+      rwphCreateDefaultSetupController();
+      await rwphOpenDefaultSetupPreview();
+    }, 180);
+    return true;
+  }
+
   function rwphDefaultSetupDeviceLabel(device) {
     return String(device || "").toLowerCase() === "mobile" ? "Phone / PDA" : "PC";
   }
@@ -2555,7 +2712,7 @@
       const current = document.getElementById(currentId);
       if (current?.dataset?.rwphDefaultSetupPreview === "1") current.remove();
     }
-    document.querySelectorAll?.("[data-rwph-default-setup-preview='1']").forEach((el) => {
+    document.querySelectorAll?.("[data-rwph-default-setup-preview='1'],[data-rwph-default-setup-host='1']").forEach((el) => {
       try { el.remove(); } catch (_) {}
     });
   }
@@ -2572,6 +2729,7 @@
 
     if (cancelled) {
       try { controller?.remove(); } catch (_) {}
+      rwphClearPersistedDefaultSetupWizard();
       rwphDefaultSetupState = null;
       rwphSetPanelOpenState(false);
       setLauncherOpenState(false);
@@ -2604,6 +2762,7 @@
       });
       rwphGlobalPanelLayoutsCache.layouts[state.device] = result?.layout || layout;
       rwphGlobalPanelLayoutsCache.loaded = true;
+      rwphClearPersistedDefaultSetupWizard();
       if (status) status.textContent = `${rwphDefaultSetupDeviceLabel(state.device)} setup saved. ${Number(result?.panelCount || Object.keys(state.panels || {}).length)} panel defaults are now available to users.`;
       if (controller) {
         controller.dataset.rwphDefaultSetupDone = "1";
@@ -2644,7 +2803,146 @@
     };
   }
 
-  function rwphOpenDefaultSetupPreview() {
+  function rwphRaiseDefaultSetupController() {
+    const controller = document.getElementById("rwph-default-setup-controller");
+    if (!controller) return;
+    controller.style.setProperty("position", "fixed", "important");
+    controller.style.setProperty("z-index", "2147483647", "important");
+    controller.style.setProperty("pointer-events", "auto", "important");
+    // Re-appending keeps the controller last in the body stacking order as well as at max z-index.
+    try { document.body.appendChild(controller); } catch (_) {}
+  }
+
+  function rwphDefaultSetupSampleRows() {
+    return [
+      { id: "1000001", name: "Example Member", warHits: 18, attacks: 18, assists: 3, outsideHits: 2, retaliationHits: 1, weight: 24.5, points: 24.5, respect: 42.1, payout: 12500000, fairFightAvg: 1.42, fairFightBest: 2.11, fairFightBonus: 1.8 },
+      { id: "1000002", name: "Second Member", warHits: 12, attacks: 12, assists: 1, outsideHits: 1, retaliationHits: 2, weight: 17.2, points: 17.2, respect: 31.7, payout: 8750000, fairFightAvg: 1.18, fairFightBest: 1.73, fairFightBonus: 0.7 },
+    ];
+  }
+
+  function rwphCreateDefaultSetupActualMainPanel() {
+    document.getElementById("rw-payout-helper")?.remove();
+    const panel = document.createElement("div");
+    panel.id = "rw-payout-helper";
+    document.body.appendChild(panel);
+    rwphSetPanelOpenState(false);
+    setLauncherOpenState(false);
+    showMainScreen(panel);
+    try { document.getElementById("rw-tab-payout")?.click(); } catch (_) {}
+    return panel;
+  }
+
+  function rwphCreateDefaultSetupActualResultsPanel() {
+    document.getElementById("rw-payout-helper")?.remove();
+    const host = document.createElement("div");
+    host.id = "rw-payout-helper";
+    host.dataset.rwphDefaultSetupHost = "1";
+    document.body.appendChild(host);
+    showMainScreen(host);
+    const panel = host.querySelector("#rw-results-panel");
+    if (!panel) return null;
+    const rows = rwphDefaultSetupSampleRows();
+    const summary = {
+      pointsMode: true,
+      calculationMode: "points",
+      calculationSystem: "fair-fight",
+      memberPayout: 21250000,
+      overallTotalPayout: 21250000,
+      totalWarHits: 30,
+      totalAssists: 4,
+      totalOutsideHits: 3,
+      totalRetaliationHits: 3,
+      totalPoints: 41.7,
+      attacksFetched: 38,
+      selectedWar: { timeSource: "last-ranked-war-report" },
+      calcMeta: { ownFactionAttacks: 38, skippedFailed: 0 },
+      fairFightMode: "avg-step",
+      fairFightEnabled: true,
+      fairFightCap: 3,
+      fairFightPointPerStep: 0.01,
+      fairFightStep: 0.02,
+      warnings: [],
+    };
+    const results = panel.querySelector("#rw-results");
+    if (results) results.innerHTML = renderRows(rows, summary);
+    panel.hidden = false;
+    panel.removeAttribute("hidden");
+    panel.style.setProperty("display", "block", "important");
+    panel.style.setProperty("visibility", "visible", "important");
+    panel.style.setProperty("opacity", "1", "important");
+    // Keep only the real fixed results child visible; the real main panel is just its style/DOM host.
+    Array.from(host.children).forEach((child) => {
+      if (child !== panel && child.tagName !== "STYLE") child.style?.setProperty?.("display", "none", "important");
+    });
+    host.style.setProperty("background", "transparent", "important");
+    host.style.setProperty("border", "0", "important");
+    host.style.setProperty("box-shadow", "none", "important");
+    host.style.setProperty("width", "0", "important");
+    host.style.setProperty("height", "0", "important");
+    host.style.setProperty("min-width", "0", "important");
+    host.style.setProperty("min-height", "0", "important");
+    host.style.setProperty("overflow", "visible", "important");
+    return panel;
+  }
+
+  async function rwphOpenDefaultSetupActualPanel(target) {
+    if (!target) return null;
+    let panel = null;
+    switch (target.id) {
+      case "rw-payout-helper":
+        panel = rwphCreateDefaultSetupActualMainPanel();
+        break;
+      case "rw-results-panel":
+        panel = rwphCreateDefaultSetupActualResultsPanel();
+        break;
+      case "rwph-results-loading-panel":
+        rwphCreateResultsLoadingPanel("rwph-default-setup", buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now());
+        panel = document.getElementById("rwph-results-loading-panel");
+        break;
+      case "rwph-saved-reports-panel":
+        panel = await rwphOpenSavedReportsPanel({ setupMode: true });
+        break;
+      case "rwph-member-management-panel":
+        panel = await rwphOpenMemberManagementPanel("points", { setupMode: true });
+        break;
+      case "rw-pay-all-panel":
+        openPayAllCopyPanel(rwphDefaultSetupSampleRows());
+        panel = document.getElementById("rw-pay-all-panel");
+        break;
+      case "rwph-xanax-send-status":
+        sessionStorage.removeItem("rwph_xanax_helper_closed");
+        rwphSendHelperPanelStatus(rwphPaymentHelperHtml("RWPH-SETUP-CODE", "Default Setup preview. This is the real Xanax Payment Helper panel; no payment is being created.", false), false);
+        panel = document.getElementById("rwph-xanax-send-status");
+        break;
+      case "rwph-licence-info-panel":
+        rwphOpenLicenceInfoPanel({ valid: true, name: "Example User", tornId: "1000001", expiresAt: Math.floor(Date.now() / 1000) + (30 * 86400) });
+        panel = document.getElementById("rwph-licence-info-panel");
+        break;
+      case "rwph-layout-theme-panel":
+        rwphOpenPanelThemePicker();
+        panel = document.getElementById("rwph-layout-theme-panel");
+        break;
+      case "rwph-logo-picker-panel":
+        rwphOpenLogoPicker();
+        panel = document.getElementById("rwph-logo-picker-panel");
+        break;
+      case "rw-wrong-payment-panel":
+        showWrongPaymentPanel("Default Setup preview. This is the real Payment Warning panel; no payment has been sent.");
+        panel = document.getElementById("rw-wrong-payment-panel");
+        break;
+      default:
+        break;
+    }
+    if (!panel) return null;
+    panel.dataset.rwphDefaultSetupPreview = "1"; // setup-managed real panel: do not overwrite this admin's personal layout.
+    panel.dataset.rwphDefaultSetupActual = "1";
+    panel.dataset.rwphDefaultSetupDevice = rwphDefaultSetupState?.device || "pc";
+    panel.style.setProperty("z-index", "2147483638", "important");
+    panel.style.setProperty("pointer-events", "auto", "important");
+    return panel;
+  }
+
+  async function rwphOpenDefaultSetupPreview() {
     const state = rwphDefaultSetupState;
     if (!state) return;
     rwphRemoveDefaultSetupPreview();
@@ -2654,61 +2952,29 @@
       return;
     }
     state.currentTarget = target;
+    rwphPersistDefaultSetupWizard();
+    if (rwphDefaultSetupNavigateForTarget(target)) return;
 
-    // Remove a real copy of this panel if it happened to be open before setup began.
-    const existing = document.getElementById(target.id);
-    if (existing) {
-      try { existing.remove(); } catch (_) {}
+    const panel = await rwphOpenDefaultSetupActualPanel(target);
+    if (!panel) {
+      const controller = document.getElementById("rwph-default-setup-controller");
+      const status = controller?.querySelector("#rwph-default-setup-controller-status");
+      if (status) status.textContent = `Could not open the real ${target.label} panel. Press Next Panel to continue or Cancel to stop.`;
+      rwphRaiseDefaultSetupController();
+      return;
     }
-
-    rwphEnsureFloatingPanelCss();
-    const panel = document.createElement("section");
-    panel.id = target.id;
-    panel.className = `${target.className || "rwph-floating-panel"} rwph-default-setup-preview`;
-    panel.dataset.rwphDefaultSetupPreview = "1";
-    panel.dataset.rwphDefaultSetupDevice = state.device;
-    panel.style.cssText = `
-      position:fixed;
-      z-index:2147483600;
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
-      min-width:150px;
-      min-height:110px;
-      max-width:none;
-      max-height:none;
-      border:1px solid rgba(251,191,36,.42);
-      border-radius:16px;
-      background:linear-gradient(180deg,rgba(24,24,27,.99),rgba(9,9,11,.99));
-      box-shadow:0 22px 70px rgba(0,0,0,.58);
-      color:#fff7ed;
-    `;
-    panel.innerHTML = `
-      <div class="rwph-panel-head rw-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;cursor:move;touch-action:none;user-select:none;border-bottom:1px solid rgba(255,255,255,.10);">
-        <div style="min-width:0;display:flex;align-items:center;gap:10px;">
-          <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:108px;height:34px;object-fit:contain;flex:0 0 auto;">
-          <div style="min-width:0;"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(target.label)}</b><span class="rw-muted" style="font-size:11px;">${rwphDefaultSetupDeviceLabel(state.device)} default preview</span></div>
-        </div>
-        <button type="button" class="danger rwph-default-preview-close" title="Cancel setup" aria-label="Cancel setup" style="margin:0;">×</button>
-      </div>
-      <div class="rwph-floating-panel-body" style="padding:14px;overflow:auto;flex:1 1 auto;min-height:0;">
-        <div class="rw-card" style="padding:12px;margin-bottom:10px;">
-          <b>Move and resize this panel.</b>
-          <div class="rw-muted" style="margin-top:6px;line-height:1.45;">This is the layout preview for <b>${esc(target.label)}</b>. Position and size it exactly where you want new ${rwphDefaultSetupDeviceLabel(state.device)} users to see it.</div>
-        </div>
-        <div class="rw-card" style="padding:12px;min-height:90px;">
-          <div class="rw-muted">The real panel content will appear here during normal RWPH use. Only the panel position, size, and text scale are being configured.</div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(panel);
 
     const saved = rwphGlobalPanelLayoutsCache.layouts?.[state.device]?.panels?.[target.id];
     if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
     else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, state.device), { normalized: false });
 
-    rwphEnablePanelMoveResize(panel, ".rwph-panel-head, .rw-head");
-    panel.querySelector(".rwph-default-preview-close")?.addEventListener("click", () => rwphFinishDefaultSetupWizard(true));
+    // Some real builders install their own drag/resize. Calling again is safe and guarantees setup-created results hosts have it.
+    const handle = target.id === "rw-pay-all-panel" ? ".rw-pay-all-head"
+      : target.id === "rwph-saved-reports-panel" ? ".rwph-saved-reports-head"
+      : target.id === "rwph-results-loading-panel" ? ".rwph-results-loading-head, .rwph-results-loading-panel-head"
+      : target.id === "rwph-xanax-send-status" ? "#rwph-payment-helper-title"
+      : ".rwph-panel-head, .rwph-floating-panel-head, .rw-head";
+    rwphEnablePanelMoveResize(panel, handle);
 
     const controller = document.getElementById("rwph-default-setup-controller");
     const counter = controller?.querySelector("#rwph-default-setup-counter");
@@ -2717,8 +2983,9 @@
     const next = controller?.querySelector("#rwph-default-setup-next");
     if (counter) counter.textContent = `Panel ${state.index + 1} of ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length}`;
     if (name) name.textContent = target.label;
-    if (status) status.textContent = "Move/resize the panel, then press Next Panel to save this position and continue.";
+    if (status) status.textContent = "Move/resize the actual RWPH panel underneath this controller, then press Next Panel to save its position and size.";
     if (next) next.textContent = state.index === RWPH_DEFAULT_SETUP_PANEL_TARGETS.length - 1 ? "Save Setup" : "Next Panel";
+    rwphRaiseDefaultSetupController();
   }
 
   async function rwphAdvanceDefaultSetupWizard() {
@@ -2732,11 +2999,12 @@
     }
     rwphRemoveDefaultSetupPreview();
     state.index += 1;
+    rwphPersistDefaultSetupWizard();
     if (state.index >= RWPH_DEFAULT_SETUP_PANEL_TARGETS.length) {
       await rwphFinishDefaultSetupWizard(false);
       return;
     }
-    rwphOpenDefaultSetupPreview();
+    await rwphOpenDefaultSetupPreview();
   }
 
   function rwphCreateDefaultSetupController() {
@@ -2748,7 +3016,7 @@
     controller.className = "rwph-floating-panel rwph-default-setup-controller";
     controller.style.cssText = `
       position:fixed;
-      z-index:2147483646;
+      z-index:2147483647;
       right:12px;
       top:12px;
       width:min(330px,calc(100vw - 24px));
@@ -2773,9 +3041,11 @@
     `;
     document.body.appendChild(controller);
     rwphEnablePanelMoveResize(controller, ".rwph-panel-head");
+    rwphRaiseDefaultSetupController();
     controller.querySelector("#rwph-default-setup-next")?.addEventListener("click", () => {
       if (controller.dataset.rwphDefaultSetupDone === "1") {
         try { controller.remove(); } catch (_) {}
+        rwphClearPersistedDefaultSetupWizard();
         rwphDefaultSetupState = null;
         rwphSetPanelOpenState(false);
         setLauncherOpenState(false);
@@ -2800,6 +3070,8 @@
     await rwphFetchGlobalPanelLayouts(true).catch(() => {});
     rwphCloseDefaultSetupPanel();
 
+    rwphRemoveDefaultSetupPreview();
+    // Close any currently open target panels so the wizard can open the real panel cleanly one at a time.
     for (const target of RWPH_DEFAULT_SETUP_PANEL_TARGETS) {
       const existing = document.getElementById(target.id);
       if (existing) {
@@ -2815,9 +3087,11 @@
       index: 0,
       currentTarget: null,
       panels: {},
+      homeUrl: rwphDefaultSetupCleanHomeUrl(window.location.href),
     };
+    rwphPersistDefaultSetupWizard();
     rwphCreateDefaultSetupController();
-    rwphOpenDefaultSetupPreview();
+    await rwphOpenDefaultSetupPreview();
   }
 
   function rwphOpenDefaultSetupPanel(adminKey) {
@@ -2860,8 +3134,8 @@
           <b>How it works</b>
           <ol style="margin:8px 0 0 20px;padding:0;line-height:1.55;">
             <li>Click Start Setup.</li>
-            <li>RWPH opens one panel preview at a time.</li>
-            <li>Move and resize it to the default you want.</li>
+            <li>RWPH opens the real script panels one at a time.</li>
+            <li>Move and resize the actual panel to the default you want.</li>
             <li>Press Next Panel to save it and continue.</li>
             <li>After the last panel, the complete layout is saved to MySQL for everyone.</li>
           </ol>
@@ -13269,7 +13543,7 @@
     return result;
   }
 
-  async function rwphOpenMemberManagementPanel(mode = "standard") {
+  async function rwphOpenMemberManagementPanel(mode = "standard", options = {}) {
     const safeMode = rwphNormalizeCalculationMode(mode);
     rwphCloseMemberManagementPanel();
     rwphEnsureFloatingPanelCss();
@@ -13352,7 +13626,7 @@
         if (status) status.textContent = "Could not load ranked-war report members.";
       }
     };
-    panel.querySelector("#rwph-mm-refresh")?.addEventListener("click", reload);
+    panel.querySelector("#rwph-mm-refresh")?.addEventListener("click", options?.setupMode ? () => { if (status) status.textContent = "Default Setup mode — sample members stay loaded."; } : reload);
     panel.addEventListener("change", () => rwphCaptureMemberManagementPanel(safeMode));
     panel.addEventListener("input", (event) => {
       if (event.target?.classList?.contains("rwph-mm-hits")) {
@@ -13369,7 +13643,18 @@
       }
       rwphCaptureMemberManagementPanel(safeMode);
     });
+    if (options?.setupMode) {
+      panel.rwphMemberManagementMeta = { factionId: "1", factionName: "Example Faction", reportId: "setup", from: 0, to: 0 };
+      const sampleMembers = [
+        { id: "1000001", name: "Example Member", attacks: 18, warHits: 18, respect: 42.1 },
+        { id: "1000002", name: "Second Member", attacks: 12, warHits: 12, respect: 31.7 },
+      ];
+      if (cards) cards.innerHTML = rwphRenderMemberManagementCards(safeMode, sampleMembers);
+      if (status) status.textContent = "Default Setup mode — real Member Management panel with sample members.";
+      return panel;
+    }
     await reload();
+    return panel;
   }
 
   function rwphSavedReportDateTime(seconds) {
@@ -13629,11 +13914,11 @@
     }
   }
 
-  async function rwphOpenSavedReportsPanel({ highlightReportId = 0 } = {}) {
+  async function rwphOpenSavedReportsPanel({ highlightReportId = 0, setupMode = false } = {}) {
     const mainStatus = document.getElementById("rw-status");
     const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
     const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
-    if (!userKey) {
+    if (!setupMode && !userKey) {
       rwphToastPanelError(mainStatus, "Enter your Torn API key first.", "RWPH Cached Reports");
       return;
     }
@@ -13689,7 +13974,21 @@
       const del = event.target?.closest?.("[data-rwph-saved-delete]");
       if (del) rwphDeleteSavedReportSlot(del.getAttribute("data-rwph-saved-delete"), del.getAttribute("data-rwph-report-position"));
     });
+    if (setupMode) {
+      const sample = {
+        cacheId: 1, empty: false, calculationMode: "points", calculationSystem: "fair-fight", calculationSystemLabel: "Fair Fight",
+        createdAtMs: Date.now(), from: Math.floor(Date.now()/1000) - 3600, to: Math.floor(Date.now()/1000), memberCount: 2,
+      };
+      const list = panel.querySelector("#rwph-saved-reports-list");
+      if (list) list.innerHTML = `${rwphSavedReportSlotHtml(sample, 1, false)}${rwphSavedReportSlotHtml({ empty: true }, 2, false)}${rwphSavedReportSlotHtml({ empty: true }, 3, false)}`;
+      const faction = panel.querySelector("#rwph-saved-reports-faction");
+      if (faction) faction.textContent = "Example Faction · setup mode";
+      const setupStatus = panel.querySelector("#rwph-saved-reports-status");
+      if (setupStatus) setupStatus.textContent = "Default Setup mode — live MySQL data is not queried.";
+      return panel;
+    }
     rwphRefreshSavedReportsPanel({ highlightReportId });
+    return panel;
   }
 
   function rwphWarSourceLabel(value) {
@@ -14391,6 +14690,7 @@
         rwphHidePayAllActionButton(amountBtn, "Amount", payAllUndoStack);
       }
     });
+    return panel;
   }
 
   function rwphMaybeOpenPayAllFromFactionControlsUrl() {
@@ -14839,6 +15139,7 @@
   }
 
   function shouldRunXanaxPaymentAutofill() {
+    if (rwphDefaultSetupWizardActive()) return false;
     try {
       const params = new URLSearchParams(window.location.search || "");
       if (params.get("rwphSendXanax") === "1" && !!params.get("rwphCode")) return true;
@@ -16611,10 +16912,12 @@
       if (panel) showPaywallScreen(panel, { skipAutoUnlock: true });
     });
 
-    startLicenseExpiryMonitor();
-    updatePendingPaymentUi();
-    if (getPendingPayment()) {
-      restorePendingPaymentFromDatabase(document.getElementById("rw-key")?.value.trim(), "extend");
+    if (!rwphDefaultSetupState) {
+      startLicenseExpiryMonitor();
+      updatePendingPaymentUi();
+      if (getPendingPayment()) {
+        restorePendingPaymentFromDatabase(document.getElementById("rw-key")?.value.trim(), "extend");
+      }
     }
 
     async function rwphAutoFillWarTimesForMode(mode = "standard") {
@@ -17057,16 +17360,17 @@
   }
 
   rwphFetchGlobalPanelLayouts(false).catch(() => {});
+  const rwphDefaultSetupResumed = rwphRestoreDefaultSetupWizardFromStorage();
   rwphInstallPageNavigationAutoClose();
   rwphInstallLauncherNavObserver();
   setupXanaxPaymentButtonHandler();
   syncLauncherButtonVisibility();
-  rwphScheduleXanaxPaymentHelperOpen();
-  const rwphPaymentsOnlyTab = rwphMaybeOpenPayAllFromFactionControlsUrl();
-  if (!rwphPaymentsOnlyTab && rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
+  if (!rwphDefaultSetupResumed) rwphScheduleXanaxPaymentHelperOpen();
+  const rwphPaymentsOnlyTab = rwphDefaultSetupResumed ? false : rwphMaybeOpenPayAllFromFactionControlsUrl();
+  if (!rwphDefaultSetupResumed && !rwphPaymentsOnlyTab && rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
     setTimeout(() => createPanel(), 250);
   }
-  if (!rwphPaymentsOnlyTab) rwphScheduleFirstRunTutorialAutoOpen(900);
+  if (!rwphDefaultSetupResumed && !rwphPaymentsOnlyTab) rwphScheduleFirstRunTutorialAutoOpen(900);
   function rwphInjectUnifiedPanelThemeV1375() {
     try {
       if (document.getElementById("rwph-unified-panel-theme-v1375")) return;

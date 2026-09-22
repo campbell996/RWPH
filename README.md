@@ -1,12 +1,15 @@
-## v1.1.494 — Admin Default Setup (PC + Phone/PDA)
+## v1.1.495 — Admin Default Setup (PC + Phone/PDA)
 
 - Added an admin-only **Default Setup** panel.
 - Separate global layouts can be configured for **PC** and **Phone/PDA**.
 - **Start Setup** launches a guided panel-by-panel wizard.
-- A small setup controller stays open with **Next Panel**; pressing it saves the current panel position/size/text scale, closes that preview, and opens the next panel.
+- A small setup controller stays open with **Next Panel**; pressing it saves the current real panel position/size/text scale, closes it, and opens the next real panel.
 - The last step saves the complete device layout to MySQL using the existing `rwph_settings` table.
 - Global defaults use normalized viewport positions/sizes so they scale across different desktop and mobile screen sizes.
 - Users' personal moved/resized panel layouts still override the global default on that device/browser.
+- The wizard follows the same Torn-page navigation used by RWPH: **Payments Copy Panel** moves to faction controls, and **Xanax Payment Helper** moves to Torn's Items page.
+- Wizard progress survives those page changes and the setup controller reappears on the destination page above the real panel.
+- The setup controller is forced above every setup target so **Next Panel** remains accessible while positioning/resizing.
 - No new database table or schema migration is required; the updated backend must be redeployed for global defaults.
 
 
@@ -41,7 +44,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.494**  
+Current userscript version: **1.1.495**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -50,11 +53,14 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.494
+## What's New in v1.1.495
 
 - Added an admin-only **Default Setup** button in the Admin tab.
 - Added separate global panel layouts for **PC** and **Phone/PDA**.
 - The setup wizard opens every supported movable RWPH panel one at a time with a small **Next Panel** controller.
+- Setup uses the **actual RWPH panels**, not preview shells.
+- Panels that normally change Torn pages do the same during setup: Payments Copy uses faction controls and Payment Helper uses Torn Items.
+- Setup state persists across those page changes and resumes automatically with the controller kept above the active panel.
 - Each step captures the panel position, size, and text scale; the final setup is saved to MySQL.
 - Global defaults are normalized to the viewport so they adapt to different screen sizes.
 - A user's own saved panel position/size still overrides the admin default.
