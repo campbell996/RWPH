@@ -1,6 +1,17 @@
+## v1.1.494 — Admin Default Setup (PC + Phone/PDA)
+
+- Added an admin-only **Default Setup** panel.
+- Separate global layouts can be configured for **PC** and **Phone/PDA**.
+- **Start Setup** launches a guided panel-by-panel wizard.
+- A small setup controller stays open with **Next Panel**; pressing it saves the current panel position/size/text scale, closes that preview, and opens the next panel.
+- The last step saves the complete device layout to MySQL using the existing `rwph_settings` table.
+- Global defaults use normalized viewport positions/sizes so they scale across different desktop and mobile screen sizes.
+- Users' personal moved/resized panel layouts still override the global default on that device/browser.
+- No new database table or schema migration is required; the updated backend must be redeployed for global defaults.
 
 
-## v1.1.492 — Context-aware results reports
+
+## v1.1.493 — Context-aware results reports
 
 - War summary cards now show scoring information relevant to the settings actually used for that report.
 - Member cards now show only relevant scoring/detail fields for those settings.
@@ -30,7 +41,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.492**  
+Current userscript version: **1.1.494**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -39,7 +50,17 @@ Author: **Evil_Panda_420**
 
 ---
 
-## What's New in v1.1.492
+## What's New in v1.1.494
+
+- Added an admin-only **Default Setup** button in the Admin tab.
+- Added separate global panel layouts for **PC** and **Phone/PDA**.
+- The setup wizard opens every supported movable RWPH panel one at a time with a small **Next Panel** controller.
+- Each step captures the panel position, size, and text scale; the final setup is saved to MySQL.
+- Global defaults are normalized to the viewport so they adapt to different screen sizes.
+- A user's own saved panel position/size still overrides the admin default.
+- The updated backend must be redeployed; no database schema migration is required.
+
+## What's New in v1.1.493
 
 - Results reports now adapt their war information and member-card details to the exact scoring settings used.
 - Fair Fight reports prioritize Fair Fight mode, Avg FF, Best FF, and Fair Fight bonus values.

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.492
+// @version      1.1.494
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.494: Admin Default Setup wizard adds separate global PC and Phone/PDA panel layouts saved in MySQL; guided Next Panel flow captures position/size for each RWPH panel.
+  // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
   // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
   // v1.1.491: Full clean-panel UI refresh across RWPH. All movable panels keep Close, Fit-to-screen, drag, and resize controls while calculations/licensing/cache/backend behavior remains unchanged.
   // v1.1.490: Payment Helper opens instantly from a successful Buy/Extend handoff and uses a direct indexed payment-code lookup when browser state is missing; no Torn identity lookup blocks helper rendering.
@@ -42,6 +44,7 @@
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
   const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
   const PANEL_LAYOUT_STORAGE_KEY = "rw_payout_helper_panel_layout";
+  const GLOBAL_PANEL_LAYOUT_ENDPOINT = "/api/ui/default-panel-layouts";
   const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PAYOUT_FORM_SCHEMA_STORAGE_KEY = "rw_payout_helper_payout_form_schema_version";
@@ -2348,8 +2351,122 @@
     setInterval(checkPageChange, 1000);
   }
 
+  const rwphGlobalPanelLayoutsCache = {
+    loaded: false,
+    loading: null,
+    layouts: { pc: null, mobile: null },
+  };
+
+  function rwphGlobalLayoutDevice() {
+    return rwphIsMobileOrPdaView() ? "mobile" : "pc";
+  }
+
+  function rwphPublicJsonRequest(method, path, body = null, timeout = 15000) {
+    return new Promise((resolve, reject) => {
+      const isGet = String(method || "GET").toUpperCase() === "GET";
+      const sep = path.includes("?") ? "&" : "?";
+      GM_xmlhttpRequest({
+        method,
+        url: `${PAYWALL_API_BASE}${path}${isGet ? `${sep}_rwph=${Date.now()}` : ""}`,
+        responseType: "text",
+        headers: {
+          "Accept": "application/json, text/plain, */*",
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
+        data: isGet || body == null ? undefined : JSON.stringify(body),
+        timeout,
+        onload: (res) => {
+          try {
+            const json = JSON.parse(String(res?.responseText ?? res?.response ?? "{}"));
+            if (!json?.ok) throw new Error(json?.error || `Server error ${res?.status || 0}`);
+            resolve(json);
+          } catch (e) {
+            reject(e);
+          }
+        },
+        onerror: () => reject(new Error("Could not load RWPH default panel layout.")),
+        ontimeout: () => reject(new Error("RWPH default panel layout request timed out.")),
+      });
+    });
+  }
+
+  async function rwphFetchGlobalPanelLayouts(force = false) {
+    if (!force && rwphGlobalPanelLayoutsCache.loaded) return rwphGlobalPanelLayoutsCache.layouts;
+    if (!force && rwphGlobalPanelLayoutsCache.loading) return rwphGlobalPanelLayoutsCache.loading;
+    const promise = rwphPublicJsonRequest("GET", GLOBAL_PANEL_LAYOUT_ENDPOINT, null, 12000)
+      .then((result) => {
+        rwphGlobalPanelLayoutsCache.layouts = {
+          pc: result?.layouts?.pc || null,
+          mobile: result?.layouts?.mobile || null,
+        };
+        rwphGlobalPanelLayoutsCache.loaded = true;
+        return rwphGlobalPanelLayoutsCache.layouts;
+      })
+      .catch((e) => {
+        // A missing/outdated backend should never stop RWPH from opening.
+        console.warn("RWPH could not load global panel defaults:", e?.message || e);
+        return rwphGlobalPanelLayoutsCache.layouts;
+      })
+      .finally(() => {
+        if (rwphGlobalPanelLayoutsCache.loading === promise) rwphGlobalPanelLayoutsCache.loading = null;
+      });
+    rwphGlobalPanelLayoutsCache.loading = promise;
+    return promise;
+  }
+
+  function rwphPanelMinimumLayoutSize(panel) {
+    const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
+    const isXanaxHelper = panel?.id === "rwph-xanax-send-status";
+    const isResults = panel?.id === "rw-results-panel" || panel?.classList?.contains("rw-results-panel");
+    const isPayAll = panel?.id === "rw-pay-all-panel" || panel?.classList?.contains("rw-pay-all-panel");
+    const minWidth = mobilePanel
+      ? (isResults ? 170 : (isXanaxHelper ? 240 : (isPayAll ? 240 : 150)))
+      : (isResults ? 280 : (isXanaxHelper ? 300 : (isPayAll ? 260 : 150)));
+    const minHeight = isXanaxHelper ? (mobilePanel ? 180 : 260) : 110;
+    return { minWidth, minHeight };
+  }
+
+  function rwphApplyPanelGeometry(panel, saved, { normalized = false } = {}) {
+    if (!panel || !saved) return false;
+    const { minWidth, minHeight } = rwphPanelMinimumLayoutSize(panel);
+    const viewportWidth = Math.max(1, Number(window.innerWidth || document.documentElement?.clientWidth || 1024));
+    const viewportHeight = Math.max(1, Number(window.innerHeight || document.documentElement?.clientHeight || 768));
+
+    const requestedWidth = normalized && Number.isFinite(Number(saved.widthRatio))
+      ? Number(saved.widthRatio) * viewportWidth
+      : Number(saved.width);
+    const requestedHeight = normalized && Number.isFinite(Number(saved.heightRatio))
+      ? Number(saved.heightRatio) * viewportHeight
+      : Number(saved.height);
+    const requestedLeft = normalized && Number.isFinite(Number(saved.leftRatio))
+      ? Number(saved.leftRatio) * viewportWidth
+      : Number(saved.left);
+    const requestedTop = normalized && Number.isFinite(Number(saved.topRatio))
+      ? Number(saved.topRatio) * viewportHeight
+      : Number(saved.top);
+
+    const width = Math.min(Math.max(minWidth, requestedWidth || minWidth), Math.max(minWidth, viewportWidth - 16));
+    const height = Math.min(Math.max(minHeight, requestedHeight || minHeight), Math.max(minHeight, viewportHeight - 16));
+    const left = Math.min(Math.max(8, requestedLeft || 8), Math.max(8, viewportWidth - width - 8));
+    const top = Math.min(Math.max(8, requestedTop || 8), Math.max(8, viewportHeight - height - 8));
+
+    panel.style.setProperty("position", "fixed", "important");
+    panel.style.setProperty("left", `${Math.round(left)}px`, "important");
+    panel.style.setProperty("top", `${Math.round(top)}px`, "important");
+    panel.style.setProperty("right", "auto", "important");
+    panel.style.setProperty("bottom", "auto", "important");
+    panel.style.setProperty("width", `${Math.round(width)}px`, "important");
+    panel.style.setProperty("height", `${Math.round(height)}px`, "important");
+    panel.style.setProperty("max-height", "none", "important");
+    panel.style.setProperty("transform", "none", "important");
+    rwphEnsurePanelTextScale(panel, saved.textScale);
+    return true;
+  }
+
   function rwphSavePanelLayout(panel) {
     if (!panel || !panel.id) return;
+    if (panel.dataset?.rwphDefaultSetupPreview === "1") return;
     const rect = panel.getBoundingClientRect();
     if (!rect || rect.width < 40 || rect.height < 40) return;
     const layouts = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {});
@@ -2365,28 +2482,428 @@
 
   function rwphApplyPanelLayout(panel) {
     if (!panel || !panel.id) return;
-    const saved = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {})[panel.id];
-    if (!saved) return;
+    if (panel.dataset?.rwphDefaultSetupPreview === "1") return;
 
-    const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
-    const isXanaxHelper = panel.id === "rwph-xanax-send-status";
-    const minWidth = panel.id === "rw-results-panel" ? 160 : (isXanaxHelper ? (mobilePanel ? 270 : 320) : 150);
-    const minHeight = isXanaxHelper ? (mobilePanel ? 300 : 340) : 110;
-    const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
-    const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
-    const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
-    const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - height - 8));
+    const personal = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {})[panel.id];
+    if (personal) {
+      rwphApplyPanelGeometry(panel, personal, { normalized: false });
+      return;
+    }
 
-    panel.style.setProperty("position", "fixed", "important");
-    panel.style.setProperty("left", `${left}px`, "important");
-    panel.style.setProperty("top", `${top}px`, "important");
-    panel.style.setProperty("right", "auto", "important");
-    panel.style.setProperty("bottom", "auto", "important");
-    panel.style.setProperty("width", `${width}px`, "important");
-    panel.style.setProperty("height", `${height}px`, "important");
-    panel.style.setProperty("max-height", "none", "important");
-    panel.style.setProperty("transform", "none", "important");
-    rwphEnsurePanelTextScale(panel, saved.textScale);
+    const device = rwphGlobalLayoutDevice();
+    const globalSaved = rwphGlobalPanelLayoutsCache.layouts?.[device]?.panels?.[panel.id];
+    if (globalSaved) {
+      rwphApplyPanelGeometry(panel, globalSaved, { normalized: true });
+      return;
+    }
+
+    // Global defaults load once in the background. Re-check personal storage before
+    // applying so a user move/resize that happened while the request was in flight wins.
+    rwphFetchGlobalPanelLayouts(false).then((layouts) => {
+      if (!panel?.isConnected || panel.dataset?.rwphDefaultSetupPreview === "1") return;
+      const currentPersonal = rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {})[panel.id];
+      if (currentPersonal) return;
+      const lateSaved = layouts?.[rwphGlobalLayoutDevice()]?.panels?.[panel.id];
+      if (lateSaved) rwphApplyPanelGeometry(panel, lateSaved, { normalized: true });
+    }).catch(() => {});
+  }
+
+
+  const RWPH_DEFAULT_SETUP_PANEL_TARGETS = Object.freeze([
+    { id: "rw-payout-helper", label: "Main RWPH Panel", width: 640, height: 760 },
+    { id: "rw-results-panel", label: "Results Panel", width: 760, height: 720, className: "rw-results-panel" },
+    { id: "rwph-results-loading-panel", label: "Loading / Results Panel", width: 760, height: 680, className: "rwph-results-loading-panel" },
+    { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 560, height: 620, className: "rwph-floating-panel" },
+    { id: "rwph-member-management-panel", label: "Member Management", width: 460, height: 460, className: "rwph-floating-panel rwph-member-management-panel" },
+    { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 520, height: 620, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rwph-xanax-send-status", label: "Xanax Payment Helper", width: 430, height: 520, className: "rwph-floating-panel" },
+    { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 430, height: 360, className: "rwph-floating-panel" },
+    { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 540, height: 660, className: "rwph-floating-panel rwph-layout-theme-panel" },
+    { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 720, height: 700, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
+    { id: "rw-wrong-payment-panel", label: "Payment Warning", width: 430, height: 300, className: "rwph-floating-panel" },
+  ]);
+
+  let rwphDefaultSetupState = null;
+
+  function rwphDefaultSetupDeviceLabel(device) {
+    return String(device || "").toLowerCase() === "mobile" ? "Phone / PDA" : "PC";
+  }
+
+  function rwphCaptureNormalizedPanelGeometry(panel) {
+    if (!panel) return null;
+    const rect = panel.getBoundingClientRect();
+    const viewportWidth = Math.max(1, Number(window.innerWidth || document.documentElement?.clientWidth || 1));
+    const viewportHeight = Math.max(1, Number(window.innerHeight || document.documentElement?.clientHeight || 1));
+    if (!rect || rect.width < 40 || rect.height < 40) return null;
+    return {
+      leftRatio: Math.max(0, Math.min(1, rect.left / viewportWidth)),
+      topRatio: Math.max(0, Math.min(1, rect.top / viewportHeight)),
+      widthRatio: Math.max(0.05, Math.min(1, rect.width / viewportWidth)),
+      heightRatio: Math.max(0.05, Math.min(1, rect.height / viewportHeight)),
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      textScale: rwphGetPanelTextScale(panel),
+    };
+  }
+
+  function rwphRemoveDefaultSetupPreview() {
+    const state = rwphDefaultSetupState;
+    const currentId = state?.currentTarget?.id;
+    if (currentId) {
+      const current = document.getElementById(currentId);
+      if (current?.dataset?.rwphDefaultSetupPreview === "1") current.remove();
+    }
+    document.querySelectorAll?.("[data-rwph-default-setup-preview='1']").forEach((el) => {
+      try { el.remove(); } catch (_) {}
+    });
+  }
+
+  function rwphCloseDefaultSetupPanel() {
+    try { document.getElementById("rwph-default-setup-panel")?.remove(); } catch (_) {}
+  }
+
+  async function rwphFinishDefaultSetupWizard(cancelled = false) {
+    const state = rwphDefaultSetupState;
+    rwphRemoveDefaultSetupPreview();
+    if (!state) return;
+    const controller = document.getElementById("rwph-default-setup-controller");
+
+    if (cancelled) {
+      try { controller?.remove(); } catch (_) {}
+      rwphDefaultSetupState = null;
+      rwphSetPanelOpenState(false);
+      setLauncherOpenState(false);
+      setTimeout(() => createPanel(), 80);
+      return;
+    }
+
+    const nextButton = controller?.querySelector("#rwph-default-setup-next");
+    if (nextButton) {
+      nextButton.disabled = true;
+      nextButton.textContent = "Saving...";
+    }
+    const status = controller?.querySelector("#rwph-default-setup-controller-status");
+    if (status) status.textContent = `Saving ${rwphDefaultSetupDeviceLabel(state.device)} defaults to MySQL...`;
+
+    try {
+      const layout = {
+        version: 1,
+        device: state.device,
+        updatedAt: Date.now(),
+        viewport: {
+          width: Math.max(1, Number(window.innerWidth || document.documentElement?.clientWidth || 1)),
+          height: Math.max(1, Number(window.innerHeight || document.documentElement?.clientHeight || 1)),
+        },
+        panels: state.panels,
+      };
+      const result = await adminRequest("POST", "/api/admin/default-panel-layout", state.adminKey, {
+        device: state.device,
+        layout,
+      });
+      rwphGlobalPanelLayoutsCache.layouts[state.device] = result?.layout || layout;
+      rwphGlobalPanelLayoutsCache.loaded = true;
+      if (status) status.textContent = `${rwphDefaultSetupDeviceLabel(state.device)} setup saved. ${Number(result?.panelCount || Object.keys(state.panels || {}).length)} panel defaults are now available to users.`;
+      if (controller) {
+        controller.dataset.rwphDefaultSetupDone = "1";
+        controller.dataset.rwphDefaultSetupRetry = "0";
+      }
+      if (nextButton) {
+        nextButton.disabled = false;
+        nextButton.textContent = "Done";
+      }
+      const cancelButton = controller?.querySelector("#rwph-default-setup-cancel");
+      if (cancelButton) cancelButton.hidden = true;
+    } catch (e) {
+      if (status) status.textContent = `Could not save defaults: ${e.message}`;
+      if (controller) controller.dataset.rwphDefaultSetupRetry = "1";
+      if (nextButton) {
+        nextButton.disabled = false;
+        nextButton.textContent = "Retry Save";
+      }
+    }
+  }
+
+  function rwphDefaultSetupFallbackGeometry(target, device) {
+    const mobile = device === "mobile";
+    const vw = Math.max(320, Number(window.innerWidth || 1024));
+    const vh = Math.max(320, Number(window.innerHeight || 768));
+    const width = mobile
+      ? Math.min(Math.max(270, Math.round(vw * 0.92)), vw - 16)
+      : Math.min(Math.max(320, Number(target.width || 520)), vw - 16);
+    const height = mobile
+      ? Math.min(Math.max(260, Math.round(vh * 0.72)), vh - 16)
+      : Math.min(Math.max(220, Number(target.height || 520)), vh - 16);
+    return {
+      left: Math.max(8, Math.round((vw - width) / 2)),
+      top: Math.max(8, Math.round((vh - height) / 2)),
+      width,
+      height,
+      textScale: 1,
+    };
+  }
+
+  function rwphOpenDefaultSetupPreview() {
+    const state = rwphDefaultSetupState;
+    if (!state) return;
+    rwphRemoveDefaultSetupPreview();
+    const target = RWPH_DEFAULT_SETUP_PANEL_TARGETS[state.index];
+    if (!target) {
+      rwphFinishDefaultSetupWizard(false);
+      return;
+    }
+    state.currentTarget = target;
+
+    // Remove a real copy of this panel if it happened to be open before setup began.
+    const existing = document.getElementById(target.id);
+    if (existing) {
+      try { existing.remove(); } catch (_) {}
+    }
+
+    rwphEnsureFloatingPanelCss();
+    const panel = document.createElement("section");
+    panel.id = target.id;
+    panel.className = `${target.className || "rwph-floating-panel"} rwph-default-setup-preview`;
+    panel.dataset.rwphDefaultSetupPreview = "1";
+    panel.dataset.rwphDefaultSetupDevice = state.device;
+    panel.style.cssText = `
+      position:fixed;
+      z-index:2147483600;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      min-width:150px;
+      min-height:110px;
+      max-width:none;
+      max-height:none;
+      border:1px solid rgba(251,191,36,.42);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(24,24,27,.99),rgba(9,9,11,.99));
+      box-shadow:0 22px 70px rgba(0,0,0,.58);
+      color:#fff7ed;
+    `;
+    panel.innerHTML = `
+      <div class="rwph-panel-head rw-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;cursor:move;touch-action:none;user-select:none;border-bottom:1px solid rgba(255,255,255,.10);">
+        <div style="min-width:0;display:flex;align-items:center;gap:10px;">
+          <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:108px;height:34px;object-fit:contain;flex:0 0 auto;">
+          <div style="min-width:0;"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(target.label)}</b><span class="rw-muted" style="font-size:11px;">${rwphDefaultSetupDeviceLabel(state.device)} default preview</span></div>
+        </div>
+        <button type="button" class="danger rwph-default-preview-close" title="Cancel setup" aria-label="Cancel setup" style="margin:0;">×</button>
+      </div>
+      <div class="rwph-floating-panel-body" style="padding:14px;overflow:auto;flex:1 1 auto;min-height:0;">
+        <div class="rw-card" style="padding:12px;margin-bottom:10px;">
+          <b>Move and resize this panel.</b>
+          <div class="rw-muted" style="margin-top:6px;line-height:1.45;">This is the layout preview for <b>${esc(target.label)}</b>. Position and size it exactly where you want new ${rwphDefaultSetupDeviceLabel(state.device)} users to see it.</div>
+        </div>
+        <div class="rw-card" style="padding:12px;min-height:90px;">
+          <div class="rw-muted">The real panel content will appear here during normal RWPH use. Only the panel position, size, and text scale are being configured.</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    const saved = rwphGlobalPanelLayoutsCache.layouts?.[state.device]?.panels?.[target.id];
+    if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
+    else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, state.device), { normalized: false });
+
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head, .rw-head");
+    panel.querySelector(".rwph-default-preview-close")?.addEventListener("click", () => rwphFinishDefaultSetupWizard(true));
+
+    const controller = document.getElementById("rwph-default-setup-controller");
+    const counter = controller?.querySelector("#rwph-default-setup-counter");
+    const name = controller?.querySelector("#rwph-default-setup-current");
+    const status = controller?.querySelector("#rwph-default-setup-controller-status");
+    const next = controller?.querySelector("#rwph-default-setup-next");
+    if (counter) counter.textContent = `Panel ${state.index + 1} of ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length}`;
+    if (name) name.textContent = target.label;
+    if (status) status.textContent = "Move/resize the panel, then press Next Panel to save this position and continue.";
+    if (next) next.textContent = state.index === RWPH_DEFAULT_SETUP_PANEL_TARGETS.length - 1 ? "Save Setup" : "Next Panel";
+  }
+
+  async function rwphAdvanceDefaultSetupWizard() {
+    const state = rwphDefaultSetupState;
+    if (!state) return;
+    const target = state.currentTarget || RWPH_DEFAULT_SETUP_PANEL_TARGETS[state.index];
+    const panel = target ? document.getElementById(target.id) : null;
+    if (panel) {
+      const geometry = rwphCaptureNormalizedPanelGeometry(panel);
+      if (geometry) state.panels[target.id] = geometry;
+    }
+    rwphRemoveDefaultSetupPreview();
+    state.index += 1;
+    if (state.index >= RWPH_DEFAULT_SETUP_PANEL_TARGETS.length) {
+      await rwphFinishDefaultSetupWizard(false);
+      return;
+    }
+    rwphOpenDefaultSetupPreview();
+  }
+
+  function rwphCreateDefaultSetupController() {
+    document.getElementById("rwph-default-setup-controller")?.remove();
+    const state = rwphDefaultSetupState;
+    if (!state) return null;
+    const controller = document.createElement("aside");
+    controller.id = "rwph-default-setup-controller";
+    controller.className = "rwph-floating-panel rwph-default-setup-controller";
+    controller.style.cssText = `
+      position:fixed;
+      z-index:2147483646;
+      right:12px;
+      top:12px;
+      width:min(330px,calc(100vw - 24px));
+      min-width:min(260px,calc(100vw - 24px));
+      min-height:180px;
+      overflow:hidden;
+    `;
+    controller.innerHTML = `
+      <div class="rwph-panel-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;cursor:move;touch-action:none;user-select:none;">
+        <div><b>Default Setup</b><div class="rw-muted" style="font-size:11px;">${rwphDefaultSetupDeviceLabel(state.device)}</div></div>
+        <button id="rwph-default-setup-controller-close" type="button" class="danger" title="Cancel setup" aria-label="Cancel setup">×</button>
+      </div>
+      <div class="rwph-floating-panel-body" style="padding:12px;display:grid;gap:9px;">
+        <div id="rwph-default-setup-counter" style="font-weight:900;">Panel 1 of ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length}</div>
+        <div id="rwph-default-setup-current" style="font-size:14px;font-weight:900;">Starting...</div>
+        <div id="rwph-default-setup-controller-status" class="rw-muted" style="line-height:1.4;">Move/resize the panel, then press Next Panel.</div>
+        <div class="rw-actions" style="display:grid;grid-template-columns:1fr auto;gap:8px;">
+          <button id="rwph-default-setup-next" type="button" class="primary">Next Panel</button>
+          <button id="rwph-default-setup-cancel" type="button" class="danger">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(controller);
+    rwphEnablePanelMoveResize(controller, ".rwph-panel-head");
+    controller.querySelector("#rwph-default-setup-next")?.addEventListener("click", () => {
+      if (controller.dataset.rwphDefaultSetupDone === "1") {
+        try { controller.remove(); } catch (_) {}
+        rwphDefaultSetupState = null;
+        rwphSetPanelOpenState(false);
+        setLauncherOpenState(false);
+        setTimeout(() => createPanel(), 80);
+        return;
+      }
+      if (controller.dataset.rwphDefaultSetupRetry === "1") {
+        controller.dataset.rwphDefaultSetupRetry = "0";
+        rwphFinishDefaultSetupWizard(false);
+        return;
+      }
+      rwphAdvanceDefaultSetupWizard();
+    });
+    controller.querySelector("#rwph-default-setup-cancel")?.addEventListener("click", () => rwphFinishDefaultSetupWizard(true));
+    controller.querySelector("#rwph-default-setup-controller-close")?.addEventListener("click", () => rwphFinishDefaultSetupWizard(true));
+    return controller;
+  }
+
+  async function rwphStartDefaultSetupWizard(device, adminKey) {
+    if (rwphDefaultSetupState) return;
+    const safeDevice = String(device || "").toLowerCase() === "mobile" ? "mobile" : "pc";
+    await rwphFetchGlobalPanelLayouts(true).catch(() => {});
+    rwphCloseDefaultSetupPanel();
+
+    for (const target of RWPH_DEFAULT_SETUP_PANEL_TARGETS) {
+      const existing = document.getElementById(target.id);
+      if (existing) {
+        try { existing.remove(); } catch (_) {}
+      }
+    }
+
+    rwphSetPanelOpenState(false);
+    setLauncherOpenState(false);
+    rwphDefaultSetupState = {
+      device: safeDevice,
+      adminKey,
+      index: 0,
+      currentTarget: null,
+      panels: {},
+    };
+    rwphCreateDefaultSetupController();
+    rwphOpenDefaultSetupPreview();
+  }
+
+  function rwphOpenDefaultSetupPanel(adminKey) {
+    rwphCloseDefaultSetupPanel();
+    rwphEnsureFloatingPanelCss();
+    const panel = document.createElement("section");
+    panel.id = "rwph-default-setup-panel";
+    panel.className = "rwph-floating-panel rwph-default-setup-panel";
+    panel.style.cssText = `
+      position:fixed;
+      z-index:2147483644;
+      right:18px;
+      top:110px;
+      width:min(560px,calc(100vw - 24px));
+      height:min(580px,calc(100vh - 24px));
+      min-width:min(300px,calc(100vw - 24px));
+      min-height:300px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    `;
+    panel.innerHTML = `
+      <div class="rwph-panel-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;cursor:move;touch-action:none;user-select:none;">
+        <div><b>Default Setup</b><div class="rw-muted" style="font-size:11px;">Global panel positions and sizes</div></div>
+        <button id="rwph-default-setup-close" class="danger" type="button" title="Close" aria-label="Close">×</button>
+      </div>
+      <div class="rwph-floating-panel-body" style="padding:14px;overflow:auto;flex:1 1 auto;min-height:0;">
+        <div class="rw-card" style="padding:12px;margin-bottom:12px;">
+          <b>Choose which default layout to edit.</b>
+          <div class="rw-muted" style="margin-top:6px;line-height:1.45;">PC and Phone/PDA use completely separate saved defaults. For the most accurate result, run the PC setup on a PC and the Phone/PDA setup on a phone or Torn PDA. Users who have already moved/resized a panel keep their personal saved layout; these admin settings are the defaults when no personal layout exists.</div>
+        </div>
+        <label style="display:grid;gap:6px;margin-bottom:12px;">Setup type
+          <select id="rwph-default-setup-device">
+            <option value="pc"${rwphIsMobileOrPdaView() ? "" : " selected"}>PC</option>
+            <option value="mobile"${rwphIsMobileOrPdaView() ? " selected" : ""}>Phone / PDA</option>
+          </select>
+        </label>
+        <div id="rwph-default-setup-saved-summary" class="rw-card" style="padding:12px;margin-bottom:12px;">Loading current defaults...</div>
+        <div class="rw-card" style="padding:12px;margin-bottom:12px;">
+          <b>How it works</b>
+          <ol style="margin:8px 0 0 20px;padding:0;line-height:1.55;">
+            <li>Click Start Setup.</li>
+            <li>RWPH opens one panel preview at a time.</li>
+            <li>Move and resize it to the default you want.</li>
+            <li>Press Next Panel to save it and continue.</li>
+            <li>After the last panel, the complete layout is saved to MySQL for everyone.</li>
+          </ol>
+        </div>
+        <button id="rwph-default-setup-start" type="button" class="primary" style="width:100%;">Start Setup</button>
+        <div id="rwph-default-setup-status" class="rw-muted" style="margin-top:10px;">Ready.</div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    panel.querySelector("#rwph-default-setup-close")?.addEventListener("click", rwphCloseDefaultSetupPanel);
+
+    const renderSummary = (layouts) => {
+      const summary = panel.querySelector("#rwph-default-setup-saved-summary");
+      if (!summary) return;
+      const row = (device, label) => {
+        const layout = layouts?.[device];
+        const count = Object.keys(layout?.panels || {}).length;
+        const when = layout?.updatedAt ? new Date(Number(layout.updatedAt)).toLocaleString() : "Not configured";
+        return `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;"><b>${label}</b><span class="rw-muted">${count ? `${count} panels · ${esc(when)}` : "Not configured"}</span></div>`;
+      };
+      summary.innerHTML = `${row("pc", "PC")}${row("mobile", "Phone / PDA")}`;
+    };
+    renderSummary(rwphGlobalPanelLayoutsCache.layouts);
+    rwphFetchGlobalPanelLayouts(true).then(renderSummary).catch(() => {
+      const status = panel.querySelector("#rwph-default-setup-status");
+      if (status) status.textContent = "Could not refresh saved defaults. You can still start setup; saving requires the updated backend.";
+    });
+
+    panel.querySelector("#rwph-default-setup-start")?.addEventListener("click", async () => {
+      const button = panel.querySelector("#rwph-default-setup-start");
+      const status = panel.querySelector("#rwph-default-setup-status");
+      const device = panel.querySelector("#rwph-default-setup-device")?.value || "pc";
+      if (button) button.disabled = true;
+      if (status) status.textContent = `Starting ${rwphDefaultSetupDeviceLabel(device)} setup...`;
+      try {
+        await rwphStartDefaultSetupWizard(device, adminKey);
+      } catch (e) {
+        if (button) button.disabled = false;
+        if (status) status.textContent = `Could not start setup: ${e.message}`;
+      }
+    });
   }
 
   function rwphSaveActiveTab(area, tabName) {
@@ -4868,6 +5385,7 @@
     adminSection.querySelectorAll([
       "#rw-admin-list",
       "#rw-admin-status-load",
+      "#rw-admin-default-setup",
       "#rw-move-launcher-admin",
       "#rw-admin-grant",
       "#rw-admin-extend",
@@ -4957,7 +5475,7 @@
     panelRoot.__rwphAdminDelegatedBound = true;
     panelRoot.addEventListener("click", async (event) => {
       const target = event.target;
-      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
       if (!adminAction || !panelRoot.contains?.(adminAction)) return;
       const rootScope = rwphFindAdminRoot(adminAction);
       const status = rwphAdminQuery(rootScope, "#rw-admin-status");
@@ -4981,6 +5499,13 @@
 
         if (adminAction.id === "rw-admin-status-load") {
           await rwphLoadAdminServerStatusFromPanel(rootScope);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-default-setup") {
+          const adminKey = rwphGetAdminKeyFromPanel(rootScope);
+          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+          rwphOpenDefaultSetupPanel(adminKey);
           return;
         }
 
@@ -5020,7 +5545,7 @@
           if (result) await rwphRefreshAdminLicensesFromPanel(rootScope);
         }
       } catch (e) {
-        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
+        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-default-setup" ? "Default setup" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
         rwphToastPanelError(status, `${actionName} error: ${e.message}`, "RWPH Admin");
       }
     }, true);
@@ -11608,22 +12133,37 @@
     const applySavedLayout = () => {
       try {
         const saved = JSON.parse(localStorage.getItem(savedLayoutKey) || "null");
-        if (!saved) return;
-        const minW = 280, minH = 220;
-        const maxW = Math.max(minW, window.innerWidth - 16);
-        const maxH = Math.max(minH, window.innerHeight - 16);
-        const w = clamp(saved.width, minW, maxW);
-        const h = clamp(saved.height, minH, maxH);
-        const l = clamp(saved.left, 8, Math.max(8, window.innerWidth - w - 8));
-        const t = clamp(saved.top, 8, Math.max(8, window.innerHeight - h - 8));
-        panel.style.setProperty("left", l + "px", "important");
-        panel.style.setProperty("top", t + "px", "important");
-        panel.style.setProperty("right", "auto", "important");
-        panel.style.setProperty("bottom", "auto", "important");
-        panel.style.setProperty("width", w + "px", "important");
-        panel.style.setProperty("height", h + "px", "important");
-        panel.style.setProperty("max-height", "none", "important");
+        if (saved) {
+          const minW = 280, minH = 220;
+          const maxW = Math.max(minW, window.innerWidth - 16);
+          const maxH = Math.max(minH, window.innerHeight - 16);
+          const w = clamp(saved.width, minW, maxW);
+          const h = clamp(saved.height, minH, maxH);
+          const l = clamp(saved.left, 8, Math.max(8, window.innerWidth - w - 8));
+          const t = clamp(saved.top, 8, Math.max(8, window.innerHeight - h - 8));
+          panel.style.setProperty("left", l + "px", "important");
+          panel.style.setProperty("top", t + "px", "important");
+          panel.style.setProperty("right", "auto", "important");
+          panel.style.setProperty("bottom", "auto", "important");
+          panel.style.setProperty("width", w + "px", "important");
+          panel.style.setProperty("height", h + "px", "important");
+          panel.style.setProperty("max-height", "none", "important");
+          return true;
+        }
+
+        const device = rwphGlobalLayoutDevice();
+        const globalSaved = rwphGlobalPanelLayoutsCache.layouts?.[device]?.panels?.["rwph-results-loading-panel"];
+        if (globalSaved) {
+          rwphApplyPanelGeometry(panel, globalSaved, { normalized: true });
+          return true;
+        }
+        rwphFetchGlobalPanelLayouts(false).then((layouts) => {
+          if (!panel?.isConnected || localStorage.getItem(savedLayoutKey)) return;
+          const lateSaved = layouts?.[rwphGlobalLayoutDevice()]?.panels?.["rwph-results-loading-panel"];
+          if (lateSaved) rwphApplyPanelGeometry(panel, lateSaved, { normalized: true });
+        }).catch(() => {});
       } catch (_) {}
+      return false;
     };
 
     let dragging = false;
@@ -11796,6 +12336,9 @@
           h.style.height = "32px";
           h.style.zIndex = "2147483605";
         });
+        // Phone/PDA has its own admin-defined default layout. If none exists,
+        // the historical near-fullscreen mobile fallback remains in place.
+        applySavedLayout();
       } else {
         applySavedLayout();
       }
@@ -14912,9 +15455,12 @@
         </div>
 
         <div id="rw-paywall-unlock-section" class="rw-tab-section">
-          <label>Your Torn API Key -Limited Access-
-            <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
-          </label>
+          <div class="rwph-api-key-inline">
+            <label>Your Torn API Key -Limited Access-
+              <input id="rw-paywall-key" type="password" value="${esc(savedKey)}" placeholder="Paste your Torn API key">
+            </label>
+            <button id="rw-paywall-save-key" class="secondary rwph-api-key-save" type="button">Save Key</button>
+          </div>
           <div class="rw-api-visible-card" role="note" aria-label="API key usage notice">
             <div class="rw-api-visible-head"><span>API Key Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
             <div class="rw-api-visible-summary">
@@ -14928,7 +15474,6 @@
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock Panel</button>
             <button id="rw-start-payment">Buy Licence</button>
-            <button id="rw-paywall-save-key" class="secondary">Save Key</button>
             <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
           </div>
@@ -14949,6 +15494,7 @@
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
+              <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
             </div>
 
             <label>Player Torn ID
@@ -15425,9 +15971,12 @@
         </div>
 
         <div id="rw-payout-tab" class="rw-tab-section">
-          <label>API Key
-            <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
-          </label>
+          <div class="rwph-api-key-inline">
+            <label>API Key
+              <input id="rw-key" type="password" value="${esc(savedKey)}" placeholder="Paste Torn API key">
+            </label>
+            <button id="rw-save" class="secondary rwph-api-key-save" type="button">Save Key</button>
+          </div>
           <div class="rw-api-visible-card" role="note" aria-label="API key usage notice">
             <div class="rw-api-visible-head"><span>API Key Notice</span><span class="rw-api-visible-badge">Limited Access</span></div>
             <div class="rw-api-visible-summary">
@@ -15440,23 +15989,8 @@
           </div>
           <div class="rw-actions rw-licence-control-grid">
             <button id="rw-extend-licence">Extend Licence</button>
-            <button id="rw-save" class="secondary">Save Key</button>
             <button id="rw-license-days" class="secondary">Your Expiration</button>
             <button id="rw-lock" class="secondary">Lock Panel</button>
-          </div>
-          <div class="rw-theme-colour-card rw-layout-theme-card rw-card rwph-theme-logo-control-card">
-            <div class="rw-layout-theme-action-row rwph-theme-logo-button-grid">
-              <div class="rwph-theme-logo-control-block">
-                <div class="rw-muted rwph-theme-logo-current-label">Current colour: <span id="rw-current-layout-label">${esc(rwphColourThemeLabel())}</span></div>
-                <button id="rw-open-theme-picker" class="secondary" type="button">Open Theme / Colours</button>
-              </div>
-              <div class="rwph-theme-logo-control-block">
-                <div class="rw-muted rwph-theme-logo-current-label">Current logo: <span id="rw-current-logo-label">${esc(rwphLogoChoiceLabel())}</span></div>
-                <div class="rwph-logo-selector-action-row">
-                  <button id="rw-open-logo-picker" class="secondary" type="button">Open Logo Selector</button>
-                </div>
-              </div>
-            </div>
           </div>
           <div class="rw-small">RWPH only creates payout reports for completed ranked wars. Every successful calculation is saved automatically in your faction Cached Reports panel. Each faction keeps up to 3 reports; when all 3 are full, delete one before calculating another report.</div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
@@ -15690,6 +16224,20 @@
           <div id="rw-main-payment-code"></div>
           <div id="rw-status" class="rw-muted">Ready.</div>
           <div id="rw-results-placeholder" class="rw-muted">Results will open in a separate results panel after you click Calculate in Basic Calculations or Advanced Calculations.</div>
+          <div class="rw-theme-colour-card rw-layout-theme-card rw-card rwph-theme-logo-control-card rwph-theme-logo-bottom-card">
+            <div class="rw-layout-theme-action-row rwph-theme-logo-button-grid">
+              <div class="rwph-theme-logo-control-block">
+                <div class="rw-muted rwph-theme-logo-current-label">Current colour: <span id="rw-current-layout-label">${esc(rwphColourThemeLabel())}</span></div>
+                <button id="rw-open-theme-picker" class="secondary" type="button">Open Theme / Colours</button>
+              </div>
+              <div class="rwph-theme-logo-control-block">
+                <div class="rw-muted rwph-theme-logo-current-label">Current logo: <span id="rw-current-logo-label">${esc(rwphLogoChoiceLabel())}</span></div>
+                <div class="rwph-logo-selector-action-row">
+                  <button id="rw-open-logo-picker" class="secondary" type="button">Open Logo Selector</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="rw-admin-tab-section" class="rw-tab-section rw-unified-tab-panel" hidden>
@@ -15706,6 +16254,7 @@
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-status-load" class="secondary" type="button">Server Status</button>
+              <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
             </div>
             <div class="rw-admin-advanced-box">
               <div id="rw-admin-status-summary" class="rw-small">Server status will appear here.</div>
@@ -16507,6 +17056,7 @@
     if (options && options.openTutorial) setTimeout(() => rwphOpenTutorialInPanel(panel), 140);
   }
 
+  rwphFetchGlobalPanelLayouts(false).catch(() => {});
   rwphInstallPageNavigationAutoClose();
   rwphInstallLauncherNavObserver();
   setupXanaxPaymentButtonHandler();
@@ -17857,7 +18407,11 @@
           justify-self:center!important;
         }
 
-        @media (max-width:760px),(pointer:coarse){
+        @media (max-width:420px){
+        .rwph-api-key-inline{grid-template-columns:minmax(0,1fr) auto!important;gap:6px!important;}
+        .rwph-api-key-inline>.rwph-api-key-save{padding-left:10px!important;padding-right:10px!important;}
+      }
+      @media (max-width:760px),(pointer:coarse){
           #rw-payout-helper .rw-head,
           #rw-pay-all-panel .rw-pay-all-head,
           .rw-pay-all-panel .rw-pay-all-head,
@@ -18036,7 +18590,10 @@
       }
       if (close) close.classList.add("rwph-clean-close-v1491");
 
-      if (!head.querySelector(".rwph-fit-control-v1491")) {
+      const allowFitControl = panel.id === "rw-results-panel" || panel.classList.contains("rw-results-panel") || panel.classList.contains("rwph-results-loading-panel");
+      if (!allowFitControl) {
+        head.querySelectorAll(".rwph-fit-control-v1491").forEach((el) => el.remove());
+      } else if (!head.querySelector(".rwph-fit-control-v1491")) {
         const fit = document.createElement("button");
         fit.type = "button";
         fit.className = "rwph-fit-control-v1491 secondary";
@@ -18110,6 +18667,11 @@
         overscroll-behavior:contain!important;
       }
       #rw-payout-helper>.rw-body{max-height:calc(100vh - 150px)!important;}
+      .rwph-api-key-inline{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;align-items:end!important;width:100%!important;min-width:0!important;}
+      .rwph-api-key-inline>label{margin:0!important;min-width:0!important;width:100%!important;}
+      .rwph-api-key-inline>label input{width:100%!important;min-width:0!important;box-sizing:border-box!important;}
+      .rwph-api-key-inline>.rwph-api-key-save{height:var(--rwph-ui-control-h)!important;min-height:var(--rwph-ui-control-h)!important;white-space:nowrap!important;padding-left:14px!important;padding-right:14px!important;}
+      .rwph-theme-logo-bottom-card{margin-top:14px!important;margin-bottom:2px!important;}
 
       #rw-payout-helper .rw-head,
       #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head,
