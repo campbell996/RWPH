@@ -1,3 +1,12 @@
+## v1.1.496 — Fullscreen Results + Wizard Skip
+
+- **Results Loading** now opens fullscreen by default.
+- The final Results view that replaces the loading content remains fullscreen by default.
+- The internal/fallback **Results Panel** also opens fullscreen by default.
+- **Admin → Default Setup** now skips both Results Loading and Results because their geometry is no longer configurable.
+- The existing fullscreen control remains available on the Loading/Results flow.
+- All other PC and Phone/PDA Default Setup panels continue through the guided wizard normally.
+
 ## v1.1.495 — Admin Default Setup (PC + Phone/PDA)
 
 - Added an admin-only **Default Setup** panel.
@@ -44,7 +53,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.495**  
+Current userscript version: **1.1.496**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.495
+// @version      1.1.496
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.496: Default Setup skips Results Loading / Results because both now open fullscreen by default.
   // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
   // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
   // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
@@ -2512,8 +2513,7 @@
 
   const RWPH_DEFAULT_SETUP_PANEL_TARGETS = Object.freeze([
     { id: "rw-payout-helper", label: "Main RWPH Panel", width: 640, height: 760 },
-    { id: "rw-results-panel", label: "Results Panel", width: 760, height: 720, className: "rw-results-panel" },
-    { id: "rwph-results-loading-panel", label: "Loading / Results Panel", width: 760, height: 680, className: "rwph-results-loading-panel" },
+    // Results Loading and Results are intentionally omitted: both default to fullscreen.
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 560, height: 620, className: "rwph-floating-panel" },
     { id: "rwph-member-management-panel", label: "Member Management", width: 460, height: 460, className: "rwph-floating-panel rwph-member-management-panel" },
     { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 520, height: 620, className: "rwph-floating-panel rw-pay-all-panel" },
@@ -12620,6 +12620,10 @@
       applySavedLayout();
     }
 
+    // v1.1.496: Loading and final Results share this container, so they always
+    // start fullscreen. The existing fullscreen button can still toggle back out.
+    if (!fullscreen) toggleFullscreen();
+
     const fakeTab = {
       rwphIsLoadingPanel: true,
       rwphPanel: panel,
@@ -17132,6 +17136,7 @@
             resultsPanel.style.visibility = "visible";
             resultsPanel.style.opacity = "1";
             resultsPanel.scrollTop = 0;
+            rwphFitPanelToViewportV1491(resultsPanel);
           }
           rwphToastPanelInfo(status, `${isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done"}${Number(result.cachedReport?.cacheId || lastSummary?.cachedReportId || 0) ? " · cached" : ""}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Popup blocked, so results opened in the panel.`, "warn", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
         }
@@ -18845,6 +18850,24 @@
     if (!panel || !panel.isConnected) return;
     const viewportW = Math.max(280, window.innerWidth || 0);
     const viewportH = Math.max(320, window.innerHeight || 0);
+    const isResultsPanel = panel.id === "rw-results-panel" || panel.classList?.contains("rw-results-panel");
+    if (isResultsPanel) {
+      rwphSetPanelStyle(panel, "position", "fixed");
+      rwphSetPanelStyle(panel, "left", "6px");
+      rwphSetPanelStyle(panel, "top", "6px");
+      rwphSetPanelStyle(panel, "right", "auto");
+      rwphSetPanelStyle(panel, "bottom", "auto");
+      rwphSetPanelStyle(panel, "width", "calc(100vw - 12px)");
+      rwphSetPanelStyle(panel, "height", "calc(100vh - 12px)");
+      rwphSetPanelStyle(panel, "min-width", "0");
+      rwphSetPanelStyle(panel, "min-height", "0");
+      rwphSetPanelStyle(panel, "max-width", "none");
+      rwphSetPanelStyle(panel, "max-height", "none");
+      rwphSetPanelStyle(panel, "transform", "none");
+      rwphSetPanelStyle(panel, "overflow", "hidden");
+      rwphEnsurePanelTextScale(panel);
+      return;
+    }
     const margin = viewportW <= 760 ? 7 : 12;
     const rect = panel.getBoundingClientRect();
     const mobile = viewportW <= 760 || window.matchMedia?.("(pointer: coarse)")?.matches;
