@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.507
+// @version      1.1.508
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.508: Main Payout/Admin/Help tabs no longer use sticky/fixed behavior and scroll naturally from the top of the panel; Cached Reports increases to five reports per faction.
   // v1.1.507: Cached Reports now uses the exact shared 3-corner resize handles; main Payout/Admin/Help tabs are anchored above the scrolling body.
   // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
   // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
@@ -10682,7 +10683,7 @@
         <a class="btn secondary" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Payments</a>
         ${rwphNewsletterButtonsHtml}
       </div>
-      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 3 saved reports.</p>
+      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 5 saved reports.</p>
     </aside>
 
     ${rwphNewsletterPanelsHtml}
@@ -13925,22 +13926,22 @@
     }
     try {
       const startedAt = performance.now();
-      if (status && !quiet) status.textContent = "Loading the newest 3 reports directly from MySQL...";
+      if (status && !quiet) status.textContent = "Loading the newest 5 reports directly from MySQL...";
       const result = await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: `${Date.now()}-${++rwphSavedReportsListRequestSerial}` }));
       const loadMs = Math.max(0, Math.round(performance.now() - startedAt));
       rwphRememberSavedReportsFactionId(result.factionId);
-      const reports = Array.isArray(result.reports) ? result.reports.slice(0, 3) : [];
+      const reports = Array.isArray(result.reports) ? result.reports.slice(0, 5) : [];
       rwphApplySavedReportsAutoDeleteUi(result.autoDelete || { enabled: false, hours: 24 });
       const factionTitle = panel.querySelector("#rwph-saved-reports-faction");
-      if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"}${result.factionId ? ` · ID ${result.factionId}` : ""} · ${reports.length}/${Number(result.maxReports || 3)} saved`;
+      if (factionTitle) factionTitle.textContent = `${result.factionName || "Faction"}${result.factionId ? ` · ID ${result.factionId}` : ""} · ${reports.length}/${Number(result.maxReports || 5)} saved`;
       const safeHighlightId = Math.max(0, Math.floor(Number(highlightReportId || 0)));
-      const cards = [0,1,2].map((index) => rwphSavedReportSlotHtml(reports[index] || { empty: true }, index + 1, Number(reports[index]?.cacheId || reports[index]?.id || 0) === safeHighlightId));
+      const cards = [0,1,2,3,4].map((index) => rwphSavedReportSlotHtml(reports[index] || { empty: true }, index + 1, Number(reports[index]?.cacheId || reports[index]?.id || 0) === safeHighlightId));
       if (list) list.innerHTML = cards.join("");
       if (status) status.textContent = safeHighlightId
         ? `Loaded ${reports.length} report(s) from MySQL in ${loadMs} ms. The highlighted report exactly matches these settings.`
-        : (reports.length >= Number(result.maxReports || 3)
-          ? `Loaded 3/3 reports from MySQL in ${loadMs} ms. All Cached Reports are full.`
-          : `Loaded ${reports.length}/${Number(result.maxReports || 3)} report(s) from MySQL in ${loadMs} ms. Completed calculations save here automatically.`);
+        : (reports.length >= Number(result.maxReports || 5)
+          ? `Loaded 5/5 reports from MySQL in ${loadMs} ms. All Cached Reports are full.`
+          : `Loaded ${reports.length}/${Number(result.maxReports || 5)} report(s) from MySQL in ${loadMs} ms. Completed calculations save here automatically.`);
       if (safeHighlightId && list) {
         requestAnimationFrame(() => {
           const match = list.querySelector(`[data-cached-report-id="${safeHighlightId}"]`);
@@ -13955,7 +13956,7 @@
 
   async function rwphLoadSavedReportSlot(cacheId, displayPosition = 0) {
     const safeCacheId = Math.max(1, Math.floor(Number(cacheId || 0)));
-    const label = Math.max(1, Math.min(3, Math.floor(Number(displayPosition || 1))));
+    const label = Math.max(1, Math.min(5, Math.floor(Number(displayPosition || 1))));
     const panel = rwphSavedReportsPanel();
     const panelStatus = panel?.querySelector("#rwph-saved-reports-status");
     const mainStatus = document.getElementById("rw-status");
@@ -13995,7 +13996,7 @@
 
   async function rwphDeleteSavedReportSlot(cacheId, displayPosition = 0) {
     const safeCacheId = Math.max(1, Math.floor(Number(cacheId || 0)));
-    const label = Math.max(1, Math.min(3, Math.floor(Number(displayPosition || 1))));
+    const label = Math.max(1, Math.min(5, Math.floor(Number(displayPosition || 1))));
     const panel = rwphSavedReportsPanel();
     const panelStatus = panel?.querySelector("#rwph-saved-reports-status");
     const mainStatus = document.getElementById("rw-status");
@@ -14034,7 +14035,7 @@
         <button type="button" id="rwph-saved-reports-close" class="rwph-mini-close danger" aria-label="Close Cached Reports" title="Close Cached Reports">×</button>
       </div>
       <div class="rwph-saved-reports-body">
-        <div class="rwph-saved-report-intro">RWPH stores the <b>3 newest completed reports</b> for your faction. Reports are stored by faction ID, not by user. If all 3 are full, delete one before calculating a different setup. Loading a cached report opens the exact saved result without recalculating.</div>
+        <div class="rwph-saved-report-intro">RWPH stores the <b>5 newest completed reports</b> for your faction. Reports are stored by faction ID, not by user. If all 5 are full, delete one before calculating a different setup. Loading a cached report opens the exact saved result without recalculating.</div>
         <div class="rwph-saved-report-auto-delete">
           <div class="rwph-saved-report-auto-delete-copy"><b>Auto Delete</b><span>Optional faction setting. When enabled, each cached report receives an expiry time based on when it was saved.</span></div>
           <div class="rwph-saved-report-auto-delete-controls">
@@ -14051,8 +14052,8 @@
             </select>
           </div>
         </div>
-        <div id="rwph-saved-reports-list">${[0,1,2].map((index) => rwphSavedReportSlotHtml({ empty: true }, index + 1, false)).join("")}</div>
-        <div id="rwph-saved-reports-status">Loading the newest 3 reports from MySQL...</div>
+        <div id="rwph-saved-reports-list">${[0,1,2,3,4].map((index) => rwphSavedReportSlotHtml({ empty: true }, index + 1, false)).join("")}</div>
+        <div id="rwph-saved-reports-status">Loading the newest 5 reports from MySQL...</div>
       </div>`;
     document.body.appendChild(panel);
     try { rwphApplyPanelLayout(panel); } catch (_) {}
@@ -14080,7 +14081,7 @@
         createdAtMs: Date.now(), from: Math.floor(Date.now()/1000) - 3600, to: Math.floor(Date.now()/1000), memberCount: 2,
       };
       const list = panel.querySelector("#rwph-saved-reports-list");
-      if (list) list.innerHTML = `${rwphSavedReportSlotHtml(sample, 1, false)}${rwphSavedReportSlotHtml({ empty: true }, 2, false)}${rwphSavedReportSlotHtml({ empty: true }, 3, false)}`;
+      if (list) list.innerHTML = `${rwphSavedReportSlotHtml(sample, 1, false)}${rwphSavedReportSlotHtml({ empty: true }, 2, false)}${rwphSavedReportSlotHtml({ empty: true }, 3, false)}${rwphSavedReportSlotHtml({ empty: true }, 4, false)}${rwphSavedReportSlotHtml({ empty: true }, 5, false)}`;
       const faction = panel.querySelector("#rwph-saved-reports-faction");
       if (faction) faction.textContent = "Example Faction · setup mode";
       const setupStatus = panel.querySelector("#rwph-saved-reports-status");
@@ -15990,7 +15991,7 @@
           This version is server-locked. The backend verifies your license and performs the payout calculation server-side.
         </div>
         <div class="rw-small">
-          After unlocking, RWPH creates reports for completed ranked wars. Every successful calculation is stored in the faction Cached Reports panel. Each faction keeps up to three reports, which can be loaded or deleted from that panel. When all three are full, RWPH opens Cached Reports instead of starting another calculation.
+          After unlocking, RWPH creates reports for completed ranked wars. Every successful calculation is stored in the faction Cached Reports panel. Each faction keeps up to five reports, which can be loaded or deleted from that panel. When all five are full, RWPH opens Cached Reports instead of starting another calculation.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Locked panel tabs">
@@ -16127,7 +16128,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Cache and Results</div>
             <ul class="rw-how-list">
-              <li><b>Three saved reports:</b> Basic and Advanced completed reports share the same faction-level Cached Reports history, limited to the newest three reports.</li>
+              <li><b>Five saved reports:</b> Basic and Advanced completed reports share the same faction-level Cached Reports history, limited to the newest five reports.</li>
               <li><b>Fresh calculations:</b> Calculate always runs the selected calculation instead of silently opening an old report.</li>
               <li><b>Cached Reports:</b> open the Cached Reports button on the main panel to see your faction’s three saved reports.</li>
               <li><b>Saved report controls:</b> load or delete any saved slot directly from the Cached Reports panel.</li>
@@ -16494,16 +16495,20 @@
       if (!panel || panel.id !== "rw-payout-helper") return;
       const body = panel.querySelector(":scope > .rw-body");
       const tabs = panel.querySelector(".rw-tabs");
+      const firstTabSection = body?.querySelector("#rw-payout-tab, .rw-tab-section, .rw-unified-tab-panel");
       if (!body || !tabs) return;
-      // v1.1.507: Payout/Admin/Help is a fixed panel row beneath the header.
-      // Only the main body beneath it scrolls.
-      if (tabs.parentElement !== panel || tabs.nextElementSibling !== body) {
-        panel.insertBefore(tabs, body);
+      // v1.1.508: the tab row belongs to the normal scrolling content.
+      // It starts at the top of the panel body but never sticks/follows the scroll.
+      if (tabs.parentElement !== body) {
+        if (firstTabSection) body.insertBefore(tabs, firstTabSection);
+        else body.insertBefore(tabs, body.firstChild);
       }
-      tabs.classList.add("rwph-main-tabbar-fixed");
-      tabs.classList.remove("rwph-mobile-tabbar-fixed");
+      tabs.classList.remove("rwph-main-tabbar-fixed", "rwph-mobile-tabbar-fixed");
+      tabs.style.setProperty("position", "static", "important");
+      tabs.style.setProperty("top", "auto", "important");
+      tabs.style.setProperty("z-index", "auto", "important");
     } catch (e) {
-      console.warn("RWPH could not anchor the main tabs above the scrolling body:", e);
+      console.warn("RWPH could not restore the main tabs to normal scroll flow:", e);
     }
   }
 
@@ -16574,7 +16579,7 @@
             <button id="rw-license-days" class="secondary">Your Expiration</button>
             <button id="rw-lock" class="secondary">Lock Panel</button>
           </div>
-          <div class="rw-small">RWPH only creates payout reports for completed ranked wars. Every successful calculation is saved automatically in your faction Cached Reports panel. Each faction keeps up to 3 reports; when all 3 are full, delete one before calculating another report.</div>
+          <div class="rw-small">RWPH only creates payout reports for completed ranked wars. Every successful calculation is saved automatically in your faction Cached Reports panel. Each faction keeps up to 5 reports; when all 5 are full, delete one before calculating another report.</div>
           <details class="rw-api-tos-card rw-api-tos-dropdown rw-settings-dropdown rw-per-hit-settings">
             <summary class="rw-api-tos-title">Basic Calculations</summary>
             <div class="rw-api-tos-content">
@@ -16927,7 +16932,7 @@
           <div class="rw-how-box rw-help-api-card rw-help-section-card">
             <div class="rw-how-title">Cache and Results</div>
             <ul class="rw-how-list">
-              <li><b>Three saved reports:</b> Basic and Advanced completed reports share the same faction-level Cached Reports history, limited to the newest three reports.</li>
+              <li><b>Five saved reports:</b> Basic and Advanced completed reports share the same faction-level Cached Reports history, limited to the newest five reports.</li>
               <li><b>Fresh calculations:</b> Calculate always runs the selected calculation instead of silently opening an old report.</li>
               <li><b>Cached Reports:</b> open the Cached Reports button on the main panel to see your faction’s three saved reports.</li>
               <li><b>Saved report controls:</b> load or delete any saved slot directly from the Cached Reports panel.</li>
@@ -19509,9 +19514,9 @@
       #rw-payout-helper label,.rwph-floating-panel label{margin-top:10px!important;color:var(--rwph-theme-soft,#cbd5e1)!important;font-weight:700!important;}
 
       #rw-payout-helper .rw-tabs{
-        position:sticky!important;
-        top:0!important;
-        z-index:12!important;
+        position:static!important;
+        top:auto!important;
+        z-index:auto!important;
         display:grid!important;
         grid-template-columns:repeat(3,minmax(0,1fr))!important;
         gap:6px!important;
@@ -19681,25 +19686,19 @@
       }
       #rwph-saved-reports-panel > :where(.resize-handle,.resize-handle-se,.resize-handle-sw,.resize-handle-nw,.rw-resize-handle-ne,.resize-handle-ne){display:none!important;}
 
-      /* v1.1.507 — main tabs are outside the scrolling body and remain at the panel top. */
+      /* v1.1.508 — main tabs stay at the top of the scroll content and never follow scrolling. */
       #rw-payout-helper{
         display:flex!important;
         flex-direction:column!important;
         overflow:hidden!important;
       }
       #rw-payout-helper > .rw-head{flex:0 0 auto!important;}
-      #rw-payout-helper > .rw-tabs.rwph-main-tabbar-fixed{
-        position:relative!important;
+      #rw-payout-helper .rw-tabs,
+      #rw-payout-helper .rw-tabs.rwph-main-tabbar-fixed,
+      #rw-payout-helper .rw-tabs.rwph-mobile-tabbar-fixed{
+        position:static!important;
         top:auto!important;
-        z-index:40!important;
-        flex:0 0 auto!important;
-        width:100%!important;
-        margin:0!important;
-        padding:6px 8px!important;
-        border-left:0!important;
-        border-right:0!important;
-        border-radius:0!important;
-        box-shadow:0 1px 0 var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        z-index:auto!important;
       }
       #rw-payout-helper > .rw-body{
         flex:1 1 auto!important;
@@ -19787,13 +19786,13 @@
       #rw-pay-all-panel .rw-resize-handle-nw,.rw-pay-all-panel .rw-resize-handle-nw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
       @media (max-width:760px),(pointer:coarse){
         #rw-payout-helper{width:calc(100vw - 14px)!important;min-width:0!important;}
-        /* v1.1.507: keep the main tab row anchored under the header on phone/PDA too. */
-        #rw-payout-helper > .rw-tabs.rwph-main-tabbar-fixed{
-          position:relative!important;
+        /* v1.1.508: phone/PDA tabs remain part of the normal scrolling body. */
+        #rw-payout-helper .rw-tabs,
+        #rw-payout-helper .rw-tabs.rwph-main-tabbar-fixed,
+        #rw-payout-helper .rw-tabs.rwph-mobile-tabbar-fixed{
+          position:static!important;
           top:auto!important;
-          z-index:45!important;
-          width:100%!important;
-          flex:0 0 auto!important;
+          z-index:auto!important;
         }
         #rwph-saved-reports-panel > .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:rgba(2,6,23,.28)!important;}
         #rwph-saved-reports-panel > .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:0 3px 3px 0!important;}

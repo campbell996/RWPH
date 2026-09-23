@@ -1,4 +1,4 @@
-## v1.1.507 — Detailed Advanced Attacks + Unified Payments Theme
+## v1.1.508 — Non-Sticky Main Tabs + Five Cached Reports
 
 All **Advanced Calculations** now force Torn's detailed API-v2 `faction/attacks` feed instead of the simplified `attacksfull` feed. This gives every Advanced calculation access to per-hit modifiers and detailed attack information, including real `modifiers.fair_fight` values whenever Torn provides them. Basic calculations keep the faster simplified path. Detailed and fast caches stay separate, and the cached-report engine version is bumped so older Advanced reports made from simplified attack data do not exact-match new calculations.
 
@@ -356,8 +356,8 @@ There are no fixed saved-report slot records. The cards are simply displayed as:
 When you press Calculate, RWPH performs one cache preflight before opening the loading panel. The preflight uses the full effective calculation setup, including mode/system, war dates, payout values, Basic/Advanced settings, Fast Mode and Member Management changes.
 
 - If an exact match already exists, RWPH opens Cached Reports and highlights it instead of recalculating.
-- If any calculation setting is different and fewer than three reports exist, RWPH calculates and stores a new report.
-- If all three reports exist and there is no exact match, RWPH opens Cached Reports so you can delete one first.
+- If any calculation setting is different and fewer than five reports exist, RWPH calculates and stores a new report.
+- If all five reports exist and there is no exact match, RWPH opens Cached Reports so you can delete one first.
 
 Each cached report stores the exact completed result payload. **Load Report** reopens that saved result without fetching Torn attack data or recalculating it.
 
@@ -482,11 +482,11 @@ Wait briefly and try again. RWPH uses request spacing/retry handling, but Torn m
 
 ### A saved report is not available
 
-Open **Cached Reports**. The panel loads the three newest reports for the faction ID shown in the panel header. If fewer than three exist, successful calculations can add new reports.
+Open **Cached Reports**. The panel loads the five newest reports for the faction ID shown in the panel header. If fewer than five exist, successful calculations can add new reports.
 
-### All three cached reports are full
+### All five cached reports are full
 
-RWPH allows up to three cached reports per faction. If all three exist and the current settings do not exactly match one of them, pressing Calculate opens Cached Reports instead of the loading panel. Delete one report, then calculate again.
+RWPH allows up to five cached reports per faction. If all five exist and the current settings do not exactly match one of them, pressing Calculate opens Cached Reports instead of the loading panel. Delete one report, then calculate again.
 
 ### A setting is confusing
 
