@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.506
+// @version      1.1.507
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.507: Cached Reports now uses the exact shared 3-corner resize handles; main Payout/Admin/Help tabs are anchored above the scrolling body.
   // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
   // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
   // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
@@ -16493,13 +16494,16 @@
       if (!panel || panel.id !== "rw-payout-helper") return;
       const body = panel.querySelector(":scope > .rw-body");
       const tabs = panel.querySelector(".rw-tabs");
-      const payoutTab = body?.querySelector("#rw-payout-tab");
-      if (!body || !tabs || !payoutTab) return;
-      // v1.1.499: keep Payout/Admin/Help inside the main scrolling body on every device.
-      if (tabs.parentElement !== body) body.insertBefore(tabs, payoutTab);
+      if (!body || !tabs) return;
+      // v1.1.507: Payout/Admin/Help is a fixed panel row beneath the header.
+      // Only the main body beneath it scrolls.
+      if (tabs.parentElement !== panel || tabs.nextElementSibling !== body) {
+        panel.insertBefore(tabs, body);
+      }
+      tabs.classList.add("rwph-main-tabbar-fixed");
       tabs.classList.remove("rwph-mobile-tabbar-fixed");
     } catch (e) {
-      console.warn("RWPH could not restore the main tabs to the scrolling body:", e);
+      console.warn("RWPH could not anchor the main tabs above the scrolling body:", e);
     }
   }
 
@@ -19635,6 +19639,76 @@
         padding:0!important;margin:0!important;transform:none!important;scale:1!important;box-sizing:border-box!important;
       }
       #rwph-saved-reports-panel #rwph-saved-reports-close:hover{transform:none!important;scale:1!important;}
+
+      /* v1.1.507 — Cached Reports uses the exact same three-corner resize grips as normal RWPH panels. */
+      #rwph-saved-reports-panel > .rw-resize-handle{
+        position:absolute!important;
+        width:20px!important;
+        height:20px!important;
+        z-index:140!important;
+        touch-action:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        pointer-events:auto!important;
+        opacity:.95!important;
+        background:rgba(2,6,23,.18)!important;
+        box-sizing:border-box!important;
+      }
+      #rwph-saved-reports-panel > .rw-resize-handle-se{
+        right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;
+        cursor:nwse-resize!important;
+        border-right:2px solid var(--rwph-theme-gold,#f59e0b)!important;
+        border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;
+        border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;
+      }
+      #rwph-saved-reports-panel > .rw-resize-handle-sw{
+        left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;
+        cursor:nesw-resize!important;
+        border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;
+        border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;
+        border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;
+      }
+      #rwph-saved-reports-panel > .rw-resize-handle-nw{
+        left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;
+        cursor:nwse-resize!important;
+        border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;
+        border-top:2px solid var(--rwph-theme-gold,#f59e0b)!important;
+        border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;
+      }
+      #rwph-saved-reports-panel > .rw-resize-handle:hover{
+        opacity:1!important;
+        filter:drop-shadow(0 0 6px color-mix(in srgb,var(--rwph-theme-gold,#f59e0b) 65%,transparent))!important;
+      }
+      #rwph-saved-reports-panel > :where(.resize-handle,.resize-handle-se,.resize-handle-sw,.resize-handle-nw,.rw-resize-handle-ne,.resize-handle-ne){display:none!important;}
+
+      /* v1.1.507 — main tabs are outside the scrolling body and remain at the panel top. */
+      #rw-payout-helper{
+        display:flex!important;
+        flex-direction:column!important;
+        overflow:hidden!important;
+      }
+      #rw-payout-helper > .rw-head{flex:0 0 auto!important;}
+      #rw-payout-helper > .rw-tabs.rwph-main-tabbar-fixed{
+        position:relative!important;
+        top:auto!important;
+        z-index:40!important;
+        flex:0 0 auto!important;
+        width:100%!important;
+        margin:0!important;
+        padding:6px 8px!important;
+        border-left:0!important;
+        border-right:0!important;
+        border-radius:0!important;
+        box-shadow:0 1px 0 var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+      }
+      #rw-payout-helper > .rw-body{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        -webkit-overflow-scrolling:touch!important;
+        overscroll-behavior:contain!important;
+      }
       :where(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491),
       :where(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491):hover{
         transform:none!important;scale:1!important;
@@ -19713,14 +19787,18 @@
       #rw-pay-all-panel .rw-resize-handle-nw,.rw-pay-all-panel .rw-resize-handle-nw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
       @media (max-width:760px),(pointer:coarse){
         #rw-payout-helper{width:calc(100vw - 14px)!important;min-width:0!important;}
-        /* v1.1.499: Payout/Admin/Help are part of the normal phone/PDA scroll flow. */
-        #rw-payout-helper .rw-tabs,
-        #rw-payout-helper > .rw-tabs.rwph-mobile-tabbar-fixed{
-          position:static!important;
+        /* v1.1.507: keep the main tab row anchored under the header on phone/PDA too. */
+        #rw-payout-helper > .rw-tabs.rwph-main-tabbar-fixed{
+          position:relative!important;
           top:auto!important;
-          z-index:auto!important;
-          width:auto!important;
+          z-index:45!important;
+          width:100%!important;
+          flex:0 0 auto!important;
         }
+        #rwph-saved-reports-panel > .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:rgba(2,6,23,.28)!important;}
+        #rwph-saved-reports-panel > .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:0 3px 3px 0!important;}
+        #rwph-saved-reports-panel > .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:0 0 3px 3px!important;}
+        #rwph-saved-reports-panel > .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px 0 0 3px!important;}
         #rw-payout-helper > .rw-body{
           flex:1 1 auto!important;
           min-height:0!important;
