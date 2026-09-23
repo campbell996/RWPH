@@ -1,3 +1,13 @@
+## v1.1.510 — Compact Panels + Setup Wizard Expansion
+
+- All normal RWPH panels now use a more compact default footprint, tighter headers, smaller body/card padding, reduced form/button gaps, and denser controls while keeping Phone/PDA touch targets usable.
+- The Payments Copy wizard keeps its edge-to-edge layout but uses more compact warning, member, copy, Back/Next, and completion controls.
+- The locked main panel no longer shows the **Payment Code Ready** card. Buy Licence still creates the database-backed payment code and opens the Xanax Payment Helper directly.
+- Admin → Default Setup uses the new compact defaults for PC and Phone/PDA.
+- **Basic Calculations** and **Advanced Calculations** are now included as separate Default Setup wizard targets, so admins can save their own default position and size.
+- The new calculation panels keep the active theme/colours and standard Close, drag-move, and 3-corner resize controls.
+- No backend or database schema changes are required from v1.1.509.
+
 ## v1.1.509 — Calculation Panels + Licence Resize
 
 - Basic Calculations now opens in its own themed RWPH floating panel.

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.509
+// @version      1.1.510
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.510: Global compact UI pass; locked main no longer renders Payment Code Ready; Default Setup includes compact Payments wizard plus Basic/Advanced calculation panels.
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
   // v1.1.509: Basic and Advanced calculations open in their own themed floating panels with shared Close/drag/3-corner resize controls; Licence Info now uses the same 3-corner resize setup.
   // v1.1.508: Main Payout/Admin/Help tabs no longer use sticky/fixed behavior and scroll naturally from the top of the panel; Cached Reports increases to five reports per faction.
@@ -2524,16 +2525,18 @@
 
 
   const RWPH_DEFAULT_SETUP_PANEL_TARGETS = Object.freeze([
-    { id: "rw-payout-helper", label: "Main RWPH Panel", width: 640, height: 760 },
+    { id: "rw-payout-helper", label: "Main RWPH Panel", width: 560, height: 650 },
     // Results Loading and Results are intentionally omitted: both default to fullscreen.
-    { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 560, height: 620, className: "rwph-floating-panel" },
-    { id: "rwph-member-management-panel", label: "Member Management", width: 460, height: 460, className: "rwph-floating-panel rwph-member-management-panel" },
-    { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 520, height: 620, className: "rwph-floating-panel rw-pay-all-panel" },
-    { id: "rwph-xanax-send-status", label: "Xanax Payment Helper", width: 430, height: 520, className: "rwph-floating-panel" },
-    { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 430, height: 360, className: "rwph-floating-panel" },
-    { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 540, height: 660, className: "rwph-floating-panel rwph-layout-theme-panel" },
-    { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 720, height: 700, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
-    { id: "rw-wrong-payment-panel", label: "Payment Warning", width: 430, height: 300, className: "rwph-floating-panel" },
+    { id: "rwph-basic-calculations-panel", label: "Basic Calculations", width: 540, height: 560, className: "rwph-floating-panel rwph-calculation-settings-panel" },
+    { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 650, height: 650, className: "rwph-floating-panel rwph-calculation-settings-panel" },
+    { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
+    { id: "rwph-member-management-panel", label: "Member Management", width: 420, height: 390, className: "rwph-floating-panel rwph-member-management-panel" },
+    { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 460, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rwph-xanax-send-status", label: "Xanax Payment Helper", width: 390, height: 440, className: "rwph-floating-panel" },
+    { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 390, height: 300, className: "rwph-floating-panel" },
+    { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 550, className: "rwph-floating-panel rwph-layout-theme-panel" },
+    { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
+    { id: "rw-wrong-payment-panel", label: "Payment Warning", width: 390, height: 250, className: "rwph-floating-panel" },
   ]);
 
   let rwphDefaultSetupState = null;
@@ -2801,10 +2804,10 @@
     const vw = Math.max(320, Number(window.innerWidth || 1024));
     const vh = Math.max(320, Number(window.innerHeight || 768));
     const width = mobile
-      ? Math.min(Math.max(270, Math.round(vw * 0.92)), vw - 16)
+      ? Math.min(Math.max(270, Math.round(vw * 0.90)), vw - 16)
       : Math.min(Math.max(320, Number(target.width || 520)), vw - 16);
     const height = mobile
-      ? Math.min(Math.max(260, Math.round(vh * 0.72)), vh - 16)
+      ? Math.min(Math.max(260, Math.round(vh * 0.66)), vh - 16)
       : Math.min(Math.max(220, Number(target.height || 520)), vh - 16);
     return {
       left: Math.max(8, Math.round((vw - width) / 2)),
@@ -2841,6 +2844,29 @@
     setLauncherOpenState(false);
     showMainScreen(panel);
     try { document.getElementById("rw-tab-payout")?.click(); } catch (_) {}
+    return panel;
+  }
+
+  function rwphCreateDefaultSetupActualCalculationPanel(mode) {
+    const host = rwphCreateDefaultSetupActualMainPanel();
+    if (!host) return null;
+    host.dataset.rwphDefaultSetupHost = "1";
+    const cfg = rwphCalculationPanelConfigV1509(mode);
+    if (!rwphOpenCalculationSettingsPanel(mode)) return null;
+    const panel = document.getElementById(cfg.panelId);
+    if (!panel) return null;
+
+    Array.from(host.children).forEach((child) => {
+      if (child.tagName !== "STYLE") child.style?.setProperty?.("display", "none", "important");
+    });
+    host.style.setProperty("background", "transparent", "important");
+    host.style.setProperty("border", "0", "important");
+    host.style.setProperty("box-shadow", "none", "important");
+    host.style.setProperty("width", "0", "important");
+    host.style.setProperty("height", "0", "important");
+    host.style.setProperty("min-width", "0", "important");
+    host.style.setProperty("min-height", "0", "important");
+    host.style.setProperty("overflow", "visible", "important");
     return panel;
   }
 
@@ -2910,6 +2936,12 @@
       case "rwph-results-loading-panel":
         rwphCreateResultsLoadingPanel("rwph-default-setup", buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now());
         panel = document.getElementById("rwph-results-loading-panel");
+        break;
+      case "rwph-basic-calculations-panel":
+        panel = rwphCreateDefaultSetupActualCalculationPanel("standard");
+        break;
+      case "rwph-advanced-calculations-panel":
+        panel = rwphCreateDefaultSetupActualCalculationPanel("points");
         break;
       case "rwph-saved-reports-panel":
         panel = await rwphOpenSavedReportsPanel({ setupMode: true });
@@ -3031,9 +3063,9 @@
       z-index:2147483647;
       right:12px;
       top:12px;
-      width:min(330px,calc(100vw - 24px));
-      max-width:calc(100vw - 24px);
-      min-width:min(260px,calc(100vw - 24px));
+      width:min(300px,calc(100vw - 20px));
+      max-width:calc(100vw - 20px);
+      min-width:min(240px,calc(100vw - 20px));
       min-height:0;
       max-height:calc(100vh - 24px);
       overflow:hidden;
@@ -3122,8 +3154,8 @@
       z-index:2147483644;
       right:18px;
       top:110px;
-      width:min(560px,calc(100vw - 24px));
-      height:min(580px,calc(100vh - 24px));
+      width:min(480px,calc(100vw - 20px));
+      height:min(500px,calc(100vh - 20px));
       min-width:min(300px,calc(100vw - 24px));
       min-height:300px;
       overflow:hidden;
@@ -4566,6 +4598,7 @@
     rwphApplyGlobalButtonColourSync(theme);
     rwphUpdateLayoutThemeButtons();
     try { if (document.getElementById("rwph-clean-ui-v1491")) rwphInstallCleanUiV1491(); } catch (_) {}
+    try { rwphInstallCompactUiV1510(); } catch (_) {}
   }
 
   function rwphClosePanelThemePicker() {
@@ -16027,7 +16060,6 @@
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
           </div>
           <div id="rw-paywall-status" class="rw-muted">Enter your key and click Unlock Panel if you already have a licence, or Buy Licence to start a new payment.</div>
-          <div id="rw-paywall-code"></div>
         </div>
 
         <div id="rw-paywall-admin-section" class="rw-tab-section rw-unified-tab-panel" hidden>
@@ -16293,7 +16325,7 @@
         if (button) { button.dataset.rwphBusy = "1"; button.disabled = true; button.textContent = "Creating..."; }
         GM_setValue(STORAGE_KEY, userKey);
         status.textContent = "Creating payment code and changing this tab to the Xanax send page...";
-        codeBox.innerHTML = "";
+        if (codeBox) codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey });
         if (result.alreadyPaid && result.token) {
@@ -16329,7 +16361,7 @@
         clearPendingPayment();
         updatePendingPaymentUi();
         status.textContent = "Activating 7 day free trial...";
-        codeBox.innerHTML = "";
+        if (codeBox) codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/trial", { userKey });
         if (!result.token) throw new Error(result.message || "Trial did not return a license token.");
@@ -16501,8 +16533,8 @@
       launcherId: "rw-open-basic-calculations-panel",
       selector: "details.rw-per-hit-settings",
       title: "Basic Calculations",
-      width: 620,
-      height: 650,
+      width: 540,
+      height: 560,
     }),
     points: Object.freeze({
       mode: "points",
@@ -16511,8 +16543,8 @@
       launcherId: "rw-open-advanced-calculations-panel",
       selector: "details.rw-points-settings",
       title: "Advanced Calculations",
-      width: 760,
-      height: 760,
+      width: 650,
+      height: 650,
     }),
   });
 
@@ -20114,6 +20146,164 @@
     } catch (_) {}
   }
 
+
+  function rwphInstallCompactUiV1510() {
+    try {
+      let style = document.getElementById("rwph-compact-ui-v1510");
+      if (!style) {
+        style = document.createElement("style");
+        style.id = "rwph-compact-ui-v1510";
+        (document.head || document.documentElement).appendChild(style);
+      }
+      style.textContent = `
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          #rwph-saved-reports-panel,#rwph-member-management-panel,#rwph-licence-info-panel,
+          #rwph-layout-theme-panel,#rwph-logo-picker-panel,#rw-wrong-payment-panel,
+          #rwph-default-setup-panel,#rwph-default-setup-controller,
+          .rwph-calculation-settings-panel,.rwph-results-loading-panel,.rw-results-panel,.rwph-results-html-panel){
+          --rwph-compact-gap:6px;
+          --rwph-compact-pad:8px;
+        }
+
+        #rw-payout-helper{width:min(560px,calc(100vw - 16px))!important;height:min(650px,calc(100vh - 16px))!important;}
+        #rwph-basic-calculations-panel{width:min(540px,calc(100vw - 16px))!important;height:min(560px,calc(100vh - 16px))!important;}
+        #rwph-advanced-calculations-panel{width:min(650px,calc(100vw - 16px))!important;height:min(650px,calc(100vh - 16px))!important;}
+        #rwph-saved-reports-panel{width:min(500px,calc(100vw - 16px))!important;height:min(520px,calc(100vh - 16px))!important;}
+        #rwph-member-management-panel{width:min(420px,calc(100vw - 16px))!important;height:min(390px,calc(100vh - 16px))!important;}
+        #rw-pay-all-panel,.rw-pay-all-panel{width:min(460px,calc(100vw - 16px))!important;height:min(500px,calc(100vh - 16px))!important;}
+        #rwph-xanax-send-status{width:min(390px,calc(100vw - 16px))!important;height:min(440px,calc(100vh - 16px))!important;}
+        #rwph-licence-info-panel{width:min(390px,calc(100vw - 16px))!important;height:min(300px,calc(100vh - 16px))!important;}
+        #rwph-layout-theme-panel{width:min(480px,calc(100vw - 16px))!important;height:min(550px,calc(100vh - 16px))!important;}
+        #rwph-logo-picker-panel{width:min(620px,calc(100vw - 16px))!important;height:min(560px,calc(100vh - 16px))!important;}
+        #rw-wrong-payment-panel{width:min(390px,calc(100vw - 16px))!important;height:min(250px,calc(100vh - 16px))!important;}
+        #rwph-default-setup-panel{width:min(480px,calc(100vw - 16px))!important;height:min(500px,calc(100vh - 16px))!important;}
+        #rwph-default-setup-controller{width:min(300px,calc(100vw - 16px))!important;}
+
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          .rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-results-loading-panel,.rw-results-panel,.rwph-results-html-panel)
+          :where(.rw-head,.rwph-panel-head,.rwph-floating-panel-head,.rw-pay-all-head,#rwph-payment-helper-title,.rwph-results-loading-head,.rwph-results-loading-panel-head){
+          min-height:44px!important;
+          padding:5px 42px 5px 8px!important;
+          gap:7px!important;
+        }
+
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          .rwph-floating-panel,.rwph-calculation-settings-panel)
+          :where(.rwph-header-logo,.rw-pay-all-logo,.rwph-payment-helper-logo,.rwph-mm-panel-logo,.rwph-dynamic-logo-icon){
+          max-height:42px!important;height:42px!important;width:auto!important;object-fit:contain!important;
+        }
+
+        :where(#rw-payout-helper>.rw-body,#rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
+          #rwph-xanax-send-status .rwph-xanax-scroll,.rwph-floating-panel>.rwph-floating-panel-body,
+          .rwph-calculation-settings-panel>.rwph-floating-panel-body){padding:8px!important;}
+
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          .rwph-floating-panel,.rwph-calculation-settings-panel)
+          :where(.rw-card,.rw-box,.rw-section,.rw-admin-box,.rw-how-box,.rw-help-section-card,
+          .rw-api-visible-card,.rw-payment-card,.rw-pay-all-payment-card,.rw-pay-all-member-hint,
+          .rw-pay-all-complete-card,.rw-pay-all-progress,.rw-calc-brief){
+          padding:7px!important;margin-top:5px!important;margin-bottom:5px!important;
+        }
+
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          .rwph-floating-panel,.rwph-calculation-settings-panel)
+          :where(.rw-actions,.rw-row,.rw-compact-check-grid,.rw-licence-control-grid,.rw-settings-calc-actions,
+          .rw-settings-time-actions,.rwph-xanax-actions,.rwph-mm-grid,.rw-pay-all-copy-grid,.rw-pay-all-wizard-nav){
+          gap:6px!important;
+        }
+
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          .rwph-floating-panel,.rwph-calculation-settings-panel)
+          :where(button,a.btn,.btn,input[type="button"],input[type="submit"]):not(:where(
+          #rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,
+          #rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,
+          #rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,
+          .rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491,.rwph-calculation-panel-close)){
+          min-height:32px!important;padding:5px 9px!important;line-height:1.15!important;
+        }
+
+        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+          .rwph-floating-panel,.rwph-calculation-settings-panel)
+          :where(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),select,textarea){
+          min-height:32px!important;padding:5px 7px!important;
+        }
+
+        #rw-payout-helper .rw-tabs{gap:4px!important;margin:4px 0 6px!important;padding:3px!important;}
+        #rw-payout-helper .rw-tab-btn{min-height:30px!important;padding:4px 8px!important;}
+        #rw-payout-helper .rw-small,#rw-payout-helper .rw-muted{line-height:1.3!important;}
+        #rw-payout-helper label{gap:3px!important;}
+
+        #rw-pay-all-panel,.rw-pay-all-panel{padding:6px!important;}
+        #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head{min-height:42px!important;padding:5px 40px 5px 7px!important;}
+        #rw-pay-all-panel .rw-pay-all-scroll,.rw-pay-all-panel .rw-pay-all-scroll{padding:0!important;}
+        #rw-pay-all-panel .rw-pay-all-wizard-page,.rw-pay-all-panel .rw-pay-all-wizard-page{gap:5px!important;}
+        #rw-pay-all-panel .rw-pay-all-start-warning,.rw-pay-all-panel .rw-pay-all-start-warning{gap:5px!important;padding:7px!important;}
+        #rw-pay-all-panel .rw-pay-all-balance-warning,.rw-pay-all-panel .rw-pay-all-balance-warning{padding:6px!important;margin:0!important;}
+        #rw-pay-all-panel .rw-pay-all-payment-card,.rw-pay-all-panel .rw-pay-all-payment-card{padding:7px!important;}
+        #rw-pay-all-panel .rw-pay-all-payment-name,.rw-pay-all-panel .rw-pay-all-payment-name{font-size:14px!important;}
+        #rw-pay-all-panel .rw-pay-all-payment-id,.rw-pay-all-panel .rw-pay-all-payment-id{margin-top:2px!important;}
+        #rw-pay-all-panel .rw-pay-all-payment-amount,.rw-pay-all-panel .rw-pay-all-payment-amount{font-size:19px!important;margin:5px 0!important;}
+        #rw-pay-all-panel .rw-pay-all-copy-grid,.rw-pay-all-panel .rw-pay-all-copy-grid,
+        #rw-pay-all-panel .rw-pay-all-wizard-nav,.rw-pay-all-panel .rw-pay-all-wizard-nav{gap:5px!important;}
+        #rw-pay-all-panel .rw-pay-all-copy-grid .rw-pay-all-copy,.rw-pay-all-panel .rw-pay-all-copy-grid .rw-pay-all-copy,
+        #rw-pay-all-panel .rw-pay-all-wizard-nav button,.rw-pay-all-panel .rw-pay-all-wizard-nav button{min-height:32px!important;}
+        #rw-pay-all-panel .rw-pay-all-member-hint,.rw-pay-all-panel .rw-pay-all-member-hint{padding:6px!important;}
+
+        .rwph-calculation-settings-panel details.rw-settings-dropdown>.rw-api-tos-content{padding:8px!important;}
+        .rwph-calculation-settings-panel .rw-row{gap:6px!important;}
+        .rwph-calculation-settings-panel label{gap:3px!important;}
+        .rwph-calculation-settings-panel .rw-compact-check-grid{gap:5px!important;}
+        .rwph-calculation-settings-panel .rw-actions{gap:5px!important;}
+        .rwph-calculation-settings-panel .rw-primary-calc-actions>button{min-height:34px!important;}
+        .rwph-calculation-settings-panel .rw-calc-brief{padding:7px!important;}
+        .rwph-calculation-settings-panel .rwph-setting-label-line{font-size:1em!important;line-height:1.15!important;}
+
+        #rwph-default-setup-controller .rwph-panel-head{padding:6px 40px 6px 8px!important;}
+        #rwph-default-setup-controller .rwph-floating-panel-body{padding:8px!important;gap:6px!important;}
+        #rwph-default-setup-controller .rwph-default-setup-controller-actions{gap:5px!important;}
+        #rwph-default-setup-panel .rwph-panel-head{padding:6px 40px 6px 8px!important;}
+        #rwph-default-setup-panel .rwph-floating-panel-body{padding:8px!important;}
+        #rwph-default-setup-panel .rw-card{padding:7px!important;margin-bottom:7px!important;}
+        #rwph-default-setup-panel ol{line-height:1.35!important;}
+
+        #rwph-saved-reports-panel :where(.rwph-saved-reports-list,.rwph-saved-report-list){gap:6px!important;}
+        #rwph-member-management-panel :where(.rwph-mm-grid,.rwph-mm-list){gap:6px!important;}
+        #rwph-layout-theme-panel .rwph-layout-theme-body{padding:8px!important;}
+        #rwph-layout-theme-panel .rwph-layout-theme-options{gap:6px!important;}
+        #rwph-logo-picker-panel .rwph-layout-theme-body{padding:8px!important;}
+
+        @media(max-width:700px),(pointer:coarse){
+          #rw-payout-helper,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,
+          #rwph-saved-reports-panel,#rwph-member-management-panel,#rw-pay-all-panel,.rw-pay-all-panel,
+          #rwph-xanax-send-status,#rwph-licence-info-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,
+          #rw-wrong-payment-panel,#rwph-default-setup-panel{
+            width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;left:6px!important;
+          }
+          :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+            .rwph-floating-panel,.rwph-calculation-settings-panel)
+            :where(.rw-head,.rwph-panel-head,.rwph-floating-panel-head,.rw-pay-all-head,#rwph-payment-helper-title){
+            min-height:48px!important;padding:5px 42px 5px 7px!important;
+          }
+          :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
+            .rwph-floating-panel,.rwph-calculation-settings-panel)
+            :where(button,a.btn,.btn,input[type="button"],input[type="submit"]):not(:where(
+            #rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,
+            #rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,
+            #rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,
+            .rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491,.rwph-calculation-panel-close)){
+            min-height:38px!important;
+          }
+          :where(#rw-payout-helper>.rw-body,#rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
+            #rwph-xanax-send-status .rwph-xanax-scroll,.rwph-floating-panel>.rwph-floating-panel-body,
+            .rwph-calculation-settings-panel>.rwph-floating-panel-body){padding:7px!important;}
+          #rwph-default-setup-controller{right:6px!important;top:6px!important;width:min(288px,calc(100vw - 12px))!important;}
+        }
+      `;
+    } catch (e) {
+      console.warn("RWPH compact UI v1.1.510 failed:", e);
+    }
+  }
+
   function rwphInstallCleanUiV1491() {
     try {
       let style = document.getElementById("rwph-clean-ui-v1491");
@@ -20149,6 +20339,7 @@
   rwphInstallCleanUiV1491();
   rwphInstallWizardFitCssV1501();
   rwphEnsureCalculationPanelStylesV1509();
+  rwphInstallCompactUiV1510();
   if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();
