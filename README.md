@@ -1,4 +1,4 @@
-## v1.1.501 — Wizard Fit / Responsive Layout
+## v1.1.502 — Wizard Fit / Responsive Layout
 
 Payment Copy and Default Setup wizard content now reflows to the actual panel size on PC and Phone/PDA. Buttons stay inside the panel, long text wraps, and deliberately small panels scroll instead of clipping.
 
@@ -78,7 +78,7 @@ Advanced Fair Fight mode selection now applies and normalizes all FF settings re
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.501**  
+Current userscript version: **1.1.502**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**

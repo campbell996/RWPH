@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.501
+// @version      1.1.502
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
   // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
   // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
   // v1.1.497: Advanced Fair Fight mode selection now applies/normalizes every FF setting required by that mode and disables irrelevant FF inputs.
@@ -7392,7 +7393,7 @@
       }
       #rw-payout-helper .rw-stat-box {
         border-radius: 15px !important;
-        padding: 9px !important;
+        padding: 0 !important;
       }
       #rwph-xanax-send-status {
         width: min(460px, calc(100vw - 24px)) !important;
@@ -14161,10 +14162,10 @@
         text-align: center !important;
       }
       .rw-pay-all-panel[hidden] { display:none !important; }
-      .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:flex-start; align-items:center; min-height:34px; padding: 2px 44px 8px 4px; position:sticky; top:0; z-index:5; flex:0 0 auto; text-align:left; }
+      .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:flex-start; align-items:center; min-height:46px; width:100%; box-sizing:border-box; padding:8px 48px 8px 10px; margin:0; position:sticky; top:0; z-index:5; flex:0 0 auto; text-align:left; }
       .rw-pay-all-title { font-weight:950; color:#fff2dd; font-size:13px; line-height:1.12; white-space:normal; overflow-wrap:anywhere; }
       .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 44px 7px 4px; text-align:left; }
-      .rw-pay-all-scroll { min-height:0; flex:1 1 auto; display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; padding:0 2px 12px; box-sizing:border-box; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.80) rgba(15,23,42,.28); }
+      .rw-pay-all-scroll { min-height:0; flex:1 1 auto; width:100%; display:flex; flex-direction:column; overflow:auto; padding:0; margin:0; box-sizing:border-box; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.80) rgba(15,23,42,.28); }
       .rw-pay-all-balance-warning { margin:0 2px 8px; padding:9px 8px; border-radius:13px; border:2px solid rgba(250,204,21,.76); border-left:6px solid rgba(249,115,22,.92); background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)); color:#fff7ed; font:950 11px/1.32 Arial,Helvetica,sans-serif; text-align:center; box-shadow:0 0 20px rgba(245,158,11,.18), inset 0 1px 0 rgba(255,255,255,.07); }
       .rw-pay-all-balance-warning b { color:#fef3c7; }
       .rw-pay-all-accept-warning { display:inline-flex !important; align-items:center !important; justify-content:center !important; width:100% !important; margin:8px 0 5px !important; padding:8px 10px !important; min-height:32px !important; border-radius:11px !important; border:2px solid rgba(254,243,199,.78) !important; background:linear-gradient(135deg, rgba(250,204,21,.96), rgba(249,115,22,.94)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; letter-spacing:.35px !important; text-transform:uppercase !important; cursor:pointer !important; box-shadow:0 0 18px rgba(245,158,11,.30), inset 0 1px 0 rgba(255,255,255,.25) !important; }
@@ -14187,26 +14188,26 @@
       .rw-pay-all-copy { display:inline-flex !important; align-items:center; justify-content:center; width:auto !important; max-width:none !important; padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(251,191,36,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#fff7ed; font-size:10px; font-weight:950; cursor:pointer; white-space:nowrap; }
       .rw-pay-all-copy[disabled], .rw-pay-all-copy[aria-disabled="true"], .rw-pay-all-copy[data-pay-prefill-locked="1"] { opacity:.42 !important; cursor:not-allowed !important; filter:grayscale(.55) !important; box-shadow:none !important; pointer-events:none !important; }
       .rw-pay-all-copy.rwph-pay-button-hidden { display:none !important; visibility:hidden !important; pointer-events:none !important; }
-      .rw-pay-all-wizard-stage { min-height:0; flex:1 1 auto; width:100%; display:flex; flex-direction:column; box-sizing:border-box; }
-      .rw-pay-all-wizard-page { min-height:0; flex:1 1 auto; width:100%; max-width:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(6px,1.6vh,10px); padding:4px 4px 10px; box-sizing:border-box; overflow-wrap:anywhere; }
+      .rw-pay-all-wizard-stage { min-height:100%; flex:1 1 auto; width:100%; height:100%; display:flex; flex-direction:column; box-sizing:border-box; margin:0; padding:0; }
+      .rw-pay-all-wizard-page { min-height:100%; flex:1 1 auto; width:100%; max-width:none; display:flex; flex-direction:column; justify-content:center; gap:clamp(6px,1.6vh,10px); margin:0; padding:0; box-sizing:border-box; overflow:auto; overflow-wrap:anywhere; }
       .rw-pay-all-wizard-page[data-pay-all-page="member"] { justify-content:space-between; }
       .rw-pay-all-wizard-page[data-pay-all-page="complete"] { justify-content:center; }
       .rw-pay-all-wizard-page > * { max-width:100%; box-sizing:border-box; }
-      .rw-pay-all-start-warning { margin:2px !important; display:flex; flex-direction:column; gap:8px; }
+      .rw-pay-all-start-warning { flex:1 1 auto; width:100%; min-height:100%; margin:0 !important; border-radius:0 !important; border-left-width:0 !important; border-right-width:0 !important; display:flex; flex-direction:column; justify-content:center; gap:8px; box-sizing:border-box; }
       .rw-pay-all-start-payments { width:100% !important; min-height:40px !important; margin-top:2px !important; border-radius:11px !important; border:1px solid rgba(254,243,199,.72) !important; background:linear-gradient(135deg, rgba(250,204,21,.98), rgba(249,115,22,.96)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; cursor:pointer !important; }
       .rw-pay-all-start-payments:disabled { opacity:.45 !important; cursor:not-allowed !important; }
-      .rw-pay-all-progress { padding:7px 9px; border-radius:10px; background:rgba(15,23,42,.78); border:1px solid rgba(251,191,36,.16); color:#fef3c7; font-size:10px; font-weight:850; text-align:center; }
-      .rw-pay-all-payment-card { width:100%; min-width:0; padding:clamp(9px,2vh,13px) clamp(8px,2vw,11px); border-radius:14px; border:1px solid rgba(251,191,36,.22); background:linear-gradient(180deg, rgba(30,41,59,.92), rgba(15,23,42,.86)); box-shadow:0 10px 28px rgba(0,0,0,.22); box-sizing:border-box; overflow:hidden; }
+      .rw-pay-all-progress { width:100%; padding:7px 9px; border-radius:0; background:rgba(15,23,42,.78); border:1px solid rgba(251,191,36,.16); color:#fef3c7; font-size:10px; font-weight:850; text-align:center; }
+      .rw-pay-all-payment-card { width:100%; min-width:0; padding:clamp(9px,2vh,13px) clamp(8px,2vw,11px); border-radius:0; border:1px solid rgba(251,191,36,.22); background:linear-gradient(180deg, rgba(30,41,59,.92), rgba(15,23,42,.86)); box-shadow:0 10px 28px rgba(0,0,0,.22); box-sizing:border-box; overflow:hidden; }
       .rw-pay-all-payment-name { color:#f8fafc; font-size:clamp(13px,4.4vw,17px); line-height:1.15; font-weight:950; overflow-wrap:anywhere; word-break:break-word; }
       .rw-pay-all-payment-id { margin-top:4px; color:#cbd5e1; font-size:10px; font-weight:800; }
       .rw-pay-all-payment-amount { margin:clamp(7px,1.6vh,12px) 0 clamp(7px,1.4vh,10px); color:#86efac; font-size:clamp(18px,6vw,24px); line-height:1.05; font-weight:1000; letter-spacing:-.02em; overflow-wrap:anywhere; }
       .rw-pay-all-copy-grid { width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr)); gap:8px; }
       .rw-pay-all-copy-grid .rw-pay-all-copy { width:100% !important; min-height:38px !important; font-size:11px !important; }
       .rw-pay-all-copy.rw-pay-all-copy-done { border-color:rgba(34,197,94,.55) !important; background:linear-gradient(135deg, rgba(34,197,94,.90), rgba(21,128,61,.90)) !important; color:#ecfdf5 !important; }
-      .rw-pay-all-member-hint { padding:8px 9px; border-radius:10px; border:1px solid rgba(148,163,184,.15); background:rgba(2,6,23,.44); color:#cbd5e1; font-size:9.5px; line-height:1.35; text-align:left; }
-      .rw-pay-all-wizard-nav { width:100%; margin-top:auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(110px,100%),1fr)); gap:8px; flex:0 0 auto; }
+      .rw-pay-all-member-hint { width:100%; padding:8px 9px; border-radius:0; border:1px solid rgba(148,163,184,.15); background:rgba(2,6,23,.44); color:#cbd5e1; font-size:9.5px; line-height:1.35; text-align:left; }
+      .rw-pay-all-wizard-nav { width:100%; margin:0; margin-top:auto; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(110px,100%),1fr)); gap:8px; flex:0 0 auto; }
       .rw-pay-all-wizard-nav button { width:100% !important; min-height:38px !important; }
-      .rw-pay-all-complete-card { width:100%; margin:auto 0; padding:clamp(12px,2.5vh,18px) 12px; border-radius:14px; border:1px solid rgba(34,197,94,.30); background:linear-gradient(180deg, rgba(20,83,45,.42), rgba(15,23,42,.84)); text-align:center; box-sizing:border-box; overflow:hidden; }
+      .rw-pay-all-complete-card { flex:1 1 auto; width:100%; min-height:100%; margin:0; padding:clamp(12px,2.5vh,18px) 12px; border-radius:0; display:flex; flex-direction:column; justify-content:center; border:1px solid rgba(34,197,94,.30); background:linear-gradient(180deg, rgba(20,83,45,.42), rgba(15,23,42,.84)); text-align:center; box-sizing:border-box; overflow:hidden; }
       .rw-pay-all-complete-icon { width:46px; height:46px; margin:0 auto 10px; display:grid; place-items:center; border-radius:999px; background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.48); color:#86efac; font-size:26px; font-weight:1000; }
       .rw-pay-all-complete-title { color:#ecfdf5; font-size:16px; font-weight:950; }
       .rw-pay-all-complete-text { margin-top:7px; color:#cbd5e1; font-size:10px; line-height:1.4; }
@@ -14224,7 +14225,7 @@
           -webkit-overflow-scrolling:touch !important;
           overscroll-behavior:contain !important;
           touch-action:pan-y !important;
-          padding:0 3px 32px 0 !important;
+          padding:0 !important;
         }
         .rw-pay-all-scroll .rw-pay-all-list {
           overflow:visible !important;
@@ -14253,7 +14254,7 @@
           flex:0 0 auto !important;
         }
         .rw-pay-all-head { min-height:42px !important; padding-top:8px !important; padding-bottom:8px !important; touch-action:none !important; cursor:grab !important; }
-        .rw-pay-all-wizard-page { min-height:0 !important; height:auto !important; padding:4px 2px 18px !important; }
+        .rw-pay-all-wizard-page { min-height:100% !important; height:100% !important; padding:0 !important; margin:0 !important; }
         .rw-pay-all-payment-amount { font-size:22px !important; }
         .rw-pay-all-copy-grid,.rw-pay-all-wizard-nav { grid-template-columns:repeat(auto-fit,minmax(min(108px,100%),1fr)) !important; gap:7px !important; }
         .rw-pay-all-copy-grid .rw-pay-all-copy,.rw-pay-all-wizard-nav button { min-height:42px !important; font-size:11px !important; }
@@ -14312,8 +14313,9 @@
       <div class="rw-pay-all-wizard-page" data-pay-all-page="warning">
         <div class="rw-pay-all-balance-warning rw-pay-all-start-warning">
           <div><b>BIG WARNING:</b> In Torn faction controls, change the payment type from <b>Give money</b> to <b>Add To Balance</b> before paying members. Check this before every payout.</div>
-          <div class="rw-pay-all-warning-state">${count ? `${count} payment${count === 1 ? "" : "s"} ready.` : "No payable members were found."}</div>
-          <button type="button" class="rw-pay-all-start-payments" data-pay-all-start="1" ${count ? "" : "disabled"}>Start Payments</button>
+          <button type="button" class="rw-pay-all-accept-warning" data-pay-warning-accept="1" aria-pressed="false">Accept Warning</button>
+          <div class="rw-pay-all-warning-state" data-pay-warning-state="1">${count ? `${count} payment${count === 1 ? "" : "s"} ready. Accept the warning to unlock Start Payments.` : "No payable members were found."}</div>
+          <button type="button" class="rw-pay-all-start-payments" data-pay-all-start="1" disabled>Start Payments</button>
         </div>
       </div>`;
   }
@@ -14400,6 +14402,12 @@
       acceptBtn.classList.toggle("rw-pay-all-warning-accepted", isAccepted);
       acceptBtn.textContent = isAccepted ? "Warning Accepted" : "Accept Warning";
       acceptBtn.setAttribute("aria-pressed", isAccepted ? "true" : "false");
+    }
+    const startBtn = panel.querySelector("[data-pay-all-start]");
+    if (startBtn) {
+      const hasPayments = Number(panel.dataset?.payAllTotal || 0) > 0;
+      startBtn.disabled = !isAccepted || !hasPayments;
+      startBtn.setAttribute("aria-disabled", startBtn.disabled ? "true" : "false");
     }
     const state = panel.querySelector("[data-pay-warning-state]");
     if (state) {
@@ -14796,6 +14804,8 @@
     const panel = wrap.firstElementChild;
     document.body.appendChild(panel);
     panel.hidden = false;
+    panel.dataset.payAllTotal = String(safeRows.length);
+    rwphSetPayAllWarningAccepted(panel, false);
     rwphForcePayAllCloseButton(panel);
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
     setTimeout(() => rwphForcePayAllCloseButton(panel), 50);
@@ -14826,6 +14836,7 @@
       if (scroll) {
         try { scroll.scrollTop = 0; } catch (_) {}
       }
+      rwphSetPayAllWarningAccepted(panel, rwphIsPayAllWarningAccepted(panel));
       rwphForcePayAllCloseButton(panel);
     };
 
@@ -14836,9 +14847,15 @@
         return;
       }
 
+      const acceptWarningBtn = e.target.closest?.("[data-pay-warning-accept]");
+      if (acceptWarningBtn) {
+        rwphSetPayAllWarningAccepted(panel, true);
+        return;
+      }
+
       const startBtn = e.target.closest?.("[data-pay-all-start]");
       if (startBtn) {
-        if (!safeRows.length) return;
+        if (!safeRows.length || !rwphRequirePayAllWarningAccepted(panel)) return;
         wizardState.page = "member";
         wizardState.index = 0;
         renderWizard();
