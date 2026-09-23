@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.496
+// @version      1.1.500
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,9 @@
 (function () {
   "use strict";
 
+  // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
+  // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
+  // v1.1.497: Advanced Fair Fight mode selection now applies/normalizes every FF setting required by that mode and disables irrelevant FF inputs.
   // v1.1.496: Default Setup skips Results Loading / Results because both now open fullscreen by default.
   // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
   // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
@@ -13073,11 +13076,84 @@
     return RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[key]?.label || "Hybrid — Hits + Performance";
   }
 
+  const RWPH_FAIR_FIGHT_MODE_DEFAULTS = Object.freeze({
+    none: Object.freeze({ enabled: false, linearRate: 0, avgStep: 0, bonusPerStep: 0 }),
+    exact: Object.freeze({ enabled: true, linearRate: 0, avgStep: 0, bonusPerStep: 0 }),
+    tiered: Object.freeze({ enabled: true, linearRate: 0, avgStep: 0, bonusPerStep: 0 }),
+    linear: Object.freeze({ enabled: true, linearRate: 0.5, avgStep: 0, bonusPerStep: 0 }),
+    avg_step: Object.freeze({ enabled: true, linearRate: 0, avgStep: 0.02, bonusPerStep: 0.01 }),
+  });
+
+  function rwphNormalizeFairFightMode(value = "none") {
+    const mode = String(value || "none").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    return Object.prototype.hasOwnProperty.call(RWPH_FAIR_FIGHT_MODE_DEFAULTS, mode) ? mode : "none";
+  }
+
+  function rwphApplyFairFightModeSettings(value = null, { resetActiveValues = false, persist = true } = {}) {
+    const modeEl = document.getElementById("rw-point-fair-fight-mode");
+    const enabledEl = document.getElementById("rw-point-fair-fight");
+    const linearEl = document.getElementById("rw-point-fair-fight-linear-rate");
+    const avgStepEl = document.getElementById("rw-point-fair-fight-avg-step");
+    const bonusEl = document.getElementById("rw-point-fair-fight-bonus-step");
+    if (!modeEl) return;
+
+    const mode = rwphNormalizeFairFightMode(value ?? modeEl.value);
+    const defaults = RWPH_FAIR_FIGHT_MODE_DEFAULTS[mode];
+    modeEl.value = mode;
+    if (enabledEl) enabledEl.checked = defaults.enabled;
+
+    const setValue = (el, value, force = true) => {
+      if (!el) return;
+      if (force) el.value = String(value);
+    };
+
+    // Inactive Fair Fight settings are always neutralised so stale values from a
+    // previous mode cannot leak into the calculation/cache signature. Active
+    // values are reset to that mode's defaults only when the user changes mode.
+    if (mode === "linear") {
+      setValue(linearEl, defaults.linearRate, resetActiveValues || !Number.isFinite(Number(linearEl?.value)));
+      setValue(avgStepEl, 0);
+      setValue(bonusEl, 0);
+    } else if (mode === "avg_step") {
+      setValue(linearEl, 0);
+      setValue(avgStepEl, defaults.avgStep, resetActiveValues || !(Number(avgStepEl?.value) > 0));
+      setValue(bonusEl, defaults.bonusPerStep, resetActiveValues || !Number.isFinite(Number(bonusEl?.value)));
+    } else {
+      setValue(linearEl, 0);
+      setValue(avgStepEl, 0);
+      setValue(bonusEl, 0);
+    }
+
+    const enabled = defaults.enabled;
+    if (linearEl) { linearEl.disabled = !enabled || mode !== "linear"; linearEl.closest("label")?.classList.toggle("rwph-setting-inactive", linearEl.disabled); }
+    if (avgStepEl) { avgStepEl.disabled = !enabled || mode !== "avg_step"; avgStepEl.closest("label")?.classList.toggle("rwph-setting-inactive", avgStepEl.disabled); }
+    if (bonusEl) { bonusEl.disabled = !enabled || mode !== "avg_step"; bonusEl.closest("label")?.classList.toggle("rwph-setting-inactive", bonusEl.disabled); }
+
+    if (persist) rwphSavePayoutFormState();
+  }
+
+  function rwphNormalizedFairFightSettings() {
+    const mode = rwphNormalizeFairFightMode(document.getElementById("rw-point-fair-fight-mode")?.value || "none");
+    const enabled = document.getElementById("rw-point-fair-fight")?.checked !== false && mode !== "none";
+    if (!enabled) return { pointFairFightEnabled: false, pointFairFightMode: "none", pointFairFightLinearRate: 0, pointFairFightAvgStep: 0, pointFairFightBonusPerStep: 0 };
+    if (mode === "linear") {
+      const rate = Number(document.getElementById("rw-point-fair-fight-linear-rate")?.value);
+      return { pointFairFightEnabled: true, pointFairFightMode: mode, pointFairFightLinearRate: Number.isFinite(rate) && rate >= 0 ? rate : 0.5, pointFairFightAvgStep: 0, pointFairFightBonusPerStep: 0 };
+    }
+    if (mode === "avg_step") {
+      const avgStep = Number(document.getElementById("rw-point-fair-fight-avg-step")?.value);
+      const bonus = Number(document.getElementById("rw-point-fair-fight-bonus-step")?.value);
+      return { pointFairFightEnabled: true, pointFairFightMode: mode, pointFairFightLinearRate: 0, pointFairFightAvgStep: Number.isFinite(avgStep) && avgStep > 0 ? avgStep : 0.02, pointFairFightBonusPerStep: Number.isFinite(bonus) && bonus >= 0 ? bonus : 0.01 };
+    }
+    return { pointFairFightEnabled: true, pointFairFightMode: mode, pointFairFightLinearRate: 0, pointFairFightAvgStep: 0, pointFairFightBonusPerStep: 0 };
+  }
+
   function rwphReadAdvancedSharedSettings() {
     const num = (id, fallback = 0) => {
       const n = Number(document.getElementById(id)?.value);
       return Number.isFinite(n) ? n : fallback;
     };
+    const fairFight = rwphNormalizedFairFightSettings();
     return {
       pointWarHitValue: num("rw-point-war-hit", 1),
       pointAssistValue: num("rw-point-assist", 0.6),
@@ -13093,11 +13169,7 @@
       pointRespectStep: num("rw-point-respect-step", 1),
       pointRespectIgnoreChainBonus: document.getElementById("rw-point-respect-ignore-chain")?.checked === true,
       pointRespectWarOnly: document.getElementById("rw-point-respect-war-only")?.checked === true,
-      pointFairFightEnabled: document.getElementById("rw-point-fair-fight")?.checked !== false,
-      pointFairFightMode: String(document.getElementById("rw-point-fair-fight-mode")?.value || "none"),
-      pointFairFightLinearRate: num("rw-point-fair-fight-linear-rate", 0.5),
-      pointFairFightAvgStep: rwphPointFairFightAvgStepValue(),
-      pointFairFightBonusPerStep: rwphPointFairFightBonusStepValue(),
+      ...fairFight,
       hybridParticipationPct: num("rw-hybrid-participation-pct", 50),
       hybridPerformancePct: num("rw-hybrid-performance-pct", 30),
       hybridWarPct: num("rw-hybrid-war-pct", 15),
@@ -13130,6 +13202,7 @@
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }
+    rwphApplyFairFightModeSettings(preset.pointFairFightMode, { resetActiveValues: false, persist: false });
     rwphUpdateAdvancedCalculationSystemUI();
     rwphSavePayoutFormState();
 
@@ -14085,6 +14158,7 @@
       .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:flex-start; align-items:center; min-height:34px; padding: 2px 44px 8px 4px; position:sticky; top:0; z-index:5; flex:0 0 auto; text-align:left; }
       .rw-pay-all-title { font-weight:950; color:#fff2dd; font-size:13px; line-height:1.12; white-space:normal; overflow-wrap:anywhere; }
       .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 44px 7px 4px; text-align:left; }
+      .rw-pay-all-scroll { min-height:0; flex:1 1 auto; display:flex; flex-direction:column; overflow:hidden; }
       .rw-pay-all-balance-warning { margin:0 2px 8px; padding:9px 8px; border-radius:13px; border:2px solid rgba(250,204,21,.76); border-left:6px solid rgba(249,115,22,.92); background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)); color:#fff7ed; font:950 11px/1.32 Arial,Helvetica,sans-serif; text-align:center; box-shadow:0 0 20px rgba(245,158,11,.18), inset 0 1px 0 rgba(255,255,255,.07); }
       .rw-pay-all-balance-warning b { color:#fef3c7; }
       .rw-pay-all-accept-warning { display:inline-flex !important; align-items:center !important; justify-content:center !important; width:100% !important; margin:8px 0 5px !important; padding:8px 10px !important; min-height:32px !important; border-radius:11px !important; border:2px solid rgba(254,243,199,.78) !important; background:linear-gradient(135deg, rgba(250,204,21,.96), rgba(249,115,22,.94)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; letter-spacing:.35px !important; text-transform:uppercase !important; cursor:pointer !important; box-shadow:0 0 18px rgba(245,158,11,.30), inset 0 1px 0 rgba(255,255,255,.25) !important; }
@@ -14107,12 +14181,47 @@
       .rw-pay-all-copy { display:inline-flex !important; align-items:center; justify-content:center; width:auto !important; max-width:none !important; padding:5px 6px; min-height:24px; border-radius:9px; border:1px solid rgba(251,191,36,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#fff7ed; font-size:10px; font-weight:950; cursor:pointer; white-space:nowrap; }
       .rw-pay-all-copy[disabled], .rw-pay-all-copy[aria-disabled="true"], .rw-pay-all-copy[data-pay-prefill-locked="1"] { opacity:.42 !important; cursor:not-allowed !important; filter:grayscale(.55) !important; box-shadow:none !important; pointer-events:none !important; }
       .rw-pay-all-copy.rwph-pay-button-hidden { display:none !important; visibility:hidden !important; pointer-events:none !important; }
+      .rw-pay-all-wizard-stage { min-height:0; flex:1 1 auto; display:flex; flex-direction:column; }
+      .rw-pay-all-wizard-page { min-height:0; flex:1 1 auto; display:flex; flex-direction:column; gap:10px; padding:2px 2px 8px; }
+      .rw-pay-all-start-warning { margin:2px !important; display:flex; flex-direction:column; gap:8px; }
+      .rw-pay-all-start-payments { width:100% !important; min-height:40px !important; margin-top:2px !important; border-radius:11px !important; border:1px solid rgba(254,243,199,.72) !important; background:linear-gradient(135deg, rgba(250,204,21,.98), rgba(249,115,22,.96)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; cursor:pointer !important; }
+      .rw-pay-all-start-payments:disabled { opacity:.45 !important; cursor:not-allowed !important; }
+      .rw-pay-all-progress { padding:7px 9px; border-radius:10px; background:rgba(15,23,42,.78); border:1px solid rgba(251,191,36,.16); color:#fef3c7; font-size:10px; font-weight:850; text-align:center; }
+      .rw-pay-all-payment-card { padding:13px 11px; border-radius:14px; border:1px solid rgba(251,191,36,.22); background:linear-gradient(180deg, rgba(30,41,59,.92), rgba(15,23,42,.86)); box-shadow:0 10px 28px rgba(0,0,0,.22); }
+      .rw-pay-all-payment-name { color:#f8fafc; font-size:17px; line-height:1.15; font-weight:950; overflow-wrap:anywhere; }
+      .rw-pay-all-payment-id { margin-top:4px; color:#cbd5e1; font-size:10px; font-weight:800; }
+      .rw-pay-all-payment-amount { margin:12px 0 10px; color:#86efac; font-size:24px; line-height:1; font-weight:1000; letter-spacing:-.02em; }
+      .rw-pay-all-copy-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+      .rw-pay-all-copy-grid .rw-pay-all-copy { width:100% !important; min-height:38px !important; font-size:11px !important; }
+      .rw-pay-all-copy.rw-pay-all-copy-done { border-color:rgba(34,197,94,.55) !important; background:linear-gradient(135deg, rgba(34,197,94,.90), rgba(21,128,61,.90)) !important; color:#ecfdf5 !important; }
+      .rw-pay-all-member-hint { padding:8px 9px; border-radius:10px; border:1px solid rgba(148,163,184,.15); background:rgba(2,6,23,.44); color:#cbd5e1; font-size:9.5px; line-height:1.35; text-align:left; }
+      .rw-pay-all-wizard-nav { margin-top:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+      .rw-pay-all-wizard-nav button { width:100% !important; min-height:38px !important; }
+      .rw-pay-all-complete-card { margin:auto 0; padding:18px 12px; border-radius:14px; border:1px solid rgba(34,197,94,.30); background:linear-gradient(180deg, rgba(20,83,45,.42), rgba(15,23,42,.84)); text-align:center; }
+      .rw-pay-all-complete-icon { width:46px; height:46px; margin:0 auto 10px; display:grid; place-items:center; border-radius:999px; background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.48); color:#86efac; font-size:26px; font-weight:1000; }
+      .rw-pay-all-complete-title { color:#ecfdf5; font-size:16px; font-weight:950; }
+      .rw-pay-all-complete-text { margin-top:7px; color:#cbd5e1; font-size:10px; line-height:1.4; }
       .rw-resize-handle { position:absolute; width:18px; height:18px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
       .rw-resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(251,191,36,.80); border-bottom:2px solid rgba(251,191,36,.80); border-radius:0 0 8px 0; }
       .rw-resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(251,191,36,.80); border-bottom:2px solid rgba(251,191,36,.80); border-radius:0 0 0 8px; }
       .rw-resize-handle-nw { left:7px; top:7px; cursor:nwse-resize; border-left:2px solid rgba(251,191,36,.80); border-top:2px solid rgba(251,191,36,.80); border-radius:8px 0 0 0; }
       @media (max-width: 760px), (pointer: coarse) {
-        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(360px, calc(100vw - 16px)) !important; max-height: calc(100vh - 96px) !important; }
+        .rw-pay-all-panel { top: 64px !important; left: 8px !important; right: auto !important; width: min(360px, calc(100vw - 16px)) !important; height:min(720px,calc(100vh - 76px)) !important; max-height: calc(100vh - 76px) !important; }
+        .rw-pay-all-scroll {
+          flex:1 1 auto !important;
+          min-height:0 !important;
+          overflow-y:auto !important;
+          overflow-x:hidden !important;
+          -webkit-overflow-scrolling:touch !important;
+          overscroll-behavior:contain !important;
+          touch-action:pan-y !important;
+          padding:0 3px 32px 0 !important;
+        }
+        .rw-pay-all-scroll .rw-pay-all-list {
+          overflow:visible !important;
+          flex:0 0 auto !important;
+          min-height:auto !important;
+        }
         .rw-pay-all-row {
           grid-template-columns: minmax(0, 1fr) max-content max-content !important;
           grid-auto-flow: column !important;
@@ -14135,6 +14244,10 @@
           flex:0 0 auto !important;
         }
         .rw-pay-all-head { min-height:42px !important; padding-top:8px !important; padding-bottom:8px !important; touch-action:none !important; cursor:grab !important; }
+        .rw-pay-all-wizard-page { min-height:100% !important; padding-bottom:18px !important; }
+        .rw-pay-all-payment-amount { font-size:22px !important; }
+        .rw-pay-all-copy-grid,.rw-pay-all-wizard-nav { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:7px !important; }
+        .rw-pay-all-copy-grid .rw-pay-all-copy,.rw-pay-all-wizard-nav button { min-height:42px !important; font-size:11px !important; }
         .rw-resize-handle { width:30px !important; height:30px !important; z-index:60 !important; background:rgba(2,6,23,.28) !important; }
         .rw-resize-handle-se { right:3px !important; bottom:3px !important; border-width:3px !important; }
         .rw-resize-handle-sw { left:3px !important; bottom:3px !important; border-width:3px !important; }
@@ -14184,6 +14297,63 @@
       });
   }
 
+  function rwphPayAllWarningPageHtml(total) {
+    const count = Math.max(0, Number(total || 0));
+    return `
+      <div class="rw-pay-all-wizard-page" data-pay-all-page="warning">
+        <div class="rw-pay-all-balance-warning rw-pay-all-start-warning">
+          <div><b>BIG WARNING:</b> In Torn faction controls, change the payment type from <b>Give money</b> to <b>Add To Balance</b> before paying members. Check this before every payout.</div>
+          <div class="rw-pay-all-warning-state">${count ? `${count} payment${count === 1 ? "" : "s"} ready.` : "No payable members were found."}</div>
+          <button type="button" class="rw-pay-all-start-payments" data-pay-all-start="1" ${count ? "" : "disabled"}>Start Payments</button>
+        </div>
+      </div>`;
+  }
+
+  function rwphPayAllMemberPageHtml(row, index, total, copiedState = {}) {
+    const safeIndex = Math.max(0, Number(index || 0));
+    const safeTotal = Math.max(1, Number(total || 1));
+    const name = row?.name || `Unknown ${row?.id || "unknown"}`;
+    const id = String(row?.id || "unknown");
+    const payout = rwphPayAllRowAmount(row);
+    const nameDone = copiedState?.name === true;
+    const amountDone = copiedState?.amount === true;
+    const last = safeIndex >= safeTotal - 1;
+    return `
+      <div class="rw-pay-all-wizard-page" data-pay-all-page="member" data-pay-all-member-index="${safeIndex}">
+        <div class="rw-pay-all-progress">Payment <b>${safeIndex + 1}</b> of <b>${safeTotal}</b></div>
+        <div class="rw-pay-all-payment-card">
+          <div class="rw-pay-all-payment-name">${esc(name)}</div>
+          <div class="rw-pay-all-payment-id">Torn ID: ${esc(id)}</div>
+          <div class="rw-pay-all-payment-amount">${money(payout)}</div>
+          <div class="rw-pay-all-copy-grid">
+            <button type="button" class="rw-pay-all-copy ${nameDone ? "rw-pay-all-copy-done" : ""}" data-pay-copy-name="${safeIndex}">${nameDone ? "Name + ID ✓" : "Name + ID"}</button>
+            <button type="button" class="rw-pay-all-copy ${amountDone ? "rw-pay-all-copy-done" : ""}" data-pay-copy-amount="${safeIndex}">${amountDone ? "Amount ✓" : "Amount"}</button>
+          </div>
+        </div>
+        <div class="rw-pay-all-member-hint">Review the member and amount in Torn, manually confirm the payment, then continue.</div>
+        <div class="rw-pay-all-wizard-nav">
+          <button type="button" class="secondary rw-pay-all-back" data-pay-all-back="1">Back</button>
+          <button type="button" class="primary rw-pay-all-next" data-pay-all-next="1">${last ? "Finish Payments" : "Next Payment"}</button>
+        </div>
+      </div>`;
+  }
+
+  function rwphPayAllCompletePageHtml(total) {
+    const count = Math.max(0, Number(total || 0));
+    return `
+      <div class="rw-pay-all-wizard-page" data-pay-all-page="complete">
+        <div class="rw-pay-all-complete-card">
+          <div class="rw-pay-all-complete-icon">✓</div>
+          <div class="rw-pay-all-complete-title">Payment Checklist Complete</div>
+          <div class="rw-pay-all-complete-text">You reached the end of all ${count} payment${count === 1 ? "" : "s"}. Confirm the payments were submitted correctly in Torn before closing this panel.</div>
+        </div>
+        <div class="rw-pay-all-wizard-nav">
+          <button type="button" class="secondary rw-pay-all-back" data-pay-all-back="1">Back</button>
+          <button type="button" class="primary rw-pay-all-finish-close" data-pay-all-finish-close="1">Close Panel</button>
+        </div>
+      </div>`;
+  }
+
   function renderPayAllCopyPanelHtml(rows) {
     const safeRows = rows || [];
     return `
@@ -14193,36 +14363,8 @@
           <img class="rwph-dynamic-logo-icon rw-pay-all-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH">
           <div class="rw-pay-all-title">Payments Copy Panel</div>
         </div>
-        <div class="rw-pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</div>
-        <div class="rw-pay-all-balance-warning" data-pay-warning-box="1">
-          <div><b>BIG WARNING:</b> In Torn faction controls, change the payment type from <b>Give money</b> to <b>Add To Balance</b> before paying members. Check this before every payout.</div>
-          <button type="button" class="rw-pay-all-accept-warning" data-pay-warning-accept="1">Accept Warning</button>
-          <div class="rw-pay-all-warning-state" data-pay-warning-state="1">Prefill buttons are locked until you accept this warning.</div>
-        </div>
-        <div class="rw-pay-all-info">
-          <b>How to use:</b>
-          <ul>
-            <li><b>Name + ID</b> copies/prefills the member.</li>
-            <li><b>Amount</b> copies/prefills the payout money.</li>
-            <li>Buttons disappear after one click so you can track progress.</li>
-            <li>Use <b>Bring Back Disappeared Button</b> to bring back only the most recently hidden button.</li>
-            <li>Open the correct add money/banking fields first. If Torn hides the amount field until a member is selected, press Name + ID first, then press Amount.</li>
-            <li>You manually review and confirm every payment in Torn.</li>
-          </ul>
-        </div>
-        <button type="button" class="secondary rw-pay-all-undo" data-pay-all-undo="1">Bring Back Disappeared Button</button>
-        <div class="rw-pay-all-list">
-          ${safeRows.map((r, index) => {
-            const name = r.name || `Unknown ${r.id || "unknown"}`;
-            const id = String(r.id || "unknown");
-            const payout = rwphPayAllRowAmount(r);
-            return `
-              <div class="rw-pay-all-row">
-                <div class="rw-pay-all-member">${index + 1}. ${esc(name)} [${esc(id)}]<span class="rw-pay-all-payout">${money(payout)}</span></div>
-                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-name="${index}" data-pay-prefill-locked="1" aria-disabled="true" disabled>Name + ID</button>
-                <button type="button" class="secondary rw-pay-all-copy" data-pay-copy-amount="${index}" data-pay-prefill-locked="1" aria-disabled="true" disabled>Amount</button>
-              </div>`;
-          }).join("") || `<div class="rw-pay-all-row"><div class="rw-pay-all-member">No payable members found.</div></div>`}
+        <div class="rw-pay-all-scroll">
+          <div class="rw-pay-all-wizard-stage" data-pay-all-stage="1">${rwphPayAllWarningPageHtml(safeRows.length)}</div>
         </div>
       </div>`;
   }
@@ -14639,19 +14781,44 @@
   function openPayAllCopyPanel(rows) {
     closePayAllCopyPanel();
     rwphEnsurePayAllStandaloneStyles();
-    const safeRows = rows || [];
+    const safeRows = Array.isArray(rows) ? rows : [];
     const wrap = document.createElement("div");
     wrap.innerHTML = renderPayAllCopyPanelHtml(safeRows);
     const panel = wrap.firstElementChild;
     document.body.appendChild(panel);
     panel.hidden = false;
     rwphForcePayAllCloseButton(panel);
-    rwphSetPayAllWarningAccepted(panel, false);
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
     setTimeout(() => rwphForcePayAllCloseButton(panel), 50);
     setTimeout(() => rwphForcePayAllCloseButton(panel), 300);
     rwphConsumeCrossTabPopup("payments", panel, 550);
-    const payAllUndoStack = [];
+
+    const wizardState = {
+      page: "warning",
+      index: 0,
+      copied: safeRows.map(() => ({ name: false, amount: false })),
+      advanced: safeRows.map(() => false),
+    };
+
+    const stage = () => panel.querySelector("[data-pay-all-stage]");
+    const renderWizard = () => {
+      const target = stage();
+      if (!target) return;
+      if (wizardState.page === "warning") {
+        target.innerHTML = rwphPayAllWarningPageHtml(safeRows.length);
+      } else if (wizardState.page === "complete") {
+        target.innerHTML = rwphPayAllCompletePageHtml(safeRows.length);
+      } else {
+        const index = Math.max(0, Math.min(safeRows.length - 1, Number(wizardState.index || 0)));
+        wizardState.index = index;
+        target.innerHTML = rwphPayAllMemberPageHtml(safeRows[index] || {}, index, safeRows.length, wizardState.copied[index] || {});
+      }
+      const scroll = panel.querySelector(".rw-pay-all-scroll");
+      if (scroll) {
+        try { scroll.scrollTop = 0; } catch (_) {}
+      }
+      rwphForcePayAllCloseButton(panel);
+    };
 
     panel.addEventListener("click", async (e) => {
       const closeBtn = e.target.closest?.("[data-pay-all-close]");
@@ -14660,38 +14827,69 @@
         return;
       }
 
-      const acceptWarningBtn = e.target.closest?.("[data-pay-warning-accept]");
-      if (acceptWarningBtn) {
-        rwphSetPayAllWarningAccepted(panel, true);
-        rwphToastPanelInfo(null, "Payment prefill buttons unlocked. Still manually confirm Add To Balance before paying.", "info", "RWPH Payments");
+      const startBtn = e.target.closest?.("[data-pay-all-start]");
+      if (startBtn) {
+        if (!safeRows.length) return;
+        wizardState.page = "member";
+        wizardState.index = 0;
+        renderWizard();
         return;
       }
 
-      const undoBtn = e.target.closest?.("[data-pay-all-undo]");
-      if (undoBtn) {
-        rwphUndoLastPayAllDisappear(payAllUndoStack);
+      const backBtn = e.target.closest?.("[data-pay-all-back]");
+      if (backBtn) {
+        if (wizardState.page === "complete") {
+          wizardState.page = "member";
+          wizardState.index = Math.max(0, safeRows.length - 1);
+        } else if (wizardState.page === "member" && wizardState.index > 0) {
+          wizardState.index -= 1;
+        } else {
+          wizardState.page = "warning";
+          wizardState.index = 0;
+        }
+        renderWizard();
+        return;
+      }
+
+      const nextBtn = e.target.closest?.("[data-pay-all-next]");
+      if (nextBtn) {
+        if (!safeRows.length || wizardState.page !== "member") return;
+        const index = Math.max(0, Math.min(safeRows.length - 1, Number(wizardState.index || 0)));
+        wizardState.advanced[index] = true;
+        if (index >= safeRows.length - 1) {
+          wizardState.page = "complete";
+        } else {
+          wizardState.index = index + 1;
+        }
+        renderWizard();
+        return;
+      }
+
+      const finishCloseBtn = e.target.closest?.("[data-pay-all-finish-close]");
+      if (finishCloseBtn) {
+        closePayAllCopyPanel();
         return;
       }
 
       const nameBtn = e.target.closest?.("[data-pay-copy-name]");
       if (nameBtn) {
-        if (!rwphRequirePayAllWarningAccepted(panel, panel)) return;
         rwphDismissPayAllCopyPopupsSilently();
-        const row = safeRows[Number(nameBtn.dataset.payCopyName)] || {};
+        const index = Number(nameBtn.dataset.payCopyName);
+        const row = safeRows[index] || {};
         await rwphPrefillPayAllMember(row);
-        // Copy buttons on the Payments Copy Panel are intentionally silent.
-        rwphHidePayAllActionButton(nameBtn, "Name + ID", payAllUndoStack);
+        if (wizardState.copied[index]) wizardState.copied[index].name = true;
+        renderWizard();
         return;
       }
 
       const amountBtn = e.target.closest?.("[data-pay-copy-amount]");
       if (amountBtn) {
-        if (!rwphRequirePayAllWarningAccepted(panel, panel)) return;
         rwphDismissPayAllCopyPopupsSilently();
-        const row = safeRows[Number(amountBtn.dataset.payCopyAmount)] || {};
+        const index = Number(amountBtn.dataset.payCopyAmount);
+        const row = safeRows[index] || {};
         await rwphPrefillPayAllAmount(row);
-        // Copy buttons on the Payments Copy Panel are intentionally silent.
-        rwphHidePayAllActionButton(amountBtn, "Amount", payAllUndoStack);
+        if (wizardState.copied[index]) wizardState.copied[index].amount = true;
+        renderWizard();
       }
     });
     return panel;
@@ -15962,6 +16160,7 @@
         </div>
       </div>`;
 
+    rwphAttachPhoneMainTabsViewportSync(panel);
     rwphMakeHelpPanelCardsDropdowns(panel);
     rwphEnablePanelMoveResize(panel);
     const lockedResultsPanel = document.getElementById("rw-results-panel");
@@ -16247,6 +16446,39 @@
     });
   }
 
+
+  function rwphSyncPhoneMainTabs(panel) {
+    try {
+      if (!panel || panel.id !== "rw-payout-helper") return;
+      const body = panel.querySelector(":scope > .rw-body");
+      const tabs = panel.querySelector(".rw-tabs");
+      const payoutTab = body?.querySelector("#rw-payout-tab");
+      if (!body || !tabs || !payoutTab) return;
+      // v1.1.499: keep Payout/Admin/Help inside the main scrolling body on every device.
+      if (tabs.parentElement !== body) body.insertBefore(tabs, payoutTab);
+      tabs.classList.remove("rwph-mobile-tabbar-fixed");
+    } catch (e) {
+      console.warn("RWPH could not restore the main tabs to the scrolling body:", e);
+    }
+  }
+
+  function rwphAttachPhoneMainTabsViewportSync(panel) {
+    rwphSyncPhoneMainTabs(panel);
+    try {
+      const media = window.matchMedia?.("(max-width: 760px), (pointer: coarse)");
+      if (!media || panel?.dataset?.rwphMobileTabSync === "1") return;
+      panel.dataset.rwphMobileTabSync = "1";
+      const sync = () => {
+        if (!panel.isConnected) {
+          try { media.removeEventListener?.("change", sync); } catch (_) {}
+          return;
+        }
+        rwphSyncPhoneMainTabs(panel);
+      };
+      if (media.addEventListener) media.addEventListener("change", sync);
+      else media.addListener?.(sync);
+    } catch (_) {}
+  }
 
   function showMainScreen(panel) {
     const savedKey = GM_getValue(STORAGE_KEY, "");
@@ -16761,9 +16993,28 @@
     rwphAttachMoneyInputFormatting();
     rwphFormatPayoutMoneyInputs();
     rwphAttachPayoutFormPersistence();
+    rwphApplyFairFightModeSettings(null, { resetActiveValues: false, persist: false });
     rwphUpdateAdvancedCalculationSystemUI();
     document.getElementById("rw-calculation-system")?.addEventListener("change", (event) => {
       rwphApplyAdvancedSystemPreset(event.currentTarget?.value || rwphAdvancedCalculationSystem(), { notify: true });
+    });
+    document.getElementById("rw-point-fair-fight-mode")?.addEventListener("change", (event) => {
+      rwphApplyFairFightModeSettings(event.currentTarget?.value || "none", { resetActiveValues: true, persist: true });
+      const mode = rwphNormalizeFairFightMode(event.currentTarget?.value || "none");
+      const labels = { none: "Fair Fight disabled.", exact: "Exact FF settings applied.", tiered: "Tiered FF settings applied.", linear: "Linear FF settings applied (0.50 bonus per +1.00 FF).", avg_step: "Average FF Step settings applied (+0.01 per payable hit for each +0.02 Avg FF)." };
+      rwphToastPanelInfo(document.getElementById("rw-status"), labels[mode], "info", "RWPH Fair Fight");
+    });
+    document.getElementById("rw-point-fair-fight")?.addEventListener("change", (event) => {
+      const modeEl = document.getElementById("rw-point-fair-fight-mode");
+      if (!event.currentTarget.checked) {
+        if (modeEl) modeEl.value = "none";
+        rwphApplyFairFightModeSettings("none", { resetActiveValues: true, persist: true });
+      } else {
+        const mode = rwphNormalizeFairFightMode(modeEl?.value || "none");
+        const nextMode = mode === "none" ? "exact" : mode;
+        if (modeEl) modeEl.value = nextMode;
+        rwphApplyFairFightModeSettings(nextMode, { resetActiveValues: mode === "none", persist: true });
+      }
     });
     switchTab(rwphGetActiveTab("main", "payout"));
 
@@ -18423,6 +18674,8 @@
         /* v1.1.470: Retal, Overseas and Fair Fight selectors use the same active theme as the preset selector. */
         #rw-payout-helper #rw-point-retal-mode,
         #rw-payout-helper #rw-point-overseas-mode,
+        #rw-payout-helper label.rwph-setting-inactive{opacity:.48;}
+        #rw-payout-helper label.rwph-setting-inactive input:disabled{cursor:not-allowed;filter:saturate(.55);}
         #rw-payout-helper #rw-point-fair-fight-mode{
           background:linear-gradient(180deg,var(--rwph-theme-panel3),var(--rwph-theme-panel2))!important;
           background-color:var(--rwph-theme-panel2)!important;
@@ -19279,6 +19532,22 @@
 
       @media (max-width:760px),(pointer:coarse){
         #rw-payout-helper{width:calc(100vw - 14px)!important;min-width:0!important;}
+        /* v1.1.499: Payout/Admin/Help are part of the normal phone/PDA scroll flow. */
+        #rw-payout-helper .rw-tabs,
+        #rw-payout-helper > .rw-tabs.rwph-mobile-tabbar-fixed{
+          position:static!important;
+          top:auto!important;
+          z-index:auto!important;
+          width:auto!important;
+        }
+        #rw-payout-helper > .rw-body{
+          flex:1 1 auto!important;
+          min-height:0!important;
+          overflow-y:auto!important;
+          overflow-x:hidden!important;
+          -webkit-overflow-scrolling:touch!important;
+          overscroll-behavior:contain!important;
+        }
         #rw-payout-helper>.rw-body,
         #rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
         #rwph-xanax-send-status .rwph-xanax-scroll,

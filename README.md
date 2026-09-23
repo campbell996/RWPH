@@ -1,3 +1,26 @@
+## v1.1.500 — Payments Copy Wizard
+
+### Payments Copy Panel rebuild
+
+- Opens on the payment warning only, with a single **Start Payments** button.
+- Payments are shown one member at a time instead of as one long list.
+- Each member page shows the member name, Torn ID, payout amount, **Name + ID** and **Amount** copy/prefill buttons.
+- Every member page has **Back** and **Next Payment** navigation.
+- The final member advances to a completion page with **Back** and **Close Panel**.
+- Copy progress is remembered when moving backward/forward through members.
+- Payments remain manual in Torn; RWPH only copies/prefills the fields.
+
+
+- On Phone/PDA, **Payout / Admin / Help** is now anchored as its own row at the top of the main panel instead of moving with the scrolling content.
+- The main panel body scrolls independently underneath the tab row with native touch momentum scrolling.
+- **Payments Copy Panel** now has a dedicated touch-scroll content area on Phone/PDA, so warnings, instructions, controls, and all member payment rows can be reached.
+- The Payments Copy header/Close control remain pinned while its content scrolls.
+- Added extra mobile bottom scroll padding so resize handles do not cover the final payment row.
+
+## v1.1.497 — Fair Fight Mode Settings
+
+Advanced Fair Fight mode selection now applies and normalizes all FF settings required by the selected mode. Exact and Tiered clear Linear/Avg-Step fields, Linear uses its rate only, Avg Step uses its step/bonus fields only, and None disables FF scoring.
+
 ## v1.1.496 — Fullscreen Results + Wizard Skip
 
 - **Results Loading** now opens fullscreen by default.
@@ -53,7 +76,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.496**  
+Current userscript version: **1.1.500**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
