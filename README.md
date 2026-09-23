@@ -1,3 +1,11 @@
+## v1.1.515 — Results Export + Themed Newsletter Controls
+
+- Fixed Results **Export CSV** on Phone/PDA with native file-share/save, userscript download-bridge, and local fallback paths.
+- Fixed Results **Export Html** on PC, Phone, and PDA using the same multi-path exporter.
+- Newsletter selector/items/close controls now follow the active RWPH theme/colour variables.
+- Renamed the Results **Payments** action to **Start Payments** and made it a prominent full-width themed action button.
+- Payment logic and calculation logic are unchanged.
+
 ## v1.1.514 — Deep Userscript Dead-Code Cleanup
 
 - Ran a compiler-level unused-code pass across `rwph.user.js`; zero unused locals or parameters remain after cleanup.
