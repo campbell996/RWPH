@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.502
+// @version      1.1.503
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
   // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
   // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
   // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
@@ -9167,7 +9168,7 @@
         Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2),
         Number(r.points ?? r.weight ?? 0).toFixed(2),
         Number(r.basePoints || 0).toFixed(2),
-        Number(r.avgFairFight || 1).toFixed(2),
+        Number(r.fairFightSamples || 0) > 0 ? Number(r.avgFairFight || 1).toFixed(2) : "N/A",
         Number(r.fairFightPerPayableHitBonus || 0).toFixed(2),
         Number(r.fairFightBonusPoints || 0).toFixed(2),
         Number(r.totalRespect ?? r.respect ?? 0).toFixed(2),
@@ -9490,6 +9491,10 @@
 
     if (ctx.fairFight) {
       add("Fair Fight", rwphFairFightModeText(ctx));
+      const ffSamples = Number(meta?.fairFightModifierSamples ?? rwphResultRowsTotal(rows, "fairFightSamples"));
+      add("FF Samples", ffSamples);
+      const missingFf = Number(meta?.missingFairFightModifiers || 0);
+      if (missingFf > 0) add("Missing FF", missingFf);
       add("FF Bonus", Number(summary?.totalFairFightBonusPoints ?? rwphResultRowsTotal(rows, "fairFightBonusPoints")).toFixed(2));
       const applied = Number(meta?.fairFightAppliedHits || 0);
       if (applied > 0) add("FF Applied Hits", applied);
@@ -9535,8 +9540,15 @@
     const add = (label, value) => metrics.push({ label, value: String(value) });
 
     if (ctx.fairFight) {
-      add("Avg FF", `${Number(row.avgFairFight || 1).toFixed(2)}x`);
-      add("Best FF", `${Number(row.bestFairFight || 1).toFixed(2)}x`);
+      const ffSamples = Math.max(0, Number(row.fairFightSamples || 0));
+      if (ffSamples > 0) {
+        add("Avg FF", `${Number(row.avgFairFight || 1).toFixed(2)}x`);
+        add("Best FF", `${Number(row.bestFairFight || 1).toFixed(2)}x`);
+      } else {
+        add("Avg FF", "No FF data");
+        add("Best FF", "No FF data");
+      }
+      add("FF Samples", ffSamples);
       add("FF Bonus", Number(row.fairFightBonusPoints || 0).toFixed(2));
       if (ctx.fairFightMode === "avg_step") add("FF / Hit", Number(row.fairFightPerPayableHitBonus || 0).toFixed(2));
     }
@@ -17258,7 +17270,7 @@
       const memberAdjustments = rwphGetMemberManagementPayload(mode);
       const calculationSignature = rwphCalculationSignature({
         signatureVersion: 2,
-        cacheEngineVersion: 2,
+        cacheEngineVersion: 3,
         calculationMode: isPointsMode ? "points" : "standard",
         calculationSystem,
         from,

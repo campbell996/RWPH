@@ -1,3 +1,7 @@
+## v1.1.503 — Real Fair Fight Hit Modifiers
+
+Advanced calculations with Fair Fight enabled now force Torn's detailed API-v2 `faction/attacks` feed instead of the simplified `attacksfull` feed. RWPH reads each hit's `modifiers.fair_fight` value for Exact, Tiered, Linear, and Avg-Step scoring, keeps detailed and fast attack caches separate, reports the number of real FF samples, and shows `No FF data` rather than pretending a missing modifier is 1.00. The cached-report calculation engine version is bumped so older reports made with the broken FF source do not exact-match new calculations.
+
 ## v1.1.502 — Wizard Fit / Responsive Layout
 
 Payment Copy and Default Setup wizard content now reflows to the actual panel size on PC and Phone/PDA. Buttons stay inside the panel, long text wraps, and deliberately small panels scroll instead of clipping.
