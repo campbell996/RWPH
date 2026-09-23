@@ -1,6 +1,9 @@
-## v1.1.503 — Real Fair Fight Hit Modifiers
+## v1.1.504 — Detailed Advanced Attacks + Unified Payments Theme
 
-Advanced calculations with Fair Fight enabled now force Torn's detailed API-v2 `faction/attacks` feed instead of the simplified `attacksfull` feed. RWPH reads each hit's `modifiers.fair_fight` value for Exact, Tiered, Linear, and Avg-Step scoring, keeps detailed and fast attack caches separate, reports the number of real FF samples, and shows `No FF data` rather than pretending a missing modifier is 1.00. The cached-report calculation engine version is bumped so older reports made with the broken FF source do not exact-match new calculations.
+All **Advanced Calculations** now force Torn's detailed API-v2 `faction/attacks` feed instead of the simplified `attacksfull` feed. This gives every Advanced calculation access to per-hit modifiers and detailed attack information, including real `modifiers.fair_fight` values whenever Torn provides them. Basic calculations keep the faster simplified path. Detailed and fast caches stay separate, and the cached-report engine version is bumped so older Advanced reports made from simplified attack data do not exact-match new calculations.
+
+The **Payments Copy wizard** now uses the same active RWPH theme system as the rest of the panels. Its panel surface, cards, text, borders, primary/secondary buttons, success state, close control, resize accents, and warning/member/completion pages all follow the selected Theme / Colours settings instead of using a separate hard-coded colour scheme.
+
 
 ## v1.1.502 — Wizard Fit / Responsive Layout
 

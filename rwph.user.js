@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.503
+// @version      1.1.504
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
   // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
   // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
   // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
@@ -17270,7 +17271,7 @@
       const memberAdjustments = rwphGetMemberManagementPayload(mode);
       const calculationSignature = rwphCalculationSignature({
         signatureVersion: 2,
-        cacheEngineVersion: 3,
+        cacheEngineVersion: 4,
         calculationMode: isPointsMode ? "points" : "standard",
         calculationSystem,
         from,
@@ -19568,6 +19569,77 @@
       .rw-resize-handle-nw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
       .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 5px var(--rwph-theme-gold,#f59e0b))!important;}
 
+
+
+      /* v1.1.504 — Payments Copy wizard follows the active RWPH theme */
+      #rw-pay-all-panel,.rw-pay-all-panel{
+        background:var(--rwph-theme-panel,#0f172a)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border:var(--rwph-theme-border-width,1px) var(--rwph-theme-border-style,solid) var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        border-radius:var(--rwph-theme-radius,14px)!important;
+        box-shadow:var(--rwph-theme-shadow,0 18px 50px rgba(0,0,0,.42))!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head{
+        background:var(--rwph-theme-panel2,#111827)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border-bottom:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-title,.rw-pay-all-panel .rw-pay-all-title,
+      #rw-pay-all-panel .rw-pay-all-payment-name,.rw-pay-all-panel .rw-pay-all-payment-name,
+      #rw-pay-all-panel .rw-pay-all-complete-title,.rw-pay-all-panel .rw-pay-all-complete-title{color:var(--rwph-theme-text,#f8fafc)!important;}
+      #rw-pay-all-panel .rw-pay-all-scroll,.rw-pay-all-panel .rw-pay-all-scroll,
+      #rw-pay-all-panel .rw-pay-all-wizard-stage,.rw-pay-all-panel .rw-pay-all-wizard-stage,
+      #rw-pay-all-panel .rw-pay-all-wizard-page,.rw-pay-all-panel .rw-pay-all-wizard-page{background:var(--rwph-theme-panel,#0f172a)!important;color:var(--rwph-theme-text,#f8fafc)!important;}
+      #rw-pay-all-panel .rw-pay-all-balance-warning,.rw-pay-all-panel .rw-pay-all-balance-warning,
+      #rw-pay-all-panel .rw-pay-all-payment-card,.rw-pay-all-panel .rw-pay-all-payment-card,
+      #rw-pay-all-panel .rw-pay-all-member-hint,.rw-pay-all-panel .rw-pay-all-member-hint,
+      #rw-pay-all-panel .rw-pay-all-complete-card,.rw-pay-all-panel .rw-pay-all-complete-card,
+      #rw-pay-all-panel .rw-pay-all-progress,.rw-pay-all-panel .rw-pay-all-progress{
+        background:var(--rwph-theme-panel2,#111827)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border-color:var(--rwph-theme-line,rgba(148,163,184,.22))!important;
+        box-shadow:none!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-balance-warning,.rw-pay-all-panel .rw-pay-all-balance-warning{
+        border-left-color:var(--rwph-theme-gold,#f59e0b)!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-warning-state,.rw-pay-all-panel .rw-pay-all-warning-state,
+      #rw-pay-all-panel .rw-pay-all-payment-id,.rw-pay-all-panel .rw-pay-all-payment-id,
+      #rw-pay-all-panel .rw-pay-all-member-hint,.rw-pay-all-panel .rw-pay-all-member-hint,
+      #rw-pay-all-panel .rw-pay-all-complete-text,.rw-pay-all-panel .rw-pay-all-complete-text{color:var(--rwph-theme-soft,#cbd5e1)!important;}
+      #rw-pay-all-panel .rw-pay-all-payment-amount,.rw-pay-all-panel .rw-pay-all-payment-amount{color:var(--rwph-theme-green,#86efac)!important;}
+      #rw-pay-all-panel .rw-pay-all-accept-warning,.rw-pay-all-panel .rw-pay-all-accept-warning,
+      #rw-pay-all-panel .rw-pay-all-start-payments,.rw-pay-all-panel .rw-pay-all-start-payments,
+      #rw-pay-all-panel .rw-pay-all-next,.rw-pay-all-panel .rw-pay-all-next,
+      #rw-pay-all-panel .rw-pay-all-finish-close,.rw-pay-all-panel .rw-pay-all-finish-close{
+        background:linear-gradient(135deg,var(--rwph-theme-gold,#f59e0b),var(--rwph-theme-orange,#f97316))!important;
+        color:#111827!important;
+        border-color:transparent!important;
+        border-radius:var(--rwph-theme-button-radius,9px)!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-back,.rw-pay-all-panel .rw-pay-all-back,
+      #rw-pay-all-panel .rw-pay-all-copy,.rw-pay-all-panel .rw-pay-all-copy{
+        background:var(--rwph-theme-panel3,#1f2937)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border-color:var(--rwph-theme-line2,var(--rwph-theme-line,rgba(148,163,184,.22)))!important;
+        border-radius:var(--rwph-theme-button-radius,9px)!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-copy.rw-pay-all-copy-done,.rw-pay-all-panel .rw-pay-all-copy.rw-pay-all-copy-done,
+      #rw-pay-all-panel .rw-pay-all-accept-warning.rw-pay-all-warning-accepted,.rw-pay-all-panel .rw-pay-all-accept-warning.rw-pay-all-warning-accepted{
+        background:var(--rwph-theme-green,#16a34a)!important;
+        color:#ecfdf5!important;
+        border-color:color-mix(in srgb,var(--rwph-theme-green,#16a34a) 70%,white)!important;
+      }
+      #rw-pay-all-panel .rw-pay-all-close,.rw-pay-all-panel .rw-pay-all-close{
+        background:color-mix(in srgb,var(--rwph-theme-red,#dc2626) 58%,transparent)!important;
+        color:#fee2e2!important;
+        border-color:color-mix(in srgb,var(--rwph-theme-red,#dc2626) 65%,white)!important;
+        border-left-width:1px!important;
+        border-radius:var(--rwph-theme-button-radius,9px)!important;
+      }
+      #rw-pay-all-panel .rw-resize-handle-se,.rw-pay-all-panel .rw-resize-handle-se,
+      #rw-pay-all-panel .rw-resize-handle-sw,.rw-pay-all-panel .rw-resize-handle-sw,
+      #rw-pay-all-panel .rw-resize-handle-nw,.rw-pay-all-panel .rw-resize-handle-nw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
       @media (max-width:760px),(pointer:coarse){
         #rw-payout-helper{width:calc(100vw - 14px)!important;min-width:0!important;}
         /* v1.1.499: Payout/Admin/Help are part of the normal phone/PDA scroll flow. */
