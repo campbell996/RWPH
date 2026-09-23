@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.505
+// @version      1.1.506
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
   // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
   // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
   // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
@@ -2978,7 +2979,7 @@
 
     // Some real builders install their own drag/resize. Calling again is safe and guarantees setup-created results hosts have it.
     const handle = target.id === "rw-pay-all-panel" ? ".rw-pay-all-head"
-      : target.id === "rwph-saved-reports-panel" ? ".rwph-saved-reports-head"
+      : target.id === "rwph-saved-reports-panel" ? ".rwph-panel-head, .rwph-floating-panel-head"
       : target.id === "rwph-results-loading-panel" ? ".rwph-results-loading-head, .rwph-results-loading-panel-head"
       : target.id === "rwph-xanax-send-status" ? "#rwph-payment-helper-title"
       : ".rwph-panel-head, .rwph-floating-panel-head, .rw-head";
@@ -14027,9 +14028,9 @@
     panel.id = "rwph-saved-reports-panel";
     panel.className = "rwph-floating-panel";
     panel.innerHTML = `
-      <div class="rwph-floating-panel-head rwph-saved-reports-head">
+      <div class="rwph-floating-panel-head rwph-panel-head" title="Drag to move Cached Reports">
         <div class="rwph-saved-reports-title"><b>Cached Reports</b><span id="rwph-saved-reports-faction">Loading faction...</span></div>
-        <button type="button" id="rwph-saved-reports-close" class="danger" aria-label="Close" title="Close">×</button>
+        <button type="button" id="rwph-saved-reports-close" class="rwph-mini-close danger" aria-label="Close Cached Reports" title="Close Cached Reports">×</button>
       </div>
       <div class="rwph-saved-reports-body">
         <div class="rwph-saved-report-intro">RWPH stores the <b>3 newest completed reports</b> for your faction. Reports are stored by faction ID, not by user. If all 3 are full, delete one before calculating a different setup. Loading a cached report opens the exact saved result without recalculating.</div>
@@ -14054,7 +14055,7 @@
       </div>`;
     document.body.appendChild(panel);
     try { rwphApplyPanelLayout(panel); } catch (_) {}
-    try { rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head"); } catch (_) {}
+    try { rwphEnablePanelMoveResize(panel, ".rwph-panel-head, .rwph-floating-panel-head"); } catch (_) {}
     panel.querySelector("#rwph-saved-reports-close")?.addEventListener("click", rwphCloseSavedReportsPanel);
     panel.querySelector("#rwph-saved-reports-auto-delete-toggle")?.addEventListener("click", () => {
       const toggle = panel.querySelector("#rwph-saved-reports-auto-delete-toggle");
@@ -19187,6 +19188,36 @@
     rwphSavePanelLayout(panel);
   }
 
+  function rwphFreezeCloseControlsV1506(panel) {
+    if (!panel?.querySelectorAll) return;
+    const selectors = [
+      '#rw-close','#rw-results-close','#rwph-close-helper','#rwph-saved-reports-close','#rw-wrong-payment-close',
+      '#rwph-default-setup-close','#rwph-default-setup-controller-close','#rwph-layout-theme-close','#rwph-licence-info-close',
+      '#rwph-logo-picker-close','#rwph-mm-close','.rw-pay-all-close','.pay-all-close','.rwph-results-html-close','.rwph-mini-close','.rwph-clean-close-v1491'
+    ].join(',');
+    panel.querySelectorAll(selectors).forEach((close) => {
+      if (!(close instanceof HTMLElement)) return;
+      close.style.setProperty('position','absolute','important');
+      close.style.setProperty('top','10px','important');
+      close.style.setProperty('right','10px','important');
+      close.style.setProperty('left','auto','important');
+      close.style.setProperty('bottom','auto','important');
+      close.style.setProperty('width','32px','important');
+      close.style.setProperty('height','32px','important');
+      close.style.setProperty('min-width','32px','important');
+      close.style.setProperty('min-height','32px','important');
+      close.style.setProperty('max-width','32px','important');
+      close.style.setProperty('max-height','32px','important');
+      close.style.setProperty('padding','0','important');
+      close.style.setProperty('margin','0','important');
+      close.style.setProperty('transform','none','important');
+      close.style.setProperty('scale','1','important');
+      close.style.setProperty('transition','filter .12s ease, background-color .12s ease, border-color .12s ease','important');
+      close.style.setProperty('box-sizing','border-box','important');
+      close.style.setProperty('z-index','130','important');
+    });
+  }
+
   function rwphDecorateCleanPanelV1491(panel, handleSelector = "") {
     if (!panel || !panel.querySelector) return;
     panel.classList.add("rwph-clean-panel-v1491");
@@ -19230,6 +19261,7 @@
       }
     }
     panel.querySelectorAll(":scope > .rw-resize-handle").forEach((h) => h.classList.add("rwph-clean-resize-v1491"));
+    rwphFreezeCloseControlsV1506(panel);
   }
 
   function rwphCleanUiCssV1491() {
@@ -19434,7 +19466,7 @@
         background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border-color:rgba(248,113,113,.36)!important;
       }
       #rw-payout-helper :where(button:hover,.btn:hover,a.btn:hover),
-      .rwph-floating-panel :where(button:hover,.btn:hover,a.btn:hover){transform:translateY(-1px)!important;filter:brightness(1.08)!important;}
+      .rwph-floating-panel :where(button:hover,.btn:hover,a.btn:hover){filter:brightness(1.08)!important;}
 
       /* v1.1.505: Close controls may brighten, but must never move, scale, or change size on hover. */
       :where(#rw-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-results-html-close,button[id*="close" i],button[class*="close" i],button[aria-label*="close" i],button[title*="close" i]):hover{
@@ -19588,6 +19620,27 @@
       #rwph-saved-reports-panel #rwph-saved-reports-close{position:absolute!important;right:10px!important;top:50%!important;}
 
 
+
+
+      /* v1.1.506 — Cached Reports uses the same shared panel chrome and controls. */
+      #rwph-saved-reports-panel .rwph-panel-head{
+        position:relative!important;
+        cursor:move!important;
+        touch-action:none!important;
+        user-select:none!important;
+      }
+      #rwph-saved-reports-panel #rwph-saved-reports-close{
+        position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;
+        width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;
+        padding:0!important;margin:0!important;transform:none!important;scale:1!important;box-sizing:border-box!important;
+      }
+      #rwph-saved-reports-panel #rwph-saved-reports-close:hover{transform:none!important;scale:1!important;}
+      :where(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491),
+      :where(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491):hover{
+        transform:none!important;scale:1!important;
+        width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;
+        margin:0!important;padding:0!important;
+      }
 
       /* v1.1.504 — Payments Copy wizard follows the active RWPH theme */
       #rw-pay-all-panel,.rw-pay-all-panel{
