@@ -1,10 +1,10 @@
-## v1.1.515 — Results Export + Themed Newsletter Controls
+## v1.1.516 — Results Filtering, Reliable Exports + Faction Newsletter Image
 
-- Fixed Results **Export CSV** on Phone/PDA with native file-share/save, userscript download-bridge, and local fallback paths.
-- Fixed Results **Export Html** on PC, Phone, and PDA using the same multi-path exporter.
-- Newsletter selector/items/close controls now follow the active RWPH theme/colour variables.
-- Renamed the Results **Payments** action to **Start Payments** and made it a prominent full-width themed action button.
-- Payment logic and calculation logic are unchanged.
+- Members whose displayed payout rounds to **$0** are no longer shown in Results, exported CSV rows, newsletter payout cards, or Start Payments rows. Calculation totals and cached calculation data are unchanged.
+- Results **Export CSV** and **Export Html** now use the backend's real HTTP attachment endpoint as the primary export path. The export is submitted directly from the Results button click so it does not depend on `blob:` / `data:` downloads inside the Results iframe. Existing native/share/userscript fallbacks remain available.
+- Every newsletter theme places the faction image at the top when available. RWPH prefers the faction image detected on the Torn faction page and carries Torn's faction tag image from the API as a fallback for new/cached reports.
+- Newsletter controls continue to follow the active RWPH theme/colour variables and the Results payment action remains **Start Payments**.
+- No payout formulas or calculation-system scoring rules were changed.
 
 ## v1.1.514 — Deep Userscript Dead-Code Cleanup
 

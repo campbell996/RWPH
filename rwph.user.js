@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.515
+// @version      1.1.516
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -9230,14 +9230,19 @@
     button.setAttribute("aria-pressed", isActive ? "true" : "false");
   }
 
+  function rwphRowsWithPositivePayout(rows = []) {
+    return (Array.isArray(rows) ? rows : []).filter((row) => Math.round(Number(row?.payout ?? row?.payoutAmount ?? row?.paymentAmount ?? row?.memberPayment ?? row?.amount ?? 0) || 0) > 0);
+  }
+
   function buildPayoutCsvText(rows, summary = {}) {
+    const paidRows = rwphRowsWithPositivePayout(rows);
     const pointsMode = summary?.pointsMode || summary?.calculationMode === "points";
-    const memberPayout = rwphSummaryMemberPayout(summary, rows || []);
+    const memberPayout = rwphSummaryMemberPayout(summary, paidRows);
     const share = (payout) => memberPayout > 0 ? `${((Number(payout || 0) / memberPayout) * 100).toFixed(2)}%` : "0.00%";
     const header = pointsMode
       ? ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Own-Faction Hospital Hits", "Own-Faction Hospital Bonus", "Enemy War Faction Hospital Hits", "Enemy War Faction Hospital Bonus", "Points", "Base Points", "Avg Fair Fight", "FF Bonus Per Payable Hit", "Fair Fight Bonus", "Total Respect", "Respect", "Payout", "Share"]
       : ["Torn ID", "Name", "War Hits", "Assists", "Outside Hits", "Retaliation Hits", "Total Tracked", "Payable Events", "Total Respect", "Respect", "Weight", "Payout", "Share"];
-    const body = (rows || []).map((r) => {
+    const body = paidRows.map((r) => {
       const payout = Number(r.payout || 0);
       return pointsMode ? [
         r.id,
@@ -9325,7 +9330,7 @@
   }
 
   function rwphNormalizePayAllRows(rows) {
-    return (Array.isArray(rows) ? rows : []).map(rwphNormalizePayAllRow);
+    return (Array.isArray(rows) ? rows : []).map(rwphNormalizePayAllRow).filter((row) => Number(row.payout || 0) > 0);
   }
 
   function rwphBuildPayAllRowsPayload(rows) {
@@ -9708,10 +9713,42 @@
     return metrics.map((metric) => `<div class="summary-card"><span>${esc(metric.label)}</span><b>${esc(metric.value)}</b></div>`).join("");
   }
 
+  function rwphFindCurrentFactionImageUrl() {
+    const scored = [];
+    const add = (url, score = 0) => {
+      const value = String(url || "").trim().replace(/^url\(["']?|["']?\)$/g, "");
+      if (!/^https:\/\//i.test(value)) return;
+      if (!/(?:factionimages|factiontags)\.torn\.com\//i.test(value)) return;
+      if (scored.some((item) => item.url === value)) return;
+      scored.push({ url: value, score });
+    };
+    try {
+      document.querySelectorAll("img[src]").forEach((img) => {
+        const src = img.currentSrc || img.src || img.getAttribute("src") || "";
+        const area = Math.max(0, Number(img.naturalWidth || img.width || 0) * Number(img.naturalHeight || img.height || 0));
+        add(src, (/factionimages\.torn\.com/i.test(src) ? 1000000 : 10000) + area);
+        String(img.getAttribute("srcset") || "").split(",").forEach((part) => add(part.trim().split(/\s+/)[0], (/factionimages\.torn\.com/i.test(part) ? 950000 : 9500) + area));
+      });
+      document.querySelectorAll('[style],[class*="faction"],[class*="Faction"],[class*="banner"],[class*="Banner"],[class*="image"],[class*="Image"]').forEach((el) => {
+        const style = String(el.getAttribute("style") || "");
+        const inlineUrls = [...style.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map((m) => m[1]);
+        inlineUrls.forEach((url) => add(url, /factionimages\.torn\.com/i.test(url) ? 900000 : 9000));
+        try {
+          const bg = getComputedStyle(el).backgroundImage || "";
+          const urls = [...bg.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map((m) => m[1]);
+          urls.forEach((url) => add(url, /factionimages\.torn\.com/i.test(url) ? 850000 : 8500));
+        } catch (_) {}
+      });
+      document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]').forEach((meta) => add(meta.content || "", 500000));
+    } catch (_) {}
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0]?.url || "";
+  }
+
   function buildFullscreenResultsHtml(rows, summary) {
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
     const calculationSystemLabel = String(summary?.calculationSystemLabel || (pointsMode ? rwphAdvancedCalculationSystemLabel(summary?.calculationSystem || "rwph_classic") : "Per Hit"));
-    const list = (rows || []).map((r, index) => ({
+    const list = rwphRowsWithPositivePayout(rows).map((r, index) => ({
       rank: index + 1,
       id: String(r.id || "unknown"),
       name: r.name || `Unknown ${r.id || "unknown"}`,
@@ -9759,6 +9796,8 @@
     const csvText = buildPayoutCsvText(list, summary || {});
     const csvJson = JSON.stringify(csvText).replaceAll("<", "\\u003c");
     const payAllHref = rwphFactionControlsPayAllUrl();
+    const factionImageUrl = String(summary?.factionImageUrl || rwphFindCurrentFactionImageUrl() || "").trim();
+    const rwphExportDownloadEndpoint = `${PAYWALL_API_BASE}/api/calc/download-file`;
 
     const rwphNewsletterThemes = {
       gold: { title: "Newsletter", panelA:"#1b1208", panelB:"#111827", head:"#2a1609", outer:"#120905", line:"#b88759", cardLine:"#5b3418", accent:"#ffd37a", text:"#fff7ed", muted:"#cfaa8e", good:"#86efac" },
@@ -9806,6 +9845,7 @@
       };
       let html = "";
       html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif">`;
+      if (factionImageUrl) html += `<tr><td colspan="2" bgcolor="${theme.outer}" align="center" style="border:1px solid ${theme.line};padding:6px"><img src="${esc(factionImageUrl)}" alt="${esc(title)}" style="display:block;max-width:100%;width:auto;height:auto;max-height:180px;margin:0 auto;border:0"></td></tr>`;
       html += `<tr><td colspan="2" bgcolor="${theme.head}" align="center" style="border:1px solid ${theme.line};padding:6px;color:${theme.text}"><div style="font-size:14px;font-weight:bold;color:${theme.accent}">${esc(title)}</div><div style="font-size:9px;color:${theme.muted}">${esc(mode)} payout newsletter • ${esc(theme.title)} • compact 120-card layout</div></td></tr>`;
       html += `<tr>${stat("Total Payout", money(totalPaid), theme.panelA)}${stat(isPoints ? "Per Point" : "Per Hit", money(perUnit), theme.panelB)}</tr>`;
       html += `<tr>${stat("Payable Hits", String(totalPayable || 0), theme.panelB)}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA)}</tr>`;
@@ -10860,6 +10900,7 @@
   <script>
     const rows = ${rowsJson};
     const rwphCsvText = ${csvJson};
+    const rwphExportDownloadEndpoint = ${JSON.stringify(rwphExportDownloadEndpoint)};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
     const rwphOpenResultsStorageKey = "rw_payout_helper_last_results_html_open";
 
@@ -10951,6 +10992,49 @@
         if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return true;
       } catch (_) {}
       return /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(String(navigator.userAgent || ""));
+    }
+
+    function rwphSubmitServerDownloadForm(filename, text, mime) {
+      try {
+        if (!rwphExportDownloadEndpoint) return false;
+        var safeName = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
+        var type = String(mime || "text/plain;charset=utf-8");
+        var extension = safeName.toLowerCase().endsWith(".csv") ? "csv" : safeName.toLowerCase().endsWith(".html") ? "html" : "txt";
+        var targetName = "rwph_export_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+        var form = document.createElement("form");
+        form.method = "POST";
+        form.action = rwphExportDownloadEndpoint;
+        form.target = targetName;
+        form.acceptCharset = "UTF-8";
+        form.style.display = "none";
+        function field(name, value) {
+          var input = document.createElement("textarea");
+          input.name = name;
+          input.value = String(value == null ? "" : value);
+          form.appendChild(input);
+        }
+        field("filename", safeName);
+        field("content", String(text == null ? "" : text));
+        field("mime", type);
+        field("extension", extension);
+        var exportWindow = null;
+        try {
+          exportWindow = window.open("about:blank", targetName);
+          if (exportWindow && exportWindow.document) {
+            exportWindow.document.open();
+            exportWindow.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>RWPH Export</title><body style="font-family:Arial,sans-serif;background:#111827;color:#fff;padding:20px;text-align:center"><b>Preparing RWPH export...</b><p>This tab can be closed after the download starts.</p></body>');
+            exportWindow.document.close();
+          }
+        } catch (_) {}
+        if (!exportWindow) form.target = "_self";
+        (document.body || document.documentElement).appendChild(form);
+        form.submit();
+        setTimeout(function() { try { form.remove(); } catch (_) {} }, 1500);
+        return true;
+      } catch (e) {
+        console.warn("RWPH server attachment export failed; trying browser fallbacks:", e);
+        return false;
+      }
     }
 
     async function rwphTryNativeFileExport(filename, text, mime) {
@@ -11108,6 +11192,10 @@
     }
 
     async function rwphExportTextFile(filename, text, mime, label) {
+      // Primary path: a real user-initiated form POST to RWPH's attachment endpoint.
+      // This avoids blob:/data: URL restrictions in desktop browsers and Torn PDA/WebView.
+      if (rwphSubmitServerDownloadForm(filename, text, mime)) return true;
+
       var nativeResult = await rwphTryNativeFileExport(filename, text, mime);
       if (nativeResult && nativeResult.ok) return true;
       if (nativeResult && nativeResult.cancelled) return false;
@@ -13823,7 +13911,7 @@
       const result = await apiPost("/api/calc/cached-reports/open", rwphSavedReportsRequestBody(userKey, token, { cacheId: safeCacheId, progressId }));
       rwphRememberSavedReportsFactionId(result.factionId || result.cachedReport?.factionId);
       lastRows = result.rows || [];
-      lastSummary = result.summary || {};
+      lastSummary = { ...(result.summary || {}), factionName: result.factionName || result.summary?.factionName || "", factionId: result.factionId || result.summary?.factionId || "", factionImageUrl: rwphFindCurrentFactionImageUrl() || result.factionImageUrl || result.summary?.factionImageUrl || "" };
       rwphStorePayAllRows(lastRows);
       rwphUpdateLastResultsButton();
       const results = document.getElementById("rw-results");
@@ -13951,15 +14039,16 @@
   }
 
   function renderRows(rows, summary) {
-    if (!rows || !rows.length) return `<div class="rw-muted">No payable or tracked attacks found.</div>`;
+    const paidRows = rwphRowsWithPositivePayout(rows);
+    if (!paidRows.length) return `<div class="rw-muted">No members have a payout greater than $0.</div>`;
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
     const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
 
     return `
       <div class="rw-summary">
-        <b>Member Payout:</b> ${money(rwphSummaryMemberPayout(summary, rows))} | <b>Total Payout:</b> ${money(rwphSummaryOverallTotalPayout(summary, rows))}<br>
+        <b>Member Payout:</b> ${money(rwphSummaryMemberPayout(summary, paidRows))} | <b>Total Payout:</b> ${money(rwphSummaryOverallTotalPayout(summary, paidRows))}<br>
         ${summary?.selectedWar?.timeSource ? `<b>War source:</b> ${esc(rwphWarSourceLabel(summary.selectedWar.timeSource))}<br>` : ""}
-        <div class="rw-stat-grid rwph-context-war-info">${rwphInlineMetricBoxes(rwphWarInfoMetrics(rows, summary))}</div>
+        <div class="rw-stat-grid rwph-context-war-info">${rwphInlineMetricBoxes(rwphWarInfoMetrics(paidRows, summary))}</div>
         <b>Removed member hits:</b> ${removedLeftFactionHits}<br>
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)}<br>
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
@@ -13972,7 +14061,7 @@
         </div>
       </div>
       <div class="rw-card-list">
-        ${rows.map((r, index) => {
+        ${paidRows.map((r, index) => {
           const name = r.name || `Unknown ${r.id}`;
           const id = r.id || "unknown";
           const weight = Number(r.weight || 0);
@@ -17498,7 +17587,7 @@
           stopTabCloseWatcher = null;
         }
         lastRows = result.rows || [];
-        lastSummary = result.summary || {};
+        lastSummary = { ...(result.summary || {}), factionName: result.factionName || result.summary?.factionName || "", factionId: result.factionId || result.summary?.factionId || "", factionImageUrl: rwphFindCurrentFactionImageUrl() || result.factionImageUrl || result.summary?.factionImageUrl || "" };
         rwphStorePayAllRows(lastRows);
         rwphUpdateLastResultsButton();
         results.innerHTML = renderRows(lastRows, lastSummary);
