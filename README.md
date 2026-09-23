@@ -1,4 +1,4 @@
-## v1.1.504 — Detailed Advanced Attacks + Unified Payments Theme
+## v1.1.505 — Detailed Advanced Attacks + Unified Payments Theme
 
 All **Advanced Calculations** now force Torn's detailed API-v2 `faction/attacks` feed instead of the simplified `attacksfull` feed. This gives every Advanced calculation access to per-hit modifiers and detailed attack information, including real `modifiers.fair_fight` values whenever Torn provides them. Basic calculations keep the faster simplified path. Detailed and fast caches stay separate, and the cached-report engine version is bumped so older Advanced reports made from simplified attack data do not exact-match new calculations.
 

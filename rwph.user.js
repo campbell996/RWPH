@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.504
+// @version      1.1.505
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
   // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
   // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
   // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
@@ -13792,10 +13793,10 @@
     const style = document.createElement("style");
     style.id = "rwph-saved-reports-style";
     style.textContent = `
-      #rwph-saved-reports-panel{position:fixed;z-index:2147483647;left:50%;top:110px;transform:translateX(-50%);width:min(520px,calc(100vw - 18px));height:min(620px,calc(100vh - 140px));min-width:300px;min-height:330px;display:flex;flex-direction:column;overflow:hidden;resize:both;box-sizing:border-box;background:linear-gradient(180deg,var(--rwph-theme-panel,#211714),var(--rwph-theme-bg,#0b0705));color:var(--rwph-theme-text,#fff2dd);border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));border-radius:var(--rwph-theme-radius,14px);box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72));font-family:Arial,Helvetica,sans-serif;}
+      #rwph-saved-reports-panel{position:fixed;z-index:2147483647;left:50%;top:110px;transform:translateX(-50%);width:min(520px,calc(100vw - 18px));height:min(620px,calc(100vh - 140px));min-width:300px;min-height:330px;display:flex;flex-direction:column;overflow:hidden;resize:none;box-sizing:border-box;background:linear-gradient(180deg,var(--rwph-theme-panel,#211714),var(--rwph-theme-bg,#0b0705));color:var(--rwph-theme-text,#fff2dd);border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));border-radius:var(--rwph-theme-radius,14px);box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72));font-family:Arial,Helvetica,sans-serif;}
       #rwph-saved-reports-panel .rwph-saved-reports-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:7px 9px;background:linear-gradient(135deg,var(--rwph-theme-panel3,#3a241c),var(--rwph-theme-panel,#211714));border-bottom:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34));cursor:grab;touch-action:none;user-select:none;box-sizing:border-box;}
-      #rwph-saved-reports-panel .rwph-saved-reports-title{display:flex;flex-direction:column;min-width:0;line-height:1.15}.rwph-saved-reports-title b{font-size:14px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-reports-title span{font-size:10px;color:var(--rwph-theme-soft,#c9b7a4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      #rwph-saved-reports-panel .rwph-saved-reports-head-actions{display:flex;gap:5px;flex:0 0 auto}.rwph-saved-reports-head-actions button{min-width:32px!important;padding:5px 7px!important;margin:0!important}
+      #rwph-saved-reports-panel .rwph-saved-reports-title{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;line-height:1.15}.rwph-saved-reports-title b{font-size:14px;color:var(--rwph-theme-text,#fff2dd)}.rwph-saved-reports-title span{font-size:10px;color:var(--rwph-theme-soft,#c9b7a4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #rwph-saved-reports-panel .rwph-saved-reports-head-actions{display:contents}
       #rwph-saved-reports-panel .rwph-saved-reports-body{flex:1 1 auto;min-height:0;overflow:auto;padding:9px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box}
       #rwph-saved-reports-panel .rwph-saved-report-intro{font-size:11px;line-height:1.4;padding:7px 8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:8px;background:var(--rwph-theme-panel2,#2b1d18);color:var(--rwph-theme-soft,#c9b7a4)}
       #rwph-saved-reports-panel .rwph-saved-report-auto-delete{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;align-items:center;padding:8px;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.42));border-radius:9px;background:var(--rwph-theme-panel2,#2b1d18)}
@@ -14026,9 +14027,9 @@
     panel.id = "rwph-saved-reports-panel";
     panel.className = "rwph-floating-panel";
     panel.innerHTML = `
-      <div class="rwph-saved-reports-head">
+      <div class="rwph-floating-panel-head rwph-saved-reports-head">
         <div class="rwph-saved-reports-title"><b>Cached Reports</b><span id="rwph-saved-reports-faction">Loading faction...</span></div>
-        <div class="rwph-saved-reports-head-actions"><button type="button" id="rwph-saved-reports-close" aria-label="Close">×</button></div>
+        <button type="button" id="rwph-saved-reports-close" class="danger" aria-label="Close" title="Close">×</button>
       </div>
       <div class="rwph-saved-reports-body">
         <div class="rwph-saved-report-intro">RWPH stores the <b>3 newest completed reports</b> for your faction. Reports are stored by faction ID, not by user. If all 3 are full, delete one before calculating a different setup. Loading a cached report opens the exact saved result without recalculating.</div>
@@ -14053,7 +14054,7 @@
       </div>`;
     document.body.appendChild(panel);
     try { rwphApplyPanelLayout(panel); } catch (_) {}
-    try { rwphEnablePanelMoveResize(panel, ".rwph-saved-reports-head"); } catch (_) {}
+    try { rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head"); } catch (_) {}
     panel.querySelector("#rwph-saved-reports-close")?.addEventListener("click", rwphCloseSavedReportsPanel);
     panel.querySelector("#rwph-saved-reports-auto-delete-toggle")?.addEventListener("click", () => {
       const toggle = panel.querySelector("#rwph-saved-reports-auto-delete-toggle");
@@ -19435,6 +19436,19 @@
       #rw-payout-helper :where(button:hover,.btn:hover,a.btn:hover),
       .rwph-floating-panel :where(button:hover,.btn:hover,a.btn:hover){transform:translateY(-1px)!important;filter:brightness(1.08)!important;}
 
+      /* v1.1.505: Close controls may brighten, but must never move, scale, or change size on hover. */
+      :where(#rw-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-results-html-close,button[id*="close" i],button[class*="close" i],button[aria-label*="close" i],button[title*="close" i]):hover{
+        scale:1!important;
+      }
+      :where(#rw-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-results-html-close,button[id*="close" i],button[class*="close" i],button[aria-label*="close" i],button[title*="close" i]):not(.rwph-clean-close-v1491):hover{
+        transform:none!important;
+      }
+      .rwph-clean-close-v1491:hover{
+        transform:translateY(-50%)!important;
+        scale:1!important;
+        filter:brightness(1.12)!important;
+      }
+
       #rw-payout-helper :where(input,textarea,select),
       #rw-pay-all-panel :where(input,textarea,select),.rw-pay-all-panel :where(input,textarea,select),
       #rwph-xanax-send-status :where(input,textarea,select),
@@ -19568,6 +19582,10 @@
       .rw-resize-handle-sw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
       .rw-resize-handle-nw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
       .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 5px var(--rwph-theme-gold,#f59e0b))!important;}
+      #rwph-saved-reports-panel{resize:none!important;}
+      #rwph-saved-reports-panel>.rw-resize-handle{display:block!important;}
+      #rwph-saved-reports-panel .rwph-saved-reports-head{cursor:move!important;touch-action:none!important;user-select:none!important;}
+      #rwph-saved-reports-panel #rwph-saved-reports-close{position:absolute!important;right:10px!important;top:50%!important;}
 
 
 
