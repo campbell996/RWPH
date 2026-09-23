@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.516
+// @version      1.1.517
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -9494,47 +9494,116 @@
     return false;
   }
 
-  function rwphHandleResultsFileDownloadMessage(event) {
+  function rwphExportExtension(filename, mime = "") {
+    const name = String(filename || "").toLowerCase();
+    const type = String(mime || "").toLowerCase();
+    if (name.endsWith(".csv") || type.includes("text/csv")) return "csv";
+    if (name.endsWith(".html") || type.includes("text/html")) return "html";
+    return "txt";
+  }
+
+  function rwphCreatePersistentExportFile(filename, text, mime) {
+    return new Promise((resolve, reject) => {
+      const safeName = rwphSafeDownloadFilename(filename || "rwph-export.txt", "rwph-export.txt");
+      const value = String(text == null ? "" : text);
+      const type = String(mime || "text/plain;charset=utf-8");
+      if (!value) {
+        reject(new Error("The export file is empty."));
+        return;
+      }
+      try {
+        GM_xmlhttpRequest({
+          method: "POST",
+          url: `${PAYWALL_API_BASE}/api/calc/export-file`,
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          data: JSON.stringify({
+            filename: safeName,
+            content: value,
+            mime: type,
+            extension: rwphExportExtension(safeName, type),
+          }),
+          timeout: 120000,
+          onload: (res) => {
+            try {
+              const raw = String(res?.responseText ?? res?.response ?? "");
+              const json = JSON.parse(raw || "{}");
+              if (!json?.ok || !json?.downloadUrl) throw new Error(json?.error || `Export server error ${res?.status || 0}.`);
+              resolve(json);
+            } catch (e) {
+              reject(e);
+            }
+          },
+          onerror: () => reject(new Error("Could not create the export file on the RWPH backend.")),
+          ontimeout: () => reject(new Error("RWPH export creation timed out.")),
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  async function rwphHandleResultsFileDownloadMessage(event) {
     try {
       const data = event && event.data;
       if (!data || data.rwphType !== "rwph-results-file-download-request") return;
       const filename = rwphSafeDownloadFilename(data.filename || "rwph-export.txt", "rwph-export.txt");
       const text = String(data.text == null ? "" : data.text);
       const mime = String(data.mime || "text/plain;charset=utf-8");
-      const ok = rwphDownloadTextFileStrong(filename, text, mime);
+      let ack = {
+        rwphType: "rwph-results-file-download-ack",
+        requestId: data.requestId || "",
+        ok: false,
+      };
       try {
-        event.source && event.source.postMessage({
-          rwphType: "rwph-results-file-download-ack",
-          requestId: data.requestId || "",
-          ok: !!ok,
-        }, "*");
-      } catch (_) {}
-      if (ok) rwphShowToast(`Export started: ${filename}`, "info", "RWPH Export");
-      else rwphShowToast("RWPH could not start the file export automatically. A local save/copy fallback will be shown in the Results panel.", "warn", "RWPH Export");
+        const prepared = await rwphCreatePersistentExportFile(filename, text, mime);
+        ack = {
+          ...ack,
+          ok: true,
+          filename: prepared.filename || filename,
+          downloadUrl: String(prepared.downloadUrl || ""),
+          inlineUrl: String(prepared.inlineUrl || ""),
+          expiresAtMs: Number(prepared.expiresAtMs || 0),
+          method: "server-url",
+        };
+        rwphShowToast(`Export ready: ${filename}`, "info", "RWPH Export");
+      } catch (e) {
+        ack.error = String(e?.message || e || "RWPH could not create the export file.");
+        rwphShowToast(`${ack.error} A save/copy fallback will be shown in Results.`, "warn", "RWPH Export");
+      }
+      try { event.source && event.source.postMessage(ack, "*"); } catch (_) {}
     } catch (e) {
       console.warn("RWPH parent file export handler failed:", e);
     }
   }
 
-  function rwphHandleResultsHtmlDownloadMessage(event) {
+  async function rwphHandleResultsHtmlDownloadMessage(event) {
     try {
       const data = event && event.data;
       if (!data || data.rwphType !== "rwph-results-html-download-request") return;
       const filename = rwphSafeDownloadFilename(data.filename || "rwph-results-page.html");
-      const html = String(data.html || "");
-      if (!html) return;
-      const ok = rwphDownloadTextFileStrong(filename, html, "text/html;charset=utf-8");
+      let ack = {
+        rwphType: "rwph-results-html-download-ack",
+        requestId: data.requestId || "",
+        ok: false,
+      };
       try {
-        event.source && event.source.postMessage({
-          rwphType: "rwph-results-html-download-ack",
-          requestId: data.requestId || "",
-          ok: !!ok,
-        }, "*");
-      } catch (_) {}
-      if (ok) rwphShowToast(`Export HTML download started: ${filename}`, "info", "RWPH Export");
-      else rwphShowToast("Export HTML could not start automatically. Use the fallback HTML box and save the code as an .html file.", "warn", "RWPH Export");
+        const prepared = await rwphCreatePersistentExportFile(filename, String(data.html || ""), "text/html;charset=utf-8");
+        ack = {
+          ...ack,
+          ok: true,
+          filename: prepared.filename || filename,
+          downloadUrl: String(prepared.downloadUrl || ""),
+          inlineUrl: String(prepared.inlineUrl || ""),
+          expiresAtMs: Number(prepared.expiresAtMs || 0),
+          method: "server-url",
+        };
+        rwphShowToast(`Export HTML ready: ${filename}`, "info", "RWPH Export");
+      } catch (e) {
+        ack.error = String(e?.message || e || "RWPH could not create the HTML export file.");
+      }
+      try { event.source && event.source.postMessage(ack, "*"); } catch (_) {}
     } catch (e) {
-      console.warn("RWPH parent export download handler failed:", e);
+      console.warn("RWPH parent export HTML handler failed:", e);
     }
   }
 
@@ -9797,8 +9866,7 @@
     const csvJson = JSON.stringify(csvText).replaceAll("<", "\\u003c");
     const payAllHref = rwphFactionControlsPayAllUrl();
     const factionImageUrl = String(summary?.factionImageUrl || rwphFindCurrentFactionImageUrl() || "").trim();
-    const rwphExportDownloadEndpoint = `${PAYWALL_API_BASE}/api/calc/download-file`;
-
+    
     const rwphNewsletterThemes = {
       gold: { title: "Newsletter", panelA:"#1b1208", panelB:"#111827", head:"#2a1609", outer:"#120905", line:"#b88759", cardLine:"#5b3418", accent:"#ffd37a", text:"#fff7ed", muted:"#cfaa8e", good:"#86efac" },
       blue: { title: "Newsletter Blue", panelA:"#0f172a", panelB:"#082f49", head:"#0c4a6e", outer:"#020617", line:"#38bdf8", cardLine:"#075985", accent:"#7dd3fc", text:"#f0f9ff", muted:"#bae6fd", good:"#86efac" },
@@ -10900,8 +10968,7 @@
   <script>
     const rows = ${rowsJson};
     const rwphCsvText = ${csvJson};
-    const rwphExportDownloadEndpoint = ${JSON.stringify(rwphExportDownloadEndpoint)};
-    const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
+        const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
     const rwphOpenResultsStorageKey = "rw_payout_helper_last_results_html_open";
 
     function rwphRememberStandaloneResultsOpen() {
@@ -10925,24 +10992,7 @@
 
     storePayAllRowsFallback();
 
-    function rwphTriggerDirectDownload(url, filename) {
-      try {
-        const a = document.createElement("a");
-        a.href = String(url || "");
-        a.download = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
-        a.rel = "noopener";
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-        setTimeout(() => { try { a.remove(); } catch (_) {} }, 250);
-        return true;
-      } catch (e) {
-        console.warn("RWPH direct download failed:", e);
-        return false;
-      }
-    }
-
-    function escapeHtml(value) {
+        function escapeHtml(value) {
       return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) {
         return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[ch] || ch;
       });
@@ -10987,150 +11037,96 @@
       return "rwph-results-page-" + stamp + ".html";
     }
 
-    function rwphIsPhoneOrPdaExportContext() {
+        function rwphOpenExportTargetWindow(label) {
       try {
-        if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return true;
-      } catch (_) {}
-      return /Android|iPhone|iPad|iPod|Mobile|TornPDA/i.test(String(navigator.userAgent || ""));
-    }
-
-    function rwphSubmitServerDownloadForm(filename, text, mime) {
-      try {
-        if (!rwphExportDownloadEndpoint) return false;
-        var safeName = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
-        var type = String(mime || "text/plain;charset=utf-8");
-        var extension = safeName.toLowerCase().endsWith(".csv") ? "csv" : safeName.toLowerCase().endsWith(".html") ? "html" : "txt";
-        var targetName = "rwph_export_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-        var form = document.createElement("form");
-        form.method = "POST";
-        form.action = rwphExportDownloadEndpoint;
-        form.target = targetName;
-        form.acceptCharset = "UTF-8";
-        form.style.display = "none";
-        function field(name, value) {
-          var input = document.createElement("textarea");
-          input.name = name;
-          input.value = String(value == null ? "" : value);
-          form.appendChild(input);
+        var exportWindow = window.open("about:blank", "_blank");
+        if (exportWindow && exportWindow.document) {
+          exportWindow.document.open();
+          exportWindow.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>RWPH Export</title><body style="margin:0;background:#020617;color:#fff7ed;font:700 15px Arial,sans-serif;padding:28px;text-align:center"><div style="max-width:520px;margin:12vh auto;padding:22px;border:1px solid rgba(245,158,11,.45);border-radius:16px;background:#0f172a"><div style="font-size:20px;margin-bottom:10px">' + escapeHtml(label || "RWPH Export") + '</div><div>Preparing your file...</div><div style="margin-top:9px;color:#cfaa8e;font-size:12px">Keep this tab open. The file will start as soon as RWPH creates the secure export URL.</div></div></body>');
+          exportWindow.document.close();
         }
-        field("filename", safeName);
-        field("content", String(text == null ? "" : text));
-        field("mime", type);
-        field("extension", extension);
-        var exportWindow = null;
-        try {
-          exportWindow = window.open("about:blank", targetName);
-          if (exportWindow && exportWindow.document) {
-            exportWindow.document.open();
-            exportWindow.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>RWPH Export</title><body style="font-family:Arial,sans-serif;background:#111827;color:#fff;padding:20px;text-align:center"><b>Preparing RWPH export...</b><p>This tab can be closed after the download starts.</p></body>');
-            exportWindow.document.close();
-          }
-        } catch (_) {}
-        if (!exportWindow) form.target = "_self";
-        (document.body || document.documentElement).appendChild(form);
-        form.submit();
-        setTimeout(function() { try { form.remove(); } catch (_) {} }, 1500);
-        return true;
-      } catch (e) {
-        console.warn("RWPH server attachment export failed; trying browser fallbacks:", e);
-        return false;
+        return exportWindow || null;
+      } catch (_) {
+        return null;
       }
     }
 
-    async function rwphTryNativeFileExport(filename, text, mime) {
-      var value = String(text == null ? "" : text);
-      var safeName = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
-      var type = String(mime || "text/plain;charset=utf-8");
+    function rwphRequestParentFileDownload(filename, text, mime, label) {
+      return new Promise(function(resolve) {
+        var requestId = "rwph-file-export-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        var exportWindow = rwphOpenExportTargetWindow(label || "RWPH Export");
+        var finished = false;
+        var timer = null;
 
-      // Phone/PDA: Web Share Level 2 can hand the real file to Android/iOS save/share targets.
-      if (rwphIsPhoneOrPdaExportContext()) {
-        try {
-          if (typeof File === "function" && navigator.share && navigator.canShare) {
-            var mobileFile = new File([value], safeName, { type: type.split(";")[0] || "text/plain" });
-            if (navigator.canShare({ files: [mobileFile] })) {
-              await navigator.share({ files: [mobileFile], title: safeName });
-              return { ok: true, method: "share" };
+        function cleanup() {
+          try { window.removeEventListener("message", onAck, false); } catch (_) {}
+          try { if (timer) clearTimeout(timer); } catch (_) {}
+        }
+
+        function fail(reason) {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          try { if (exportWindow && !exportWindow.closed) exportWindow.close(); } catch (_) {}
+          rwphOpenExportFallbackPanel(String(text == null ? "" : text), filename, reason || "RWPH could not create the export file.", label || "Export File");
+          resolve(false);
+        }
+
+        function onAck(ev) {
+          try {
+            var data = ev && ev.data;
+            if (!data || data.rwphType !== "rwph-results-file-download-ack" || data.requestId !== requestId) return;
+            if (!data.ok || !data.downloadUrl) {
+              fail(data.error || "RWPH could not prepare the export file.");
+              return;
             }
-          }
-        } catch (e) {
-          if (e && e.name === "AbortError") return { ok: false, cancelled: true, method: "share" };
-          console.warn("RWPH native mobile file share failed; trying download bridge:", e);
-        }
-      }
-
-      // Desktop Chromium: save the file directly using the browser's native file picker.
-      try {
-        if (!rwphIsPhoneOrPdaExportContext() && typeof window.showSaveFilePicker === "function") {
-          var ext = safeName.toLowerCase().endsWith(".csv") ? ".csv" : safeName.toLowerCase().endsWith(".html") ? ".html" : ".txt";
-          var acceptType = type.split(";")[0] || "text/plain";
-          var handle = await window.showSaveFilePicker({
-            suggestedName: safeName,
-            types: [{ description: "RWPH export", accept: { [acceptType]: [ext] } }]
-          });
-          var writable = await handle.createWritable();
-          await writable.write(value);
-          await writable.close();
-          return { ok: true, method: "file-picker" };
-        }
-      } catch (e) {
-        if (e && e.name === "AbortError") return { ok: false, cancelled: true, method: "file-picker" };
-        console.warn("RWPH native file picker failed; trying download bridge:", e);
-      }
-
-      return { ok: false, method: "unavailable" };
-    }
-
-    function rwphRequestParentFileDownload(filename, text, mime, fallbackFn) {
-      var requestId = "rwph-file-export-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-      var sent = false;
-      var finished = false;
-      function finishFallback(reason) {
-        if (finished) return;
-        finished = true;
-        try { window.removeEventListener("message", onAck, false); } catch (_) {}
-        try { fallbackFn && fallbackFn(reason || "Parent download bridge did not respond."); } catch (_) {}
-      }
-      function onAck(ev) {
-        try {
-          var data = ev && ev.data;
-          if (!data || data.rwphType !== "rwph-results-file-download-ack" || data.requestId !== requestId) return;
-          if (data.ok) {
             finished = true;
-            try { window.removeEventListener("message", onAck, false); } catch (_) {}
-            return;
+            cleanup();
+            var downloadUrl = String(data.downloadUrl || "");
+            var inlineUrl = String(data.inlineUrl || "");
+            try {
+              if (exportWindow && !exportWindow.closed) {
+                exportWindow.location.replace(downloadUrl);
+                resolve(true);
+                return;
+              }
+            } catch (_) {}
+            rwphOpenExportFallbackPanel(String(text == null ? "" : text), filename, "The file is ready, but this browser/PDA blocked the automatic export tab. Tap Open / Download File below.", label || "Export File", downloadUrl, inlineUrl);
+            resolve(true);
+          } catch (e) {
+            fail(String(e && e.message || e || "RWPH export failed."));
           }
-          finishFallback("Parent download bridge could not start the download.");
+        }
+
+        try { window.addEventListener("message", onAck, false); } catch (_) {}
+        var payload = {
+          rwphType: "rwph-results-file-download-request",
+          requestId: requestId,
+          filename: filename,
+          mime: String(mime || "text/plain;charset=utf-8"),
+          text: String(text == null ? "" : text)
+        };
+        var sent = false;
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(payload, "*");
+            sent = true;
+          } else if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(payload, "*");
+            sent = true;
+          }
         } catch (_) {}
-      }
-      try { window.addEventListener("message", onAck, false); } catch (_) {}
-      var payload = {
-        rwphType: "rwph-results-file-download-request",
-        requestId: requestId,
-        filename: filename,
-        mime: String(mime || "text/plain;charset=utf-8"),
-        text: String(text == null ? "" : text)
-      };
-      try {
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage(payload, "*");
-          sent = true;
+        if (!sent) {
+          fail("The Results page could not reach the RWPH userscript export bridge.");
+          return;
         }
-      } catch (_) {}
-      try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, "*");
-          sent = true;
-        }
-      } catch (_) {}
-      if (sent) {
-        setTimeout(function() { finishFallback("Parent download bridge did not respond, so RWPH is using the local fallback."); }, 1400);
-        return true;
-      }
-      try { window.removeEventListener("message", onAck, false); } catch (_) {}
-      return false;
+        timer = setTimeout(function() {
+          fail("RWPH did not receive an export response from the parent page. The raw file content is shown below instead.");
+        }, 30000);
+      });
     }
 
-    function rwphOpenExportFallbackPanel(text, filename, reason, label) {
+    function rwphOpenExportFallbackPanel(text, filename, reason, label, downloadUrl, inlineUrl) {
       try {
         var old = document.getElementById("rwph-export-html-panel");
         if (old) old.remove();
@@ -11148,6 +11144,7 @@
           + '<a class="rwph-results-html-close" href="#" title="Close">×</a>'
           + '</div>'
           + '<div class="rwph-results-html-status">' + escapeHtml(reason || "Manual export fallback ready.") + ' File name: ' + escapeHtml(filename || "rwph-export.txt") + '</div>'
+          + (downloadUrl ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px"><a class="btn primary" href="' + escapeHtml(downloadUrl) + '" target="_blank" rel="noopener">Open / Download File</a>' + (inlineUrl ? '<a class="btn secondary" href="' + escapeHtml(inlineUrl) + '" target="_blank" rel="noopener">Open File in Browser</a>' : '') + '</div>' : '')
           + '<textarea class="rwph-results-html-box" id="rwph-export-html-box" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>';
         (document.body || document.documentElement).appendChild(panel);
         var box = document.getElementById("rwph-export-html-box");
@@ -11165,46 +11162,8 @@
       }
     }
 
-    function rwphDownloadFileLocal(filename, text, mime, reason, label) {
-      var value = String(text == null ? "" : text);
-      var safeName = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
-      var type = String(mime || "text/plain;charset=utf-8");
-
-      try {
-        var blob = new Blob([value], { type: type });
-        var url = URL.createObjectURL(blob);
-        var ok = rwphTriggerDirectDownload(url, safeName);
-        setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 30000);
-        if (ok) return true;
-      } catch (e) {
-        console.warn("RWPH local Blob export failed:", e);
-      }
-
-      try {
-        var href = "data:" + type + "," + encodeURIComponent(value);
-        if (href.length < 1900000 && rwphTriggerDirectDownload(href, safeName)) return true;
-      } catch (e) {
-        console.warn("RWPH local data-link export failed:", e);
-      }
-
-      rwphOpenExportFallbackPanel(value, safeName, reason || "Automatic download was blocked by this browser/PDA.", label || "Export File");
-      return false;
-    }
-
     async function rwphExportTextFile(filename, text, mime, label) {
-      // Primary path: a real user-initiated form POST to RWPH's attachment endpoint.
-      // This avoids blob:/data: URL restrictions in desktop browsers and Torn PDA/WebView.
-      if (rwphSubmitServerDownloadForm(filename, text, mime)) return true;
-
-      var nativeResult = await rwphTryNativeFileExport(filename, text, mime);
-      if (nativeResult && nativeResult.ok) return true;
-      if (nativeResult && nativeResult.cancelled) return false;
-
-      var localFallback = function(reason) {
-        rwphDownloadFileLocal(filename, text, mime, reason, label);
-      };
-      if (!rwphRequestParentFileDownload(filename, text, mime, localFallback)) localFallback("No parent download bridge was available.");
-      return true;
+      return await rwphRequestParentFileDownload(filename, text, mime, label);
     }
 
     async function downloadThisResultsPageHtml(ev) {
