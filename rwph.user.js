@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.511
+// @version      1.1.513
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.513: Conservative userscript cleanup removes provably unused helpers, no-op loading callbacks, stale generated-results code, and the obsolete hidden results-page Payments panel without changing active calculation/payment flows.
+  // v1.1.512: Lock/unlock now rebuilds the standalone Basic/Advanced calculation panels correctly; starting a calculation auto-closes the calculation and main panels once Results Loading opens.
   // v1.1.511: Logo Selector and Admin Default Setup panels use the shared 3-corner resize system; added reset-to-admin-default, save-current-layout, and restore-saved-layout controls.
   // v1.1.510: Global compact UI pass; locked main no longer renders Payment Code Ready; Default Setup includes compact Payments wizard plus Basic/Advanced calculation panels.
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
@@ -9772,7 +9774,6 @@
     const perPointAmount = pointsMode ? rwphSummaryPerHitAmount(summary, list) : 0;
     const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
-    const summaryJson = JSON.stringify(summary || {}).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list, summary || {});
     const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvText)}`;
     const payAllHref = rwphFactionControlsPayAllUrl();
@@ -10834,32 +10835,9 @@
     </section>
   </main>
 
-  <aside class="pay-all-panel" id="payAllPanel" hidden>
-    <button class="btn secondary pay-all-close" id="payAllClose" type="button">×</button>
-    <h2 class="pay-all-head">Payments Copy Panel</h2>
-    <p class="pay-all-note">Use this helper inside Torn faction controls. It is a payout checklist, not an automatic payment sender.</p>
-    <div class="pay-all-info">
-      <b>How to use Payments:</b>
-      <ul>
-        <li><b>Name + ID</b> copies the member name and Torn ID, and tries to prefill the visible member field.</li>
-        <li><b>Amount</b> copies that member's payout amount, and tries to prefill the visible money field.</li>
-        <li>After a Name + ID or Amount button is pressed once, that button disappears so you can track what has already been used.</li>
-        <li>Use <b>Bring Back Disappeared Button</b> to bring back the most recently hidden button.</li>
-        <li>If a field is not visible, open the correct faction banking/add money area first, then use Undo and press the button again.</li>
-        <li>You still manually review the member, amount, and final Torn confirmation. RWPH never clicks Add Money, Send, or Confirm.</li>
-      </ul>
-    </div>
-    <button class="btn secondary pay-all-undo" id="payAllUndo" type="button">Bring Back Disappeared Button</button>
-    <div class="pay-all-list" id="payAllList"></div>
-    <div class="resize-handle resize-handle-nw" data-resize-dir="nw" title="Resize from top-left"></div>
-    <div class="resize-handle resize-handle-sw" data-resize-dir="sw" title="Resize from bottom-left"></div>
-    <div class="resize-handle resize-handle-se" data-resize-dir="se" title="Resize from bottom-right"></div>
-  </aside>
 
   <script>
     const rows = ${rowsJson};
-    const summary = ${summaryJson};
-    const csvText = ${JSON.stringify(csvText).replaceAll("<", "\\u003c")};
     const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
     const rwphOpenResultsStorageKey = "rw_payout_helper_last_results_html_open";
 
@@ -10884,10 +10862,6 @@
 
     storePayAllRowsFallback();
 
-    function money(n) {
-      return "$" + Math.round(Number(n || 0)).toLocaleString();
-    }
-
     function rwphTriggerDirectDownload(url, filename) {
       try {
         const a = document.createElement("a");
@@ -10905,289 +10879,10 @@
       }
     }
 
-    function downloadText(filename, text, type) {
-      const safeName = String(filename || "rwph-export.txt").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-");
-      const mime = String(type || "text/plain;charset=utf-8");
-      const value = String(text || "");
-      try {
-        const blob = new Blob([value], { type: mime });
-        const url = URL.createObjectURL(blob);
-        const ok = rwphTriggerDirectDownload(url, safeName);
-        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 15000);
-        if (ok) return true;
-      } catch (e) { console.warn("RWPH Blob download failed:", e); }
-      try {
-        const dataUrl = "data:" + mime + "," + encodeURIComponent(value);
-        if (dataUrl.length < 1900000 && rwphTriggerDirectDownload(dataUrl, safeName)) return true;
-      } catch (e) { console.warn("RWPH data-url download failed:", e); }
-      return false;
-    }
-
-    function exportCsv() {
-      downloadText("torn-rw-payouts.csv", csvText || "", "text/csv");
-    }
-
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
-
     function escapeHtml(value) {
       return String(value == null ? "" : value).replace(/[&<>"]/g, function(ch) {
         return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[ch] || ch;
       });
-    }
-
-      return String(html || "")
-        .replace(/\s*(?:overflow(?:-x|-y)?|scrollbar-width|scrollbar-color|-ms-overflow-style|-webkit-overflow-scrolling)\s*:\s*[^;\}"]+;?/gi, "")
-        .trim();
-    }
-
-    async function copyText(text) {
-      const value = String(text || "");
-      try {
-        await navigator.clipboard.writeText(value);
-        return true;
-      } catch (e) {}
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = value;
-        ta.setAttribute("readonly", "readonly");
-        ta.style.position = "fixed";
-        ta.style.left = "0";
-        ta.style.top = "0";
-        ta.style.width = "1px";
-        ta.style.height = "1px";
-        ta.style.opacity = "0";
-        ta.style.zIndex = "2147483647";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        try { ta.setSelectionRange(0, ta.value.length); } catch (_) {}
-        const ok = document.execCommand("copy");
-        ta.remove();
-        return ok;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    document.addEventListener("click", async function(ev) {
-      if (!btn) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      const oldText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = "Copying...";
-      try {
-        if (mode === "rich" || mode === "rich-rendered") {
-        } else if (mode === "plain") {
-        } else {
-        }
-      } catch (err) {
-      } finally {
-        setTimeout(function(){ btn.disabled = false; btn.textContent = oldText; }, 450);
-      }
-    });
-
-    const payAllUndoStack = [];
-
-    function setupMoveResize(panel, handleSelector) {
-      if (!panel) return;
-      panel.querySelectorAll?.(":scope > .resize-handle-ne, :scope > .rw-resize-handle-ne").forEach(function(h) { h.remove(); });
-      if (panel.dataset.moveResizeReady === "1") return;
-      panel.dataset.moveResizeReady = "1";
-      const layoutKey = panel.dataset.layoutKey || "rwph_fullscreen_pay_all_layout";
-      const handle = panel.querySelector(handleSelector);
-      let dragging = false;
-      let resizing = false;
-      let activeDir = "se";
-      let startX = 0;
-      let startY = 0;
-      let startLeft = 0;
-      let startTop = 0;
-      let startWidth = 0;
-      let startHeight = 0;
-
-      // Top-right resize is removed on every panel so it cannot clash with close buttons.
-      panel.querySelectorAll(":scope > .resize-handle-ne").forEach(function(h) { h.remove(); });
-      ["nw", "sw", "se"].forEach(function(dir) {
-        if (!panel.querySelector(".resize-handle-" + dir)) {
-          const h = document.createElement("div");
-          h.className = "resize-handle resize-handle-" + dir;
-          h.dataset.resizeDir = dir;
-          h.title = dir === "nw" ? "Resize from top-left" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
-          panel.appendChild(h);
-        }
-      });
-
-      function point(e) {
-        const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
-        return { x: Number((t && t.clientX) || e.clientX || 0), y: Number((t && t.clientY) || e.clientY || 0) };
-      }
-      function save() {
-        const rect = panel.getBoundingClientRect();
-        try { localStorage.setItem(layoutKey, JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) })); } catch (_) {}
-      }
-      function apply() {
-        try {
-          const saved = JSON.parse(localStorage.getItem(layoutKey) || "null");
-          if (!saved) return;
-          const minWidth = 250, minHeight = 180;
-          const width = Math.min(Math.max(minWidth, Number(saved.width) || minWidth), Math.max(minWidth, window.innerWidth - 16));
-          const height = Math.min(Math.max(minHeight, Number(saved.height) || minHeight), Math.max(minHeight, window.innerHeight - 16));
-          const left = Math.min(Math.max(8, Number(saved.left) || 8), Math.max(8, window.innerWidth - width - 8));
-          const top = Math.min(Math.max(8, Number(saved.top) || 8), Math.max(8, window.innerHeight - height - 8));
-          panel.style.setProperty("left", left + "px", "important");
-          panel.style.setProperty("top", top + "px", "important");
-          panel.style.setProperty("right", "auto", "important");
-          panel.style.setProperty("bottom", "auto", "important");
-          panel.style.setProperty("inset", "auto auto auto auto", "important");
-          panel.style.setProperty("width", width + "px", "important");
-          panel.style.setProperty("height", height + "px", "important");
-          panel.style.setProperty("max-height", "none", "important");
-          panel.style.setProperty("overflow", "hidden", "important");
-        } catch (_) {}
-      }
-      function beginDrag(e) {
-        if (!handle || !e.target.closest(handleSelector) || e.target.closest("button,a,input,textarea,select,.resize-handle")) return;
-        const p = point(e);
-        const rect = panel.getBoundingClientRect();
-        dragging = true;
-        startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top;
-        panel.style.setProperty("left", rect.left + "px", "important"); panel.style.setProperty("top", rect.top + "px", "important"); panel.style.setProperty("right", "auto", "important"); panel.style.setProperty("bottom", "auto", "important"); panel.style.setProperty("inset", "auto auto auto auto", "important");
-        e.preventDefault();
-        e.stopPropagation?.();
-      }
-      function beginResize(e) {
-        const resizeHandle = e.target.closest(".resize-handle");
-        if (!resizeHandle || !panel.contains(resizeHandle)) return;
-        const p = point(e);
-        const rect = panel.getBoundingClientRect();
-        resizing = true;
-        activeDir = resizeHandle.dataset.resizeDir || (resizeHandle.className.match(/resize-handle-(nw|sw|se)/) || [])[1] || "se";
-        startX = p.x; startY = p.y; startLeft = rect.left; startTop = rect.top; startWidth = rect.width; startHeight = rect.height;
-        panel.style.setProperty("left", rect.left + "px", "important"); panel.style.setProperty("top", rect.top + "px", "important"); panel.style.setProperty("right", "auto", "important"); panel.style.setProperty("bottom", "auto", "important"); panel.style.setProperty("inset", "auto auto auto auto", "important"); panel.style.setProperty("max-height", "none", "important"); panel.style.setProperty("overflow", "hidden", "important");
-        e.preventDefault();
-        e.stopPropagation?.();
-      }
-      function move(e) {
-        const p = point(e);
-        if (dragging) {
-          const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-          const maxTop = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
-          panel.style.setProperty("left", Math.min(Math.max(8, startLeft + p.x - startX), maxLeft) + "px", "important");
-          panel.style.setProperty("top", Math.min(Math.max(8, startTop + p.y - startY), maxTop) + "px", "important");
-          e.preventDefault();
-        }
-        if (resizing) {
-          const minWidth = 250, minHeight = 180;
-          const maxWidth = Math.max(minWidth, window.innerWidth - 16);
-          const maxHeight = Math.max(minHeight, window.innerHeight - 16);
-          const dx = p.x - startX;
-          const dy = p.y - startY;
-          let width = startWidth;
-          let height = startHeight;
-          let left = startLeft;
-          let top = startTop;
-          if (activeDir.includes("e")) width = startWidth + dx;
-          if (activeDir.includes("s")) height = startHeight + dy;
-          if (activeDir.includes("w")) width = startWidth - dx;
-          if (activeDir.includes("n")) height = startHeight - dy;
-          width = Math.min(Math.max(minWidth, width), maxWidth);
-          height = Math.min(Math.max(minHeight, height), maxHeight);
-          if (activeDir.includes("w")) left = startLeft + (startWidth - width);
-          if (activeDir.includes("n")) top = startTop + (startHeight - height);
-          left = Math.min(Math.max(8, left), Math.max(8, window.innerWidth - width - 8));
-          top = Math.min(Math.max(8, top), Math.max(8, window.innerHeight - height - 8));
-          panel.style.setProperty("left", left + "px", "important");
-          panel.style.setProperty("top", top + "px", "important");
-          panel.style.setProperty("width", width + "px", "important");
-          panel.style.setProperty("height", height + "px", "important");
-          e.preventDefault();
-        }
-      }
-      function end() {
-        if (dragging || resizing) save();
-        dragging = false;
-        resizing = false;
-      }
-      apply();
-      if (handle) { handle.addEventListener("mousedown", beginDrag); handle.addEventListener("touchstart", beginDrag, { passive:false }); }
-      panel.addEventListener("mousedown", beginResize);
-      panel.addEventListener("touchstart", beginResize, { passive:false });
-      document.addEventListener("mousemove", move);
-      document.addEventListener("touchmove", move, { passive:false });
-      document.addEventListener("mouseup", end);
-      document.addEventListener("touchend", end);
-      document.addEventListener("touchcancel", end);
-    }
-
-    function hidePayAllButton(btn, label) {
-      if (!btn) return;
-      btn.dataset.originalLabel = label || btn.textContent || "Button";
-      btn.textContent = btn.dataset.originalLabel;
-      btn.classList.add("rwph-pay-button-hidden");
-      btn.hidden = true;
-      btn.disabled = true;
-      btn.setAttribute("aria-hidden", "true");
-      btn.style.setProperty("display", "none", "important");
-      btn.style.setProperty("visibility", "hidden", "important");
-      btn.style.setProperty("pointer-events", "none", "important");
-      payAllUndoStack.push(btn);
-    }
-
-    function undoLastPayAllDisappear() {
-      while (payAllUndoStack.length) {
-        const btn = payAllUndoStack.pop();
-        if (btn && btn.isConnected) {
-          btn.classList.remove("rwph-pay-button-hidden");
-          btn.hidden = false;
-          btn.disabled = false;
-          btn.removeAttribute("aria-hidden");
-          btn.style.removeProperty("display");
-          btn.style.removeProperty("visibility");
-          btn.style.removeProperty("pointer-events");
-          btn.textContent = btn.dataset.originalLabel || btn.textContent || "Button";
-          return true;
-        }
-      }
-      return false;
-    }
-
-    function dismissPayAllCopyPopupsSilently() {
-      ["rwphFullPopupPanelLive", "rwph-info-popup-panel-live"].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.remove();
-      });
-      document.querySelectorAll && document.querySelectorAll(".rwph-info-popup-panel").forEach(function(el) {
-        try { el.remove(); } catch (e) {}
-      });
-    }
-
-    function renderPayAllPanel() {
-      const list = document.getElementById("payAllList");
-      if (!list) return;
-      list.innerHTML = rows.map(function(r, index) {
-        const name = r.name || ("Unknown " + (r.id || "unknown"));
-        const id = String(r.id || "unknown");
-        const payoutRaw = String(Math.round(Number(r.payout || 0)));
-        const display = money(r.payout || 0);
-        return '<div class="pay-all-row">'
-          + '<div class="pay-all-member">' + (index + 1) + '. ' + escapeHtml(name) + ' [' + escapeHtml(id) + ']'
-          + '<span class="pay-all-payout">' + escapeHtml(display) + '</span></div>'
-          + '<button class="btn secondary copy-small" data-copy-name="' + index + '">Name + ID</button>'
-          + '<button class="btn secondary copy-small" data-copy-amount="' + index + '">Amount</button>'
-          + '</div>';
-      }).join("") || '<div class="pay-all-row"><div class="pay-all-member">No payable members found.</div></div>';
-    }
-
-    function openPayAllPanel() {
-      storePayAllRowsFallback();
-      renderPayAllPanel();
-      const panel = document.getElementById("payAllPanel");
-      setupMoveResize(panel, ".pay-all-head");
-      panel.hidden = false;
     }
 
     function getCurrentResultsPageHtml() {
@@ -11471,33 +11166,6 @@
     var payAllOpenBtn = document.getElementById("payAllBtn");
     if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", storePayAllRowsFallback);
 
-    document.getElementById("payAllPanel").addEventListener("click", async function(e) {
-      const nameBtn = e.target.closest("[data-copy-name]");
-      const amountBtn = e.target.closest("[data-copy-amount]");
-      if (nameBtn) {
-        dismissPayAllCopyPopupsSilently();
-        const r = rows[Number(nameBtn.dataset.copyName)] || {};
-        const name = r.name || ("Unknown " + (r.id || "unknown"));
-        var value = name + " [" + (r.id || "unknown") + "]";
-        try { await copyText(value); } catch (e) {}
-        // Copy buttons on the Payments Copy Panel are intentionally silent and disappear even if clipboard access is blocked.
-        hidePayAllButton(nameBtn, "Name + ID");
-      }
-      if (amountBtn) {
-        dismissPayAllCopyPopupsSilently();
-        const r = rows[Number(amountBtn.dataset.copyAmount)] || {};
-        var amountValue = String(Math.round(Number(r.payout || 0)));
-        try { await copyText(amountValue); } catch (e) {}
-        // Copy buttons on the Payments Copy Panel are intentionally silent and disappear even if clipboard access is blocked.
-        hidePayAllButton(amountBtn, "Amount");
-      }
-    });
-
-    const payAllClose = document.getElementById("payAllClose");
-    if (payAllClose) payAllClose.addEventListener("click", function() { document.getElementById("payAllPanel").hidden = true; });
-    const payAllUndo = document.getElementById("payAllUndo");
-    if (payAllUndo) payAllUndo.addEventListener("click", function() { undoLastPayAllDisappear(); });
-    setupMoveResize(document.getElementById("payAllPanel"), ".pay-all-head");
   </script>
 </body>
 </html>`;
@@ -11876,7 +11544,6 @@
       var barEl = document.getElementById("rwph-progress-bar");
       var steps = Array.prototype.slice.call(document.querySelectorAll("[data-rwph-load-step]"));
       var rwphProgressId = ${JSON.stringify(String(progressId || ""))};
-      var rwphApiBase = ${JSON.stringify(PAYWALL_API_BASE)};
       var highestDoneStep = -1;
       var rwphManualResultsHtml = "";
       window.rwphManualResultsHtml = "";
@@ -11887,9 +11554,6 @@
         var secs = total % 60;
         if (mins <= 0) return total + " " + (total === 1 ? "sec" : "secs");
         return mins + "m " + String(secs).padStart(2, "0") + "s";
-      }
-      function updateStepDots(total){
-        // Dots are completed by live server progress, not by elapsed time.
       }
       function progressFromStep(stepIndex){
         var doneIndex = Math.max(0, Math.min(4, Math.floor(Number(stepIndex) || 0)));
@@ -12048,24 +11712,16 @@
         if (isFinite(Number(data.percent))) window.rwphSetLoadingProgress(Number(data.percent), data.label || "", data.step);
         else window.rwphSetLoadingStepDone(data.step);
       });
-      function pollProgressFromLoadingTab(){
-        // forwards updates into this frame. Keeping a second fetch loop here doubled
-        // Cloudflare requests without adding useful progress information.
-        return;
-      }
       function tick(){
         if (!el) el = document.getElementById("rwph-load-seconds");
         if (!el) return;
         var total = Math.max(0, Math.floor((Date.now() - started) / 1000));
         el.textContent = formatElapsed(total);
-        updateStepDots(total);
       }
       function wake(){
         tick();
-        pollProgressFromLoadingTab();
         setTimeout(tick, 80);
         setTimeout(tick, 350);
-        setTimeout(pollProgressFromLoadingTab, 500);
       }
       tick();
       window.rwphLoadingTimer = setInterval(tick, 1000);
@@ -13459,10 +13115,6 @@
       .filter((entry) => entry.exclude || entry.hitsToRemove > 0 || entry.respectToRemove > 0);
   }
 
-  function rwphMemberManagementSignature(mode = "standard") {
-    return JSON.stringify(rwphGetMemberManagementPayload(mode).sort((a, b) => String(a.id || a.name).localeCompare(String(b.id || b.name))));
-  }
-
   function rwphBuildMemberManagementExcludedText(mode = "standard") {
     return rwphGetMemberManagementPayload(mode)
       .filter((entry) => entry.exclude)
@@ -13545,28 +13197,6 @@
     const el = document.getElementById(inputId);
     if (!el) return defaultValue ? 1 : 0;
     return el.checked ? 1 : 0;
-  }
-
-  function rwphPointEnemyHospitalBonusValue() {
-    return Number(document.getElementById("rw-point-enemy-hospital")?.value || -1);
-  }
-
-  function rwphPointRespectScoreValue() {
-    return Number(document.getElementById("rw-point-respect")?.value || 0.01);
-  }
-
-  function rwphPointRespectStepValue() {
-    return Number(document.getElementById("rw-point-respect-step")?.value || 0.01);
-  }
-
-  function rwphPointFairFightAvgStepValue() {
-    const n = Number(document.getElementById("rw-point-fair-fight-avg-step")?.value);
-    return Number.isFinite(n) ? n : 0.02;
-  }
-
-  function rwphPointFairFightBonusStepValue() {
-    const n = Number(document.getElementById("rw-point-fair-fight-bonus-step")?.value);
-    return Number.isFinite(n) ? n : 0.01;
   }
 
   function rwphExcludedMembersInputId(mode = "standard") {
@@ -16897,6 +16527,11 @@
   }
 
   function showMainScreen(panel) {
+    // v1.1.512: showPaywallScreen() replaces only panel.innerHTML, so dataset flags on the
+    // outer main panel survive a Lock -> Unlock cycle. Clear the calculation-panel ready
+    // marker before rebuilding the live Basic/Advanced forms so they are always moved back
+    // into their standalone panels instead of reverting to the legacy dropdowns.
+    if (panel?.dataset) delete panel.dataset.rwphCalculationPanelsReady;
     const savedKey = GM_getValue(STORAGE_KEY, "");
     const savedAdminKey = GM_getValue(ADMIN_KEY_STORAGE_KEY, "");
     const current = Math.floor(Date.now() / 1000);
@@ -17705,6 +17340,11 @@
             ? "Server is verifying licence, then using Torn rankedwarreport only for a much faster Basic result. Attack-log extras are skipped in Fast Mode..."
             : "Server is verifying licence, using the selected war/time window, fetching attacks, classifying hits, applying weights, and calculating payouts. If Torn rate-limits the API, RWPH will pause and retry instead of failing straight away...");
         preOpenedResultsTab = openBlankResultsTab(progressId);
+        // v1.1.512: once the Results Loading panel is actually open, the calculation
+        // settings have already been read/validated above. Close the Basic/Advanced
+        // calculation panel and the main RWPH panel so loading/results has the workspace.
+        // Do not close anything if the loading panel failed to open.
+        if (preOpenedResultsTab) closePanel();
         const cancelBecauseTabClosed = () => {
           if (calculationFinished || calculationCancelledByClosedTab) return;
           calculationCancelledByClosedTab = true;

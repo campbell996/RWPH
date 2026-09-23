@@ -1,3 +1,17 @@
+## v1.1.513 — Userscript Dead-Code Cleanup
+
+- Removed provably unused userscript helpers and variables while preserving dynamically referenced UI/event code.
+- Removed no-op Results Loading callbacks that performed no work.
+- Removed the obsolete hidden Payments Copy panel from generated standalone results pages; the active Payments workflow still stores its payout rows and opens Torn faction controls normally.
+- Removed stale/orphaned generated-results script fragments and verified the generated Results and Results Loading scripts parse successfully.
+- No calculation formulas, backend routes, database schema, licensing, active panel behavior, or payment workflow behavior were intentionally changed.
+
+## v1.1.512 — Lock/Unlock Calculation Panels + Auto-Close on Calculate
+
+- Locking and then unlocking the main RWPH panel now rebuilds the standalone Basic Calculations and Advanced Calculations launchers every time instead of falling back to the old in-panel dropdowns.
+- Pressing Calculate in Basic or Advanced now closes the active calculation panel and the main RWPH panel immediately after the Results Loading panel successfully opens.
+- Calculation settings are captured and validated before those panels close, so the calculation request and loading/results flow remain unchanged.
+
 ## v1.1.511 — Panel Layout Controls + Resize Consistency
 
 - Logo Selector now explicitly uses the same visible NW / SW / SE three-corner resize grips as the other RWPH panels.
