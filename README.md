@@ -1,3 +1,11 @@
+## v1.1.514 — Deep Userscript Dead-Code Cleanup
+
+- Ran a compiler-level unused-code pass across `rwph.user.js`; zero unused locals or parameters remain after cleanup.
+- Removed ignored toast TTL/anchor plumbing while preserving the existing fixed 5-second normal notification behavior and persistent help popups.
+- Removed the obsolete pre-opened Xanax payment-tab compatibility chain, which only ever operated on `null` and could not affect the current same-tab payment-helper flow.
+- Removed unused Saved Reports/rendering locals, unused function arguments, and a dead browser-local last-results storage shim that was never read anymore.
+- No calculation formulas, cache signatures, backend routes, database schema, licensing rules, active panel behavior, or payment workflow behavior were intentionally changed.
+
 ## v1.1.513 — Userscript Dead-Code Cleanup
 
 - Removed provably unused userscript helpers and variables while preserving dynamically referenced UI/event code.

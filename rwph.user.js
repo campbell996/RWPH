@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.513
+// @version      1.1.514
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -17,39 +17,7 @@
 
 (function () {
   "use strict";
-
-  // v1.1.513: Conservative userscript cleanup removes provably unused helpers, no-op loading callbacks, stale generated-results code, and the obsolete hidden results-page Payments panel without changing active calculation/payment flows.
-  // v1.1.512: Lock/unlock now rebuilds the standalone Basic/Advanced calculation panels correctly; starting a calculation auto-closes the calculation and main panels once Results Loading opens.
-  // v1.1.511: Logo Selector and Admin Default Setup panels use the shared 3-corner resize system; added reset-to-admin-default, save-current-layout, and restore-saved-layout controls.
-  // v1.1.510: Global compact UI pass; locked main no longer renders Payment Code Ready; Default Setup includes compact Payments wizard plus Basic/Advanced calculation panels.
-  // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
-  // v1.1.509: Basic and Advanced calculations open in their own themed floating panels with shared Close/drag/3-corner resize controls; Licence Info now uses the same 3-corner resize setup.
-  // v1.1.508: Main Payout/Admin/Help tabs no longer use sticky/fixed behavior and scroll naturally from the top of the panel; Cached Reports increases to five reports per faction.
-  // v1.1.507: Cached Reports now uses the exact shared 3-corner resize handles; main Payout/Admin/Help tabs are anchored above the scrolling body.
-  // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
-  // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
-  // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
-  // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
-  // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
-  // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
-  // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
-  // v1.1.497: Advanced Fair Fight mode selection now applies/normalizes every FF setting required by that mode and disables irrelevant FF inputs.
-  // v1.1.496: Default Setup skips Results Loading / Results because both now open fullscreen by default.
-  // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
-  // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
-  // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
-  // v1.1.491: Full clean-panel UI refresh across RWPH. All movable panels keep Close, Fit-to-screen, drag, and resize controls while calculations/licensing/cache/backend behavior remains unchanged.
-  // v1.1.490: Payment Helper opens instantly from a successful Buy/Extend handoff and uses a direct indexed payment-code lookup when browser state is missing; no Torn identity lookup blocks helper rendering.
-  // v1.1.489: Removed payment-code expiry/timer UI. Pending codes live only in MySQL for 30 minutes; Buy/Extend reuses the same code and restarts its 30-minute database lifetime.
-  // v1.1.488: Buy/Extend payment helpers start a visible 5:00 timer immediately; backend payment checks then replace it with the authoritative live expiry. Removed the Syncing timer state.
-  // v1.1.487: Payment-helper expiry immediately showed Syncing while backend state refreshed, live expiry replaced stale timers as soon as it arrived, and Buy/Extend no longer auto-open Your Expiration.
-  // v1.1.486: Expired/stale Buy/Extend payment-helper handoffs self-heal by restoring the current database code or creating a fresh payment code for the original Buy/Extend intent.
-  // v1.1.485: Cached Reports button moved between the Basic Calculations and Advanced Calculations dropdowns; no calculation, cache, licence, or backend logic changed.
-  // v1.1.484: Fast-path licence/payment backend calls now use targeted indexed SQL instead of full-state loads; Buy/Extend are click-locked and successful extension display reuses the confirmation response.
-  // v1.1.483: Admin Key save is now a single fast verify + owner-licence grant request; admin access and the local owner token unlock immediately after confirmation.
-  // v1.1.482: Cached Reports hot path now reads the faction's newest 3 rows directly from MySQL with no Torn lookup on normal opens; calculation saves remain database-backed.
-  // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
-
+  
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
   const PAYWALL_API_BASE = "https://rwph-backend.rankedwarpayouthelper.workers.dev";
@@ -71,7 +39,6 @@
   const PAY_ALL_ROWS_FALLBACK_STORAGE_KEY = "rw_payout_helper_pay_all_rows_fallback";
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
-  const LAST_RESULTS_STORAGE_KEY = "rw_payout_helper_last_results";
   const LAST_RESULTS_HTML_OPEN_STORAGE_KEY = "rw_payout_helper_last_results_html_open";
   const RESULTS_LOADING_PANEL_STATE_STORAGE_KEY = "rw_payout_helper_results_loading_panel_state";
   const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
@@ -452,7 +419,7 @@
     const key = Object.prototype.hasOwnProperty.call(RWPH_LOGO_PRESETS, String(requested || "").trim().toLowerCase()) ? String(requested || "").trim().toLowerCase() : "royalcrest";
     GM_setValue(PANEL_LOGO_STORAGE_KEY, key);
     rwphApplyLogoChoice();
-    rwphShowToast(`RWPH logo changed to ${rwphLogoChoiceLabel(key)}.`, "info", 7000, "RWPH Logo Selector");
+    rwphShowToast(`RWPH logo changed to ${rwphLogoChoiceLabel(key)}.`, "info", "RWPH Logo Selector");
   }
 
   let lastRows = [];
@@ -715,7 +682,7 @@
     }
   }
 
-  function rwphShowToast(message, mode = "info", ttlMs = 5000, title = "RWPH Info", anchorEl = null, options = null) {
+  function rwphShowToast(message, mode = "info", title = "RWPH Info", options = null) {
     try {
       rwphEnsureInfoPopupStyle();
       const safeMode = ["info", "warn", "error"].includes(mode) ? mode : "info";
@@ -945,12 +912,12 @@
   }
 
   function rwphToastPanelInfo(statusEl, message, mode = "info", title = "RWPH Info", readyText = "Ready.") {
-    rwphShowToast(message, mode, 5000, title, statusEl);
+    rwphShowToast(message, mode, title);
     rwphSetStatusReadyText(statusEl, readyText);
   }
 
   function rwphToastPanelError(statusEl, message, title = "RWPH Error", readyText = "Ready.") {
-    rwphShowToast(message, "error", 5000, title, statusEl);
+    rwphShowToast(message, "error", title);
     rwphSetStatusReadyText(statusEl, readyText);
   }
 
@@ -986,7 +953,7 @@
     }
   }
 
-  function rwphConsumeCrossTabPopup(context, anchorElOrSelector = null, delayMs = 350) {
+  function rwphConsumeCrossTabPopup(context, delayMs = 350) {
     try {
       const raw = GM_getValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
       if (!raw) return false;
@@ -1000,10 +967,7 @@
       if (!wanted.includes(String(payload.context || "general")) && !wanted.includes("*")) return false;
       GM_setValue(CROSS_TAB_POPUP_STORAGE_KEY, "");
       setTimeout(() => {
-        let anchor = null;
-        if (typeof anchorElOrSelector === "string") anchor = document.querySelector(anchorElOrSelector);
-        else anchor = anchorElOrSelector;
-        rwphShowToast(payload.message, payload.mode || "info", 5000, payload.title || "RWPH Info", anchor);
+        rwphShowToast(payload.message, payload.mode || "info", payload.title || "RWPH Info");
       }, Math.max(0, Number(delayMs) || 0));
       return true;
     } catch (e) {
@@ -1162,13 +1126,7 @@
     return `https://www.torn.com/item.php?${params.toString()}#inventory`;
   }
 
-  function closePreOpenedPaymentTab(tab) {
-    try {
-      if (tab && !tab.closed) tab.close();
-    } catch (_) {}
-  }
-
-  function openXanaxPaymentPage(code, preOpenedTab = null, mode = "unlock") {
+  function openXanaxPaymentPage(code, mode = "unlock") {
     sessionStorage.removeItem("rwph_xanax_helper_closed");
     saveXanaxPaymentHelper(code);
     GM_setValue("rwph_xanax_helper_open_request", JSON.stringify({
@@ -1198,7 +1156,7 @@
     }
   }
 
-  function rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, mode = "unlock") {
+  function rwphOpenPaymentHelperFromPendingResult(result, status, codeBox, mode = "unlock") {
     if (!result || !result.code) return false;
 
     savePendingPayment(result);
@@ -1219,7 +1177,7 @@
       );
     }
 
-    const openedPaymentHelper = openXanaxPaymentPage(result.code, paymentTab, mode);
+    const openedPaymentHelper = openXanaxPaymentPage(result.code, mode);
     if (!openedPaymentHelper) {
       rwphClearCrossTabPopup("xanax-payment");
       rwphToastPanelInfo(status, "Payment code is ready, but RWPH could not navigate to the Xanax send page. Click the helper button in the payment card.", "warn", "RWPH Payment");
@@ -1468,7 +1426,7 @@
           status.textContent = `Licence extended.${paidQtyText}${expiryText}`;
         }
       } else {
-        rwphShowToast(`Unlocked.${paidQtyText} Loading tool...`, "info", 10000, "RWPH Payment");
+        rwphShowToast(`Unlocked.${paidQtyText} Loading tool...`, "info", "RWPH Payment");
         setPaymentStatus("Ready.", mode);
         closePanel();
         createPanel();
@@ -2096,7 +2054,7 @@
     });
   }
 
-  function getLauncherPositionStyle(corner, anchorTarget = null) {
+  function getLauncherPositionStyle(anchorTarget = null) {
     const targetEl = anchorTarget && anchorTarget.el ? anchorTarget.el : null;
     const anchorRect = anchorTarget && anchorTarget.rect ? anchorTarget.rect : null;
     let computed = null;
@@ -2209,7 +2167,7 @@
 
     btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher");
     btn.classList.add(rwphIsMobileOrPdaView() ? "rwph-mobile-header-launcher" : "rwph-faction-header-launcher");
-    applyStyle(btn, getLauncherPositionStyle("faction-warfare", anchorTarget));
+    applyStyle(btn, getLauncherPositionStyle(anchorTarget));
     btn.title = "Open Ranked War Payout Helper";
     btn.innerHTML = rwphLauncherLogoHtml();
     updateLauncherCornerButtonLabels();
@@ -2555,7 +2513,7 @@
     const layouts = await rwphFetchGlobalPanelLayouts(true).catch(() => rwphGlobalPanelLayoutsCache.layouts);
     const defaults = layouts?.[rwphGlobalLayoutDevice()]?.panels || {};
     rwphApplyLayoutSetToOpenPanels(defaults, true);
-    rwphShowToast("All personal panel positions and sizes were cleared. RWPH is using the Admin Setup defaults for this device.", "info", 7000, "RWPH Panel Layouts");
+    rwphShowToast("All personal panel positions and sizes were cleared. RWPH is using the Admin Setup defaults for this device.", "info", "RWPH Panel Layouts");
   }
 
   function rwphSaveCurrentPanelLayoutsSnapshot() {
@@ -2568,7 +2526,7 @@
     };
     rwphSafeJsonSet(USER_SAVED_PANEL_LAYOUTS_STORAGE_KEY, snapshots);
     const count = Object.keys(current || {}).length;
-    rwphShowToast(`Saved your current ${device === "mobile" ? "Phone / PDA" : "PC"} panel layout${count === 1 ? "" : "s"} (${count} panel${count === 1 ? "" : "s"}).`, "info", 7000, "RWPH Panel Layouts");
+    rwphShowToast(`Saved your current ${device === "mobile" ? "Phone / PDA" : "PC"} panel layout${count === 1 ? "" : "s"} (${count} panel${count === 1 ? "" : "s"}).`, "info", "RWPH Panel Layouts");
   }
 
   function rwphRestoreSavedPanelLayoutsSnapshot() {
@@ -2576,12 +2534,12 @@
     const snapshots = rwphSafeJsonGet(USER_SAVED_PANEL_LAYOUTS_STORAGE_KEY, {});
     const saved = snapshots?.[device]?.panels;
     if (!saved || !Object.keys(saved).length) {
-      rwphShowToast(`No saved ${device === "mobile" ? "Phone / PDA" : "PC"} panel layout was found. Use Save Current Panel Layouts first.`, "warning", 7000, "RWPH Panel Layouts");
+      rwphShowToast(`No saved ${device === "mobile" ? "Phone / PDA" : "PC"} panel layout was found. Use Save Current Panel Layouts first.`, "warning", "RWPH Panel Layouts");
       return;
     }
     rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, JSON.parse(JSON.stringify(saved)));
     rwphApplyLayoutSetToOpenPanels(saved, false);
-    rwphShowToast(`Restored your saved ${device === "mobile" ? "Phone / PDA" : "PC"} panel layouts.`, "info", 7000, "RWPH Panel Layouts");
+    rwphShowToast(`Restored your saved ${device === "mobile" ? "Phone / PDA" : "PC"} panel layouts.`, "info", "RWPH Panel Layouts");
   }
 
   function attachPanelLayoutControlButtons() {
@@ -3024,7 +2982,7 @@
         panel = rwphCreateDefaultSetupActualResultsPanel();
         break;
       case "rwph-results-loading-panel":
-        rwphCreateResultsLoadingPanel("rwph-default-setup", buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now());
+        rwphCreateResultsLoadingPanel(buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now());
         panel = document.getElementById("rwph-results-loading-panel");
         break;
       case "rwph-basic-calculations-panel":
@@ -3554,7 +3512,7 @@
     rwphApplyLogoChoice();
     rwphUpdateLayoutThemeButtons();
     rwphUpdateCustomColourPickerUi();
-    if (showPopup) rwphShowToast(`RWPH custom colour changed to ${safe.toUpperCase()}.`, "info", 5000, "RWPH Theme / Colours");
+    if (showPopup) rwphShowToast(`RWPH custom colour changed to ${safe.toUpperCase()}.`, "info", "RWPH Theme / Colours");
   }
 
   function rwphGetPanelThemePreset(key = "") {
@@ -4704,7 +4662,7 @@
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
     rwphUpdateLayoutThemeButtons();
-    rwphShowToast(`RWPH colour theme changed to ${rwphColourThemeLabel(nextKey)}.`, "info", 7000, "RWPH Theme / Colours");
+    rwphShowToast(`RWPH colour theme changed to ${rwphColourThemeLabel(nextKey)}.`, "info", "RWPH Theme / Colours");
   }
 
   function rwphUpdateLayoutThemeButtons() {
@@ -5073,9 +5031,7 @@
         const popup = rwphShowToast(
           rwphAdvancedHelpText(help),
           "info",
-          5000,
           help.title || "Advanced Setting",
-          btn,
           { persistent: true }
         );
         if (popup) popup.dataset.rwphHelpFor = id;
@@ -5642,7 +5598,7 @@
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
   }
 
-  async function showLicenseDays(statusEl, options = {}) {
+  async function showLicenseDays(statusEl) {
     const info = await getSavedLicenseInfo();
 
     if (!info.valid) {
@@ -9548,8 +9504,8 @@
           ok: !!ok,
         }, "*");
       } catch (_) {}
-      if (ok) rwphShowToast(`Export HTML download started: ${filename}`, "info", 30000, "RWPH Export");
-      else rwphShowToast("Export HTML could not start automatically. Use the fallback HTML box and save the code as an .html file.", "warn", 30000, "RWPH Export");
+      if (ok) rwphShowToast(`Export HTML download started: ${filename}`, "info", "RWPH Export");
+      else rwphShowToast("Export HTML could not start automatically. Use the fallback HTML box and save the code as an .html file.", "warn", "RWPH Export");
     } catch (e) {
       console.warn("RWPH parent export download handler failed:", e);
     }
@@ -12031,7 +11987,7 @@
     } catch (_) {}
   }
 
-  function rwphCreateResultsLoadingPanel(progressId = "", loadingHtml = "", startedAtMs = Date.now()) {
+  function rwphCreateResultsLoadingPanel(loadingHtml = "", startedAtMs = Date.now()) {
     rwphCloseExistingResultsLoadingPanel();
 
     const savedLayoutKey = "rwph_results_loading_panel_layout";
@@ -12469,7 +12425,7 @@
     try {
       const rwphLoadingStartedAt = Date.now();
       const loadingHtml = buildResultsLoadingHtml(progressId, rwphLoadingStartedAt);
-      const tab = rwphCreateResultsLoadingPanel(progressId, loadingHtml, rwphLoadingStartedAt);
+      const tab = rwphCreateResultsLoadingPanel(loadingHtml, rwphLoadingStartedAt);
       if (tab) {
         rwphRememberResultsLoadingPanelState({
           type: "loading",
@@ -12502,13 +12458,13 @@
 
       // Results already opened inside the panel: restore the same panel with the results HTML in the frame.
       if (type === "results" && html) {
-        rwphCreateResultsLoadingPanel(progressId, html, startedAtMs);
+        rwphCreateResultsLoadingPanel(html, startedAtMs);
         return true;
       }
 
       // Loading or ready state: recreate the loading panel and resume progress/result polling.
       const loadingHtml = buildResultsLoadingHtml(progressId, startedAtMs);
-      const tab = rwphCreateResultsLoadingPanel(progressId, loadingHtml, startedAtMs);
+      const tab = rwphCreateResultsLoadingPanel(loadingHtml, startedAtMs);
       if (!tab) return false;
 
       const locallyStored = (() => {
@@ -12752,11 +12708,6 @@
     return true;
   }
 
-  function rwphClearLastResults() {
-    // Clear the obsolete browser-local last-report snapshot. Faction reports are stored only in Cached Reports.
-    GM_setValue(LAST_RESULTS_STORAGE_KEY, "");
-  }
-
   function rwphUpdateLastResultsButton() {
     const actions = document.getElementById("rw-last-results-actions");
     const runBtn = document.getElementById("rw-run");
@@ -12771,12 +12722,6 @@
       runBtn.title = "Create a fresh normal per-hit payout report for the selected finished ranked war. The completed report is saved automatically in Cached Reports.";
     }
 
-  }
-
-  function rwphSaveLastResults(rows, summary) {
-    // Completed reports are reopened from the faction Cached Reports panel.
-    rwphClearLastResults();
-    rwphUpdateLastResultsButton();
   }
 
   function rwphNormalizeCalculationMode(mode) {
@@ -13383,7 +13328,7 @@
     rwphSyncMemberManagementHiddenFields();
   }
 
-  async function rwphLoadMemberManagementMembers(mode = "standard", statusEl = null) {
+  async function rwphLoadMemberManagementMembers(mode = "standard") {
     const userKey = document.getElementById("rw-key")?.value?.trim() || "";
     const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     if (!userKey) throw new Error("Enter your Torn API key first.");
@@ -13465,7 +13410,7 @@
     const reload = async () => {
       try {
         if (status) status.textContent = "Loading members...";
-        const result = await rwphLoadMemberManagementMembers(safeMode, status);
+        const result = await rwphLoadMemberManagementMembers(safeMode);
         panel.rwphMemberManagementMeta = {
           factionId: result.factionId || "",
           factionName: result.factionName || "",
@@ -13728,7 +13673,7 @@
       lastRows = result.rows || [];
       lastSummary = result.summary || {};
       rwphStorePayAllRows(lastRows);
-      rwphSaveLastResults(lastRows, lastSummary);
+      rwphUpdateLastResultsButton();
       const results = document.getElementById("rw-results");
       if (results) results.innerHTML = renderRows(lastRows, lastSummary);
       const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
@@ -13771,7 +13716,6 @@
   async function rwphOpenSavedReportsPanel({ highlightReportId = 0, setupMode = false } = {}) {
     const mainStatus = document.getElementById("rw-status");
     const userKey = document.getElementById("rw-key")?.value?.trim() || GM_getValue(STORAGE_KEY, "") || "";
-    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     if (!setupMode && !userKey) {
       rwphToastPanelError(mainStatus, "Enter your Torn API key first.", "RWPH Cached Reports");
       return;
@@ -13879,13 +13823,8 @@
         ${rows.map((r, index) => {
           const name = r.name || `Unknown ${r.id}`;
           const id = r.id || "unknown";
-          const attacks = Number(r.warHits ?? r.attacks ?? 0);
-          const assists = Number(r.assists || 0);
-          const outsideHits = Number(r.outsideHits || 0);
-          const retaliationHits = Number(r.retaliationHits || 0);
           const weight = Number(r.weight || 0);
           const points = Number(r.points ?? r.weight ?? 0);
-          const respect = Number(r.respect || 0);
           const payout = Number(r.payout || 0);
 
           return `
@@ -14580,7 +14519,7 @@
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
     setTimeout(() => rwphForcePayAllCloseButton(panel), 50);
     setTimeout(() => rwphForcePayAllCloseButton(panel), 300);
-    rwphConsumeCrossTabPopup("payments", panel, 550);
+    rwphConsumeCrossTabPopup("payments", 550);
 
     const wizardState = {
       page: "warning",
@@ -15089,9 +15028,9 @@
 
         const res = await rwphPasteReceiverIntoOpenForm();
         if (res.ok) {
-          rwphShowToast(`Receiver copied/prefilled: ${PAYMENT_RECEIVER_TEXT}. Review before sending.`, "info", 10000, "RWPH Payment Helper");
+          rwphShowToast(`Receiver copied/prefilled: ${PAYMENT_RECEIVER_TEXT}. Review before sending.`, "info", "RWPH Payment Helper");
         } else {
-          rwphShowToast(res.error, "warn", 10000, "RWPH Payment Helper");
+          rwphShowToast(res.error, "warn", "RWPH Payment Helper");
         }
         rwphMaybeAutoClosePaymentHelper();
       }
@@ -15103,9 +15042,9 @@
 
         const res = await rwphPastePaymentCodeIntoOpenForm(currentCode);
         if (res.ok) {
-          rwphShowToast("Payment code copied/prefilled into the Add Message field. Review before sending.", "info", 10000, "RWPH Payment Helper");
+          rwphShowToast("Payment code copied/prefilled into the Add Message field. Review before sending.", "info", "RWPH Payment Helper");
         } else {
-          rwphShowToast(res.error, "warn", 10000, "RWPH Payment Helper");
+          rwphShowToast(res.error, "warn", "RWPH Payment Helper");
         }
         rwphMaybeAutoClosePaymentHelper();
       }
@@ -15239,7 +15178,7 @@
         `RWPH could not confirm this payment code in the backend/database. Click <b>Buy Licence</b> or <b>Extend Licence</b> again so RWPH can reopen the current database-backed Xanax Payment Helper.`,
         true
       );
-      rwphConsumeCrossTabPopup("xanax-payment", "#rwph-xanax-send-status", 650);
+      rwphConsumeCrossTabPopup("xanax-payment", 650);
       return;
     }
 
@@ -15251,7 +15190,7 @@
         : `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the buttons below to copy/prefill the receiver and code.`
     );
     startAutoPaymentCheck(getPaymentUserKey(), helperMode);
-    rwphConsumeCrossTabPopup("xanax-payment", "#rwph-xanax-send-status", 650);
+    rwphConsumeCrossTabPopup("xanax-payment", 650);
   }
 
   function rwphScheduleXanaxPaymentHelperOpen() {
@@ -16037,7 +15976,6 @@
       const button = event.currentTarget;
       if (!userKey) return alert("Enter your Torn API key first.");
       if (button?.dataset?.rwphBusy === "1") return;
-      const paymentTab = null;
       const previousText = button?.textContent || "Buy Licence";
 
       try {
@@ -16048,7 +15986,6 @@
 
         const result = await apiPost("/api/paywall/start", { userKey });
         if (result.alreadyPaid && result.token) {
-          closePreOpenedPaymentTab(paymentTab);
           clearPendingPayment();
           GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
           rwphToastPanelInfo(status, "Existing license found. Loading tool...", "info", "RWPH Licence");
@@ -16057,10 +15994,9 @@
           return;
         }
 
-        rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, "unlock");
+        rwphOpenPaymentHelperFromPendingResult(result, status, codeBox, "unlock");
         setTimeout(closePanel, 150);
       } catch (e) {
-        closePreOpenedPaymentTab(paymentTab);
         rwphToastPanelError(status, "Payment start error: " + e.message, "RWPH Payment");
       } finally {
         if (button?.isConnected) { button.dataset.rwphBusy = "0"; button.disabled = false; button.textContent = previousText; }
@@ -16106,7 +16042,7 @@
       const button = event.currentTarget;
       if (!rwphTryUseManualLicenseCheck(status, button)) return;
       if (status) status.textContent = "Checking saved license...";
-      await showLicenseDays(status, { openPanel: true });
+      await showLicenseDays(status);
       if (button?.isConnected) button.disabled = false;
     });
 
@@ -17188,7 +17124,7 @@
       const button = event.currentTarget;
       if (!rwphTryUseManualLicenseCheck(status, button)) return;
       if (status) status.textContent = "Checking saved license...";
-      await showLicenseDays(status, { openPanel: true });
+      await showLicenseDays(status);
       if (button?.isConnected) button.disabled = false;
     });
 
@@ -17199,7 +17135,6 @@
       const button = event.currentTarget;
       if (!userKey) return alert("Enter your Torn API key first.");
       if (button?.dataset?.rwphBusy === "1") return;
-      const paymentTab = null;
       const previousText = button?.textContent || "Extend Licence";
 
       try {
@@ -17209,10 +17144,9 @@
         if (codeBox) codeBox.innerHTML = "";
 
         const result = await apiPost("/api/paywall/start", { userKey, extend: true });
-        rwphOpenPaymentHelperFromPendingResult(result, paymentTab, status, codeBox, "extend");
+        rwphOpenPaymentHelperFromPendingResult(result, status, codeBox, "extend");
         setTimeout(closePanel, 150);
       } catch (e) {
-        closePreOpenedPaymentTab(paymentTab);
         rwphToastPanelError(status, "Extend licence error: " + e.message, "RWPH Payment");
       } finally {
         if (button?.isConnected) { button.dataset.rwphBusy = "0"; button.disabled = false; button.textContent = previousText; }
@@ -17256,7 +17190,7 @@
     document.getElementById("rw-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("standard"));
     document.getElementById("rw-points-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("points"));
 
-    async function rwphRunCalculation(calculationMode = "standard", runOptions = {}) {
+    async function rwphRunCalculation(calculationMode = "standard") {
       rwphFormatPayoutMoneyInputs();
       rwphSavePayoutFormState();
       const status = document.getElementById("rw-status");
@@ -17283,7 +17217,6 @@
       const basic120ResultsPage = false;
       const calculationSystem = isPointsMode ? rwphAdvancedCalculationSystem() : "basic_per_hit";
       const advancedSettings = rwphReadAdvancedSharedSettings();
-      const { pointWarHitValue, pointAssistValue, pointOutsideHitValue, pointRetaliationHitValue, pointHospitalBonus, pointEnemyHospitalBonus, pointRespectValue, pointRespectStep, pointFairFightEnabled, pointFairFightAvgStep, pointFairFightBonusPerStep } = advancedSettings;
       const includeLeftFactionMembers = false;
       const excludedMembersText = rwphGetExcludedMembersTextForMode(mode);
       const memberAdjustments = rwphGetMemberManagementPayload(mode);
@@ -17419,7 +17352,7 @@
         lastRows = result.rows || [];
         lastSummary = result.summary || {};
         rwphStorePayAllRows(lastRows);
-        rwphSaveLastResults(lastRows, lastSummary);
+        rwphUpdateLastResultsButton();
         results.innerHTML = renderRows(lastRows, lastSummary);
 
         const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
