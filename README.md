@@ -1,3 +1,10 @@
+## v1.1.511 — Panel Layout Controls + Resize Consistency
+
+- Logo Selector now explicitly uses the same visible NW / SW / SE three-corner resize grips as the other RWPH panels.
+- Admin Default Setup panel and its setup controller now explicitly use the same three-corner resize grips.
+- Added three layout controls below the Theme / Colours and Logo Selector buttons: Reset to Admin Defaults, Save Current Panel Layouts, and Reset to Saved Layouts.
+- Saved personal layout snapshots are kept separately for PC and Phone / PDA.
+
 ## v1.1.510 — Compact Panels + Setup Wizard Expansion
 
 - All normal RWPH panels now use a more compact default footprint, tighter headers, smaller body/card padding, reduced form/button gaps, and denser controls while keeping Phone/PDA touch targets usable.

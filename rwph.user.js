@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.510
+// @version      1.1.511
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.511: Logo Selector and Admin Default Setup panels use the shared 3-corner resize system; added reset-to-admin-default, save-current-layout, and restore-saved-layout controls.
   // v1.1.510: Global compact UI pass; locked main no longer renders Payment Code Ready; Default Setup includes compact Payments wizard plus Basic/Advanced calculation panels.
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
   // v1.1.509: Basic and Advanced calculations open in their own themed floating panels with shared Close/drag/3-corner resize controls; Licence Info now uses the same 3-corner resize setup.
@@ -58,6 +59,7 @@
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
   const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
   const PANEL_LAYOUT_STORAGE_KEY = "rw_payout_helper_panel_layout";
+  const USER_SAVED_PANEL_LAYOUTS_STORAGE_KEY = "rw_payout_helper_saved_panel_layouts_v1";
   const DEFAULT_SETUP_WIZARD_STORAGE_KEY = "rw_payout_helper_default_setup_wizard_v1";
   const GLOBAL_PANEL_LAYOUT_ENDPOINT = "/api/ui/default-panel-layouts";
   const ACTIVE_TAB_STORAGE_KEY = "rw_payout_helper_active_tab";
@@ -2521,6 +2523,92 @@
       const lateSaved = layouts?.[rwphGlobalLayoutDevice()]?.panels?.[panel.id];
       if (lateSaved) rwphApplyPanelGeometry(panel, lateSaved, { normalized: true });
     }).catch(() => {});
+  }
+
+  function rwphCaptureOpenPanelLayouts() {
+    const panels = Array.from(document.querySelectorAll?.("[id]") || []).filter((panel) => {
+      if (!(panel instanceof HTMLElement) || !panel.id) return false;
+      if (panel.dataset?.rwphDefaultSetupPreview === "1") return false;
+      if (panel.id === "rw-payout-helper") return true;
+      if (panel.classList?.contains("rwph-floating-panel") || panel.classList?.contains("rw-results-panel")) return true;
+      return !!panel.querySelector?.(":scope > .rw-resize-handle, :scope > .resize-handle, :scope > .rwph-results-resize-handle");
+    });
+    panels.forEach((panel) => {
+      try { rwphSavePanelLayout(panel); } catch (_) {}
+    });
+    return rwphSafeJsonGet(PANEL_LAYOUT_STORAGE_KEY, {});
+  }
+
+  function rwphApplyLayoutSetToOpenPanels(layouts, normalized = false) {
+    const source = layouts && typeof layouts === "object" ? layouts : {};
+    Object.entries(source).forEach(([panelId, geometry]) => {
+      const panel = document.getElementById(panelId);
+      if (!panel || panel.dataset?.rwphDefaultSetupPreview === "1") return;
+      try { rwphApplyPanelGeometry(panel, geometry, { normalized }); } catch (_) {}
+    });
+  }
+
+  async function rwphResetAllPanelsToAdminDefaults() {
+    rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, {});
+    const layouts = await rwphFetchGlobalPanelLayouts(true).catch(() => rwphGlobalPanelLayoutsCache.layouts);
+    const defaults = layouts?.[rwphGlobalLayoutDevice()]?.panels || {};
+    rwphApplyLayoutSetToOpenPanels(defaults, true);
+    rwphShowToast("All personal panel positions and sizes were cleared. RWPH is using the Admin Setup defaults for this device.", "info", 7000, "RWPH Panel Layouts");
+  }
+
+  function rwphSaveCurrentPanelLayoutsSnapshot() {
+    const current = rwphCaptureOpenPanelLayouts();
+    const device = rwphGlobalLayoutDevice();
+    const snapshots = rwphSafeJsonGet(USER_SAVED_PANEL_LAYOUTS_STORAGE_KEY, {});
+    snapshots[device] = {
+      savedAt: Date.now(),
+      panels: JSON.parse(JSON.stringify(current || {})),
+    };
+    rwphSafeJsonSet(USER_SAVED_PANEL_LAYOUTS_STORAGE_KEY, snapshots);
+    const count = Object.keys(current || {}).length;
+    rwphShowToast(`Saved your current ${device === "mobile" ? "Phone / PDA" : "PC"} panel layout${count === 1 ? "" : "s"} (${count} panel${count === 1 ? "" : "s"}).`, "info", 7000, "RWPH Panel Layouts");
+  }
+
+  function rwphRestoreSavedPanelLayoutsSnapshot() {
+    const device = rwphGlobalLayoutDevice();
+    const snapshots = rwphSafeJsonGet(USER_SAVED_PANEL_LAYOUTS_STORAGE_KEY, {});
+    const saved = snapshots?.[device]?.panels;
+    if (!saved || !Object.keys(saved).length) {
+      rwphShowToast(`No saved ${device === "mobile" ? "Phone / PDA" : "PC"} panel layout was found. Use Save Current Panel Layouts first.`, "warning", 7000, "RWPH Panel Layouts");
+      return;
+    }
+    rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, JSON.parse(JSON.stringify(saved)));
+    rwphApplyLayoutSetToOpenPanels(saved, false);
+    rwphShowToast(`Restored your saved ${device === "mobile" ? "Phone / PDA" : "PC"} panel layouts.`, "info", 7000, "RWPH Panel Layouts");
+  }
+
+  function attachPanelLayoutControlButtons() {
+    const resetDefaults = document.getElementById("rw-reset-admin-panel-layouts");
+    if (resetDefaults && resetDefaults.dataset.rwphLayoutReady !== "1") {
+      resetDefaults.dataset.rwphLayoutReady = "1";
+      resetDefaults.addEventListener("click", async (event) => {
+        event.preventDefault();
+        resetDefaults.disabled = true;
+        try { await rwphResetAllPanelsToAdminDefaults(); }
+        finally { resetDefaults.disabled = false; }
+      });
+    }
+    const saveCurrent = document.getElementById("rw-save-current-panel-layouts");
+    if (saveCurrent && saveCurrent.dataset.rwphLayoutReady !== "1") {
+      saveCurrent.dataset.rwphLayoutReady = "1";
+      saveCurrent.addEventListener("click", (event) => {
+        event.preventDefault();
+        rwphSaveCurrentPanelLayoutsSnapshot();
+      });
+    }
+    const restoreSaved = document.getElementById("rw-reset-saved-panel-layouts");
+    if (restoreSaved && restoreSaved.dataset.rwphLayoutReady !== "1") {
+      restoreSaved.dataset.rwphLayoutReady = "1";
+      restoreSaved.addEventListener("click", (event) => {
+        event.preventDefault();
+        rwphRestoreSavedPanelLayoutsSnapshot();
+      });
+    }
   }
 
 
@@ -16246,6 +16334,7 @@
     attachMoveLauncherButton();
     attachPanelThemeButton();
     attachLogoPickerButton();
+    attachPanelLayoutControlButtons();
     rwphAttachAdvancedSettingHelpButtons();
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
@@ -17101,6 +17190,11 @@
                 </div>
               </div>
             </div>
+            <div class="rwph-panel-layout-actions" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;">
+              <button id="rw-reset-admin-panel-layouts" class="secondary" type="button">Reset to Admin Defaults</button>
+              <button id="rw-save-current-panel-layouts" class="secondary" type="button">Save Current Panel Layouts</button>
+              <button id="rw-reset-saved-panel-layouts" class="secondary" type="button">Reset to Saved Layouts</button>
+            </div>
           </div>
         </div>
 
@@ -17291,6 +17385,7 @@
     attachMoveLauncherButton();
     attachPanelThemeButton();
     attachLogoPickerButton();
+    attachPanelLayoutControlButtons();
     rwphAttachAdvancedSettingHelpButtons();
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
@@ -18942,8 +19037,19 @@
           margin:0!important;
           justify-content:center!important;
         }
+        #rw-payout-helper .rwph-theme-logo-control-card .rwph-panel-layout-actions{
+          display:grid!important;
+          grid-template-columns:repeat(3,minmax(0,1fr))!important;
+          gap:8px!important;
+          width:100%!important;
+          margin-top:10px!important;
+        }
+        #rw-payout-helper .rwph-theme-logo-control-card .rwph-panel-layout-actions>button{
+          width:100%!important;min-width:0!important;margin:0!important;white-space:normal!important;line-height:1.25!important;
+        }
         @media (max-width:640px),(pointer:coarse){
-          #rw-payout-helper .rwph-theme-logo-control-card .rwph-theme-logo-button-grid{
+          #rw-payout-helper .rwph-theme-logo-control-card .rwph-theme-logo-button-grid,
+          #rw-payout-helper .rwph-theme-logo-control-card .rwph-panel-layout-actions{
             grid-template-columns:minmax(0,1fr)!important;
           }
         }
@@ -19906,6 +20012,17 @@
       .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 5px var(--rwph-theme-gold,#f59e0b))!important;}
       #rwph-saved-reports-panel{resize:none!important;}
       #rwph-saved-reports-panel>.rw-resize-handle{display:block!important;}
+      /* v1.1.511 — Logo Selector + Admin Setup panels use the exact shared three-corner resize grips. */
+      #rwph-logo-picker-panel>.rw-resize-handle,
+      #rwph-default-setup-panel>.rw-resize-handle,
+      #rwph-default-setup-controller>.rw-resize-handle{
+        display:block!important;position:absolute!important;width:20px!important;height:20px!important;z-index:145!important;
+        touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;opacity:.95!important;background:rgba(2,6,23,.18)!important;
+      }
+      #rwph-logo-picker-panel>.rw-resize-handle-se,#rwph-default-setup-panel>.rw-resize-handle-se,#rwph-default-setup-controller>.rw-resize-handle-se{right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;cursor:nwse-resize!important;border-right:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
+      #rwph-logo-picker-panel>.rw-resize-handle-sw,#rwph-default-setup-panel>.rw-resize-handle-sw,#rwph-default-setup-controller>.rw-resize-handle-sw{left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;cursor:nesw-resize!important;border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
+      #rwph-logo-picker-panel>.rw-resize-handle-nw,#rwph-default-setup-panel>.rw-resize-handle-nw,#rwph-default-setup-controller>.rw-resize-handle-nw{left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;cursor:nwse-resize!important;border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
+      #rwph-logo-picker-panel>.rw-resize-handle-ne,#rwph-default-setup-panel>.rw-resize-handle-ne,#rwph-default-setup-controller>.rw-resize-handle-ne{display:none!important;pointer-events:none!important;}
       #rwph-saved-reports-panel .rwph-saved-reports-head{cursor:move!important;touch-action:none!important;user-select:none!important;}
       #rwph-saved-reports-panel #rwph-saved-reports-close{position:absolute!important;right:10px!important;top:50%!important;}
 
