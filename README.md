@@ -1,3 +1,12 @@
+## v1.1.509 — Calculation Panels + Licence Resize
+
+- Basic Calculations now opens in its own themed RWPH floating panel.
+- Advanced Calculations now opens in its own themed RWPH floating panel.
+- Both calculation panels use the live RWPH form controls, active theme/colours, Close, drag-move, and the standard 3-corner resize handles.
+- Closing a calculation panel returns its live controls safely to the main panel host so settings and event handlers remain intact.
+- Licence Info now uses the same top-left, bottom-left, and bottom-right resize handles with native resize disabled.
+- Backend/database behavior is unchanged from v1.1.508.
+
 ## v1.1.508 — Non-Sticky Main Tabs + Five Cached Reports
 
 All **Advanced Calculations** now force Torn's detailed API-v2 `faction/attacks` feed instead of the simplified `attacksfull` feed. This gives every Advanced calculation access to per-hit modifiers and detailed attack information, including real `modifiers.fair_fight` values whenever Torn provides them. Basic calculations keep the faster simplified path. Detailed and fast caches stay separate, and the cached-report engine version is bumped so older Advanced reports made from simplified attack data do not exact-match new calculations.

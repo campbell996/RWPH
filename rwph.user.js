@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.508
+// @version      1.1.509
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -19,6 +19,7 @@
   "use strict";
 
   // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.509: Basic and Advanced calculations open in their own themed floating panels with shared Close/drag/3-corner resize controls; Licence Info now uses the same 3-corner resize setup.
   // v1.1.508: Main Payout/Admin/Help tabs no longer use sticky/fixed behavior and scroll naturally from the top of the panel; Cached Reports increases to five reports per faction.
   // v1.1.507: Cached Reports now uses the exact shared 3-corner resize handles; main Payout/Admin/Help tabs are anchored above the scrolling body.
   // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
@@ -5008,6 +5009,7 @@
   }
 
   function closePanel() {
+    try { rwphCloseAllCalculationSettingsPanels(); } catch (_) {}
     const panel = document.getElementById("rw-payout-helper");
     if (panel) {
       rwphSavePanelLayout(panel);
@@ -15975,6 +15977,7 @@
   }
 
   function showPaywallScreen(panel, options = {}) {
+    try { rwphCloseAllCalculationSettingsPanels(); } catch (_) {}
     const savedKey = GM_getValue(STORAGE_KEY, "");
     const savedAdminKey = GM_getValue(ADMIN_KEY_STORAGE_KEY, "");
 
@@ -16096,9 +16099,9 @@
             <ul class="rw-how-list">
               <li><b>1. API key:</b> paste a Torn API key that has the faction/ranked-war access needed for reports.</li>
               <li><b>2. Save or unlock:</b> Save Key stores it on this browser/PDA only. Unlock Panel checks your active licence.</li>
-              <li><b>3. Pick a calculation dropdown:</b> use <b>Basic Calculations</b> for simple per-hit style payouts, or <b>Advanced Calculations</b> for points-based payouts.</li>
+              <li><b>3. Open a calculation panel:</b> use <b>Basic Calculations</b> for simple per-hit style payouts, or <b>Advanced Calculations</b> for points-based payouts.</li>
               <li><b>4. Set war times:</b> use Auto-fill Last Finished War when possible, then check the start/end times.</li>
-              <li><b>5. Calculate:</b> click the Calculate button inside the dropdown you are using. The loading panel shows progress and then lets you open results.</li>
+              <li><b>5. Calculate:</b> click the Calculate button inside the Basic or Advanced calculation panel. The loading panel shows progress and then lets you open results.</li>
             </ul>
           </div>
 
@@ -16490,6 +16493,248 @@
   }
 
 
+  const RWPH_CALCULATION_PANEL_CONFIG_V1509 = Object.freeze({
+    standard: Object.freeze({
+      mode: "standard",
+      panelId: "rwph-basic-calculations-panel",
+      hostId: "rwph-basic-calculations-host",
+      launcherId: "rw-open-basic-calculations-panel",
+      selector: "details.rw-per-hit-settings",
+      title: "Basic Calculations",
+      width: 620,
+      height: 650,
+    }),
+    points: Object.freeze({
+      mode: "points",
+      panelId: "rwph-advanced-calculations-panel",
+      hostId: "rwph-advanced-calculations-host",
+      launcherId: "rw-open-advanced-calculations-panel",
+      selector: "details.rw-points-settings",
+      title: "Advanced Calculations",
+      width: 760,
+      height: 760,
+    }),
+  });
+
+  function rwphCalculationPanelConfigV1509(mode) {
+    return String(mode || "standard") === "points"
+      ? RWPH_CALCULATION_PANEL_CONFIG_V1509.points
+      : RWPH_CALCULATION_PANEL_CONFIG_V1509.standard;
+  }
+
+  function rwphEnsureCalculationPanelStylesV1509() {
+    try {
+      if (document.getElementById("rwph-calculation-panels-v1509")) return;
+      const style = document.createElement("style");
+      style.id = "rwph-calculation-panels-v1509";
+      style.textContent = `
+        .rwph-calculation-settings-panel{
+          position:fixed!important;z-index:2147483647!important;display:flex!important;flex-direction:column!important;
+          max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;min-width:min(300px,calc(100vw - 16px))!important;min-height:240px!important;
+          overflow:hidden!important;resize:none!important;box-sizing:border-box!important;
+          background:linear-gradient(180deg,var(--rwph-theme-panel,#211714),var(--rwph-theme-bg,#0b0705))!important;
+          color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line2,rgba(251,191,36,.34))!important;
+          border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;
+          font-family:Inter,Segoe UI,Arial,sans-serif!important;
+        }
+        .rwph-calculation-settings-panel .rwph-panel-head{
+          flex:0 0 auto!important;position:relative!important;cursor:move!important;touch-action:none!important;user-select:none!important;
+        }
+        .rwph-calculation-settings-panel .rwph-panel-title{
+          display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;
+          width:100%!important;min-width:0!important;text-align:center!important;font-weight:950!important;color:var(--rwph-theme-gold,#f59e0b)!important;
+        }
+        .rwph-calculation-settings-panel .rwph-panel-title img{
+          width:min(250px,72vw)!important;height:56px!important;max-height:56px!important;object-fit:contain!important;pointer-events:none!important;background:transparent!important;
+        }
+        .rwph-calculation-settings-panel .rwph-panel-title span{display:block!important;width:100%!important;text-align:center!important;line-height:1.15!important;}
+        .rwph-calculation-settings-panel .rwph-floating-panel-body{
+          flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0!important;overscroll-behavior:contain!important;
+          -webkit-overflow-scrolling:touch!important;background:var(--rwph-theme-bg,#0b0705)!important;
+        }
+        .rwph-calculation-settings-panel details.rw-settings-dropdown{
+          display:block!important;width:100%!important;min-width:0!important;margin:0!important;border:0!important;border-radius:0!important;
+          box-shadow:none!important;background:transparent!important;overflow:visible!important;
+        }
+        .rwph-calculation-settings-panel details.rw-settings-dropdown>summary{display:none!important;}
+        .rwph-calculation-settings-panel details.rw-settings-dropdown>.rw-api-tos-content{
+          display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;padding:14px!important;margin:0!important;
+          background:radial-gradient(circle at 12% 0%,var(--rwph-theme-line2,rgba(251,191,36,.18)),transparent 34%),
+                     radial-gradient(circle at 92% 8%,var(--rwph-theme-line,rgba(184,136,89,.16)),transparent 34%),
+                     linear-gradient(180deg,var(--rwph-theme-panel2,#2b1d18),var(--rwph-theme-bg,#0b0705))!important;
+          color:var(--rwph-theme-text,#fff2dd)!important;
+        }
+        .rwph-calculation-settings-panel .rw-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;width:100%!important;min-width:0!important;}
+        .rwph-calculation-settings-panel label{display:grid!important;gap:6px!important;min-width:0!important;color:var(--rwph-theme-soft,#d7c1aa)!important;font-weight:800!important;}
+        .rwph-calculation-settings-panel input:not([type=checkbox]):not([type=radio]),
+        .rwph-calculation-settings-panel select,.rwph-calculation-settings-panel textarea{
+          width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;background:var(--rwph-theme-bg,#0b0705)!important;
+          color:var(--rwph-theme-text,#fff2dd)!important;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.24))!important;
+        }
+        .rwph-calculation-settings-panel .rw-compact-check-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;width:100%!important;}
+        .rwph-calculation-settings-panel .rw-compact-check-grid-single{grid-template-columns:1fr!important;}
+        .rwph-calculation-settings-panel .rw-compact-check-grid label,
+        .rwph-calculation-settings-panel label.rw-inline-check{display:flex!important;align-items:flex-start!important;gap:8px!important;}
+        .rwph-calculation-settings-panel input[type=checkbox],.rwph-calculation-settings-panel input[type=radio]{flex:0 0 auto!important;margin-top:2px!important;}
+        .rwph-calculation-settings-panel .rw-actions{display:flex!important;flex-wrap:wrap!important;gap:8px!important;align-items:center!important;width:100%!important;}
+        .rwph-calculation-settings-panel .rw-primary-calc-actions>button{width:100%!important;min-height:42px!important;font-weight:950!important;}
+        .rwph-calculation-settings-panel #rw-points-run,.rwph-calculation-settings-panel #rw-run{
+          background:linear-gradient(135deg,var(--rwph-theme-gold,#f59e0b),var(--rwph-theme-orange,#f97316))!important;
+          color:var(--rwph-theme-bg,#0b0705)!important;border-color:var(--rwph-theme-line2,rgba(251,191,36,.34))!important;
+        }
+        .rwph-calculation-settings-panel .rw-calc-brief,.rwph-calculation-settings-panel .rw-muted{color:var(--rwph-theme-soft,#d7c1aa)!important;}
+        .rwph-calculation-settings-panel .rw-calc-brief{
+          padding:10px!important;border:1px solid var(--rwph-theme-line,rgba(184,136,89,.24))!important;border-radius:var(--rwph-theme-card-radius,10px)!important;
+          background:var(--rwph-theme-panel2,#2b1d18)!important;
+        }
+        .rwph-calculation-settings-panel .rw-advanced-section{display:contents!important;}
+        .rwph-calculation-settings-panel .rwph-setting-label-line{display:block!important;width:100%!important;min-width:0!important;font-size:1.15em!important;line-height:1.24!important;font-weight:850!important;}
+        .rwph-calculation-settings-panel .rwph-setting-help-button{
+          display:inline!important;width:auto!important;min-width:0!important;height:auto!important;min-height:0!important;padding:0!important;margin:0 0 0 3px!important;
+          border:0!important;background:transparent!important;color:var(--rwph-theme-gold,#f59e0b)!important;box-shadow:none!important;font-size:1em!important;line-height:inherit!important;
+        }
+        .rwph-calculation-settings-panel>.rw-resize-handle{
+          position:absolute!important;width:20px!important;height:20px!important;z-index:140!important;touch-action:none!important;user-select:none!important;pointer-events:auto!important;
+          opacity:.95!important;background:rgba(2,6,23,.18)!important;box-sizing:border-box!important;
+        }
+        .rwph-calculation-settings-panel>.rw-resize-handle-nw{left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
+        .rwph-calculation-settings-panel>.rw-resize-handle-sw{left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
+        .rwph-calculation-settings-panel>.rw-resize-handle-se{right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;cursor:nwse-resize!important;border-right:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
+        .rwph-calculation-launch-row{margin:8px 0!important;}
+        .rwph-calculation-launch-row>button{width:100%!important;min-height:42px!important;font-weight:950!important;}
+
+        /* v1.1.509: Licence Info uses the same three visible resize corners as standard RWPH panels. */
+        #rwph-licence-info-panel{resize:none!important;overflow:hidden!important;}
+        #rwph-licence-info-panel>.rw-resize-handle{
+          position:absolute!important;width:20px!important;height:20px!important;z-index:140!important;touch-action:none!important;user-select:none!important;pointer-events:auto!important;
+          display:block!important;opacity:.95!important;background:rgba(2,6,23,.18)!important;box-sizing:border-box!important;
+        }
+        #rwph-licence-info-panel>.rw-resize-handle-nw{left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
+        #rwph-licence-info-panel>.rw-resize-handle-sw{left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
+        #rwph-licence-info-panel>.rw-resize-handle-se{right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;cursor:nwse-resize!important;border-right:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
+        @media(max-width:700px),(pointer:coarse){
+          .rwph-calculation-settings-panel{width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important;min-width:0!important;left:7px!important;}
+          .rwph-calculation-settings-panel .rw-row,.rwph-calculation-settings-panel .rw-compact-check-grid{grid-template-columns:1fr!important;}
+          .rwph-calculation-settings-panel>.rw-resize-handle,#rwph-licence-info-panel>.rw-resize-handle{width:30px!important;height:30px!important;}
+        }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    } catch (e) {
+      console.warn("RWPH calculation panel style injection failed:", e);
+    }
+  }
+
+  function rwphCloseCalculationSettingsPanel(mode) {
+    const cfg = rwphCalculationPanelConfigV1509(mode);
+    const panel = document.getElementById(cfg.panelId);
+    const host = document.getElementById(cfg.hostId);
+    const details = panel?.querySelector(cfg.selector) || document.querySelector(cfg.selector);
+    if (details && host && details.parentElement !== host) {
+      const summary = details.querySelector(":scope > summary");
+      if (summary) summary.hidden = false;
+      details.open = false;
+      details.hidden = true;
+      details.style.display = "none";
+      host.appendChild(details);
+    }
+    if (panel) {
+      try { rwphSavePanelLayout(panel); } catch (_) {}
+      panel.remove();
+    }
+  }
+
+  function rwphCloseAllCalculationSettingsPanels() {
+    rwphCloseCalculationSettingsPanel("standard");
+    rwphCloseCalculationSettingsPanel("points");
+  }
+
+  function rwphOpenCalculationSettingsPanel(mode) {
+    const cfg = rwphCalculationPanelConfigV1509(mode);
+    rwphEnsureCalculationPanelStylesV1509();
+    const host = document.getElementById(cfg.hostId);
+    let details = document.querySelector(cfg.selector);
+    if (!host || !details) return false;
+
+    rwphCloseCalculationSettingsPanel(mode);
+    details = document.querySelector(cfg.selector);
+    if (!details) return false;
+
+    const panel = document.createElement("div");
+    panel.id = cfg.panelId;
+    panel.className = `rwph-floating-panel rwph-calculation-settings-panel rwph-${cfg.mode}-calculations-panel`;
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", `RWPH ${cfg.title}`);
+    const left = Math.max(8, Math.round((window.innerWidth - Math.min(cfg.width, window.innerWidth - 16)) / 2));
+    const top = Math.max(8, Math.round((window.innerHeight - Math.min(cfg.height, window.innerHeight - 16)) / 2));
+    panel.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:min(${cfg.width}px,calc(100vw - 16px));height:min(${cfg.height}px,calc(100vh - 16px));overflow:hidden;display:flex;flex-direction:column;`;
+    panel.innerHTML = `
+      <div class="rwph-panel-head">
+        <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>${esc(cfg.title)}</span></div>
+        <button type="button" class="danger rwph-calculation-panel-close" title="Close" aria-label="Close ${esc(cfg.title)}">×</button>
+      </div>
+      <div class="rwph-floating-panel-body"></div>
+    `;
+    document.body.appendChild(panel);
+
+    const body = panel.querySelector(".rwph-floating-panel-body");
+    body.appendChild(details);
+    const summary = details.querySelector(":scope > summary");
+    if (summary) summary.hidden = true;
+    details.hidden = false;
+    details.style.display = "block";
+    details.open = true;
+
+    panel.querySelector(".rwph-calculation-panel-close")?.addEventListener("click", () => rwphCloseCalculationSettingsPanel(mode));
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    rwphApplyPanelThemeChoice();
+    rwphApplyLogoChoice();
+    return true;
+  }
+
+  function rwphPrepareCalculationSettingsPanels(mainPanel) {
+    if (!mainPanel || mainPanel.dataset.rwphCalculationPanelsReady === "1") return;
+    rwphEnsureCalculationPanelStylesV1509();
+    const payoutTab = mainPanel.querySelector("#rw-payout-tab");
+    if (!payoutTab) return;
+
+    for (const cfg of Object.values(RWPH_CALCULATION_PANEL_CONFIG_V1509)) {
+      const details = payoutTab.querySelector(cfg.selector);
+      if (!details) continue;
+      let host = payoutTab.querySelector(`#${cfg.hostId}`);
+      if (!host) {
+        host = document.createElement("div");
+        host.id = cfg.hostId;
+        host.hidden = true;
+        host.style.display = "none";
+        details.parentNode.insertBefore(host, details);
+      }
+      host.appendChild(details);
+      details.hidden = true;
+      details.style.display = "none";
+      details.open = false;
+
+      let launcher = payoutTab.querySelector(`#${cfg.launcherId}`);
+      if (!launcher) {
+        const row = document.createElement("div");
+        row.className = "rw-actions rwph-calculation-launch-row";
+        launcher = document.createElement("button");
+        launcher.id = cfg.launcherId;
+        launcher.type = "button";
+        launcher.className = "secondary";
+        launcher.textContent = cfg.title;
+        launcher.title = `Open ${cfg.title} in its own RWPH panel`;
+        row.appendChild(launcher);
+        host.parentNode.insertBefore(row, host);
+      }
+      if (launcher.dataset.rwphCalculationPanelReady !== "1") {
+        launcher.dataset.rwphCalculationPanelReady = "1";
+        launcher.addEventListener("click", () => rwphOpenCalculationSettingsPanel(cfg.mode));
+      }
+    }
+    mainPanel.dataset.rwphCalculationPanelsReady = "1";
+  }
+
+
   function rwphSyncPhoneMainTabs(panel) {
     try {
       if (!panel || panel.id !== "rw-payout-helper") return;
@@ -16548,7 +16793,7 @@
           Server-side locked version. Your backend verifies the license and calculates payouts.
         </div>
         <div class="rw-small">
-          Completed-war mode: use Basic Calculations or Advanced Calculations. Each has its own times, payout amount, member controls, and Calculate button. Completed results are saved in Cached Reports.
+          Completed-war mode: Basic Calculations and Advanced Calculations now open in their own RWPH panels. Each panel has its own times, payout amount, member controls, and Calculate button. Completed results are saved in Cached Reports.
         </div>
 
         <div class="rw-tabs" role="tablist" aria-label="Main panel tabs">
@@ -16900,9 +17145,9 @@
             <ul class="rw-how-list">
               <li><b>1. API key:</b> paste a Torn API key that has the faction/ranked-war access needed for reports.</li>
               <li><b>2. Save or unlock:</b> Save Key stores it on this browser/PDA only. Unlock Panel checks your active licence.</li>
-              <li><b>3. Pick a calculation dropdown:</b> use <b>Basic Calculations</b> for simple per-hit style payouts, or <b>Advanced Calculations</b> for points-based payouts.</li>
+              <li><b>3. Open a calculation panel:</b> use <b>Basic Calculations</b> for simple per-hit style payouts, or <b>Advanced Calculations</b> for points-based payouts.</li>
               <li><b>4. Set war times:</b> use Auto-fill Last Finished War when possible, then check the start/end times.</li>
-              <li><b>5. Calculate:</b> click the Calculate button inside the dropdown you are using. The loading panel shows progress and then lets you open results.</li>
+              <li><b>5. Calculate:</b> click the Calculate button inside the Basic or Advanced calculation panel. The loading panel shows progress and then lets you open results.</li>
             </ul>
           </div>
 
@@ -17634,6 +17879,10 @@
         rwphToastPanelError(status, "Admin remove error: " + e.message, "RWPH Admin");
       }
     });
+
+    // v1.1.509: replace the in-panel Basic/Advanced dropdowns with launch buttons
+    // that move the live forms into their own themed floating panels.
+    rwphPrepareCalculationSettingsPanels(panel);
   }
 
   async function createPanel(options = {}) {
@@ -19899,6 +20148,7 @@
   rwphApplyLogoChoice();
   rwphInstallCleanUiV1491();
   rwphInstallWizardFitCssV1501();
+  rwphEnsureCalculationPanelStylesV1509();
   if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();
