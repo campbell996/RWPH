@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.519
+// @version      1.1.520
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.520: Keeps panel text scaling idempotent across repeated opens and makes the Advanced Calculation System description/reload action follow the live selected system in the separate Advanced panel.
   // v1.1.519: Rebuilds Results CSV/HTML downloads with direct local desktop + stateless server attachment mobile/PDA paths; groups Basic/Advanced/Cached controls into one compact main-panel action row.
   // v1.1.518: Slightly increases text size across all movable RWPH panels while preserving saved/admin panel geometry and resize scaling.
   // v1.1.517: CSV/HTML exports now use a verified parent bridge + persistent backend export URL instead of false-success iframe form downloads; PC/Phone/PDA share the same real-file flow.
@@ -5110,7 +5111,8 @@
       reset.dataset.rwphAdvancedResetReady = "1";
       reset.addEventListener("click", (event) => {
         event.preventDefault();
-        rwphApplyAdvancedSystemPreset(rwphAdvancedCalculationSystem(), { notify: true });
+        const selectedSystem = rwphNormalizeAdvancedCalculationSystem(reset.dataset.rwphCalculationSystem || rwphAdvancedCalculationSystem());
+        rwphApplyAdvancedSystemPreset(selectedSystem, { notify: true });
       });
     }
   }
@@ -13283,26 +13285,37 @@
   }
 
   function rwphUpdateAdvancedCalculationSystemUI() {
-    const panel = document.getElementById("rw-payout-helper");
-    if (!panel) return;
-    const system = rwphAdvancedCalculationSystem();
+    // v1.1.520: Advanced settings are moved out of the main panel and into their
+    // own floating panel. Use the live document controls instead of searching only
+    // inside #rw-payout-helper so the explanation and Reload action always follow
+    // the Calculation System the user actually selected.
+    const systemSelect = document.getElementById("rw-calculation-system");
+    if (!systemSelect) return;
+    const system = rwphNormalizeAdvancedCalculationSystem(systemSelect.value || rwphAdvancedCalculationSystem());
     const info = RWPH_ADVANCED_CALCULATION_SYSTEM_INFO[system] || RWPH_ADVANCED_CALCULATION_SYSTEM_INFO.hybrid_hit_performance;
     const preset = RWPH_ADVANCED_SYSTEM_PRESETS[system] || RWPH_ADVANCED_SYSTEM_PRESETS.hybrid_hit_performance;
-    const summary = panel.querySelector("#rw-calculation-system-summary");
-    const details = panel.querySelector("#rw-calculation-system-details");
-    if (summary) summary.innerHTML = `<b>${rwphHtmlEscape(info.label)}:</b> ${rwphHtmlEscape(info.summary)}`;
+    const summary = document.getElementById("rw-calculation-system-summary");
+    const details = document.getElementById("rw-calculation-system-details");
+    if (summary) {
+      summary.dataset.rwphCalculationSystem = system;
+      summary.innerHTML = `<b>${rwphHtmlEscape(info.label)} selected.</b><br>${rwphHtmlEscape(info.summary)}<br><span class="rw-muted">${rwphHtmlEscape(info.details)}</span>`;
+    }
     if (details) details.textContent = info.details;
-    panel.querySelectorAll("[data-rwph-preset-for]").forEach((node) => {
+    document.querySelectorAll("[data-rwph-preset-for]").forEach((node) => {
       const key = node.dataset.rwphPresetFor;
       if (!(key in preset)) return;
       const value = preset[key];
       node.textContent = `Preset: ${typeof value === "boolean" ? (value ? "On" : "Off") : value}`;
     });
-    const reset = panel.querySelector("#rw-points-reset-recommended");
-    if (reset) reset.textContent = `Reload ${info.label} Defaults`;
-    const run = panel.querySelector("#rw-points-run");
+    const reset = document.getElementById("rw-points-reset-recommended");
+    if (reset) {
+      reset.dataset.rwphCalculationSystem = system;
+      reset.textContent = `Reload ${info.label} Defaults`;
+      reset.title = `Reload the recommended default values for ${info.label}.`;
+    }
+    const run = document.getElementById("rw-points-run");
     if (run) run.textContent = `Calculate — ${info.label}`;
-    const customised = panel.querySelector("#rw-advanced-custom-status");
+    const customised = document.getElementById("rw-advanced-custom-status");
     if (customised) customised.textContent = `Preset values are editable. Changing any setting customises ${info.label}; there is no separate Custom system.`;
   }
 
@@ -15673,8 +15686,11 @@
     return metrics;
   }
 
-  function rwphApplyPanelTextMetricFactor(metrics, factor) {
+  function rwphApplyPanelTextMetricFactor(metrics, factor, appliedScale = null) {
     const safeFactor = Number.isFinite(Number(factor)) && Number(factor) > 0 ? Number(factor) : 1;
+    const stampedScale = Number.isFinite(Number(appliedScale)) && Number(appliedScale) > 0
+      ? rwphClampPanelTextScale(appliedScale)
+      : null;
     for (const metric of metrics || []) {
       const el = metric?.el;
       if (!el?.isConnected) continue;
@@ -15684,6 +15700,19 @@
         const nextLineHeight = Math.max(7, metric.lineHeight * safeFactor);
         el.style.setProperty("line-height", `${nextLineHeight.toFixed(2)}px`, "important");
       }
+      if (stampedScale !== null) el.dataset.rwphAppliedTextScale = stampedScale.toFixed(4);
+    }
+  }
+
+  function rwphApplyPanelTextMetricsToScale(metrics, desiredScale) {
+    const desired = rwphClampPanelTextScale(desiredScale);
+    for (const metric of metrics || []) {
+      const el = metric?.el;
+      if (!el?.isConnected) continue;
+      const alreadyApplied = rwphClampPanelTextScale(el.dataset?.rwphAppliedTextScale || 1);
+      const factor = desired / alreadyApplied;
+      if (Math.abs(factor - 1) > 0.0001) rwphApplyPanelTextMetricFactor([metric], factor, desired);
+      else el.dataset.rwphAppliedTextScale = desired.toFixed(4);
     }
   }
 
@@ -15692,24 +15721,24 @@
     const state = rwphGetPanelTextScaleState(panel);
     if (!state) return 1;
 
-    const contentRoot = rwphPanelScaleContentRoot(panel);
-    if (state.contentRoot !== contentRoot) {
-      state.contentRoot = contentRoot;
-      state.appliedNodes = new WeakSet();
-    }
+    // v1.1.520: Text controls can be moved live between the main panel and a
+    // floating panel (especially Basic/Advanced). Each element now remembers the
+    // RWPH scale already applied to it. Reopening/re-parenting therefore targets
+    // the desired absolute scale instead of multiplying the current font again.
+    state.contentRoot = rwphPanelScaleContentRoot(panel);
 
+    let nextScale = rwphClampPanelTextScale(state.scale || RWPH_PANEL_BASE_TEXT_SCALE);
     if (!state.initialized) {
-      state.scale = rwphClampPanelTextScale(requestedScale ?? RWPH_PANEL_BASE_TEXT_SCALE);
+      nextScale = rwphClampPanelTextScale(requestedScale ?? RWPH_PANEL_BASE_TEXT_SCALE);
       state.initialized = true;
     } else if (requestedScale !== null && requestedScale !== undefined && !Number.isNaN(Number(requestedScale))) {
-      state.scale = rwphClampPanelTextScale(requestedScale);
+      nextScale = rwphClampPanelTextScale(requestedScale);
     }
 
-    const metrics = rwphCollectPanelTextMetrics(panel).filter((metric) => !state.appliedNodes.has(metric.el));
-    if (Math.abs(state.scale - 1) > 0.0001) rwphApplyPanelTextMetricFactor(metrics, state.scale);
-    for (const metric of metrics) state.appliedNodes.add(metric.el);
-    panel.dataset.rwphTextScale = state.scale.toFixed(4);
-    return state.scale;
+    rwphApplyPanelTextMetricsToScale(rwphCollectPanelTextMetrics(panel), nextScale);
+    state.scale = nextScale;
+    panel.dataset.rwphTextScale = nextScale.toFixed(4);
+    return nextScale;
   }
 
   function rwphApplyPanelResizeTextScale(panel, metrics, startScale, desiredScale) {
@@ -15719,7 +15748,7 @@
     const safeStartScale = rwphClampPanelTextScale(startScale || 1);
     const safeDesiredScale = rwphClampPanelTextScale(desiredScale || safeStartScale);
     const factor = safeDesiredScale / safeStartScale;
-    rwphApplyPanelTextMetricFactor(metrics, factor);
+    rwphApplyPanelTextMetricFactor(metrics, factor, safeDesiredScale);
     for (const metric of metrics || []) state.appliedNodes.add(metric.el);
     state.scale = safeDesiredScale;
     state.initialized = true;
@@ -16714,6 +16743,10 @@
 
     panel.querySelector(".rwph-calculation-panel-close")?.addEventListener("click", () => rwphCloseCalculationSettingsPanel(mode));
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    if (cfg.mode === "points") {
+      rwphUpdateAdvancedCalculationSystemUI();
+      rwphAttachAdvancedSettingHelpButtons();
+    }
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
     return true;
