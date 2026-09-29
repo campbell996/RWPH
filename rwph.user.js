@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.517
+// @version      1.1.518
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -17,6 +17,43 @@
 
 (function () {
   "use strict";
+
+  // v1.1.518: Slightly increases text size across all movable RWPH panels while preserving saved/admin panel geometry and resize scaling.
+  // v1.1.517: CSV/HTML exports now use a verified parent bridge + persistent backend export URL instead of false-success iframe form downloads; PC/Phone/PDA share the same real-file flow.
+  // v1.1.516: Results hide $0 payout members; CSV/HTML exports use the backend attachment endpoint as the primary PC/Phone/PDA path; newsletters include the current faction image at the top when available.
+  // v1.1.515: Results exports now use native save/share + userscript bridge fallbacks for PC/Phone/PDA; newsletter controls follow the active theme; Payments action renamed/styled as Start Payments.
+  // v1.1.514: Deep dead-code cleanup removes compiler-confirmed unused locals/parameters and obsolete no-op compatibility plumbing while preserving active behavior.
+  // v1.1.513: Conservative userscript cleanup removes provably unused helpers, no-op loading callbacks, stale generated-results code, and the obsolete hidden results-page Payments panel without changing active calculation/payment flows.
+  // v1.1.512: Lock/unlock now rebuilds the standalone Basic/Advanced calculation panels correctly; starting a calculation auto-closes the calculation and main panels once Results Loading opens.
+  // v1.1.511: Logo Selector and Admin Default Setup panels use the shared 3-corner resize system; added reset-to-admin-default, save-current-layout, and restore-saved-layout controls.
+  // v1.1.510: Global compact UI pass; locked main no longer renders Payment Code Ready; Default Setup includes compact Payments wizard plus Basic/Advanced calculation panels.
+  // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
+  // v1.1.509: Basic and Advanced calculations open in their own themed floating panels with shared Close/drag/3-corner resize controls; Licence Info now uses the same 3-corner resize setup.
+  // v1.1.508: Main Payout/Admin/Help tabs no longer use sticky/fixed behavior and scroll naturally from the top of the panel; Cached Reports increases to five reports per faction.
+  // v1.1.507: Cached Reports now uses the exact shared 3-corner resize handles; main Payout/Admin/Help tabs are anchored above the scrolling body.
+  // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
+  // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
+  // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
+  // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
+  // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
+  // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
+  // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
+  // v1.1.497: Advanced Fair Fight mode selection now applies/normalizes every FF setting required by that mode and disables irrelevant FF inputs.
+  // v1.1.496: Default Setup skips Results Loading / Results because both now open fullscreen by default.
+  // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
+  // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
+  // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
+  // v1.1.491: Full clean-panel UI refresh across RWPH. All movable panels keep Close, Fit-to-screen, drag, and resize controls while calculations/licensing/cache/backend behavior remains unchanged.
+  // v1.1.490: Payment Helper opens instantly from a successful Buy/Extend handoff and uses a direct indexed payment-code lookup when browser state is missing; no Torn identity lookup blocks helper rendering.
+  // v1.1.489: Removed payment-code expiry/timer UI. Pending codes live only in MySQL for 30 minutes; Buy/Extend reuses the same code and restarts its 30-minute database lifetime.
+  // v1.1.488: Buy/Extend payment helpers start a visible 5:00 timer immediately; backend payment checks then replace it with the authoritative live expiry. Removed the Syncing timer state.
+  // v1.1.487: Payment-helper expiry immediately showed Syncing while backend state refreshed, live expiry replaced stale timers as soon as it arrived, and Buy/Extend no longer auto-open Your Expiration.
+  // v1.1.486: Expired/stale Buy/Extend payment-helper handoffs self-heal by restoring the current database code or creating a fresh payment code for the original Buy/Extend intent.
+  // v1.1.485: Cached Reports button moved between the Basic Calculations and Advanced Calculations dropdowns; no calculation, cache, licence, or backend logic changed.
+  // v1.1.484: Fast-path licence/payment backend calls now use targeted indexed SQL instead of full-state loads; Buy/Extend are click-locked and successful extension display reuses the confirmation response.
+  // v1.1.483: Admin Key save is now a single fast verify + owner-licence grant request; admin access and the local owner token unlock immediately after confirmation.
+  // v1.1.482: Cached Reports hot path now reads the faction's newest 3 rows directly from MySQL with no Torn lookup on normal opens; calculation saves remain database-backed.
+  // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -2437,7 +2474,7 @@
     panel.style.setProperty("height", `${Math.round(height)}px`, "important");
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
-    rwphEnsurePanelTextScale(panel, saved.textScale);
+    rwphEnsurePanelTextScale(panel, rwphStoredPanelTextScaleToEffective(saved.textScale));
     return true;
   }
 
@@ -2452,7 +2489,7 @@
       top: Math.round(rect.top),
       width: Math.round(rect.width),
       height: Math.round(rect.height),
-      textScale: rwphGetPanelTextScale(panel),
+      textScale: rwphEffectivePanelTextScaleToStored(rwphGetPanelTextScale(panel)),
     };
     rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, layouts);
   }
@@ -2764,7 +2801,7 @@
       top: Math.round(rect.top),
       width: Math.round(rect.width),
       height: Math.round(rect.height),
-      textScale: rwphGetPanelTextScale(panel),
+      textScale: rwphEffectivePanelTextScaleToStored(rwphGetPanelTextScale(panel)),
     };
   }
 
@@ -15449,11 +15486,25 @@
 
   const RWPH_PANEL_TEXT_SCALE_MIN = 0.55;
   const RWPH_PANEL_TEXT_SCALE_MAX = 2.25;
+  // v1.1.518: Small global readability bump for every panel that uses the shared
+  // move/resize/layout system. Stored/admin textScale values stay relative to 1.0,
+  // so existing layouts do not grow again each time they are saved and reopened.
+  const RWPH_PANEL_BASE_TEXT_SCALE = 1.08;
 
   function rwphClampPanelTextScale(value) {
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return 1;
     return Math.min(RWPH_PANEL_TEXT_SCALE_MAX, Math.max(RWPH_PANEL_TEXT_SCALE_MIN, n));
+  }
+
+  function rwphStoredPanelTextScaleToEffective(value) {
+    const stored = rwphClampPanelTextScale(value ?? 1);
+    return rwphClampPanelTextScale(stored * RWPH_PANEL_BASE_TEXT_SCALE);
+  }
+
+  function rwphEffectivePanelTextScaleToStored(value) {
+    const effective = rwphClampPanelTextScale(value ?? RWPH_PANEL_BASE_TEXT_SCALE);
+    return rwphClampPanelTextScale(effective / RWPH_PANEL_BASE_TEXT_SCALE);
   }
 
   function rwphGetPanelTextScaleState(panel) {
@@ -15463,7 +15514,7 @@
         Object.defineProperty(panel, "__rwphPanelTextScaleState", {
           configurable: true,
           value: {
-            scale: 1,
+            scale: RWPH_PANEL_BASE_TEXT_SCALE,
             initialized: false,
             contentRoot: null,
             appliedNodes: new WeakSet(),
@@ -15471,7 +15522,7 @@
         });
       } catch (_) {
         panel.__rwphPanelTextScaleState = {
-          scale: 1,
+          scale: RWPH_PANEL_BASE_TEXT_SCALE,
           initialized: false,
           contentRoot: null,
           appliedNodes: new WeakSet(),
@@ -15559,7 +15610,7 @@
     }
 
     if (!state.initialized) {
-      state.scale = rwphClampPanelTextScale(requestedScale ?? 1);
+      state.scale = rwphClampPanelTextScale(requestedScale ?? RWPH_PANEL_BASE_TEXT_SCALE);
       state.initialized = true;
     } else if (requestedScale !== null && requestedScale !== undefined && !Number.isNaN(Number(requestedScale))) {
       state.scale = rwphClampPanelTextScale(requestedScale);
