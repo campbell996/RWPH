@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.522
+// @version      1.1.523
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.523: Completely rebuilds Theme / Colours around the Faction Helper four-colour system; old RWPH theme/custom-colour state is intentionally reset to the new RWPH Gold default.
   // v1.1.522: Newsletter faction image now comes strictly from the user faction's Faction Info tab/panel (with own-faction cache/API fallback), never from the current war target area.
   // v1.1.521: Rebuilds Results CSV/HTML exports as parent-userscript-owned downloads so generated iframe/CSP/WebView code cannot block the buttons; mobile attachment downloads no longer use hidden iframes.
   // v1.1.520: Keeps panel text scaling idempotent across repeated opens and makes the Advanced Calculation System description/reload action follow the live selected system in the separate Advanced panel.
@@ -84,6 +85,8 @@
   const RESULTS_LOADING_PANEL_STATE_STORAGE_KEY = "rw_payout_helper_results_loading_panel_state";
   const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
   const PANEL_CUSTOM_COLOUR_STORAGE_KEY = "rw_payout_helper_custom_colour_theme_v1";
+  const PANEL_CUSTOM_THEME_STORAGE_KEY = "rw_payout_helper_custom_colour_theme_v3";
+  const PANEL_THEME_SYSTEM_STORAGE_KEY = "rw_payout_helper_theme_system_v3";
   const FIRST_TUTORIAL_SHOWN_STORAGE_KEY = "rw_payout_helper_first_tutorial_shown";
   const MEMBER_MANAGEMENT_STORAGE_KEY = "rw_payout_helper_member_management_state";
   const MEMBER_MANAGEMENT_EXPIRY_MS = 20 * 60 * 1000;
@@ -3387,65 +3390,87 @@
     }
   }
 
-  function rwphPanelThemePresets() {
-    const make = (label, bg, bg2, panel, panel2, panel3, line, line2, text, soft, accent, accent2, good, danger, radius = "16px", cardRadius = "14px", buttonRadius = "12px") => ({
-      label, layoutName: "Colour theme only - default RWPH layout",
-      bg, bg2, panel, panel2, panel3, line, line2, text, soft, accent, accent2, good, danger,
-      radius, cardRadius, buttonRadius, borderWidth: "1px", borderStyle: "solid", buttonCase: "none", buttonTracking: ".01em",
-      texture: `radial-gradient(circle at 8% 0%, ${line}, transparent 24%), radial-gradient(circle at 96% 6%, ${line2}, transparent 26%)`,
-      headerTexture: `linear-gradient(135deg, ${line}, transparent 42%), linear-gradient(90deg, ${line2}, transparent 58%)`,
-      cardTexture: `linear-gradient(135deg, rgba(255,255,255,.07), transparent 44%)`,
-      buttonTexture: `linear-gradient(135deg, rgba(255,255,255,.16), transparent 45%)`
-    });
+  function rwphBuildFourColourTheme(label, body, surface, text, outline) {
+    const safeBody = rwphNormalizeHexColour(body, "#0d0f11");
+    const safeSurface = rwphNormalizeHexColour(surface, "#20252a");
+    const safeText = rwphNormalizeHexColour(text, "#f4f5f6");
+    const safeOutline = rwphNormalizeHexColour(outline, "#e9bd4e");
+    const accent2 = rwphMixHexColour(safeOutline, safeText, 0.24);
     return {
-      bronze: make("Default RWPH Bronze", "#130b07", "#21110b", "#211714", "#2b1d18", "#3a241c", "rgba(184,136,89,.46)", "rgba(251,191,36,.40)", "#fff2dd", "#cfaa8e", "#fbbf24", "#f97316", "#22c55e", "#7f1d1d", "16px", "14px", "12px"),
-      blackgold: make("Black Gold", "#050505", "#12100a", "#181510", "#211c12", "#2f2615", "rgba(251,191,36,.38)", "rgba(202,138,4,.36)", "#fff7d6", "#fde68a", "#facc15", "#ca8a04", "#22c55e", "#991b1b", "18px", "14px", "12px"),
-      bluesteel: make("Blue Steel", "#06111f", "#0b1e33", "#102a45", "#183858", "#234767", "rgba(96,165,250,.40)", "rgba(148,163,184,.34)", "#eff6ff", "#bfdbfe", "#60a5fa", "#94a3b8", "#22c55e", "#dc2626", "16px", "13px", "10px"),
-      emerald: make("Emerald Vault", "#02140d", "#062015", "#08291b", "#0b3a28", "#115e3b", "rgba(16,185,129,.42)", "rgba(190,242,100,.26)", "#ecfdf5", "#a7f3d0", "#10b981", "#bef264", "#22c55e", "#7f1d1d", "22px", "18px", "10px"),
-      purpleneon: make("Purple Neon", "#0d0618", "#170a2c", "#1d1138", "#2e1760", "#3b1a7a", "rgba(168,85,247,.44)", "rgba(217,70,239,.34)", "#faf5ff", "#ddd6fe", "#a855f7", "#d946ef", "#22c55e", "#be123c", "18px", "14px", "999px"),
-      crimson: make("Crimson Ledger", "#160607", "#240b0d", "#2f1012", "#48181d", "#681e27", "rgba(248,113,113,.42)", "rgba(251,191,36,.30)", "#fff1f2", "#fecaca", "#f87171", "#fbbf24", "#86efac", "#7f1d1d", "18px", "14px", "6px"),
-      frost: make("Frostline Ice", "#06121b", "#0c2231", "#123047", "#1b405a", "#24526d", "rgba(186,230,253,.42)", "rgba(125,211,252,.32)", "#f0f9ff", "#bae6fd", "#7dd3fc", "#38bdf8", "#22c55e", "#dc2626", "26px", "22px", "16px"),
-      tealshadow: make("Teal Shadow", "#031313", "#072524", "#0b3331", "#104743", "#155e59", "rgba(45,212,191,.42)", "rgba(20,184,166,.34)", "#ecfeff", "#99f6e4", "#2dd4bf", "#14b8a6", "#22c55e", "#e11d48", "20px", "16px", "12px"),
-      magenta: make("Magenta Pulse", "#150512", "#260a20", "#35102d", "#4f1642", "#701a5a", "rgba(244,114,182,.44)", "rgba(217,70,239,.34)", "#fdf2f8", "#fbcfe8", "#f472b6", "#d946ef", "#4ade80", "#be123c", "18px", "14px", "999px"),
-      amber: make("Amber Terminal", "#120800", "#1f0f02", "#281504", "#3b2107", "#5a320b", "rgba(245,158,11,.46)", "rgba(217,119,6,.36)", "#fff7ed", "#fed7aa", "#f59e0b", "#d97706", "#65a30d", "#991b1b", "8px", "6px", "6px"),
-      limegrid: make("Lime Grid", "#030500", "#0b1303", "#111d05", "#1b2d08", "#29420d", "rgba(163,230,53,.44)", "rgba(34,197,94,.28)", "#f7fee7", "#d9f99d", "#a3e635", "#22c55e", "#84cc16", "#e11d48", "10px", "8px", "8px"),
-      sapphire: make("Sapphire", "#050b1f", "#0b1538", "#101f4d", "#172a65", "#1e3a8a", "rgba(59,130,246,.42)", "rgba(99,102,241,.32)", "#eff6ff", "#bfdbfe", "#3b82f6", "#6366f1", "#10b981", "#be123c", "18px", "14px", "8px"),
-      copper: make("Copper Coil", "#120a04", "#1d1007", "#281609", "#3b220f", "#5d3518", "rgba(194,120,72,.48)", "rgba(251,146,60,.30)", "#fff7ed", "#fdba74", "#c27848", "#fb923c", "#4ade80", "#991b1b", "14px", "10px", "8px"),
-      rose: make("Rose Quartz", "#170711", "#260d1d", "#331224", "#4a1934", "#6b214a", "rgba(244,114,182,.42)", "rgba(251,113,133,.32)", "#fff1f2", "#fbcfe8", "#f472b6", "#fb7185", "#4ade80", "#7f1d1d", "28px", "22px", "999px"),
-      obsidian: make("Obsidian Sky", "#020617", "#08111f", "#0b1224", "#111b31", "#172554", "rgba(96,165,250,.42)", "rgba(15,23,42,.48)", "#eff6ff", "#bfdbfe", "#60a5fa", "#1d4ed8", "#22c55e", "#dc2626", "18px", "14px", "10px"),
-      mint: make("Mint Black", "#00110d", "#032019", "#063127", "#074233", "#0f5f4a", "rgba(45,212,191,.40)", "rgba(110,231,183,.28)", "#ecfdf5", "#99f6e4", "#2dd4bf", "#6ee7b7", "#22c55e", "#e11d48", "22px", "18px", "12px"),
-      solar: make("Solar Eclipse", "#050505", "#141109", "#18120a", "#241b0c", "#36270d", "rgba(250,204,21,.42)", "rgba(234,88,12,.30)", "#fff7cc", "#fde68a", "#facc15", "#fb923c", "#84cc16", "#991b1b", "20px", "16px", "999px"),
-      ocean: make("Oceanic Steel", "#031323", "#082235", "#0b2d44", "#103a56", "#1e5f78", "rgba(56,189,248,.40)", "rgba(148,163,184,.32)", "#e0f2fe", "#bae6fd", "#38bdf8", "#94a3b8", "#2dd4bf", "#9f1239", "18px", "14px", "8px"),
-      jungle: make("Jungle Ops", "#050a04", "#0d1608", "#14200d", "#203117", "#334d1f", "rgba(101,163,13,.42)", "rgba(34,197,94,.26)", "#f7fee7", "#bbf7d0", "#65a30d", "#22c55e", "#86efac", "#7f1d1d", "14px", "10px", "8px"),
-      magma: make("Magma Shift", "#160401", "#260802", "#3b0e05", "#5a1609", "#7c2d12", "rgba(249,115,22,.44)", "rgba(239,68,68,.34)", "#fff7ed", "#fed7aa", "#f97316", "#ef4444", "#84cc16", "#991b1b", "18px", "14px", "8px"),
-      slate: make("Slate Cobalt", "#070b12", "#0f172a", "#1e293b", "#26364d", "#334155", "rgba(71,85,105,.54)", "rgba(79,70,229,.32)", "#f8fafc", "#cbd5e1", "#64748b", "#4f46e5", "#22c55e", "#dc2626", "16px", "12px", "10px"),
-      ivory: make("Ivory Shadow", "#11100c", "#1b1912", "#242117", "#322d1e", "#4a4228", "rgba(250,250,210,.26)", "rgba(202,138,4,.32)", "#fefce8", "#e7e5c8", "#eab308", "#a16207", "#84cc16", "#991b1b", "24px", "20px", "14px"),
-      acid: make("Acid Arcade", "#030500", "#0b1303", "#111d05", "#1b2d08", "#29420d", "rgba(163,230,53,.44)", "rgba(217,70,239,.28)", "#f7fee7", "#d9f99d", "#a3e635", "#d946ef", "#22c55e", "#e11d48", "18px", "14px", "999px"),
-      pearl: make("Pearl Night", "#080b10", "#111827", "#1f2937", "#273447", "#374151", "rgba(226,232,240,.34)", "rgba(248,250,252,.24)", "#f8fafc", "#e2e8f0", "#cbd5e1", "#94a3b8", "#22c55e", "#dc2626", "22px", "18px", "12px"),
-      bloodmoon: make("Blood Moon", "#100204", "#20050a", "#330812", "#4a0f1d", "#67162a", "rgba(220,38,38,.44)", "rgba(244,63,94,.32)", "#fff1f2", "#fecdd3", "#dc2626", "#f43f5e", "#4ade80", "#7f1d1d", "20px", "16px", "8px"),
-      arcticnavy: make("Arctic Navy", "#020617", "#061626", "#0a2238", "#0f3350", "#164b73", "rgba(147,197,253,.40)", "rgba(224,242,254,.28)", "#eff6ff", "#dbeafe", "#93c5fd", "#e0f2fe", "#22c55e", "#be123c", "22px", "18px", "14px"),
-      cybergreen: make("Cyber Green", "#000704", "#031209", "#061f10", "#0a331a", "#0e4a27", "rgba(74,222,128,.44)", "rgba(16,185,129,.34)", "#ecfdf5", "#bbf7d0", "#4ade80", "#10b981", "#22c55e", "#e11d48", "10px", "8px", "999px"),
-      desert: make("Desert Sand", "#120c05", "#1f1609", "#2d210e", "#463418", "#664a22", "rgba(251,191,36,.34)", "rgba(217,119,6,.32)", "#fffbeb", "#fde68a", "#fbbf24", "#d97706", "#65a30d", "#991b1b", "18px", "14px", "10px"),
-      plasma: make("Plasma Pink", "#12051a", "#230a34", "#33124a", "#471667", "#5b21b6", "rgba(236,72,153,.44)", "rgba(168,85,247,.34)", "#fdf4ff", "#f5d0fe", "#ec4899", "#a855f7", "#22c55e", "#be123c", "20px", "16px", "999px"),
-      royalindigo: make("Royal Indigo", "#07051a", "#100c2f", "#1b164a", "#272066", "#312e81", "rgba(129,140,248,.44)", "rgba(250,204,21,.26)", "#eef2ff", "#c7d2fe", "#818cf8", "#facc15", "#22c55e", "#dc2626", "18px", "14px", "10px"),
-      steelred: make("Steel Red", "#0c0f13", "#171b21", "#232832", "#343b47", "#4b5563", "rgba(248,113,113,.38)", "rgba(148,163,184,.34)", "#f8fafc", "#cbd5e1", "#f87171", "#94a3b8", "#22c55e", "#991b1b", "14px", "10px", "8px"),
-      iceviolet: make("Ice Violet", "#080a18", "#11142c", "#1e2146", "#2b2f64", "#3730a3", "rgba(196,181,253,.42)", "rgba(125,211,252,.30)", "#f5f3ff", "#ddd6fe", "#c4b5fd", "#7dd3fc", "#22c55e", "#e11d48", "24px", "20px", "14px"),
-      coffeegold: make("Coffee Gold", "#100804", "#1b1009", "#26170d", "#392314", "#57351d", "rgba(180,83,9,.44)", "rgba(250,204,21,.28)", "#fff7ed", "#fed7aa", "#b45309", "#facc15", "#84cc16", "#991b1b", "18px", "14px", "10px"),
-      graphitecyan: make("Graphite Cyan", "#05080a", "#0d1216", "#151d23", "#1f2b33", "#2f3f49", "rgba(34,211,238,.38)", "rgba(100,116,139,.34)", "#f0fdff", "#a5f3fc", "#22d3ee", "#64748b", "#22c55e", "#dc2626", "12px", "10px", "8px"),
-      coralreef: make("Coral Reef", "#130807", "#24100e", "#341916", "#4d2520", "#6b3028", "rgba(251,113,133,.40)", "rgba(45,212,191,.26)", "#fff1f2", "#fecdd3", "#fb7185", "#2dd4bf", "#22c55e", "#991b1b", "22px", "18px", "12px"),
-      forestgold: make("Forest Gold", "#050d04", "#0d1b08", "#17280d", "#243d14", "#365314", "rgba(132,204,22,.40)", "rgba(250,204,21,.28)", "#f7fee7", "#d9f99d", "#84cc16", "#facc15", "#22c55e", "#991b1b", "18px", "14px", "10px"),
-      nightorange: make("Night Orange", "#090807", "#15100c", "#21160f", "#352112", "#4a2c16", "rgba(251,146,60,.42)", "rgba(249,115,22,.34)", "#fff7ed", "#fed7aa", "#fb923c", "#f97316", "#84cc16", "#dc2626", "16px", "12px", "10px"),
-      stormblue: make("Storm Blue", "#020a12", "#061526", "#0b2238", "#123650", "#1e4f75", "rgba(14,165,233,.42)", "rgba(51,65,85,.36)", "#f0f9ff", "#bae6fd", "#0ea5e9", "#334155", "#22c55e", "#be123c", "20px", "16px", "12px"),
+      label,
+      layoutName: "Faction Helper-style four-colour theme",
+      bg: safeBody,
+      bg2: rwphMixHexColour(safeBody, safeSurface, 0.22),
+      panel: safeSurface,
+      panel2: safeSurface,
+      panel3: rwphMixHexColour(safeSurface, safeOutline, 0.10),
+      line: rwphHexToRgba(safeOutline, 0.42),
+      line2: rwphHexToRgba(safeOutline, 0.68),
+      text: safeText,
+      soft: rwphMixHexColour(safeText, safeBody, 0.30),
+      accent: safeOutline,
+      accent2,
+      good: safeOutline,
+      danger: safeOutline,
+      radius: "12px",
+      cardRadius: "10px",
+      buttonRadius: "8px",
+      borderWidth: "1px",
+      borderStyle: "solid",
+      buttonCase: "none",
+      buttonTracking: ".01em",
+      texture: "",
+      headerTexture: "",
+      cardTexture: "",
+      buttonTexture: "",
+      masterColours: {
+        body: safeBody,
+        surface: safeSurface,
+        text: safeText,
+        outline: safeOutline,
+      },
     };
   }
-  function rwphGetPanelThemeKey() {
-    const saved = String(GM_getValue(PANEL_THEME_STORAGE_KEY, "bronze") || "bronze").toLowerCase();
-    const presets = rwphPanelThemePresets();
-    if (saved === "custom" && rwphGetCustomColourHex("")) return "custom";
-    return presets[saved] ? saved : "bronze";
+
+  function rwphPanelThemePresets() {
+    return {
+      rwphGold: rwphBuildFourColourTheme("RWPH Gold", "#0d0f11", "#20252a", "#f4f5f6", "#e9bd4e"),
+      tornCrimson: rwphBuildFourColourTheme("Torn Crimson", "#0d0b0c", "#23191c", "#fff2f4", "#e34b5f"),
+      cyberBlue: rwphBuildFourColourTheme("Cyber Blue", "#081018", "#172637", "#eef9ff", "#38bdf8"),
+      emeraldOps: rwphBuildFourColourTheme("Emerald Ops", "#08110d", "#17281f", "#eefaf3", "#45d483"),
+      royalViolet: rwphBuildFourColourTheme("Royal Violet", "#0e0a14", "#241b31", "#f8f2ff", "#a879ff"),
+      graphiteIce: rwphBuildFourColourTheme("Graphite Ice", "#0c1115", "#20282f", "#f1f6f8", "#82c7e8"),
+      ember: rwphBuildFourColourTheme("Ember", "#120d09", "#2a1e15", "#fff5ec", "#f28a32"),
+      arcticLight: rwphBuildFourColourTheme("Arctic Light", "#e9eef2", "#ffffff", "#1d2a31", "#2b8dbd"),
+      neonRose: rwphBuildFourColourTheme("Neon Rose", "#100911", "#28162b", "#fff2fd", "#ff5ed8"),
+      blackout: rwphBuildFourColourTheme("Blackout", "#050607", "#13161a", "#f5f7f8", "#dfe6eb"),
+    };
   }
 
-  function rwphNormalizeHexColour(value, fallback = "#f97316") {
+  function rwphEnsureThemeSystemV3Defaults() {
+    const version = "faction-helper-four-colour-v1";
+    try {
+      if (String(GM_getValue(PANEL_THEME_SYSTEM_STORAGE_KEY, "") || "") === version) return;
+      // Intentional clean break from all pre-v1.1.523 RWPH theme storage.
+      GM_setValue(PANEL_THEME_STORAGE_KEY, "rwphGold");
+      GM_setValue(PANEL_CUSTOM_THEME_STORAGE_KEY, "");
+      GM_setValue(PANEL_CUSTOM_COLOUR_STORAGE_KEY, "");
+      GM_setValue("rw_payout_helper_custom_colour_theme_v2", "");
+      GM_setValue(PANEL_THEME_SYSTEM_STORAGE_KEY, version);
+    } catch (_) {}
+  }
+
+  function rwphGetPanelThemeKey() {
+    const saved = String(GM_getValue(PANEL_THEME_STORAGE_KEY, "rwphGold") || "rwphGold");
+    const presets = rwphPanelThemePresets();
+    if (saved === "custom") {
+      const raw = String(GM_getValue(PANEL_CUSTOM_THEME_STORAGE_KEY, "") || "").trim();
+      if (raw) return "custom";
+    }
+    return presets[saved] ? saved : "rwphGold";
+  }
+
+  function rwphNormalizeHexColour(value, fallback = "#e9bd4e") {
     let hex = String(value || "").trim();
     if (!hex) return fallback;
     if (hex.charAt(0) !== "#") hex = `#${hex}`;
@@ -3455,14 +3480,8 @@
     return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toLowerCase() : fallback;
   }
 
-  function rwphGetCustomColourHex(fallback = "#f97316") {
-    const raw = String(GM_getValue(PANEL_CUSTOM_COLOUR_STORAGE_KEY, "") || "").trim();
-    if (!raw && fallback === "") return "";
-    return rwphNormalizeHexColour(raw, fallback || "#f97316");
-  }
-
   function rwphHexToRgb(hex) {
-    const safe = rwphNormalizeHexColour(hex, "#f97316").slice(1);
+    const safe = rwphNormalizeHexColour(hex, "#e9bd4e").slice(1);
     return {
       r: parseInt(safe.slice(0, 2), 16),
       g: parseInt(safe.slice(2, 4), 16),
@@ -3488,79 +3507,94 @@
     return `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
   }
 
-  function rwphReadableTextForHex(hex) {
-    const { r, g, b } = rwphHexToRgb(hex);
-    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-    return yiq >= 150 ? "#111827" : "#ffffff";
+  function rwphThemeMasterColours(theme = null) {
+    const t = theme || rwphPanelThemePresets().rwphGold;
+    return {
+      body: rwphNormalizeHexColour(t?.masterColours?.body || t?.bg || "#0d0f11", "#0d0f11"),
+      surface: rwphNormalizeHexColour(t?.masterColours?.surface || t?.panel2 || t?.panel || "#20252a", "#20252a"),
+      text: rwphNormalizeHexColour(t?.masterColours?.text || t?.text || "#f4f5f6", "#f4f5f6"),
+      outline: rwphNormalizeHexColour(t?.masterColours?.outline || t?.accent || "#e9bd4e", "#e9bd4e"),
+    };
   }
 
-  function rwphCustomColourThemeFromHex(hex) {
-    const accent = rwphNormalizeHexColour(hex, "#f97316");
-    const accent2 = rwphMixHexColour(accent, "#ffffff", 0.30);
-    const dark1 = rwphMixHexColour(accent, "#000000", 0.90);
-    const dark2 = rwphMixHexColour(accent, "#000000", 0.82);
-    const panel = rwphMixHexColour(accent, "#020617", 0.74);
-    const panel2 = rwphMixHexColour(accent, "#020617", 0.62);
-    const panel3 = rwphMixHexColour(accent, "#020617", 0.48);
-    const soft = rwphMixHexColour(accent, "#ffffff", 0.62);
-    return {
-      label: `Custom ${accent.toUpperCase()}`,
-      layoutName: "Custom colour picker - default RWPH layout",
-      bg: dark1,
-      bg2: dark2,
-      panel,
-      panel2,
-      panel3,
-      line: rwphHexToRgba(accent, 0.46),
-      line2: rwphHexToRgba(accent2, 0.40),
-      text: "#fff7ed",
-      soft,
-      accent,
-      accent2,
-      good: "#22c55e",
-      danger: "#991b1b",
-      radius: "18px",
-      cardRadius: "14px",
-      buttonRadius: "12px",
-      borderWidth: "1px",
-      borderStyle: "solid",
-      buttonCase: "none",
-      buttonTracking: ".01em",
-      texture: `radial-gradient(circle at 8% 0%, ${rwphHexToRgba(accent, 0.20)}, transparent 24%), radial-gradient(circle at 96% 6%, ${rwphHexToRgba(accent2, 0.18)}, transparent 26%)`,
-      headerTexture: `linear-gradient(135deg, ${rwphHexToRgba(accent, 0.18)}, transparent 42%), linear-gradient(90deg, ${rwphHexToRgba(accent2, 0.15)}, transparent 58%)`,
-      cardTexture: `linear-gradient(135deg, ${rwphHexToRgba(accent, 0.09)}, transparent 44%)`,
-      buttonTexture: "linear-gradient(135deg, rgba(255,255,255,.16), transparent 45%)",
-      customPickerHex: accent,
-      customButtonText: rwphReadableTextForHex(accent),
-    };
+  function rwphGetCustomThemeMasterColours() {
+    const fallback = rwphThemeMasterColours(rwphPanelThemePresets().rwphGold);
+    try {
+      const raw = GM_getValue(PANEL_CUSTOM_THEME_STORAGE_KEY, "");
+      const parsed = raw && typeof raw === "object" ? raw : (String(raw || "").trim() ? JSON.parse(String(raw)) : null);
+      if (parsed && typeof parsed === "object") {
+        return {
+          body: rwphNormalizeHexColour(parsed.body, fallback.body),
+          surface: rwphNormalizeHexColour(parsed.surface, fallback.surface),
+          text: rwphNormalizeHexColour(parsed.text, fallback.text),
+          outline: rwphNormalizeHexColour(parsed.outline, fallback.outline),
+        };
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
+  function rwphCustomThemeFromMasterColours(master = {}) {
+    const defaults = rwphThemeMasterColours(rwphPanelThemePresets().rwphGold);
+    return rwphBuildFourColourTheme(
+      "Custom",
+      rwphNormalizeHexColour(master.body, defaults.body),
+      rwphNormalizeHexColour(master.surface, defaults.surface),
+      rwphNormalizeHexColour(master.text, defaults.text),
+      rwphNormalizeHexColour(master.outline, defaults.outline),
+    );
+  }
+
+  function rwphSaveCustomThemeMasterColours(master = {}) {
+    const safe = rwphThemeMasterColours(rwphCustomThemeFromMasterColours(master));
+    try { GM_setValue(PANEL_CUSTOM_THEME_STORAGE_KEY, JSON.stringify(safe)); } catch (_) {}
+    return safe;
   }
 
   function rwphUpdateCustomColourPickerUi() {
     try {
-      const hex = rwphGetCustomColourHex("#f97316");
-      document.querySelectorAll?.("#rwph-custom-colour-input").forEach((input) => { input.value = hex; });
-      document.querySelectorAll?.("#rwph-custom-colour-text").forEach((input) => { input.value = hex; });
-      document.querySelectorAll?.("#rwph-custom-colour-live-label").forEach((el) => { el.textContent = hex.toUpperCase(); });
-      document.querySelectorAll?.(".rwph-custom-colour-swatch").forEach((el) => { el.style.background = hex; });
+      const key = rwphGetPanelThemeKey();
+      const current = key === "custom"
+        ? rwphGetCustomThemeMasterColours()
+        : rwphThemeMasterColours(rwphGetPanelThemePreset(key));
+      document.querySelectorAll?.("[data-rwph-theme-preset]").forEach((select) => {
+        const wanted = key === "custom" ? "custom" : key;
+        if (Array.from(select.options || []).some((opt) => opt.value === wanted)) select.value = wanted;
+      });
+      document.querySelectorAll?.("[data-rwph-theme-colour]").forEach((input) => {
+        const prop = String(input.dataset.rwphThemeColour || "");
+        if (current[prop]) input.value = current[prop];
+      });
+      document.querySelectorAll?.("[data-rwph-theme-hex]").forEach((input) => {
+        const prop = String(input.dataset.rwphThemeHex || "");
+        if (current[prop]) input.value = current[prop].toUpperCase();
+      });
+      document.querySelectorAll?.("[data-rwph-theme-swatch]").forEach((el) => {
+        const prop = String(el.dataset.rwphThemeSwatch || "");
+        if (current[prop]) el.style.background = current[prop];
+      });
+      document.querySelectorAll?.("[data-rwph-theme-mode-label]").forEach((el) => {
+        el.textContent = key === "custom" ? "Custom" : rwphColourThemeLabel(key);
+      });
     } catch (_) {}
   }
 
-  function rwphSetCustomColourTheme(hex, showPopup = true) {
-    const safe = rwphNormalizeHexColour(hex, "#f97316");
-    GM_setValue(PANEL_CUSTOM_COLOUR_STORAGE_KEY, safe);
+  function rwphSetCustomThemeMasterColours(master, showPopup = false) {
+    const safe = rwphSaveCustomThemeMasterColours(master);
     GM_setValue(PANEL_THEME_STORAGE_KEY, "custom");
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
     rwphUpdateLayoutThemeButtons();
     rwphUpdateCustomColourPickerUi();
-    if (showPopup) rwphShowToast(`RWPH custom colour changed to ${safe.toUpperCase()}.`, "info", "RWPH Theme / Colours");
+    if (showPopup) rwphShowToast("RWPH custom four-colour theme saved.", "info", "RWPH Theme / Colours");
+    return safe;
   }
 
   function rwphGetPanelThemePreset(key = "") {
     const presets = rwphPanelThemePresets();
-    const chosenKey = String(key || rwphGetPanelThemeKey()).toLowerCase();
-    if (chosenKey === "custom") return rwphCustomColourThemeFromHex(rwphGetCustomColourHex("#f97316"));
-    return presets[chosenKey] || presets.bronze;
+    const chosenKey = String(key || rwphGetPanelThemeKey());
+    if (chosenKey === "custom") return rwphCustomThemeFromMasterColours(rwphGetCustomThemeMasterColours());
+    return presets[chosenKey] || presets.rwphGold;
   }
 
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
@@ -3959,6 +3993,18 @@
         color:${t.accent}!important;
       }
 
+      #rw-payout-helper :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      #rw-pay-all-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      .rw-pay-all-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      #rwph-xanax-send-status :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      #rwph-member-management-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      .rwph-member-management-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      .rw-results-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
+      .rwph-floating-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover{
+        background:${t.panel3}!important;
+        color:${t.text}!important;
+        border-color:${t.accent}!important;
+      }
       #rw-payout-helper input[type="checkbox"],
       #rw-payout-helper input[type="radio"]{
         accent-color:${t.accent}!important;
@@ -4475,20 +4521,51 @@
         overflow:visible!important;
         align-content:start!important;
       }
-      #rwph-layout-theme-panel .rwph-custom-colour-controls{
+      #rwph-layout-theme-panel .rwph-theme-master-grid{
         display:grid!important;
-        grid-template-columns:76px minmax(0,1fr) auto!important;
-        gap:8px!important;
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+        gap:10px!important;
+        align-items:stretch!important;
+      }
+      #rwph-layout-theme-panel .rwph-theme-master-field{
+        min-width:0!important;
+        padding:11px!important;
+        display:grid!important;
+        gap:7px!important;
+      }
+      #rwph-layout-theme-panel .rwph-theme-master-field > label{
+        display:block!important;
+        font-size:11px!important;
+        line-height:1.35!important;
+        font-weight:900!important;
+        letter-spacing:.025em!important;
+        color:${t.soft}!important;
+      }
+      #rwph-layout-theme-panel .rwph-theme-master-controls{
+        display:grid!important;
+        grid-template-columns:58px minmax(0,1fr) 28px!important;
+        gap:7px!important;
         align-items:center!important;
       }
-      #rwph-layout-theme-panel #rwph-custom-colour-input{
-        min-width:76px!important;
-        width:76px!important;
-        height:42px!important;
+      #rwph-layout-theme-panel [data-rwph-theme-colour]{
+        width:58px!important;
+        min-width:58px!important;
+        height:40px!important;
         padding:2px!important;
+        cursor:pointer!important;
       }
-      #rwph-layout-theme-panel #rwph-custom-colour-text{
+      #rwph-layout-theme-panel [data-rwph-theme-hex]{
         min-width:0!important;
+        height:40px!important;
+        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+        text-transform:uppercase!important;
+      }
+      #rwph-layout-theme-panel .rwph-theme-master-swatch{
+        width:28px!important;
+        height:28px!important;
+        border-radius:8px!important;
+        border:1px solid ${t.line2}!important;
+        box-shadow:0 0 14px rgba(0,0,0,.28)!important;
       }
       #rwph-layout-theme-panel > .rw-resize-handle{
         position:absolute!important;
@@ -4547,15 +4624,15 @@
         #rwph-layout-theme-panel > .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:0 3px 3px 0!important;}
         #rwph-layout-theme-panel > .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:0 0 3px 3px!important;}
         #rwph-layout-theme-panel > .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px 0 0 3px!important;}
-        #rwph-layout-theme-panel .rwph-custom-colour-controls{grid-template-columns:1fr!important;}
-        #rwph-layout-theme-panel #rwph-custom-colour-input{width:100%!important;min-width:0!important;}
+        #rwph-layout-theme-panel .rwph-theme-master-grid{grid-template-columns:1fr!important;}
+        #rwph-layout-theme-panel .rwph-theme-master-controls{grid-template-columns:58px minmax(0,1fr) 28px!important;}
       }
     `;
   }
 
   function rwphColourThemeLabel(key = rwphGetPanelThemeKey()) {
-    const chosen = rwphGetPanelThemePreset(key || "bronze");
-    return chosen?.label || "Default RWPH Bronze";
+    const chosen = rwphGetPanelThemePreset(key || "rwphGold");
+    return chosen?.label || "RWPH Gold";
   }
   const rwphLayoutThemeLabel = rwphColourThemeLabel;
 
@@ -4583,12 +4660,12 @@
       #rwph-layout-theme-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]),
       #rwph-logo-picker-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]),
       .rwph-info-popup-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]){
-        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
-        color:${String(t.bg || "").toLowerCase().includes("#f") ? "#111827" : "#ffffff"}!important;
-        border:1px solid ${t.line2 || t.line}!important;
+        background:${t.panel2}!important;
+        color:${t.text}!important;
+        border:1px solid ${t.accent}!important;
         border-radius:${btnRadius}!important;
-        box-shadow:0 8px 18px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12)!important;
-        text-shadow:0 1px 1px rgba(0,0,0,.25)!important;
+        box-shadow:none!important;
+        text-shadow:none!important;
         font-weight:850!important;
       }
       #rw-payout-helper :where(button.secondary,.secondary),
@@ -4604,9 +4681,9 @@
       #rwph-layout-theme-panel :where(button.secondary,.secondary),
       #rwph-logo-picker-panel :where(button.secondary,.secondary),
       .rwph-info-popup-panel :where(button.secondary,.secondary){
-        background:linear-gradient(135deg, ${t.panel3}, ${t.panel2})!important;
+        background:${t.panel2}!important;
         color:${t.text}!important;
-        border-color:${t.line}!important;
+        border-color:${t.accent}!important;
       }
       #rw-payout-helper :where(button.danger,.danger),
       #rw-pay-all-panel :where(button.danger,.danger),
@@ -4619,9 +4696,9 @@
       #rwph-layout-theme-panel :where(button.danger,.danger),
       #rwph-logo-picker-panel :where(button.danger,.danger),
       .rwph-info-popup-panel :where(button.danger,.danger){
-        background:linear-gradient(135deg, ${t.danger || "#991b1b"}, ${t.accent2})!important;
-        color:#ffffff!important;
-        border-color:rgba(248,113,113,.58)!important;
+        background:${t.panel2}!important;
+        color:${t.text}!important;
+        border-color:${t.accent}!important;
       }
       #rw-payout-helper :where(button.success,.success),
       #rw-pay-all-panel :where(button.success,.success),
@@ -4631,9 +4708,9 @@
       .rwph-member-management-panel :where(button.success,.success),
       .rw-results-panel :where(button.success,.success),
       .rwph-floating-panel :where(button.success,.success){
-        background:linear-gradient(135deg, ${t.good || "#22c55e"}, ${t.accent})!important;
-        color:#ffffff!important;
-        border-color:rgba(34,197,94,.55)!important;
+        background:${t.panel2}!important;
+        color:${t.text}!important;
+        border-color:${t.accent}!important;
       }
       #rw-payout-helper input[type="checkbox"],
       #rw-pay-all-panel input[type="checkbox"],
@@ -4696,9 +4773,9 @@
   }
 
   function rwphSetLayoutThemeChoice(themeKey) {
-    const requested = String(themeKey || "bronze").toLowerCase();
+    const requested = String(themeKey || "rwphGold");
     const presets = rwphPanelThemePresets();
-    const nextKey = presets[requested] ? requested : "bronze";
+    const nextKey = presets[requested] ? requested : "rwphGold";
     GM_setValue(PANEL_THEME_STORAGE_KEY, nextKey);
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
@@ -4710,7 +4787,7 @@
     const key = rwphGetPanelThemeKey();
     document.querySelectorAll?.("#rw-current-layout-label").forEach((el) => { el.textContent = rwphLayoutThemeLabel(key); });
     document.querySelectorAll?.("[data-rwph-layout-theme-choice]").forEach((btn) => {
-      const active = String(btn.dataset.rwphLayoutThemeChoice || "bronze") === key;
+      const active = String(btn.dataset.rwphLayoutThemeChoice || "rwphGold") === key;
       btn.classList.toggle("primary", active);
       btn.classList.toggle("secondary", !active);
       btn.setAttribute("aria-pressed", active ? "true" : "false");
@@ -4722,13 +4799,21 @@
     rwphClosePanelThemePicker();
     rwphApplyPanelThemeChoice();
     rwphEnsureFloatingPanelCss();
+
     const key = rwphGetPanelThemeKey();
-    const customHex = rwphGetCustomColourHex("#f97316");
-    const themeOptionsHtml = Object.entries(rwphPanelThemePresets()).map(([themeKey, theme]) => `
-          <button type="button" class="rwph-layout-theme-option ${themeKey === key ? "primary" : "secondary"}" data-rwph-layout-theme-choice="${themeKey}" aria-pressed="${themeKey === key ? "true" : "false"}">
-            <span style="display:block;font-weight:950;">${esc(theme.label || themeKey)}</span>
-            <small style="display:block;margin-top:5px;font-weight:700;line-height:1.35;">${esc(theme.layoutName || "Colour theme only - default RWPH layout")}</small>
-          </button>`).join("");
+    const activeMaster = key === "custom"
+      ? rwphGetCustomThemeMasterColours()
+      : rwphThemeMasterColours(rwphGetPanelThemePreset(key));
+    const presetOptions = Object.entries(rwphPanelThemePresets()).map(([themeKey, theme]) =>
+      `<option value="${esc(themeKey)}" ${themeKey === key ? "selected" : ""}>${esc(theme.label || themeKey)}</option>`
+    ).join("");
+    const colourFields = [
+      ["body", "BODY / SCROLL / INPUTS / SELECTS", "Controls the main panel background, scrolling areas, inputs and selects."],
+      ["surface", "CARDS / ROWS / TITLE BARS", "Controls cards, member/result rows, title bars and raised panel surfaces."],
+      ["text", "ALL TEXT", "Controls normal text, labels, values and muted text derived from this colour."],
+      ["outline", "ALL OUTLINES / BORDERS / ACCENTS", "Controls borders, outlines, highlights and the main RWPH accent colour."],
+    ];
+
     const panel = document.createElement("div");
     panel.id = "rwph-layout-theme-panel";
     panel.className = "rwph-floating-panel rwph-layout-theme-panel rwph-layout-theme-panel-controls";
@@ -4740,87 +4825,148 @@
       z-index: 1000004;
       right: 18px;
       top: 120px;
-      width: min(540px, calc(100vw - 18px));
-      height: min(660px, calc(100vh - 18px));
+      width: min(480px, calc(100vw - 18px));
+      height: min(550px, calc(100vh - 18px));
       max-width: calc(100vw - 16px);
       max-height: calc(100vh - 16px);
       min-width: min(300px, calc(100vw - 18px));
-      min-height: 260px;
+      min-height: 300px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      color: #fff7ed;
       font-family: Inter, Segoe UI, Arial, sans-serif;
     `;
     panel.innerHTML = `
-      <div class="rwph-panel-head rwph-layout-theme-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;flex:0 0 auto;">
-        <div style="display:flex;align-items:center;gap:10px;font-weight:950;min-width:0;"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:148px;height:42px;object-fit:contain;pointer-events:none;flex:0 1 auto;background:transparent;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Theme / Colours</span></div>
+      <div class="rwph-panel-head rwph-layout-theme-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rwph-theme-line,rgba(255,255,255,.12));cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;flex:0 0 auto;">
+        <div style="display:flex;align-items:center;gap:10px;font-weight:950;min-width:0;">
+          <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:148px;height:42px;object-fit:contain;pointer-events:none;flex:0 1 auto;background:transparent;">
+          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Theme / Colours</span>
+        </div>
         <button id="rwph-layout-theme-close" class="danger" type="button" title="Close" aria-label="Close" style="margin:0;">×</button>
       </div>
       <div class="rwph-floating-panel-body rwph-layout-theme-body" style="padding:14px;overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;">
-        <div class="rw-layout-theme-current rw-card" style="padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:12px;">
-          <b>Current colour:</b> <span id="rw-current-layout-label">${esc(rwphColourThemeLabel(key))}</span><br>
-          <span class="rw-muted">This changes colours, accents, buttons, inputs, cards, panels, and popup colours only. The RWPH layout stays on the default layout.</span>
-        </div>
-        <div class="rw-card rwph-custom-colour-card" style="padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:12px;display:grid;gap:10px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div>
-              <b>Custom colour picker:</b> <span id="rwph-custom-colour-live-label">${esc(customHex.toUpperCase())}</span><br>
-              <span class="rw-muted">Pick any colour and apply it to all RWPH panels and buttons.</span>
-            </div>
-            <span class="rwph-custom-colour-swatch" style="width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.28);background:${esc(customHex)};box-shadow:0 0 18px rgba(0,0,0,.28);"></span>
+        <div class="rw-card rwph-theme-master-card" style="padding:12px;margin-bottom:12px;display:grid;gap:11px;">
+          <div>
+            <b>Preset</b><br>
+            <span class="rw-muted">Choose a preset, or change any colour below to automatically switch to Custom.</span>
           </div>
-          <div class="rwph-custom-colour-controls" style="display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:8px;align-items:center;">
-            <input id="rwph-custom-colour-input" type="color" value="${esc(customHex)}" title="Choose custom colour" aria-label="Choose custom colour" style="width:76px;height:42px;padding:2px;cursor:pointer;">
-            <input id="rwph-custom-colour-text" type="text" value="${esc(customHex)}" inputmode="text" aria-label="Custom colour hex" style="min-width:0;height:42px;">
-            <button id="rwph-apply-custom-colour" type="button" class="primary">Apply Custom Colour</button>
-          </div>
+          <select data-rwph-theme-preset aria-label="Theme preset" style="width:100%;min-width:0;height:42px;">
+            ${presetOptions}
+            <option value="custom" ${key === "custom" ? "selected" : ""}>Custom</option>
+          </select>
+          <div class="rw-muted">Current theme: <b data-rwph-theme-mode-label>${esc(key === "custom" ? "Custom" : rwphColourThemeLabel(key))}</b></div>
         </div>
-        <div class="rwph-layout-theme-options">${themeOptionsHtml}</div>
+
+        <div class="rwph-theme-master-grid">
+          ${colourFields.map(([prop, label, help]) => `
+            <div class="rw-card rwph-theme-master-field" data-rwph-theme-field="${prop}">
+              <label>${esc(label)}</label>
+              <div class="rwph-theme-master-controls">
+                <input type="color" data-rwph-theme-colour="${prop}" value="${esc(activeMaster[prop])}" aria-label="${esc(label)} colour">
+                <input type="text" data-rwph-theme-hex="${prop}" value="${esc(activeMaster[prop].toUpperCase())}" inputmode="text" spellcheck="false" aria-label="${esc(label)} hex colour">
+                <span data-rwph-theme-swatch="${prop}" class="rwph-theme-master-swatch" style="background:${esc(activeMaster[prop])};"></span>
+              </div>
+              <small class="rw-muted">${esc(help)}</small>
+            </div>`).join("")}
+        </div>
+
+        <div class="rw-card" style="padding:11px 12px;margin-top:12px;">
+          <b>Four colours control the RWPH interface.</b><br>
+          <span class="rw-muted">Body controls the base areas, Surface controls raised panels/cards, Text controls readable content, and Outline controls borders/highlights/buttons.</span>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+          <button type="button" class="secondary" data-rwph-theme-reset style="flex:1 1 180px;">Reset Theme</button>
+          <button type="button" class="secondary" data-rwph-theme-use-current style="flex:1 1 180px;">Use Current Colours as Custom</button>
+        </div>
       </div>
     `;
     document.body.appendChild(panel);
-    panel.querySelector("#rwph-layout-theme-close")?.addEventListener("click", rwphClosePanelThemePicker);
-    const customInput = panel.querySelector("#rwph-custom-colour-input");
-    const customText = panel.querySelector("#rwph-custom-colour-text");
-    const customApply = panel.querySelector("#rwph-apply-custom-colour");
-    const syncCustomFields = (value) => {
-      const safe = rwphNormalizeHexColour(value, rwphGetCustomColourHex("#f97316"));
-      if (customInput) customInput.value = safe;
-      if (customText) customText.value = safe;
-      panel.querySelectorAll?.("#rwph-custom-colour-live-label").forEach((el) => { el.textContent = safe.toUpperCase(); });
-      panel.querySelectorAll?.(".rwph-custom-colour-swatch").forEach((el) => { el.style.background = safe; });
+
+    const getVisibleMaster = () => {
+      const currentKey = rwphGetPanelThemeKey();
+      return currentKey === "custom"
+        ? rwphGetCustomThemeMasterColours()
+        : rwphThemeMasterColours(rwphGetPanelThemePreset(currentKey));
+    };
+    const syncField = (prop, value) => {
+      const safe = rwphNormalizeHexColour(value, getVisibleMaster()[prop]);
+      const colour = panel.querySelector(`[data-rwph-theme-colour="${prop}"]`);
+      const hex = panel.querySelector(`[data-rwph-theme-hex="${prop}"]`);
+      const swatch = panel.querySelector(`[data-rwph-theme-swatch="${prop}"]`);
+      if (colour) colour.value = safe;
+      if (hex) hex.value = safe.toUpperCase();
+      if (swatch) swatch.style.background = safe;
       return safe;
     };
-    customInput?.addEventListener("input", () => syncCustomFields(customInput.value));
-    customInput?.addEventListener("change", () => rwphSetCustomColourTheme(syncCustomFields(customInput.value), true));
-    customText?.addEventListener("input", () => {
-      const raw = String(customText.value || "").trim();
-      if (/^#?[0-9a-fA-F]{3}$/.test(raw) || /^#?[0-9a-fA-F]{6}$/.test(raw)) syncCustomFields(raw);
+    const readFields = () => {
+      const base = getVisibleMaster();
+      const next = { ...base };
+      for (const prop of ["body", "surface", "text", "outline"]) {
+        const colour = panel.querySelector(`[data-rwph-theme-colour="${prop}"]`);
+        const hex = panel.querySelector(`[data-rwph-theme-hex="${prop}"]`);
+        next[prop] = rwphNormalizeHexColour(hex?.value || colour?.value || base[prop], base[prop]);
+      }
+      return next;
+    };
+    const applyCustomFromFields = () => {
+      rwphSetCustomThemeMasterColours(readFields(), false);
+      const select = panel.querySelector("[data-rwph-theme-preset]");
+      if (select) select.value = "custom";
+      rwphUpdateCustomColourPickerUi();
+    };
+
+    panel.querySelector("#rwph-layout-theme-close")?.addEventListener("click", rwphClosePanelThemePicker);
+    panel.querySelector("[data-rwph-theme-preset]")?.addEventListener("change", (event) => {
+      const id = String(event.target.value || "rwphGold");
+      if (id === "custom") {
+        rwphSetCustomThemeMasterColours(rwphGetCustomThemeMasterColours(), false);
+      } else {
+        rwphSetLayoutThemeChoice(id);
+      }
+      rwphUpdateCustomColourPickerUi();
     });
-    customText?.addEventListener("change", () => rwphSetCustomColourTheme(syncCustomFields(customText.value), true));
-    customApply?.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      rwphSetCustomColourTheme(syncCustomFields(customText?.value || customInput?.value || "#f97316"), true);
-    });
-    panel.addEventListener("click", (event) => {
-      const btn = event.target?.closest?.("[data-rwph-layout-theme-choice]");
-      if (!btn || !panel.contains(btn)) return;
-      event.preventDefault();
-      rwphSetLayoutThemeChoice(btn.dataset.rwphLayoutThemeChoice || "bronze");
-    });
-    panel.querySelectorAll?.("[data-rwph-layout-theme-choice]").forEach((btn) => {
-      if (btn.dataset.rwphLayoutDirectReady === "1") return;
-      btn.dataset.rwphLayoutDirectReady = "1";
-      btn.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        rwphSetLayoutThemeChoice(btn.dataset.rwphLayoutThemeChoice || "bronze");
+
+    panel.querySelectorAll("[data-rwph-theme-colour]").forEach((input) => {
+      input.addEventListener("input", (event) => {
+        const prop = String(event.target.dataset.rwphThemeColour || "");
+        syncField(prop, event.target.value);
+        applyCustomFromFields();
       });
     });
+    panel.querySelectorAll("[data-rwph-theme-hex]").forEach((input) => {
+      input.addEventListener("input", (event) => {
+        const raw = String(event.target.value || "").trim();
+        if (!/^#?[0-9a-fA-F]{3}$/.test(raw) && !/^#?[0-9a-fA-F]{6}$/.test(raw)) return;
+        const prop = String(event.target.dataset.rwphThemeHex || "");
+        syncField(prop, raw);
+        applyCustomFromFields();
+      });
+      input.addEventListener("change", (event) => {
+        const prop = String(event.target.dataset.rwphThemeHex || "");
+        syncField(prop, event.target.value);
+        applyCustomFromFields();
+      });
+    });
+
+    panel.querySelector("[data-rwph-theme-reset]")?.addEventListener("click", () => {
+      GM_setValue(PANEL_THEME_STORAGE_KEY, "rwphGold");
+      GM_setValue(PANEL_CUSTOM_THEME_STORAGE_KEY, "");
+      rwphApplyPanelThemeChoice();
+      rwphApplyLogoChoice();
+      rwphUpdateLayoutThemeButtons();
+      rwphUpdateCustomColourPickerUi();
+      rwphShowToast("RWPH theme reset to RWPH Gold.", "info", "RWPH Theme / Colours");
+    });
+    panel.querySelector("[data-rwph-theme-use-current]")?.addEventListener("click", () => {
+      const current = rwphThemeMasterColours(rwphGetPanelThemePreset(rwphGetPanelThemeKey()));
+      rwphSetCustomThemeMasterColours(current, true);
+      rwphUpdateCustomColourPickerUi();
+    });
+
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
     rwphUpdateLayoutThemeButtons();
+    rwphUpdateCustomColourPickerUi();
   }
 
   function attachPanelThemeButton() {
@@ -17113,7 +17259,7 @@
           <div class="rw-theme-colour-card rw-layout-theme-card rw-card rwph-theme-logo-control-card rwph-theme-logo-bottom-card">
             <div class="rw-layout-theme-action-row rwph-theme-logo-button-grid">
               <div class="rwph-theme-logo-control-block">
-                <div class="rw-muted rwph-theme-logo-current-label">Current colour: <span id="rw-current-layout-label">${esc(rwphColourThemeLabel())}</span></div>
+                <div class="rw-muted rwph-theme-logo-current-label">Current theme: <span id="rw-current-layout-label">${esc(rwphColourThemeLabel())}</span></div>
                 <button id="rw-open-theme-picker" class="secondary" type="button">Open Theme / Colours</button>
               </div>
               <div class="rwph-theme-logo-control-block">
@@ -20386,6 +20532,7 @@
 
   rwphInjectPanelTitlesUnderLogoV1450();
   rwphInjectMainPanelLogoOnlyGuardV1451();
+  rwphEnsureThemeSystemV3Defaults();
   rwphApplyPanelThemeChoice();
   rwphApplyLogoChoice();
   rwphInstallCleanUiV1491();
