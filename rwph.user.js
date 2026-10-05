@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.524
+// @version      1.1.525
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.525: Rebuilds every RWPH panel around one shared four-colour UI theme, retires the old Unified/Clean/Compact visual layers, and applies the same theme system to Results Loading and Results.
   // v1.1.524: Main locked/unlocked panel buttons now fully follow the four-colour theme, and the Theme / Colours preset library is massively expanded.
   // v1.1.523: Completely rebuilds Theme / Colours around the Faction Helper four-colour system; old RWPH theme/custom-colour state is intentionally reset to the new RWPH Gold default.
   // v1.1.522: Newsletter faction image now comes strictly from the user faction's Faction Info tab/panel (with own-faction cache/API fallback), never from the current war target area.
@@ -3639,1036 +3640,345 @@
     return presets[chosenKey] || presets.rwphGold;
   }
 
+  function rwphBestContrastText(hex) {
+    const rgb = rwphHexToRgb(hex);
+    const luminance = (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+    return luminance > 0.58 ? "#0b0d0f" : "#ffffff";
+  }
+
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
     const t = theme || rwphGetPanelThemePreset();
-    const themeTexture = t.texture ? `${t.texture},` : "";
-    const themeHeaderTexture = t.headerTexture ? `${t.headerTexture},` : "";
-    const themeCardTexture = t.cardTexture ? `${t.cardTexture},` : "";
-    const themeButtonTexture = t.buttonTexture ? `${t.buttonTexture},` : "";
-    const themeTextureSize = t.textureSize || "auto";
-    const themeCardTextureSize = t.cardTextureSize || themeTextureSize;
-    const themeRadius = t.radius || "16px";
-    const themeCardRadius = t.cardRadius || "14px";
-    const themeButtonRadius = t.buttonRadius || "12px";
-    const themeBorderWidth = t.borderWidth || "1px";
-    const themeBorderStyle = t.borderStyle || "solid";
-    const themeButtonCase = t.buttonCase || "none";
-    const themeButtonTracking = t.buttonTracking || ".01em";
-    const standaloneScope = includeStandalonePage ? `
-      body,
-      .app,
-      .hero,
-      .topbar,
-      .side,
-      .summary-card,
-      .result-card,
-      .pay-all-panel,
-      .rwph-loading-shell,
-      .rwph-status-card,
-      .rwph-side-card,
-      .mini,
-      .wait-note,` : "";
+    const body = t.masterColours?.body || t.bg || "#0d0f11";
+    const surface = t.masterColours?.surface || t.panel || "#20252a";
+    const text = t.masterColours?.text || t.text || "#f4f5f6";
+    const outline = t.masterColours?.outline || t.accent || "#e9bd4e";
+    const surface2 = rwphMixHexColour(surface, outline, 0.10);
+    const body2 = rwphMixHexColour(body, surface, 0.28);
+    const soft = rwphMixHexColour(text, body, 0.32);
+    const outlineSoft = rwphHexToRgba(outline, 0.42);
+    const outlineStrong = rwphHexToRgba(outline, 0.78);
+    const outlineGlow = rwphHexToRgba(outline, 0.18);
+    const selectedText = rwphBestContrastText(outline);
+    const standalone = includeStandalonePage ? `
+      html body{background:${body}!important;color:${text}!important;}
+      html body .app{color:${text}!important;}
+      html body .hero,
+      html body .topbar,
+      html body .side,
+      html body .summary-card,
+      html body .result-card,
+      html body .pay-all-panel,
+      html body .rwph-loading-shell,
+      html body .rwph-status-card,
+      html body .rwph-side-card,
+      html body .mini,
+      html body .wait-note,
+      html body .rwph-results-html-panel,
+      html body .rwph-newsletter-dropdown-menu{
+        background:${surface}!important;
+        color:${text}!important;
+        border-color:${outlineSoft}!important;
+        box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 0 1px ${rwphHexToRgba(outline,0.08)} inset!important;
+      }
+      html body .hero,
+      html body .rwph-loading-head,
+      html body .rwph-results-html-head,
+      html body .pay-all-head{
+        background:${surface2}!important;
+        color:${text}!important;
+        border-color:${outlineSoft}!important;
+      }
+      html body .btn,
+      html body button,
+      html body a.btn,
+      html body .rwph-newsletter-dropdown-item,
+      html body .rwph-newsletter-dropdown-summary{
+        background:${surface2}!important;
+        color:${text}!important;
+        border:1px solid ${outlineStrong}!important;
+        border-radius:10px!important;
+        box-shadow:0 7px 18px rgba(0,0,0,.22)!important;
+      }
+      html body .btn:hover,
+      html body button:hover,
+      html body a.btn:hover,
+      html body .rwph-newsletter-dropdown-item:hover,
+      html body .rwph-newsletter-dropdown-summary:hover{
+        background:${rwphMixHexColour(surface2, outline, 0.12)}!important;
+        border-color:${outline}!important;
+        filter:none!important;
+      }
+      html body .primary,
+      html body .btn.primary,
+      html body #payAllBtn{
+        background:${outline}!important;
+        color:${selectedText}!important;
+        border-color:${outline}!important;
+        box-shadow:0 8px 22px ${outlineGlow}!important;
+      }
+      html body input,
+      html body textarea,
+      html body select,
+      html body .rwph-results-html-box{
+        background:${body2}!important;
+        color:${text}!important;
+        border-color:${outlineSoft}!important;
+      }
+      html body h1,html body h2,html body h3,
+      html body .title-text,html body .results-side-title,
+      html body .rwph-results-html-title,html body .rwph-results-html-preview-title,
+      html body .result-name,html body .summary-card b,html body .stats b{
+        color:${text}!important;
+      }
+      html body .muted,html body .result-id,html body .stats span,
+      html body .summary-card span,html body .results-action-note,
+      html body .close-hint,html body .pay-all-note,
+      html body .rwph-results-html-note,html body .rwph-results-html-status{
+        color:${soft}!important;
+      }
+      html body .payout,html body .pay-all-payout,
+      html body .rwph-progress-value,html body .rwph-loading-value{
+        color:${outline}!important;
+      }
+      html body .stats div,
+      html body .result-highlight,
+      html body .results-meta-card,
+      html body .results-section,
+      html body .pay-all-row,
+      html body .pay-all-info,
+      html body .rwph-results-html-preview-wrap,
+      html body .rwph-results-html-preview{
+        background:${body2}!important;
+        color:${text}!important;
+        border-color:${outlineSoft}!important;
+      }
+      html body .resize-handle,
+      html body [class*="resize-handle"]{
+        border-color:${outline}!important;
+      }
+      html body ::-webkit-scrollbar-track{background:${body2}!important;}
+      html body ::-webkit-scrollbar-thumb{background:${outline}!important;border-color:${body}!important;}
+    ` : "";
+
     return `
       :root{
-        --rwph-theme-bg:${t.bg};
-        --rwph-theme-bg2:${t.bg2};
-        --rwph-theme-panel:${t.panel};
-        --rwph-theme-panel2:${t.panel2};
-        --rwph-theme-panel3:${t.panel3};
-        --rwph-theme-line:${t.line};
-        --rwph-theme-line2:${t.line2};
-        --rwph-theme-text:${t.text};
-        --rwph-theme-soft:${t.soft};
-        --rwph-theme-gold:${t.accent};
-        --rwph-theme-orange:${t.accent2};
-        --rwph-theme-green:${t.good};
-        --rwph-theme-red:${t.danger};
-        --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 34px ${t.line};
-        --rwph-theme-radius:${themeRadius};
-        --rwph-theme-card-radius:${themeCardRadius};
-        --rwph-theme-button-radius:${themeButtonRadius};
-        --rwph-theme-border-width:${themeBorderWidth};
-        --rwph-theme-border-style:${themeBorderStyle};
+        --rwph-theme-bg:${body};
+        --rwph-theme-bg2:${body2};
+        --rwph-theme-panel:${surface};
+        --rwph-theme-panel2:${surface};
+        --rwph-theme-panel3:${surface2};
+        --rwph-theme-line:${outlineSoft};
+        --rwph-theme-line2:${outlineStrong};
+        --rwph-theme-text:${text};
+        --rwph-theme-soft:${soft};
+        --rwph-theme-gold:${outline};
+        --rwph-theme-orange:${outline};
+        --rwph-theme-green:${outline};
+        --rwph-theme-red:${outline};
+        --rwph-theme-outline:${outline};
+        --rwph-theme-selected-text:${selectedText};
+        --rwph-theme-shadow:0 20px 58px rgba(0,0,0,.46),0 0 0 1px ${rwphHexToRgba(outline,0.08)} inset;
+        /* Standalone Results/Loading legacy variable aliases now resolve to the same four master colours. */
+        --bg:${body};--panel:${surface};--panel2:${surface2};--line:${outlineSoft};--text:${text};--muted:${soft};--blue:${outline};--indigo:${outline};--green:${outline};
+        --rw-bg:${body};--rw-bg2:${body2};--rw-panel:${surface};--rw-panel2:${surface};--rw-panel3:${surface2};--rw-line:${outlineSoft};--rw-line2:${outlineStrong};--rw-text:${text};--rw-soft:${soft};--rw-gold:${outline};--rw-orange:${outline};--rw-green:${outline};--rw-red:${outline};--rw-shadow:var(--rwph-theme-shadow);
+        --rwph-theme-radius:14px;
+        --rwph-theme-card-radius:11px;
+        --rwph-theme-button-radius:9px;
       }
 
-      ${standaloneScope}
-      #rw-payout-helper,
-      #rw-pay-all-panel,
-      .rw-pay-all-panel,
-      #rwph-xanax-send-status,
-      .rwph-floating-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel,
-      .rw-results-panel,
-      .rw-main-panel,
-      .rw-locked-panel,
-      .rw-admin-panel,
-      .rw-help-panel,
-      .rw-payment-panel,
-      .rw-admin-box,
-      .rw-how-box,
-      .rw-modal,
-      .rw-popup,
-      .rw-toast,
-      .rw-settings-panel,
-      .rw-api-tos-card,
-      .rw-api-tos-dropdown,
-      .rw-settings-dropdown,
-      .rw-card,
-      .rw-box,
-      .rw-section,
-      .rw-panel,
-      [id^="rwph-"][class*="panel"],
-      [class^="rwph-"][class*="panel"],
-      [class*="rwph-"][class*="panel"],
-      .rwph-panel-theme-picker{
-        background:
-          ${themeTexture}
-          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 32%),
-          radial-gradient(circle at 86% 8%, ${t.line}, transparent 30%),
-          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
-        background-size:${themeCardTextureSize}, auto, auto, auto!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
+      /* v1.1.525 — one visual system for every RWPH panel. */
+      body #rw-payout-helper,
+      body #rw-pay-all-panel,body .rw-pay-all-panel,
+      body #rwph-xanax-send-status,
+      body #rwph-member-management-panel,body .rwph-member-management-panel,
+      body #rwph-saved-reports-panel,
+      body #rwph-layout-theme-panel,
+      body #rwph-logo-picker-panel,
+      body #rwph-licence-info-panel,
+      body #rw-wrong-payment-panel,
+      body #rwph-default-setup-panel,
+      body #rwph-default-setup-controller,
+      body #rwph-basic-calculations-panel,
+      body #rwph-advanced-calculations-panel,
+      body .rwph-floating-panel,
+      body .rwph-calculation-settings-panel,
+      body .rwph-results-loading-panel,
+      body .rwph-results-html-panel,
+      body .rw-results-panel,
+      body .rw-main-panel,body .rw-locked-panel,body .rw-admin-panel,body .rw-help-panel,
+      body .rw-payment-panel,body .rw-settings-panel,body .rw-modal,
+      body .rwph-panel-theme-picker,
+      body [id^="rwph-"][class*="panel"]{
+        background:${surface}!important;
+        color:${text}!important;
+        border:1px solid ${outlineSoft}!important;
+        border-radius:14px!important;
         box-shadow:var(--rwph-theme-shadow)!important;
+        background-image:none!important;
       }
 
-      #rw-payout-helper header,
-      #rw-payout-helper .rw-header,
-      #rw-payout-helper .rw-title,
-      #rw-payout-helper .rw-panel-head,
-      #rw-payout-helper .rw-head,
-      #rw-payout-helper .rw-tabbar,
-      #rw-pay-all-panel .rw-pay-all-head,
-      .rw-pay-all-panel .rw-pay-all-head,
-      .rwph-floating-panel .rwph-panel-head,
-      .rwph-results-loading-panel .rwph-results-loading-head,
-      .rwph-results-html-head,
-      .rw-admin-box h1,
-      .rw-admin-box h2,
-      .rw-how-box h1,
-      .rw-how-box h2,
-      .rw-api-tos-title,
-      .rw-settings-dropdown > summary,
-      .rw-api-tos-dropdown > summary{
-        background:${themeHeaderTexture}linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
-        background-size:${themeTextureSize}, auto!important;
-        border-color:${t.line2}!important;
-        color:${t.accent}!important;
+      body #rw-payout-helper::before,body #rw-payout-helper::after,
+      body .rwph-floating-panel::before,body .rwph-floating-panel::after,
+      body #rwph-xanax-send-status::before,body #rwph-xanax-send-status::after{
+        display:none!important;
+        content:none!important;
       }
 
-      #rw-payout-helper button,
-      #rw-payout-helper .rw-button,
-      #rw-payout-helper .rw-tab,
-      #rw-payout-helper a.btn,
-      #rw-pay-all-panel button,
-      #rw-pay-all-panel a.btn,
-      .rw-pay-all-panel button,
-      .rw-pay-all-panel a.btn,
-      .rwph-floating-panel button,
-      .rwph-floating-panel a.btn,
-      .rwph-results-html-panel button,
-      .rwph-results-html-panel a.btn,
-      .rw-results-panel button,
-      .rw-results-panel a.btn,
-      .rw-admin-box button,
-      .rw-how-box button{
-        background:${themeButtonTexture}linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
-        background-size:${themeTextureSize}, auto!important;
-        border-color:${t.line2}!important;
-        color:${t.text}!important;
-        box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
-      }
-
-      #rw-payout-helper button.primary,
-      #rw-payout-helper .primary,
-      #rw-payout-helper .rw-primary,
-      #rw-payout-helper .rw-tab.active,
-      #rw-payout-helper [aria-selected="true"],
-      #rw-pay-all-panel .primary,
-      .rw-pay-all-panel .primary,
-      .rwph-floating-panel .primary,
-      .rwph-results-html-panel .primary,
-      .rw-results-panel .primary{
-        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
-        border-color:${t.line2}!important;
-        color:${t.bg}!important;
-      }
-
-      ${includeStandalonePage ? "body h1, body h2, body h3, body .title-text, body .results-side-title, body .summary-card span, body .result-name," : ""}
-      #rw-payout-helper h1,
-      #rw-payout-helper h2,
-      #rw-payout-helper h3,
-      #rw-payout-helper .rw-title,
-      #rw-payout-helper .rw-section-title,
-      #rw-payout-helper .rw-api-tos-title,
-      #rw-pay-all-panel h1,
-      #rw-pay-all-panel h2,
-      .rw-pay-all-panel h1,
-      .rw-pay-all-panel h2,
-      .rwph-floating-panel h1,
-      .rwph-floating-panel h2,
-      .rwph-results-loading-panel h1,
-      .rwph-results-loading-panel h2,
-      .rwph-results-html-title,
-      .rwph-results-html-preview-title,
-      .rw-results-panel h1,
-      .rw-results-panel h2,
-      .rw-admin-box h1,
-      .rw-admin-box h2,
-      .rw-how-box h1,
-      .rw-how-box h2{
-        color:${t.accent}!important;
-      }
-
-      #rw-payout-helper label,
-      #rw-payout-helper .rw-muted,
-      #rw-payout-helper .muted,
-      #rw-payout-helper small,
-      #rw-payout-helper .rw-calc-brief,
-      #rw-pay-all-panel .muted,
-      .rw-pay-all-panel .muted,
-      .rwph-floating-panel .muted,
-      .rwph-results-loading-panel .muted,
-      .rwph-results-html-note,
-      .rwph-results-html-status,
-      .rw-results-panel .muted,
-      .rw-admin-box .muted,
-      .rw-how-box .muted{
-        color:${t.soft}!important;
-      }
-
-      #rw-payout-helper input,
-      #rw-payout-helper textarea,
-      #rw-payout-helper select,
-      #rw-pay-all-panel input,
-      #rw-pay-all-panel textarea,
-      #rw-pay-all-panel select,
-      .rw-pay-all-panel input,
-      .rw-pay-all-panel textarea,
-      .rw-pay-all-panel select,
-      .rwph-floating-panel input,
-      .rwph-floating-panel textarea,
-      .rwph-floating-panel select,
-      .rwph-results-html-panel textarea,
-      .rw-results-panel input,
-      .rw-results-panel textarea,
-      .rw-results-panel select,
-      .rw-admin-box input,
-      .rw-admin-box textarea,
-      .rw-admin-box select,
-      .rw-how-box input,
-      .rw-how-box textarea,
-      .rw-how-box select{
-        background:${t.bg}!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-      }
-
-      ${includeStandalonePage ? "body .summary-card, body .result-card, body .rwph-status-card, body .rwph-side-card, body .mini, body .wait-note," : ""}
-      #rw-payout-helper .card,
-      #rw-payout-helper .rw-card,
-      #rw-payout-helper .rw-box,
-      #rw-payout-helper .rw-section,
-      #rw-payout-helper .rw-api-tos-content,
-      #rw-payout-helper .rw-calc-brief,
-      #rw-payout-helper details,
-      #rw-pay-all-panel .rw-pay-all-row,
-      .rw-pay-all-panel .rw-pay-all-row,
-      .rwph-floating-panel .rw-card,
-      .rwph-results-loading-panel .rw-card,
-      .rwph-results-html-preview-wrap,
-      .rwph-results-html-preview,
-      .rw-results-panel .summary-card,
-      .rw-results-panel .result-card,
-      .rw-admin-box .rw-card,
-      .rw-how-box .rw-card{
-        background:${themeCardTexture}${t.panel2}!important;
-        background-size:${themeCardTextureSize}, auto!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-      }
-
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings{
-        border-color:${t.line2}!important;
-        background:${themeTexture}radial-gradient(circle at 12% 0%, ${t.line2}, transparent 32%),linear-gradient(180deg, ${t.panel3}, ${t.bg})!important;
-        background-size:${themeTextureSize}, auto, auto!important;
-        box-shadow:0 0 0 1px rgba(255,255,255,.055) inset,0 18px 44px rgba(0,0,0,.42),0 0 28px ${t.line}!important;
-      }
-      #rw-payout-helper details.rw-per-hit-settings::before,
-      #rw-payout-helper details.rw-points-settings::before{
-        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
-      }
-      #rw-payout-helper details.rw-per-hit-settings > summary,
-      #rw-payout-helper details.rw-points-settings > summary{
-        background:${themeHeaderTexture}linear-gradient(135deg, ${t.line2}, ${t.line}),linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
-        background-size:${themeTextureSize}, auto, auto!important;
-        color:${t.accent}!important;
-        border-bottom-color:${t.line}!important;
-      }
-
-      /* v1.1.386: make every RWPH panel interior follow the chosen theme */
-      #rw-payout-helper,
-      #rw-payout-helper .rw-body,
-      #rw-payout-helper .rw-tab-section,
-      #rw-payout-helper .rw-unified-tab-panel,
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-licence-control-grid,
-      #rw-payout-helper #rw-paywall-unlock-section,
-      #rw-payout-helper #rw-paywall-admin-section,
-      #rw-payout-helper #rw-paywall-how-section,
-      #rw-payout-helper #rw-payout-tab,
-      #rw-payout-helper #rw-admin-tab-section,
-      #rw-payout-helper #rw-how-tab-section,
-      #rw-payout-helper #rw-results-panel,
-      #rw-payout-helper .rw-admin-unified-panel,
-      #rw-payout-helper .rw-help-section-card,
-      #rw-payout-helper .rw-help-dropdown-content,
-      #rw-payout-helper .rw-api-visible-card,
-      #rw-payout-helper .rw-admin-advanced-box,
-      #rw-payout-helper .rw-cache-tools,
-      #rw-payout-helper .rw-mode-cache-tools,
-      #rw-payout-helper .rw-compact-check-grid,
-      #rw-payout-helper .rw-primary-calc-actions,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions,
-      #rw-payout-helper #rw-main-payment-code,
-      #rw-payout-helper #rw-paywall-code,
-      #rw-payout-helper #rw-admin-results,
-      #rw-payout-helper #rw-results,
-      #rw-payout-helper #rw-results-placeholder,
-      #rw-pay-all-panel,
-      #rw-pay-all-panel .rw-pay-all-body,
-      #rw-pay-all-panel .rw-pay-all-list,
-      #rw-pay-all-panel .rw-pay-all-row,
-      .rw-pay-all-panel,
-      .rw-pay-all-panel .rw-pay-all-body,
-      .rw-pay-all-panel .rw-pay-all-list,
-      .rw-pay-all-panel .rw-pay-all-row,
-      .rwph-floating-panel,
-      .rwph-floating-panel-body,
-      .rwph-panel-theme-picker,
-      .rwph-panel-theme-picker-body,
-      .rwph-panel-theme-grid,
-      .rwph-panel-theme-current,
-      .rwph-results-loading-panel,
-      .rwph-results-loading-panel .rwph-loading-shell,
-      .rwph-results-loading-panel .rwph-status-card,
-      .rwph-results-loading-panel .rwph-side-card,
-      .rwph-results-html-panel,
-      .rwph-results-html-panel .rwph-results-html-preview-wrap,
-      .rwph-results-html-panel .rwph-results-html-preview,
-      .rwph-results-html-panel .rwph-select-raw-html-row,
-      .rwph-results-html-panel .rwph-results-html-box,
-      .rw-results-panel,
-      .rw-results-panel .summary,
-      .rw-results-panel .summary-card,
-      .rw-results-panel .result-card{
-        background:
-          ${themeCardTexture}
-          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
-          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
-          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
-        background-size:${themeCardTextureSize}, auto, auto, auto!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-      }
-
-      #rw-payout-helper .rw-body,
-      #rw-payout-helper .rw-tab-section,
-      #rw-payout-helper #rw-payout-tab,
-      #rw-payout-helper #rw-admin-tab-section,
-      #rw-payout-helper #rw-how-tab-section,
-      #rw-payout-helper #rw-paywall-unlock-section,
-      #rw-payout-helper #rw-paywall-admin-section,
-      #rw-payout-helper #rw-paywall-how-section,
-      .rwph-panel-theme-picker-body,
-      .rwph-floating-panel-body,
-      .rwph-results-html-panel .rwph-results-html-preview,
-      .rwph-results-html-panel .rwph-results-html-box{
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;
-      }
-
-      #rw-payout-helper .rw-small,
-      #rw-payout-helper .rw-how-intro,
-      #rw-payout-helper .rw-how-list,
-      #rw-payout-helper .rw-help-dropdown-content,
-      #rw-payout-helper .rw-api-visible-summary,
-      #rw-payout-helper .rw-cache-status,
-      #rw-payout-helper .rw-compact-cache-status,
-      #rw-payout-helper #rw-status,
-      #rw-payout-helper #rw-paywall-status,
-      #rw-payout-helper #rw-admin-status,
-      #rw-payout-helper #rw-admin-status-summary,
-      .rwph-panel-theme-picker .rw-small,
-      .rwph-panel-theme-picker span,
-      .rwph-results-html-panel span{
-        color:${t.soft}!important;
-      }
-
-      #rw-payout-helper .rw-head,
-      #rw-payout-helper .rw-api-visible-head,
-      #rw-payout-helper .rw-help-dropdown-summary,
-      #rw-payout-helper .rw-api-tos-title,
-      #rw-payout-helper details > summary,
-      #rw-pay-all-panel .rw-pay-all-head,
-      .rw-pay-all-panel .rw-pay-all-head,
-      .rwph-panel-theme-picker-head,
-      .rwph-floating-panel-head,
-      .rwph-results-html-head{
-        background:
-          ${themeHeaderTexture}
-          radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
-          linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
-        background-size:${themeTextureSize}, auto, auto!important;
-        border-color:${t.line2}!important;
-        color:${t.accent}!important;
-      }
-
-      #rw-payout-helper .rw-api-visible-badge,
-      #rw-payout-helper .rw-api-visible-dot,
-      #rw-payout-helper b,
-      .rwph-panel-theme-picker b,
-      .rwph-results-html-panel b{
-        color:${t.accent}!important;
-      }
-
-      #rw-payout-helper :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      #rw-pay-all-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      .rw-pay-all-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      #rwph-xanax-send-status :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      #rwph-member-management-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      .rwph-member-management-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      .rw-results-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
-      .rwph-floating-panel :where(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover{
-        background:${t.panel3}!important;
-        color:${t.text}!important;
-        border-color:${t.accent}!important;
-      }
-      #rw-payout-helper input[type="checkbox"],
-      #rw-payout-helper input[type="radio"]{
-        accent-color:${t.accent}!important;
-      }
-
-      /* v1.1.386: include the Xanax/payment helper panel in the selected theme */
-      #rwph-xanax-send-status,
-      #rwph-xanax-send-status .rwph-xanax-scroll,
-      #rwph-xanax-send-status .rwph-xanax-detail-card,
-      #rwph-xanax-send-status .rwph-xanax-actions,
-      #rwph-xanax-send-status .rwph-xanax-steps,
-      #rwph-xanax-send-status .rwph-xanax-safety-note,
-      #rwph-xanax-send-status .rwph-xanax-helper-message,
-      #rwph-xanax-send-status .rwph-xanax-expiry,
-      #rwph-xanax-send-status .rw-payment-expiry,
-      #rwph-xanax-send-status .rwph-xanax-expiry-hero{
-        background:
-          ${themeCardTexture}
-          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
-          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
-          linear-gradient(180deg, ${t.panel}, ${t.bg}) !important;
-        background-size:${themeCardTextureSize}, auto, auto, auto!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 16px 44px rgba(0,0,0,.34)!important;
-      }
-
-      #rwph-xanax-send-status #rwph-payment-helper-title,
-      #rwph-xanax-send-status .rwph-xanax-detail-title{
-        background:
-          ${themeHeaderTexture}
-          radial-gradient(circle at 14% 0%, ${t.line2}, transparent 32%),
-          linear-gradient(135deg, ${t.panel3}, ${t.panel}) !important;
-        background-size:${themeTextureSize}, auto, auto!important;
-        border:1px solid ${t.line2}!important;
-        border-radius:12px!important;
-        color:${t.accent}!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important;
-      }
-
-      #rwph-xanax-send-status button,
-      #rwph-xanax-send-status #rwph-close-helper,
-      #rwph-xanax-send-status .rwph-xanax-actions button{
-        background:linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
-        border:1px solid ${t.line2}!important;
-        color:${t.text}!important;
-        box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05)!important;
-      }
-
-      #rwph-xanax-send-status #rwph-close-helper,
-      #rwph-xanax-send-status .danger{
-        background:linear-gradient(180deg, ${t.danger}, ${t.bg})!important;
-        border-color:rgba(248,113,113,.52)!important;
-        color:#fee2e2!important;
-      }
-
-      #rwph-xanax-send-status .rwph-xanax-helper-subtitle,
-      #rwph-xanax-send-status .rwph-xanax-expiry-note,
-      #rwph-xanax-send-status .rwph-xanax-steps,
-      #rwph-xanax-send-status .rwph-xanax-small-blue,
-      #rwph-xanax-send-status .rwph-xanax-expiry,
-      #rwph-xanax-send-status .rwph-expire-clock{
-        color:${t.soft}!important;
-      }
-
-      #rwph-xanax-send-status b,
-      #rwph-xanax-send-status .rwph-xanax-code,
-      #rwph-xanax-send-status .rwph-xanax-detail-title,
-      #rwph-xanax-send-status [data-rwph-expire-count]{
-        color:${t.accent}!important;
-      }
-
-      #rwph-xanax-send-status .rwph-xanax-helper-error,
-      #rwph-xanax-send-status .rwph-xanax-safety-note{
-        color:#fca5a5!important;
-        border-color:rgba(248,113,113,.34)!important;
-      }
-
-      #rwph-xanax-send-status input,
-      #rwph-xanax-send-status textarea,
-      #rwph-xanax-send-status select{
-        background:${t.bg}!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-      }
-
-      /* v1.1.386: broad RWPH-only UI coverage. Does not target generated newsletter HTML inside preview/raw code. */
-      #rw-payout-helper :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      #rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      .rw-pay-all-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      #rwph-xanax-send-status :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      .rwph-floating-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      .rwph-results-loading-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      .rw-results-panel :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      .rwph-panel-theme-picker :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form),
-      .rwph-results-html-panel > :where(div,section,article,aside,nav,header,footer,main,details,summary,fieldset,form):not(.rwph-results-html-preview-wrap),
-      .rwph-results-html-panel .rwph-results-html-head,
-      .rwph-results-html-panel .rwph-results-html-status,
-      .rwph-results-html-panel .rwph-raw-html-copy-note{
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-      }
-
-      #rw-payout-helper :where(.rw-body,.rw-tab-section,.rw-unified-tab-panel,.rw-tabs,.rw-actions,.rw-cache-tools,.rw-mode-cache-tools,.rw-compact-check-grid,.rw-primary-calc-actions,.rw-settings-calc-actions,.rw-settings-time-actions,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-admin-unified-panel,.rw-admin-advanced-box,.rw-api-tos-content,.rw-card,.rw-box,.rw-section),
-      #rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
-      .rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
-      #rwph-xanax-send-status :where(.rwph-xanax-scroll,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
-      .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
-      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current),
-      .rwph-results-html-panel :where(.rwph-results-html-preview-wrap,.rwph-raw-html-copy-note,.rwph-results-html-box){
-        background:
-          ${themeCardTexture}
-          radial-gradient(circle at 16% 0%, ${t.line2}, transparent 34%),
-          radial-gradient(circle at 92% 10%, ${t.line}, transparent 34%),
-          linear-gradient(180deg, ${t.panel2}, ${t.bg})!important;
-        background-size:${themeCardTextureSize}, auto, auto, auto!important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-      }
-
-      /* Keep the rendered newsletter HTML itself on its own generated colours. */
-      .rwph-results-html-panel .rwph-results-html-preview,
-      .rwph-results-html-panel .rwph-results-html-preview *,
-      .rwph-results-html-panel textarea.rwph-results-html-box{
-        font-family:inherit;
-      }
-
-      /* v1.1.386: force Basic/Advanced dropdowns and every RWPH button to follow the chosen theme */
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings,
-      #rw-payout-helper details.rw-per-hit-settings .rw-api-tos-content,
-      #rw-payout-helper details.rw-points-settings .rw-api-tos-content,
-      #rw-payout-helper details.rw-per-hit-settings .rw-compact-check-grid,
-      #rw-payout-helper details.rw-points-settings .rw-compact-check-grid,
-      #rw-payout-helper details.rw-per-hit-settings .rw-cache-tools,
-      #rw-payout-helper details.rw-points-settings .rw-cache-tools,
-      #rw-payout-helper details.rw-per-hit-settings .rw-mode-cache-tools,
-      #rw-payout-helper details.rw-points-settings .rw-mode-cache-tools,
-      #rw-payout-helper details.rw-per-hit-settings .rw-primary-calc-actions,
-      #rw-payout-helper details.rw-points-settings .rw-primary-calc-actions,
-      #rw-payout-helper details.rw-per-hit-settings .rw-settings-calc-actions,
-      #rw-payout-helper details.rw-points-settings .rw-settings-calc-actions,
-      #rw-payout-helper details.rw-per-hit-settings .rw-settings-time-actions,
-      #rw-payout-helper details.rw-points-settings .rw-settings-time-actions,
-      #rw-payout-helper details.rw-per-hit-settings label,
-      #rw-payout-helper details.rw-points-settings label,
-      #rw-payout-helper details.rw-per-hit-settings .rw-calc-brief,
-      #rw-payout-helper details.rw-points-settings .rw-calc-brief,
-      #rw-payout-helper details.rw-per-hit-settings input,
-      #rw-payout-helper details.rw-points-settings input,
-      #rw-payout-helper details.rw-per-hit-settings textarea,
-      #rw-payout-helper details.rw-points-settings textarea,
-      #rw-payout-helper details.rw-per-hit-settings select,
-      #rw-payout-helper details.rw-points-settings select{
-        background:
-          radial-gradient(circle at 12% 0%, ${t.line2}, transparent 34%),
-          radial-gradient(circle at 92% 8%, ${t.line}, transparent 34%),
-          linear-gradient(180deg, ${t.panel2}, ${t.bg}) !important;
-        border-color:${t.line}!important;
-        color:${t.text}!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
-      }
-
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings{
-        border-color:${t.line2}!important;
-        box-shadow:
-          0 0 0 1px rgba(255,255,255,.055) inset,
-          0 18px 44px rgba(0,0,0,.42),
-          0 0 32px ${t.line}!important;
-      }
-
-      #rw-payout-helper details.rw-per-hit-settings::before,
-      #rw-payout-helper details.rw-points-settings::before{
-        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
-        box-shadow:0 0 18px ${t.line2}!important;
-      }
-
-      #rw-payout-helper details.rw-per-hit-settings > summary,
-      #rw-payout-helper details.rw-points-settings > summary{
-        background:
-          radial-gradient(circle at 12% 0%, ${t.line2}, transparent 34%),
-          linear-gradient(135deg, ${t.panel3}, ${t.panel})!important;
-        border-color:${t.line2}!important;
-        color:${t.accent}!important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 24px rgba(0,0,0,.24)!important;
-      }
-
-      #rw-payout-helper details.rw-per-hit-settings > summary::after,
-      #rw-payout-helper details.rw-points-settings > summary::after{
-        background:linear-gradient(180deg, ${t.bg2}, ${t.bg})!important;
-        border-color:${t.line2}!important;
-        color:${t.soft}!important;
-      }
-
-      #rw-payout-helper details.rw-per-hit-settings[open] > summary::after,
-      #rw-payout-helper details.rw-points-settings[open] > summary::after{
-        color:${t.good}!important;
-        border-color:${t.good}!important;
-      }
-
-      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
-      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rwph-xanax-send-status :where(button,a.btn,.btn),
-      .rwph-floating-panel :where(button,a.btn,.btn),
-      .rwph-results-loading-panel :where(button,a.btn,.btn),
-      .rwph-results-html-panel :where(button,a.btn,.btn),
-      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rwph-layout-theme-panel :where(button,a.btn,.btn),
-      .rwph-panel-theme-picker :where(button,a.btn,.btn){
-        background:
-          ${themeButtonTexture}
-          radial-gradient(circle at 18% 0%, ${t.line2}, transparent 36%),
-          linear-gradient(180deg, ${t.panel3}, ${t.panel})!important;
-        background-size:${themeTextureSize}, auto, auto!important;
-        border:1px solid ${t.line2}!important;
-        color:${t.text}!important;
-        box-shadow:0 10px 22px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.07)!important;
+      body #rw-payout-helper .rw-head,
+      body #rw-pay-all-panel .rw-pay-all-head,body .rw-pay-all-panel .rw-pay-all-head,
+      body #rwph-xanax-send-status #rwph-payment-helper-title,
+      body .rwph-floating-panel .rwph-floating-panel-head,
+      body .rwph-floating-panel .rwph-panel-head,
+      body .rwph-floating-panel .rwph-saved-reports-head,
+      body .rwph-floating-panel .rwph-layout-theme-head,
+      body .rwph-results-loading-panel .rwph-results-loading-head,
+      body .rwph-results-loading-panel .rwph-results-loading-panel-head,
+      body .rwph-results-html-panel .rwph-results-html-head,
+      body .rw-results-panel .rw-head,
+      body #rwph-default-setup-controller .rwph-panel-head{
+        background:${surface2}!important;
+        background-image:none!important;
+        color:${text}!important;
+        border:0!important;
+        border-bottom:1px solid ${outlineSoft}!important;
+        box-shadow:0 1px 0 rgba(255,255,255,.04) inset!important;
         text-shadow:none!important;
       }
+      body #rw-payout-helper .rw-head::before,body #rw-payout-helper .rw-head::after{display:none!important;content:none!important;}
 
-      #rw-payout-helper :where(button.primary,.primary,.rw-primary,.rw-tab.active,[aria-selected="true"]),
-      #rw-pay-all-panel :where(button.primary,.primary),
-      .rw-pay-all-panel :where(button.primary,.primary),
-      #rwph-xanax-send-status :where(button.primary,.primary),
-      .rwph-floating-panel :where(button.primary,.primary),
-      .rwph-results-loading-panel :where(button.primary,.primary),
-      .rwph-results-html-panel :where(button.primary,.primary),
-      .rw-results-panel :where(button.primary,.primary),
-      .rwph-panel-theme-picker :where(button.primary,.primary,.rwph-theme-choice.primary){
-        background:linear-gradient(135deg, ${t.accent}, ${t.accent2})!important;
-        border-color:${t.line2}!important;
-        color:${t.bg}!important;
-        box-shadow:0 12px 26px rgba(0,0,0,.30),0 0 20px ${t.line}!important;
-      }
-
-      #rw-payout-helper :where(button.danger,.danger),
-      #rw-pay-all-panel :where(button.danger,.danger),
-      .rw-pay-all-panel :where(button.danger,.danger),
-      #rwph-xanax-send-status :where(button.danger,.danger,#rwph-close-helper),
-      .rwph-floating-panel :where(button.danger,.danger),
-      .rwph-results-loading-panel :where(button.danger,.danger),
-      .rw-results-panel :where(button.danger,.danger),
-      .rwph-panel-theme-picker :where(button.danger,.danger){
-        background:linear-gradient(180deg, ${t.danger}, ${t.bg})!important;
-        border-color:rgba(248,113,113,.55)!important;
-        color:#fee2e2!important;
-      }
-
-      #rw-payout-helper :where(button.success,.success),
-      #rw-pay-all-panel :where(button.success,.success),
-      .rw-pay-all-panel :where(button.success,.success),
-      #rwph-xanax-send-status :where(button.success,.success),
-      .rwph-floating-panel :where(button.success,.success),
-      .rwph-results-loading-panel :where(button.success,.success),
-      .rw-results-panel :where(button.success,.success),
-      .rwph-panel-theme-picker :where(button.success,.success){
-        background:linear-gradient(180deg, ${t.good}, ${t.panel})!important;
-        border-color:${t.good}!important;
-        color:${t.bg}!important;
-      }
-
-      #rw-payout-helper :where(button:hover,a.btn:hover,.btn:hover,.rw-button:hover,.rw-tab:hover),
-      #rw-pay-all-panel :where(button:hover,a.btn:hover,.btn:hover),
-      .rw-pay-all-panel :where(button:hover,a.btn:hover,.btn:hover),
-      #rwph-xanax-send-status :where(button:hover,a.btn:hover,.btn:hover),
-      .rwph-floating-panel :where(button:hover,a.btn:hover,.btn:hover),
-      .rwph-results-loading-panel :where(button:hover,a.btn:hover,.btn:hover),
-      .rwph-results-html-panel :where(button:hover,a.btn:hover,.btn:hover),
-      .rw-results-panel :where(button:hover,a.btn:hover,.btn:hover),
-      .rwph-panel-theme-picker :where(button:hover,a.btn:hover,.btn:hover){
-        border-color:${t.accent}!important;
-        filter:brightness(1.12)!important;
-      }
-
-      #rw-payout-helper :where(button:disabled,.btn[aria-disabled="true"],.btn:disabled),
-      #rw-pay-all-panel :where(button:disabled,.btn:disabled),
-      .rw-pay-all-panel :where(button:disabled,.btn:disabled),
-      .rwph-floating-panel :where(button:disabled,.btn:disabled),
-      .rwph-results-loading-panel :where(button:disabled,.btn:disabled),
-      .rw-results-panel :where(button:disabled,.btn:disabled){
-        opacity:.58!important;
-        filter:saturate(.65)!important;
-        cursor:not-allowed!important;
-      }
-
-      /* v1.1.407: theme styles now change shapes, borders, button text, and theme picker scrolling. */
-      #rw-payout-helper,
-      #rw-pay-all-panel,
-      .rw-pay-all-panel,
-      #rwph-xanax-send-status,
-      .rwph-floating-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel,
-      .rw-results-panel,
-      #rwph-layout-theme-panel,
-      .rwph-panel-theme-picker{
-        border-radius:var(--rwph-theme-radius)!important;
-        border-width:var(--rwph-theme-border-width)!important;
-        border-style:var(--rwph-theme-border-style)!important;
-      }
-
-      #rw-payout-helper :where(.rw-body,.rw-card,.rw-box,.rw-section,details,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content),
-      #rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
-      .rw-pay-all-panel :where(.rw-pay-all-body,.rw-pay-all-list,.rw-pay-all-row),
-      #rwph-xanax-send-status :where(.rwph-xanax-scroll,.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message,.rwph-xanax-expiry,.rw-payment-expiry,.rwph-xanax-expiry-hero),
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section,.rwph-floating-panel-body),
-      .rwph-results-loading-panel :where(.rwph-loading-shell,.rwph-status-card,.rwph-side-card),
-      .rw-results-panel :where(.summary,.summary-card,.result-card,.results-action-zone,.side,.hero,.topbar,.app),
-      #rwph-layout-theme-panel :where(.rwph-layout-theme-body,.rwph-layout-theme-options,.rw-layout-theme-current),
-      .rwph-panel-theme-picker :where(.rwph-panel-theme-picker-body,.rwph-panel-theme-grid,.rwph-panel-theme-current){
-        border-radius:var(--rwph-theme-card-radius)!important;
-        border-style:var(--rwph-theme-border-style)!important;
-      }
-
-      #rw-payout-helper :where(button,a.btn,.btn,.rw-button,.rw-tab,.rw-primary,.secondary,.danger,.success),
-      #rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      .rw-pay-all-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rwph-xanax-send-status :where(button,a.btn,.btn),
-      .rwph-floating-panel :where(button,a.btn,.btn),
-      .rwph-results-loading-panel :where(button,a.btn,.btn),
-      .rwph-results-html-panel :where(button,a.btn,.btn),
-      .rw-results-panel :where(button,a.btn,.btn,.pay-all-btn,.pay-all-close,.pay-all-undo),
-      #rwph-layout-theme-panel :where(button,a.btn,.btn),
-      .rwph-panel-theme-picker :where(button,a.btn,.btn){
-        border-radius:var(--rwph-theme-button-radius)!important;
-        text-transform:${themeButtonCase}!important;
-        letter-spacing:${themeButtonTracking}!important;
-        border-width:var(--rwph-theme-border-width)!important;
-        border-style:var(--rwph-theme-border-style)!important;
-      }
-
-      #rwph-layout-theme-panel,
-      .rwph-panel-theme-picker{
-        display:flex!important;
-        flex-direction:column!important;
-        width:min(520px, calc(100vw - 24px))!important;
-        height:min(720px, calc(100vh - 28px))!important;
-        max-width:calc(100vw - 16px)!important;
-        max-height:calc(100vh - 16px)!important;
-        min-width:min(300px, calc(100vw - 24px))!important;
-        min-height:260px!important;
-        overflow:hidden!important;
-      }
-      #rwph-layout-theme-panel .rwph-layout-theme-head,
-      .rwph-panel-theme-picker-head{
-        flex:0 0 auto!important;
-        position:sticky!important;
-        top:0!important;
-        z-index:20!important;
-        cursor:move!important;
-        user-select:none!important;
-      }
-      #rwph-layout-theme-panel .rwph-layout-theme-body,
-      .rwph-panel-theme-picker-body{
-        flex:1 1 auto!important;
-        min-height:0!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        overscroll-behavior:contain!important;
-        scrollbar-width:thin!important;
-        scrollbar-color:${t.accent} ${t.bg}!important;
-        padding-right:8px!important;
-      }
-      #rwph-layout-theme-panel .rwph-layout-theme-options,
-      .rwph-panel-theme-grid{
-        display:grid!important;
-        grid-template-columns:1fr!important;
-        gap:10px!important;
-        overflow:visible!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle,
-      .rwph-panel-theme-picker > .rw-resize-handle{
-        position:absolute!important;
-        width:18px!important;
-        height:18px!important;
-        z-index:30!important;
-        touch-action:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        opacity:.95!important;
-        background:rgba(2,6,23,.18)!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle-se,
-      .rwph-panel-theme-picker > .rw-resize-handle-se{
-        right:7px!important;
-        bottom:7px!important;
-        cursor:nwse-resize!important;
-        border-right:2px solid ${t.accent}!important;
-        border-bottom:2px solid ${t.accent2}!important;
-        border-radius:0 0 8px 0!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle-sw,
-      .rwph-panel-theme-picker > .rw-resize-handle-sw{
-        left:7px!important;
-        bottom:7px!important;
-        cursor:nesw-resize!important;
-        border-left:2px solid ${t.accent}!important;
-        border-bottom:2px solid ${t.accent2}!important;
-        border-radius:0 0 0 8px!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle-nw,
-      .rwph-panel-theme-picker > .rw-resize-handle-nw{
-        left:7px!important;
-        top:7px!important;
-        cursor:nwse-resize!important;
-        border-left:2px solid ${t.accent}!important;
-        border-top:2px solid ${t.accent2}!important;
-        border-radius:8px 0 0 0!important;
-      }
-
-      .rwph-theme-choice{
-        justify-content:flex-start!important;
-        min-height:48px!important;
-        border-radius:var(--rwph-theme-button-radius)!important;
-      }
-      .rwph-theme-choice small{
-        display:block!important;
-        color:${t.soft}!important;
-        font-size:10px!important;
-        font-weight:700!important;
-        margin-top:2px!important;
+      body #rw-payout-helper :is(button,.rw-button,.rw-tab,.rw-tab-btn,a.btn),
+      body #rw-pay-all-panel :is(button,a.btn),body .rw-pay-all-panel :is(button,a.btn),
+      body #rwph-xanax-send-status :is(button,a.btn),
+      body .rwph-floating-panel :is(button,a.btn),
+      body .rwph-calculation-settings-panel :is(button,a.btn),
+      body .rwph-results-loading-panel :is(button,a.btn),
+      body .rwph-results-html-panel :is(button,a.btn),
+      body .rw-results-panel :is(button,a.btn),
+      body .rw-admin-box button,body .rw-how-box button{
+        background:${surface2}!important;
+        background-image:none!important;
+        color:${text}!important;
+        border:1px solid ${outlineStrong}!important;
+        border-radius:9px!important;
+        box-shadow:0 6px 16px rgba(0,0,0,.20)!important;
+        text-shadow:none!important;
         text-transform:none!important;
-        letter-spacing:0!important;
       }
-      #rwph-layout-theme-panel .rwph-layout-theme-body::-webkit-scrollbar,
-      .rwph-panel-theme-picker-body::-webkit-scrollbar{
-        width:8px!important;
-        height:8px!important;
-      }
-      #rwph-layout-theme-panel .rwph-layout-theme-body::-webkit-scrollbar-track,
-      .rwph-panel-theme-picker-body::-webkit-scrollbar-track{
-        background:${t.bg}!important;
-        border-radius:999px!important;
-      }
-      #rwph-layout-theme-panel .rwph-layout-theme-body::-webkit-scrollbar-thumb,
-      .rwph-panel-theme-picker-body::-webkit-scrollbar-thumb{
-        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
-        border:2px solid ${t.bg}!important;
-        border-radius:999px!important;
+      body #rw-payout-helper :is(button,.rw-button,.rw-tab,.rw-tab-btn,a.btn):hover,
+      body #rw-pay-all-panel :is(button,a.btn):hover,body .rw-pay-all-panel :is(button,a.btn):hover,
+      body #rwph-xanax-send-status :is(button,a.btn):hover,
+      body .rwph-floating-panel :is(button,a.btn):hover,
+      body .rwph-calculation-settings-panel :is(button,a.btn):hover,
+      body .rwph-results-loading-panel :is(button,a.btn):hover,
+      body .rwph-results-html-panel :is(button,a.btn):hover,
+      body .rw-results-panel :is(button,a.btn):hover{
+        background:${rwphMixHexColour(surface2, outline, 0.12)}!important;
+        border-color:${outline}!important;
+        color:${text}!important;
+        filter:none!important;
+        transform:none!important;
       }
 
-      #rw-payout-helper ::-webkit-scrollbar-thumb,
-      #rw-pay-all-panel ::-webkit-scrollbar-thumb,
-      .rw-pay-all-panel ::-webkit-scrollbar-thumb,
-      #rwph-xanax-send-status ::-webkit-scrollbar-thumb,
-      .rwph-floating-panel ::-webkit-scrollbar-thumb,
-      .rwph-results-loading-panel ::-webkit-scrollbar-thumb,
-      .rwph-results-html-panel ::-webkit-scrollbar-thumb,
-      .rw-results-panel ::-webkit-scrollbar-thumb{
-        background:linear-gradient(180deg,${t.accent},${t.accent2})!important;
-        border:2px solid ${t.bg}!important;
+      body #rw-payout-helper :is(button.primary,.primary,.rw-primary,.rw-tab.active,.rw-tab-btn.active,[aria-selected="true"]),
+      body #rw-payout-helper :is(#rw-start-payment,#rw-extend-licence,#rw-buy-licence,#rw-unlock,#rw-lock-panel),
+      body #rw-pay-all-panel .primary,body .rw-pay-all-panel .primary,
+      body .rwph-floating-panel .primary,
+      body .rwph-calculation-settings-panel .primary,
+      body .rwph-results-html-panel .primary,
+      body .rw-results-panel .primary{
+        background:${outline}!important;
+        background-image:none!important;
+        border-color:${outline}!important;
+        color:${selectedText}!important;
+        box-shadow:0 8px 22px ${outlineGlow}!important;
       }
 
-      /* v1.1.432: Theme / Colours panel gets the same visible move/scroll/resize/close controls as the main RWPH panels. */
-      #rwph-layout-theme-panel{
-        position:fixed!important;
-        z-index:2147483647!important;
-        width:min(540px,calc(100vw - 18px))!important;
-        height:min(660px,calc(100vh - 18px))!important;
-        min-width:min(300px,calc(100vw - 18px))!important;
-        min-height:260px!important;
-        max-width:calc(100vw - 16px)!important;
-        max-height:calc(100vh - 16px)!important;
-        overflow:hidden!important;
-        display:flex!important;
-        flex-direction:column!important;
-        box-sizing:border-box!important;
-        resize:none!important;
+      body #rw-payout-helper :is(input,textarea,select),
+      body #rw-pay-all-panel :is(input,textarea,select),body .rw-pay-all-panel :is(input,textarea,select),
+      body #rwph-xanax-send-status :is(input,textarea,select),
+      body .rwph-floating-panel :is(input,textarea,select),
+      body .rwph-calculation-settings-panel :is(input,textarea,select),
+      body .rw-results-panel :is(input,textarea,select),
+      body .rwph-results-html-panel :is(input,textarea,select){
+        background:${body2}!important;
+        background-image:none!important;
+        color:${text}!important;
+        border:1px solid ${outlineSoft}!important;
+        box-shadow:none!important;
       }
-      #rwph-layout-theme-panel .rwph-layout-theme-head{
-        flex:0 0 auto!important;
-        min-height:52px!important;
-        cursor:move!important;
-        touch-action:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        z-index:40!important;
-        position:relative!important;
+      body #rw-payout-helper :is(input,textarea,select):focus,
+      body #rw-pay-all-panel :is(input,textarea,select):focus,body .rw-pay-all-panel :is(input,textarea,select):focus,
+      body .rwph-floating-panel :is(input,textarea,select):focus,
+      body .rwph-calculation-settings-panel :is(input,textarea,select):focus{
+        border-color:${outline}!important;
+        box-shadow:0 0 0 2px ${outlineGlow}!important;
+        outline:none!important;
       }
-      #rwph-layout-theme-panel #rwph-layout-theme-close{
-        flex:0 0 auto!important;
-        width:34px!important;
-        min-width:34px!important;
-        height:34px!important;
-        min-height:34px!important;
-        display:inline-flex!important;
-        align-items:center!important;
-        justify-content:center!important;
-        padding:0!important;
-        margin:0!important;
-        font-size:20px!important;
-        line-height:1!important;
-        border-radius:999px!important;
-        z-index:50!important;
-        pointer-events:auto!important;
+
+      body #rw-payout-helper :is(.rw-card,.rw-box,.rw-section,.rw-summary,.rw-result-card,.rw-stat-box,.rw-payment-card,.rw-api-visible-card,.rw-help-section-card,.rw-admin-box,.rw-how-box,.rw-calc-brief,details,.rw-api-tos-content),
+      body #rw-pay-all-panel :is(.rw-pay-all-row,.rw-pay-all-payment-card,.rw-pay-all-member-hint,.rw-pay-all-complete-card,.rw-pay-all-progress,.rw-pay-all-start-warning,.rw-pay-all-balance-warning),
+      body .rw-pay-all-panel :is(.rw-pay-all-row,.rw-pay-all-payment-card,.rw-pay-all-member-hint,.rw-pay-all-complete-card,.rw-pay-all-progress,.rw-pay-all-start-warning,.rw-pay-all-balance-warning),
+      body #rwph-xanax-send-status :is(.rw-card,.rw-box,.rw-section),
+      body .rwph-floating-panel :is(.rw-card,.rw-box,.rw-section,.rw-summary,.rw-api-visible-card,.rw-help-section-card,.rw-calc-brief,details,.rw-api-tos-content),
+      body .rwph-calculation-settings-panel :is(.rw-card,.rw-box,.rw-section,.rw-calc-brief,details,.rw-api-tos-content),
+      body .rwph-results-html-panel :is(.rwph-results-html-preview-wrap,.rwph-results-html-preview){
+        background:${body2}!important;
+        background-image:none!important;
+        color:${text}!important;
+        border-color:${outlineSoft}!important;
+        box-shadow:none!important;
       }
-      #rwph-layout-theme-panel .rwph-layout-theme-body{
-        flex:1 1 auto!important;
-        min-height:0!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        overscroll-behavior:contain!important;
-        -webkit-overflow-scrolling:touch!important;
-        scrollbar-width:thin!important;
-        scrollbar-color:${t.accent} ${t.bg}!important;
-        padding-bottom:34px!important;
+
+      body #rw-payout-helper :is(h1,h2,h3,h4,strong,b,.rw-title,.rw-section-title,.rw-result-name,.rw-payment-title),
+      body #rw-pay-all-panel :is(h1,h2,h3,strong,b),body .rw-pay-all-panel :is(h1,h2,h3,strong,b),
+      body #rwph-xanax-send-status :is(h1,h2,h3,strong,b),
+      body .rwph-floating-panel :is(h1,h2,h3,h4,strong,b),
+      body .rwph-calculation-settings-panel :is(h1,h2,h3,h4,strong,b),
+      body .rw-results-panel :is(h1,h2,h3,strong,b),
+      body .rwph-results-html-panel :is(h1,h2,h3,strong,b,.rwph-results-html-title,.rwph-results-html-preview-title){color:${text}!important;text-shadow:none!important;}
+
+      body #rw-payout-helper :is(label,.rw-muted,.muted,.rw-small,small,.rw-stat-label,.rw-result-id,.rw-calc-brief),
+      body #rw-pay-all-panel :is(.muted,.rw-small,small),body .rw-pay-all-panel :is(.muted,.rw-small,small),
+      body #rwph-xanax-send-status :is(.muted,.rw-small,small),
+      body .rwph-floating-panel :is(label,.muted,.rw-muted,.rw-small,small),
+      body .rwph-calculation-settings-panel :is(label,.muted,.rw-muted,.rw-small,small),
+      body .rwph-results-html-panel :is(.rwph-results-html-note,.rwph-results-html-status),
+      body .rw-results-panel :is(.muted,.rw-small,small){color:${soft}!important;text-shadow:none!important;}
+
+      body #rw-payout-helper :is(.rw-tabs,.rw-tab-section,.rw-unified-tab-panel),
+      body .rwph-floating-panel :is(.rw-tabs,.rw-tab-section,.rw-unified-tab-panel){background:transparent!important;border-color:${outlineSoft}!important;}
+      body #rw-payout-helper .rw-tabs{position:static!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;z-index:auto!important;background:${body2}!important;border:1px solid ${outlineSoft}!important;}
+
+      body #rw-payout-helper .rw-resize-handle,
+      body #rw-pay-all-panel .rw-resize-handle,body .rw-pay-all-panel .rw-resize-handle,
+      body #rwph-xanax-send-status .rw-resize-handle,
+      body .rwph-floating-panel > .rw-resize-handle,
+      body .rwph-calculation-settings-panel > .rw-resize-handle{
+        background:transparent!important;
+        box-shadow:none!important;
+        border-color:${outline}!important;
       }
-      #rwph-layout-theme-panel .rwph-layout-theme-options{
-        min-height:0!important;
-        overflow:visible!important;
-        align-content:start!important;
+
+      body #rw-payout-helper ::-webkit-scrollbar-track,
+      body #rw-pay-all-panel ::-webkit-scrollbar-track,body .rw-pay-all-panel ::-webkit-scrollbar-track,
+      body #rwph-xanax-send-status ::-webkit-scrollbar-track,
+      body .rwph-floating-panel ::-webkit-scrollbar-track{background:${body2}!important;}
+      body #rw-payout-helper ::-webkit-scrollbar-thumb,
+      body #rw-pay-all-panel ::-webkit-scrollbar-thumb,body .rw-pay-all-panel ::-webkit-scrollbar-thumb,
+      body #rwph-xanax-send-status ::-webkit-scrollbar-thumb,
+      body .rwph-floating-panel ::-webkit-scrollbar-thumb{background:${outline}!important;border-color:${body}!important;}
+
+      body #rwph-layout-theme-panel .rwph-theme-master-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+      body #rwph-layout-theme-panel .rwph-theme-master-field{min-width:0!important;padding:10px!important;display:grid!important;gap:7px!important;}
+      body #rwph-layout-theme-panel .rwph-theme-master-controls{display:grid!important;grid-template-columns:58px minmax(0,1fr) 28px!important;gap:7px!important;align-items:center!important;}
+      body #rwph-layout-theme-panel [data-rwph-theme-colour]{width:58px!important;min-width:58px!important;height:40px!important;padding:2px!important;cursor:pointer!important;}
+      body #rwph-layout-theme-panel [data-rwph-theme-hex]{min-width:0!important;height:40px!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;text-transform:uppercase!important;}
+      body #rwph-layout-theme-panel .rwph-theme-master-swatch{width:28px!important;height:28px!important;border-radius:8px!important;border:1px solid ${outlineStrong}!important;}
+
+      @media(max-width:700px),(pointer:coarse){
+        body #rwph-layout-theme-panel .rwph-theme-master-grid{grid-template-columns:1fr!important;}
       }
-      #rwph-layout-theme-panel .rwph-theme-master-grid{
-        display:grid!important;
-        grid-template-columns:repeat(2,minmax(0,1fr))!important;
-        gap:10px!important;
-        align-items:stretch!important;
-      }
-      #rwph-layout-theme-panel .rwph-theme-master-field{
-        min-width:0!important;
-        padding:11px!important;
-        display:grid!important;
-        gap:7px!important;
-      }
-      #rwph-layout-theme-panel .rwph-theme-master-field > label{
-        display:block!important;
-        font-size:11px!important;
-        line-height:1.35!important;
-        font-weight:900!important;
-        letter-spacing:.025em!important;
-        color:${t.soft}!important;
-      }
-      #rwph-layout-theme-panel .rwph-theme-master-controls{
-        display:grid!important;
-        grid-template-columns:58px minmax(0,1fr) 28px!important;
-        gap:7px!important;
-        align-items:center!important;
-      }
-      #rwph-layout-theme-panel [data-rwph-theme-colour]{
-        width:58px!important;
-        min-width:58px!important;
-        height:40px!important;
-        padding:2px!important;
-        cursor:pointer!important;
-      }
-      #rwph-layout-theme-panel [data-rwph-theme-hex]{
-        min-width:0!important;
-        height:40px!important;
-        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
-        text-transform:uppercase!important;
-      }
-      #rwph-layout-theme-panel .rwph-theme-master-swatch{
-        width:28px!important;
-        height:28px!important;
-        border-radius:8px!important;
-        border:1px solid ${t.line2}!important;
-        box-shadow:0 0 14px rgba(0,0,0,.28)!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle{
-        position:absolute!important;
-        width:20px!important;
-        height:20px!important;
-        z-index:80!important;
-        touch-action:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        opacity:.98!important;
-        background:rgba(2,6,23,.24)!important;
-        box-sizing:border-box!important;
-        pointer-events:auto!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle-se{
-        right:6px!important;
-        bottom:6px!important;
-        cursor:nwse-resize!important;
-        border-right:3px solid ${t.accent}!important;
-        border-bottom:3px solid ${t.accent2}!important;
-        border-left:0!important;
-        border-top:0!important;
-        border-radius:0 0 9px 0!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle-sw{
-        left:6px!important;
-        bottom:6px!important;
-        cursor:nesw-resize!important;
-        border-left:3px solid ${t.accent}!important;
-        border-bottom:3px solid ${t.accent2}!important;
-        border-right:0!important;
-        border-top:0!important;
-        border-radius:0 0 0 9px!important;
-      }
-      #rwph-layout-theme-panel > .rw-resize-handle-nw{
-        left:6px!important;
-        top:6px!important;
-        cursor:nwse-resize!important;
-        border-left:3px solid ${t.accent}!important;
-        border-top:3px solid ${t.accent2}!important;
-        border-right:0!important;
-        border-bottom:0!important;
-        border-radius:9px 0 0 0!important;
-      }
-      @media (max-width:700px), (pointer:coarse){
-        #rwph-layout-theme-panel{
-          left:7px!important;
-          right:7px!important;
-          top:76px!important;
-          width:calc(100vw - 14px)!important;
-          height:min(620px,calc(100vh - 88px))!important;
-          min-width:0!important;
-          min-height:240px!important;
-        }
-        #rwph-layout-theme-panel > .rw-resize-handle{width:30px!important;height:30px!important;z-index:90!important;background:rgba(2,6,23,.34)!important;}
-        #rwph-layout-theme-panel > .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:0 3px 3px 0!important;}
-        #rwph-layout-theme-panel > .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:0 0 3px 3px!important;}
-        #rwph-layout-theme-panel > .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px 0 0 3px!important;}
-        #rwph-layout-theme-panel .rwph-theme-master-grid{grid-template-columns:1fr!important;}
-        #rwph-layout-theme-panel .rwph-theme-master-controls{grid-template-columns:58px minmax(0,1fr) 28px!important;}
-      }
+      ${standalone}
     `;
   }
 
@@ -4804,9 +4114,8 @@
     style.textContent = rwphPanelThemeCss(theme);
     document.documentElement.setAttribute("data-rwph-panel-theme", themeKey);
     rwphApplyGlobalButtonColourSync(theme);
+    try { window.__rwphRefreshUnifiedUiV1525?.(); } catch (_) {}
     rwphUpdateLayoutThemeButtons();
-    try { if (document.getElementById("rwph-clean-ui-v1491")) rwphInstallCleanUiV1491(); } catch (_) {}
-    try { rwphInstallCompactUiV1510(); } catch (_) {}
   }
 
   function rwphClosePanelThemePicker() {
@@ -11435,6 +10744,8 @@
       box-shadow:0 0 0 2px var(--rwph-theme-line2),0 16px 34px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.30)!important;
     }
 
+    /* v1.1.525 final standalone theme layer */
+    ${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}
   </style>
 </head>
 <body>
@@ -11941,6 +11252,8 @@
       .mini-grid{grid-template-columns:1fr;}
       h1{font-size:19px;}
     }
+    /* v1.1.525 final standalone theme layer */
+    ${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}
   </style>
 </head>
 <body>
@@ -18013,7 +17326,7 @@
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
           try {
             preOpenedResultsTab.document.open();
-            preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121212;color:#d7d7d7;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center}.box{max-width:520px;border:1px solid #474747;border-radius:8px;background:linear-gradient(180deg,#242424,#1a1a1a);padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.45)}h1{margin:0 0 8px;color:#f2f2f2}p{color:#c8c8c8;font-weight:800}
+            preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center}.box{max-width:520px;border:1px solid var(--rwph-theme-line);border-radius:14px;background:var(--rwph-theme-panel);color:var(--rwph-theme-text);padding:22px;box-shadow:var(--rwph-theme-shadow)}h1{margin:0 0 8px;color:var(--rwph-theme-text)}p{color:var(--rwph-theme-soft);font-weight:800}
     /* v1.1.102 Torn-style dark/red theme */
     body{background:#121212!important;color:#d7d7d7!important;font-family:Arial,Helvetica,sans-serif!important;}
     body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 16%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 28px)!important;}
@@ -18219,947 +17532,6 @@
     setTimeout(() => createPanel(), 250);
   }
   if (!rwphDefaultSetupResumed && !rwphPaymentsOnlyTab) rwphScheduleFirstRunTutorialAutoOpen(900);
-  function rwphInjectUnifiedPanelThemeV1375() {
-    try {
-      if (document.getElementById("rwph-unified-panel-theme-v1375")) return;
-      const style = document.createElement("style");
-      style.id = "rwph-unified-panel-theme-v1375";
-      style.textContent = `
-        :root{
-          --rwph-theme-bg:#130b07;
-          --rwph-theme-bg2:#21110b;
-          --rwph-theme-panel:#211714;
-          --rwph-theme-panel2:#2b1d18;
-          --rwph-theme-panel3:#3a241c;
-          --rwph-theme-line:rgba(184,136,89,.42);
-          --rwph-theme-line2:rgba(251,191,36,.34);
-          --rwph-theme-text:#fff2dd;
-          --rwph-theme-soft:#cfaa8e;
-          --rwph-theme-gold:#fbbf24;
-          --rwph-theme-orange:#f97316;
-          --rwph-theme-green:#22c55e;
-          --rwph-theme-red:#7f1d1d;
-          --rwph-theme-shadow:0 22px 70px rgba(0,0,0,.62),0 0 30px rgba(184,136,89,.18);
-        }
-
-        #rw-payout-helper,
-        #rw-pay-all-panel,
-        .rw-pay-all-panel,
-        .rwph-floating-panel,
-        .rwph-results-loading-panel,
-        .rwph-results-html-panel,
-        .rw-results-panel,
-        .rw-main-panel,
-        .rw-locked-panel,
-        .rw-admin-panel,
-        .rw-help-panel,
-        .rw-payment-panel,
-        .rw-admin-box,
-        .rw-how-box,
-        .rw-modal,
-        .rw-popup,
-        .rw-toast,
-        .rw-settings-panel,
-        .rw-api-tos-card,
-        .rw-api-tos-dropdown,
-        .rw-settings-dropdown,
-        .rw-card,
-        .rw-box,
-        .rw-section,
-        .rw-panel,
-        [id^="rwph-"][class*="panel"],
-        [class^="rwph-"][class*="panel"],
-        [class*="rwph-"][class*="panel"],
-        [class*="rw-"][class*="panel"]{
-          background:
-            radial-gradient(circle at 18% 0%, rgba(251,191,36,.17), transparent 32%),
-            radial-gradient(circle at 86% 8%, rgba(249,115,22,.10), transparent 30%),
-            linear-gradient(180deg, rgba(33,23,20,.99), rgba(11,7,5,.99)) !important;
-          border-color: var(--rwph-theme-line) !important;
-          color: var(--rwph-theme-text) !important;
-          box-shadow: var(--rwph-theme-shadow) !important;
-        }
-
-        #rw-payout-helper *,
-        #rw-pay-all-panel *,
-        .rw-pay-all-panel *,
-        .rwph-floating-panel *,
-        .rwph-results-loading-panel *,
-        .rwph-results-html-panel *,
-        .rw-results-panel *,
-        .rw-main-panel *,
-        .rw-locked-panel *,
-        .rw-admin-panel *,
-        .rw-help-panel *,
-        .rw-payment-panel *,
-        .rw-admin-box *,
-        .rw-how-box *{
-          scrollbar-width: thin !important;
-          scrollbar-color: rgba(245,158,11,.78) rgba(15,23,42,.34) !important;
-        }
-
-        #rw-payout-helper ::-webkit-scrollbar,
-        #rw-pay-all-panel ::-webkit-scrollbar,
-        .rw-pay-all-panel ::-webkit-scrollbar,
-        .rwph-floating-panel ::-webkit-scrollbar,
-        .rwph-results-loading-panel ::-webkit-scrollbar,
-        .rwph-results-html-panel ::-webkit-scrollbar,
-        .rw-results-panel ::-webkit-scrollbar{width:8px;height:8px;}
-        #rw-payout-helper ::-webkit-scrollbar-track,
-        #rw-pay-all-panel ::-webkit-scrollbar-track,
-        .rw-pay-all-panel ::-webkit-scrollbar-track,
-        .rwph-floating-panel ::-webkit-scrollbar-track,
-        .rwph-results-loading-panel ::-webkit-scrollbar-track,
-        .rwph-results-html-panel ::-webkit-scrollbar-track,
-        .rw-results-panel ::-webkit-scrollbar-track{background:rgba(15,23,42,.34);border-radius:999px;}
-        #rw-payout-helper ::-webkit-scrollbar-thumb,
-        #rw-pay-all-panel ::-webkit-scrollbar-thumb,
-        .rw-pay-all-panel ::-webkit-scrollbar-thumb,
-        .rwph-floating-panel ::-webkit-scrollbar-thumb,
-        .rwph-results-loading-panel ::-webkit-scrollbar-thumb,
-        .rwph-results-html-panel ::-webkit-scrollbar-thumb,
-        .rw-results-panel ::-webkit-scrollbar-thumb{
-          background:linear-gradient(180deg,rgba(245,158,11,.92),rgba(249,115,22,.82));
-          border:2px solid rgba(15,23,42,.50);
-          border-radius:999px;
-        }
-
-        #rw-payout-helper header,
-        #rw-payout-helper .rw-header,
-        #rw-payout-helper .rw-title,
-        #rw-payout-helper .rw-panel-head,
-        #rw-payout-helper .rw-tabbar,
-        #rw-pay-all-panel .rw-pay-all-head,
-        .rw-pay-all-panel .rw-pay-all-head,
-        .rwph-floating-panel .rwph-panel-head,
-        .rwph-results-loading-panel .rwph-results-loading-head,
-        .rwph-results-html-head,
-        .rw-admin-box h1,
-        .rw-admin-box h2,
-        .rw-how-box h1,
-        .rw-how-box h2,
-        .rw-api-tos-title,
-        .rw-settings-dropdown > summary,
-        .rw-api-tos-dropdown > summary{
-          background:
-            linear-gradient(135deg, rgba(58,36,28,.98), rgba(33,23,20,.96)) !important;
-          border-color: var(--rwph-theme-line2) !important;
-          color: var(--rwph-theme-gold) !important;
-        }
-
-        #rw-payout-helper button,
-        #rw-payout-helper .rw-button,
-        #rw-payout-helper .rw-tab,
-        #rw-payout-helper a.btn,
-        #rw-pay-all-panel button,
-        #rw-pay-all-panel a.btn,
-        .rw-pay-all-panel button,
-        .rw-pay-all-panel a.btn,
-        .rwph-floating-panel button,
-        .rwph-floating-panel a.btn,
-        .rwph-results-html-panel button,
-        .rwph-results-html-panel a.btn,
-        .rw-results-panel button,
-        .rw-results-panel a.btn,
-        .rw-admin-box button,
-        .rw-how-box button{
-          background: linear-gradient(180deg, rgba(58,36,28,.98), rgba(33,23,20,.94)) !important;
-          border-color: var(--rwph-theme-line2) !important;
-          color: var(--rwph-theme-text) !important;
-          box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.05) !important;
-        }
-
-        #rw-payout-helper button:hover,
-        #rw-payout-helper .rw-button:hover,
-        #rw-payout-helper .rw-tab:hover,
-        #rw-payout-helper a.btn:hover,
-        #rw-pay-all-panel button:hover,
-        #rw-pay-all-panel a.btn:hover,
-        .rw-pay-all-panel button:hover,
-        .rw-pay-all-panel a.btn:hover,
-        .rwph-floating-panel button:hover,
-        .rwph-floating-panel a.btn:hover,
-        .rwph-results-html-panel button:hover,
-        .rwph-results-html-panel a.btn:hover,
-        .rw-results-panel button:hover,
-        .rw-results-panel a.btn:hover,
-        .rw-admin-box button:hover,
-        .rw-how-box button:hover{
-          filter:brightness(1.12) !important;
-          border-color: rgba(251,191,36,.58) !important;
-        }
-
-        #rw-payout-helper button.primary,
-        #rw-payout-helper .primary,
-        #rw-payout-helper .rw-primary,
-        #rw-payout-helper .rw-tab.active,
-        #rw-payout-helper [aria-selected="true"],
-        #rw-pay-all-panel .primary,
-        .rw-pay-all-panel .primary,
-        .rwph-floating-panel .primary,
-        .rwph-results-html-panel .primary,
-        .rw-results-panel .primary{
-          background:linear-gradient(135deg, rgba(251,191,36,.96), rgba(249,115,22,.90)) !important;
-          border-color:rgba(251,191,36,.72) !important;
-          color:#1f1308 !important;
-        }
-
-        #rw-payout-helper input,
-        #rw-payout-helper textarea,
-        #rw-payout-helper select,
-        #rw-pay-all-panel input,
-        #rw-pay-all-panel textarea,
-        #rw-pay-all-panel select,
-        .rw-pay-all-panel input,
-        .rw-pay-all-panel textarea,
-        .rw-pay-all-panel select,
-        .rwph-floating-panel input,
-        .rwph-floating-panel textarea,
-        .rwph-floating-panel select,
-        .rwph-results-html-panel textarea,
-        .rw-results-panel input,
-        .rw-results-panel textarea,
-        .rw-results-panel select,
-        .rw-admin-box input,
-        .rw-admin-box textarea,
-        .rw-admin-box select,
-        .rw-how-box input,
-        .rw-how-box textarea,
-        .rw-how-box select{
-          background:rgba(19,11,7,.88) !important;
-          border-color:var(--rwph-theme-line) !important;
-          color:var(--rwph-theme-text) !important;
-          box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;
-        }
-
-        #rw-payout-helper input::placeholder,
-        #rw-payout-helper textarea::placeholder,
-        #rw-pay-all-panel input::placeholder,
-        #rw-pay-all-panel textarea::placeholder,
-        .rw-pay-all-panel input::placeholder,
-        .rw-pay-all-panel textarea::placeholder,
-        .rwph-floating-panel input::placeholder,
-        .rwph-floating-panel textarea::placeholder,
-        .rw-results-panel input::placeholder,
-        .rw-results-panel textarea::placeholder{
-          color:rgba(207,170,142,.72) !important;
-        }
-
-        #rw-payout-helper label,
-        #rw-payout-helper .rw-muted,
-        #rw-payout-helper .muted,
-        #rw-payout-helper small,
-        #rw-payout-helper .rw-calc-brief,
-        #rw-pay-all-panel .muted,
-        .rw-pay-all-panel .muted,
-        .rwph-floating-panel .muted,
-        .rwph-results-loading-panel .muted,
-        .rwph-results-html-note,
-        .rwph-results-html-status,
-        .rw-results-panel .muted,
-        .rw-admin-box .muted,
-        .rw-how-box .muted{
-          color:var(--rwph-theme-soft) !important;
-        }
-
-        #rw-payout-helper h1,
-        #rw-payout-helper h2,
-        #rw-payout-helper h3,
-        #rw-payout-helper .rw-title,
-        #rw-payout-helper .rw-section-title,
-        #rw-payout-helper .rw-api-tos-title,
-        #rw-pay-all-panel h1,
-        #rw-pay-all-panel h2,
-        .rw-pay-all-panel h1,
-        .rw-pay-all-panel h2,
-        .rwph-floating-panel h1,
-        .rwph-floating-panel h2,
-        .rwph-results-loading-panel h1,
-        .rwph-results-loading-panel h2,
-        .rwph-results-html-title,
-        .rwph-results-html-preview-title,
-        .rw-results-panel h1,
-        .rw-results-panel h2,
-        .rw-admin-box h1,
-        .rw-admin-box h2,
-        .rw-how-box h1,
-        .rw-how-box h2{
-          color:var(--rwph-theme-gold) !important;
-        }
-
-        #rw-payout-helper .card,
-        #rw-payout-helper .rw-card,
-        #rw-payout-helper .rw-box,
-        #rw-payout-helper .rw-section,
-        #rw-payout-helper .rw-api-tos-content,
-        #rw-payout-helper .rw-calc-brief,
-        #rw-payout-helper details,
-        #rw-pay-all-panel .rw-pay-all-row,
-        .rw-pay-all-panel .rw-pay-all-row,
-        .rwph-floating-panel .rw-card,
-        .rwph-results-loading-panel .rw-card,
-        .rwph-results-html-preview-wrap,
-        .rwph-results-html-preview,
-        .rw-results-panel .summary-card,
-        .rw-results-panel .result-card,
-        .rw-admin-box .rw-card,
-        .rw-how-box .rw-card{
-          background:rgba(43,29,24,.74) !important;
-          border-color:var(--rwph-theme-line) !important;
-          color:var(--rwph-theme-text) !important;
-        }
-
-        #rw-payout-helper .danger,
-        #rw-pay-all-panel .danger,
-        .rw-pay-all-panel .danger,
-        .rwph-floating-panel .danger,
-        .rw-results-panel .danger{
-          border-color:rgba(248,113,113,.46) !important;
-          background:linear-gradient(180deg,rgba(127,29,29,.88),rgba(69,10,10,.88)) !important;
-          color:#fee2e2 !important;
-        }
-
-        /* v1.1.386: Stronger Basic/Advanced calculation dropdown cards */
-        #rw-payout-helper details.rw-per-hit-settings,
-        #rw-payout-helper details.rw-points-settings{
-          position:relative !important;
-          overflow:hidden !important;
-          margin:14px 0 !important;
-          border-radius:18px !important;
-          border:1px solid rgba(251,191,36,.55) !important;
-          background:
-            radial-gradient(circle at 12% 0%, rgba(251,191,36,.23), transparent 32%),
-            linear-gradient(180deg, rgba(58,36,28,.96), rgba(19,11,7,.92)) !important;
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,.055) inset,
-            0 18px 44px rgba(0,0,0,.42),
-            0 0 28px rgba(245,158,11,.12) !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings::before,
-        #rw-payout-helper details.rw-points-settings::before{
-          content:"" !important;
-          position:absolute !important;
-          inset:0 auto 0 0 !important;
-          width:6px !important;
-          background:linear-gradient(180deg,#fbbf24,#f97316) !important;
-          opacity:.95 !important;
-          pointer-events:none !important;
-        }
-        #rw-payout-helper details.rw-points-settings::before{
-          background:linear-gradient(180deg,#fb7185,#a78bfa) !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings > summary,
-        #rw-payout-helper details.rw-points-settings > summary{
-          display:flex !important;
-          align-items:center !important;
-          justify-content:space-between !important;
-          gap:10px !important;
-          min-height:48px !important;
-          padding:13px 14px 13px 18px !important;
-          border-radius:17px 17px 0 0 !important;
-          border-bottom:1px solid rgba(251,191,36,.24) !important;
-          background:
-            linear-gradient(135deg, rgba(251,191,36,.18), rgba(249,115,22,.10)),
-            linear-gradient(180deg, rgba(58,36,28,.98), rgba(33,23,20,.96)) !important;
-          color:#fbbf24 !important;
-          font-size:14px !important;
-          font-weight:1000 !important;
-          letter-spacing:.35px !important;
-          text-transform:uppercase !important;
-          cursor:pointer !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings > summary::after,
-        #rw-payout-helper details.rw-points-settings > summary::after{
-          content:"OPEN SETTINGS" !important;
-          flex:0 0 auto !important;
-          padding:5px 8px !important;
-          border-radius:999px !important;
-          border:1px solid rgba(251,191,36,.32) !important;
-          background:rgba(2,6,23,.45) !important;
-          color:#cfaa8e !important;
-          font-size:9px !important;
-          font-weight:950 !important;
-          letter-spacing:.25px !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings[open] > summary::after,
-        #rw-payout-helper details.rw-points-settings[open] > summary::after{
-          content:"OPEN" !important;
-          color:#86efac !important;
-          border-color:rgba(34,197,94,.38) !important;
-        }
-        #rw-payout-helper details.rw-points-settings > summary{
-          background:
-            linear-gradient(135deg, rgba(251,113,133,.16), rgba(167,139,250,.12)),
-            linear-gradient(180deg, rgba(58,36,28,.98), rgba(33,23,20,.96)) !important;
-          color:#fda4af !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings .rw-api-tos-content,
-        #rw-payout-helper details.rw-points-settings .rw-api-tos-content{
-          padding:13px !important;
-          background:
-            linear-gradient(180deg, rgba(33,23,20,.72), rgba(11,7,5,.68)) !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings label,
-        #rw-payout-helper details.rw-points-settings label,
-        #rw-payout-helper details.rw-per-hit-settings .rw-calc-brief,
-        #rw-payout-helper details.rw-points-settings .rw-calc-brief,
-        #rw-payout-helper details.rw-per-hit-settings .rw-compact-check-grid,
-        #rw-payout-helper details.rw-points-settings .rw-compact-check-grid,
-        #rw-payout-helper details.rw-per-hit-settings .rw-cache-tools,
-        #rw-payout-helper details.rw-points-settings .rw-cache-tools{
-          background:rgba(43,29,24,.66) !important;
-          border:1px solid rgba(251,191,36,.16) !important;
-          border-radius:13px !important;
-          padding:9px !important;
-          box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
-        }
-        #rw-payout-helper details.rw-per-hit-settings .rw-primary-calc-actions,
-        #rw-payout-helper details.rw-points-settings .rw-primary-calc-actions{
-          border:1px solid rgba(251,191,36,.24) !important;
-          background:rgba(19,11,7,.72) !important;
-          border-radius:15px !important;
-          padding:10px !important;
-        }
-
-        .rwph-panel-theme-picker{
-          position:fixed!important;
-          z-index:2147483647!important;
-          left:50%!important;
-          top:50%!important;
-          transform:translate(-50%,-50%)!important;
-          width:min(560px,calc(100vw - 20px))!important;
-          max-height:calc(100vh - 24px)!important;
-          overflow:auto!important;
-          padding:12px!important;
-          border-radius:22px!important;
-          border:1px solid var(--rwph-theme-line2)!important;
-          box-sizing:border-box!important;
-        }
-        .rwph-panel-theme-picker-head{
-          display:flex!important;
-          align-items:center!important;
-          justify-content:space-between!important;
-          gap:10px!important;
-          padding:10px 12px!important;
-          border-radius:16px!important;
-          border:1px solid var(--rwph-theme-line2)!important;
-          cursor:move!important;
-          user-select:none!important;
-          touch-action:none!important;
-          color:var(--rwph-theme-gold)!important;
-          font:950 14px/1.2 Arial,Helvetica,sans-serif!important;
-          text-transform:uppercase!important;
-          letter-spacing:.35px!important;
-        }
-        .rwph-panel-theme-picker-body{
-          display:grid!important;
-          gap:10px!important;
-          padding:10px 2px 2px!important;
-        }
-        .rwph-panel-theme-current{
-          padding:9px 10px!important;
-          border-radius:13px!important;
-          border:1px solid var(--rwph-theme-line)!important;
-          background:rgba(2,6,23,.28)!important;
-          color:var(--rwph-theme-soft)!important;
-          text-align:center!important;
-          font:850 11px/1.35 Arial,Helvetica,sans-serif!important;
-        }
-        .rwph-panel-theme-current b{color:var(--rwph-theme-gold)!important;}
-        .rwph-panel-theme-grid{
-          display:grid!important;
-          grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;
-          gap:8px!important;
-        }
-        .rwph-theme-choice{
-          display:flex!important;
-          align-items:center!important;
-          justify-content:flex-start!important;
-          gap:8px!important;
-          min-height:36px!important;
-          border-radius:13px!important;
-          padding:8px 10px!important;
-          font:900 11px/1.2 Arial,Helvetica,sans-serif!important;
-          text-align:left!important;
-        }
-        .rwph-theme-swatch{
-          flex:0 0 24px!important;
-          width:24px!important;
-          height:24px!important;
-          border-radius:999px!important;
-          border:1px solid rgba(255,255,255,.28)!important;
-          box-shadow:0 0 12px rgba(255,255,255,.12)!important;
-        }
-
-        #rw-payout-helper .success,
-        #rw-pay-all-panel .success,
-        .rw-pay-all-panel .success,
-        .rwph-floating-panel .success,
-        .rw-results-panel .success{
-          border-color:rgba(34,197,94,.46) !important;
-          background:linear-gradient(180deg,rgba(20,83,45,.88),rgba(5,46,22,.88)) !important;
-          color:#dcfce7 !important;
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    } catch (e) {
-      console.warn("RWPH unified panel theme failed:", e);
-    }
-  }
-
-  function rwphInjectPopupLogoLeftGuardV1441() {
-    try {
-      if (document.getElementById("rwph-popup-logo-left-guard-v1441")) return;
-      const style = document.createElement("style");
-      style.id = "rwph-popup-logo-left-guard-v1441";
-      style.textContent = `
-        .rwph-info-popup-panel .rwph-info-popup-content{
-          display:grid!important;
-          grid-template-columns:68px minmax(0,1fr)!important;
-          gap:10px!important;
-          align-items:start!important;
-          padding-right:30px!important;
-        }
-        .rwph-info-popup-panel .rwph-info-popup-logo{
-          width:64px!important;
-          height:36px!important;
-          max-width:64px!important;
-          max-height:36px!important;
-          object-fit:contain!important;
-          margin:0!important;
-          background:transparent!important;
-          border:0!important;
-          box-shadow:none!important;
-          align-self:start!important;
-        }
-        .rwph-info-popup-panel .rwph-info-popup-copy{min-width:0!important;}
-        @media (max-width:520px),(pointer:coarse){
-          .rwph-info-popup-panel .rwph-info-popup-content{
-            grid-template-columns:54px minmax(0,1fr)!important;
-            gap:8px!important;
-            padding-right:22px!important;
-          }
-          .rwph-info-popup-panel .rwph-info-popup-logo{
-            width:50px!important;
-            height:34px!important;
-            max-width:50px!important;
-            max-height:34px!important;
-          }
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    } catch (e) {
-      console.warn("RWPH popup logo guard failed:", e);
-    }
-  }
-
-  function rwphInjectPdaLauncherHeaderLockGuardV1445() {
-    try {
-      if (document.getElementById("rwph-pda-launcher-header-lock-guard-v1445")) return;
-      const style = document.createElement("style");
-      style.id = "rwph-pda-launcher-header-lock-guard-v1445";
-      style.textContent = `
-        #rw-payout-launcher.rwph-mobile-faction-war-header-locked,
-        #rw-payout-launcher.rwph-mobile-header-launcher,
-        #rw-payout-launcher.rwph-mobile-page-anchored-launcher{
-          z-index:1!important;
-          background:transparent!important;
-          overflow:visible!important;
-          isolation:auto!important;
-          flex:0 0 auto!important;
-        }
-        #rw-payout-launcher.rwph-mobile-faction-war-header-locked{
-          position:relative!important;
-          width:104px!important;
-          min-width:104px!important;
-          max-width:104px!important;
-          height:30px!important;
-          min-height:30px!important;
-          max-height:30px!important;
-          margin:0 6px 0 0!important;
-          padding:0!important;
-        }
-        #rw-payout-launcher.rwph-mobile-faction-war-header-locked img.rwph-dynamic-logo-icon,
-        #rw-payout-launcher.rwph-mobile-page-anchored-launcher img.rwph-dynamic-logo-icon,
-        #rw-payout-launcher.rwph-mobile-header-launcher img.rwph-dynamic-logo-icon,
-        #rw-launcher.rwph-launcher-pda-logo img,
-        #rw-launcher img.rwph-dynamic-logo-icon{
-          width:104px!important;
-          max-width:38vw!important;
-          height:30px!important;
-          max-height:30px!important;
-          object-fit:contain!important;
-          background:transparent!important;
-        }
-        #rw-payout-helper,
-        #rw-pay-all-panel,
-        .rw-pay-all-panel,
-        #rwph-member-management-panel,
-        .rwph-member-management-panel,
-        #rwph-logo-picker-panel,
-        #rwph-colour-theme-panel,
-        #rwph-theme-colour-panel,
-        .rwph-floating-panel,
-        .rw-results-panel,
-        .rwph-info-popup-panel{
-          z-index:2147483647!important;
-        }
-        @media (max-width:520px),(pointer:coarse){
-          #rw-payout-launcher.rwph-mobile-faction-war-header-locked{
-            width:96px!important;
-            min-width:96px!important;
-            max-width:96px!important;
-            height:28px!important;
-            min-height:28px!important;
-            max-height:28px!important;
-          }
-          #rw-payout-launcher.rwph-mobile-faction-war-header-locked img.rwph-dynamic-logo-icon,
-          #rw-payout-launcher.rwph-mobile-page-anchored-launcher img.rwph-dynamic-logo-icon,
-          #rw-payout-launcher.rwph-mobile-header-launcher img.rwph-dynamic-logo-icon{
-            width:96px!important;
-            max-width:40vw!important;
-            height:28px!important;
-            max-height:28px!important;
-          }
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    } catch (e) {
-      console.warn("RWPH PDA launcher header-lock guard failed:", e);
-    }
-  }
-
-  function rwphInjectBiggerPanelLogoGuardV1446() {
-    try {
-      if (document.getElementById("rwph-bigger-panel-logo-guard-v1446")) return;
-      const style = document.createElement("style");
-      style.id = "rwph-bigger-panel-logo-guard-v1446";
-      style.textContent = `
-        /* v1.1.446: bigger selected logo across every RWPH panel, but not popups or launcher. */
-        #rw-payout-helper .rw-head .rwph-header-logo{
-          width:min(360px, calc(100vw - 92px))!important;
-          max-width:calc(100% - 56px)!important;
-          height:96px!important;
-          max-height:96px!important;
-          object-fit:contain!important;
-          background:transparent!important;
-          border:0!important;
-          border-radius:0!important;
-          margin:0!important;
-        }
-        #rw-payout-helper .rw-head{
-          min-height:106px!important;
-          align-items:center!important;
-        }
-        #rw-payout-helper .rw-head span{
-          min-width:0!important;
-          flex:1 1 auto!important;
-          display:flex!important;
-          align-items:center!important;
-        }
-
-        #rw-pay-all-panel .rw-pay-all-logo,
-        .rw-pay-all-panel .rw-pay-all-logo,
-        #rwph-xanax-send-status .rwph-payment-helper-logo,
-        #rw-wrong-payment-panel .rwph-payment-helper-logo,
-        #rwph-member-management-panel .rwph-mm-panel-logo,
-        .rwph-member-management-panel .rwph-mm-panel-logo,
-        .rwph-floating-panel .rwph-dynamic-logo-icon:not(.rwph-info-popup-logo),
-        .rw-results-panel .rwph-dynamic-logo-icon:not(.rwph-info-popup-logo),
-        #rw-payout-helper .rwph-dynamic-logo-icon:not(.rwph-info-popup-logo):not(.rwph-header-logo){
-          width:min(380px, 88vw)!important;
-          max-width:100%!important;
-          height:108px!important;
-          max-height:108px!important;
-          object-fit:contain!important;
-          background:transparent!important;
-          border:0!important;
-          border-radius:0!important;
-          flex:0 1 auto!important;
-        }
-
-        #rw-payout-helper .results-hero-logo.rwph-dynamic-logo-icon,
-        .rw-results-panel .results-hero-logo.rwph-dynamic-logo-icon,
-        #rw-payout-helper .rwph-logo-wrap .rwph-dynamic-logo-icon,
-        .rw-results-panel .rwph-logo-wrap .rwph-dynamic-logo-icon{
-          width:min(520px, 94vw)!important;
-          max-width:100%!important;
-          height:172px!important;
-          max-height:172px!important;
-          object-fit:contain!important;
-          background:transparent!important;
-        }
-        #rw-payout-helper .rwph-logo-wrap,
-        .rw-results-panel .rwph-logo-wrap{
-          width:min(520px, 94vw)!important;
-          max-width:100%!important;
-          height:172px!important;
-          max-height:172px!important;
-          background:transparent!important;
-          border:0!important;
-          box-shadow:none!important;
-        }
-
-        #rwph-logo-picker-panel .rwph-logo-current-preview img,
-        #rwph-logo-picker-panel .rwph-logo-picker-option img,
-        #rwph-colour-theme-panel .rwph-dynamic-logo-icon,
-        #rwph-theme-colour-panel .rwph-dynamic-logo-icon{
-          width:min(420px, 90vw)!important;
-          max-width:100%!important;
-          height:118px!important;
-          max-height:118px!important;
-          object-fit:contain!important;
-          background:transparent!important;
-          border:0!important;
-          border-radius:0!important;
-        }
-
-        #rwph-xanax-send-status .rwph-floating-panel-head,
-        #rw-pay-all-panel .rwph-floating-panel-head,
-        .rw-pay-all-panel .rwph-floating-panel-head,
-        #rwph-member-management-panel .rwph-floating-panel-head,
-        .rwph-member-management-panel .rwph-floating-panel-head,
-        .rwph-floating-panel .rwph-floating-panel-head{
-          min-height:112px!important;
-          align-items:center!important;
-          gap:12px!important;
-        }
-
-        /* Keep launcher sizes from the PDA/PC launcher fixes unchanged. */
-        #rw-payout-launcher img.rwph-dynamic-logo-icon,
-        #rw-launcher img.rwph-dynamic-logo-icon{
-          object-fit:contain!important;
-          background:transparent!important;
-        }
-
-        /* Keep popup notification logo small and left, per v1.1.441. */
-        .rwph-info-popup-panel .rwph-info-popup-logo{
-          width:64px!important;
-          height:36px!important;
-          max-width:64px!important;
-          max-height:36px!important;
-          object-fit:contain!important;
-          margin:0!important;
-          background:transparent!important;
-          border:0!important;
-          box-shadow:none!important;
-        }
-
-        @media (max-width:700px),(pointer:coarse){
-          #rw-payout-helper .rw-head{
-            min-height:88px!important;
-          }
-          #rw-payout-helper .rw-head .rwph-header-logo{
-            width:min(270px, calc(100vw - 86px))!important;
-            height:78px!important;
-            max-height:78px!important;
-          }
-          #rw-pay-all-panel .rw-pay-all-logo,
-          .rw-pay-all-panel .rw-pay-all-logo,
-          #rwph-xanax-send-status .rwph-payment-helper-logo,
-          #rw-wrong-payment-panel .rwph-payment-helper-logo,
-          #rwph-member-management-panel .rwph-mm-panel-logo,
-          .rwph-member-management-panel .rwph-mm-panel-logo,
-          .rwph-floating-panel .rwph-dynamic-logo-icon:not(.rwph-info-popup-logo),
-          .rw-results-panel .rwph-dynamic-logo-icon:not(.rwph-info-popup-logo),
-          #rw-payout-helper .rwph-dynamic-logo-icon:not(.rwph-info-popup-logo):not(.rwph-header-logo){
-            width:min(300px, 86vw)!important;
-            height:86px!important;
-            max-height:86px!important;
-          }
-          #rw-payout-helper .results-hero-logo.rwph-dynamic-logo-icon,
-          .rw-results-panel .results-hero-logo.rwph-dynamic-logo-icon,
-          #rw-payout-helper .rwph-logo-wrap .rwph-dynamic-logo-icon,
-          .rw-results-panel .rwph-logo-wrap .rwph-dynamic-logo-icon{
-            width:min(360px, 92vw)!important;
-            height:126px!important;
-            max-height:126px!important;
-          }
-          #rw-payout-helper .rwph-logo-wrap,
-          .rw-results-panel .rwph-logo-wrap{
-            width:min(360px, 92vw)!important;
-            height:126px!important;
-            max-height:126px!important;
-          }
-          .rwph-info-popup-panel .rwph-info-popup-logo{
-            width:50px!important;
-            height:34px!important;
-            max-width:50px!important;
-            max-height:34px!important;
-          }
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    } catch (e) {
-      console.warn("RWPH bigger panel logo guard failed:", e);
-    }
-  }
-
-  function rwphInjectSafePanelSpacingV1449() {
-    try {
-      if (document.getElementById("rwph-safe-panel-spacing-v1449")) return;
-      const style = document.createElement("style");
-      style.id = "rwph-safe-panel-spacing-v1449";
-      style.textContent = `
-        /* v1.1.449: keep panel info from being covered by close/action buttons. */
-        #rw-payout-helper,
-        #rw-pay-all-panel,
-        .rw-pay-all-panel,
-        #rwph-xanax-send-status,
-        #rw-wrong-payment-panel,
-        #rwph-member-management-panel,
-        .rwph-member-management-panel,
-        #rwph-licence-info-panel,
-        #rwph-logo-picker-panel,
-        #rwph-colour-theme-panel,
-        #rwph-theme-colour-panel,
-        #rwph-layout-theme-panel,
-        .rwph-floating-panel,
-        .rw-results-panel,
-        .rwph-results-loading-panel,
-        .rwph-results-html-panel{
-          box-sizing:border-box!important;
-          overflow:hidden!important;
-        }
-
-        #rw-payout-helper .rw-head,
-        #rw-pay-all-panel .rwph-floating-panel-head,
-        .rw-pay-all-panel .rwph-floating-panel-head,
-        #rwph-xanax-send-status #rwph-payment-helper-title,
-        #rw-wrong-payment-panel .rwph-floating-panel-head,
-        #rwph-member-management-panel .rwph-floating-panel-head,
-        .rwph-member-management-panel .rwph-floating-panel-head,
-        #rwph-licence-info-panel .rwph-panel-head,
-        #rwph-logo-picker-panel .rwph-panel-head,
-        #rwph-colour-theme-panel .rwph-panel-head,
-        #rwph-theme-colour-panel .rwph-panel-head,
-        #rwph-layout-theme-panel .rwph-panel-head,
-        .rwph-floating-panel .rwph-panel-head,
-        .rwph-floating-panel .rwph-floating-panel-head,
-        .rw-results-panel .rwph-panel-head,
-        .rwph-results-loading-panel .rwph-panel-head{
-          position:relative!important;
-          box-sizing:border-box!important;
-          padding-right:58px!important;
-          min-width:0!important;
-        }
-
-        #rw-payout-helper #rw-close,
-        #rwph-xanax-send-status #rwph-close-helper,
-        #rw-wrong-payment-close,
-        #rwph-member-management-panel #rwph-mm-close,
-        .rwph-member-management-panel #rwph-mm-close,
-        #rwph-licence-info-close,
-        #rwph-logo-picker-close,
-        #rwph-layout-theme-close,
-        #rwph-colour-theme-close,
-        #rwph-theme-colour-close,
-        .rwph-results-html-close,
-        .rwph-mini-close,
-        .pay-all-close{
-          z-index:80!important;
-          flex:0 0 auto!important;
-          white-space:nowrap!important;
-        }
-
-        #rw-payout-helper .rw-body,
-        #rw-pay-all-panel .rw-pay-all-body,
-        .rw-pay-all-panel .rw-pay-all-body,
-        #rwph-xanax-send-status .rwph-xanax-scroll,
-        #rw-wrong-payment-panel .rwph-floating-panel-body,
-        #rwph-member-management-panel .rwph-floating-panel-body,
-        .rwph-member-management-panel .rwph-floating-panel-body,
-        #rwph-licence-info-panel .rwph-floating-panel-body,
-        #rwph-logo-picker-panel .rwph-layout-theme-body,
-        #rwph-colour-theme-panel .rwph-floating-panel-body,
-        #rwph-theme-colour-panel .rwph-floating-panel-body,
-        #rwph-layout-theme-panel .rwph-layout-theme-body,
-        .rwph-floating-panel .rwph-floating-panel-body,
-        .rw-results-panel .rw-results-body,
-        .rwph-results-loading-panel .rwph-floating-panel-body,
-        .rwph-results-html-panel .rwph-floating-panel-body{
-          box-sizing:border-box!important;
-          padding-bottom:max(18px, env(safe-area-inset-bottom, 0px))!important;
-          scroll-padding-bottom:76px!important;
-          overflow-x:hidden!important;
-        }
-
-        #rw-payout-helper :where(.rw-actions,.rw-row,.rw-licence-control-grid,.rw-compact-check-grid,.rwph-member-settings-card),
-        #rw-pay-all-panel :where(.rw-pay-all-actions,.rw-pay-all-row,.rw-pay-all-list),
-        .rw-pay-all-panel :where(.rw-pay-all-actions,.rw-pay-all-row,.rw-pay-all-list),
-        #rwph-xanax-send-status :where(.rwph-xanax-actions,.rwph-xanax-detail-card,.rwph-xanax-steps),
-        #rwph-member-management-panel :where(.rwph-mm-toolbar,.rwph-mm-grid,.rwph-mm-actions),
-        .rwph-member-management-panel :where(.rwph-mm-toolbar,.rwph-mm-grid,.rwph-mm-actions),
-        #rwph-licence-info-panel :where(.rwph-licence-status-grid),
-        .rwph-floating-panel :where(.rwph-panel-actions,.rwph-actions,.rwph-layout-theme-options,.rwph-logo-picker-options){
-          position:relative!important;
-          z-index:2!important;
-          min-width:0!important;
-        }
-
-        #rw-payout-helper button:not(#rw-close),
-        #rw-pay-all-panel button:not(.pay-all-close),
-        .rw-pay-all-panel button:not(.pay-all-close),
-        #rwph-xanax-send-status button:not(#rwph-close-helper),
-        #rw-wrong-payment-panel button:not(#rw-wrong-payment-close),
-        #rwph-member-management-panel button:not(.rwph-mini-close),
-        .rwph-member-management-panel button:not(.rwph-mini-close),
-        #rwph-licence-info-panel button:not(#rwph-licence-info-close),
-        #rwph-logo-picker-panel button:not(#rwph-logo-picker-close),
-        #rwph-colour-theme-panel button,
-        #rwph-theme-colour-panel button,
-        .rwph-floating-panel button:not(.rwph-mini-close):not(.rwph-info-popup-close){
-          white-space:normal!important;
-          overflow-wrap:anywhere!important;
-          line-height:1.2!important;
-          min-height:34px!important;
-          max-width:100%!important;
-        }
-
-        #rw-payout-helper :where(.rw-card,.rw-small,.rw-admin-box,.rw-help-section-card,.rw-help-api-card,details,.rw-api-visible-card,.rw-layout-theme-card),
-        #rw-pay-all-panel :where(.rw-payment-card,.rw-pay-all-card,.rw-pay-all-row),
-        .rw-pay-all-panel :where(.rw-payment-card,.rw-pay-all-card,.rw-pay-all-row),
-        #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message),
-        #rwph-member-management-panel :where(.rwph-mm-card,.rwph-member-card),
-        .rwph-member-management-panel :where(.rwph-mm-card,.rwph-member-card),
-        #rwph-licence-info-panel .rw-card,
-        .rwph-floating-panel :where(.rw-card,.rwph-card,.rwph-logo-current-preview){
-          overflow-wrap:anywhere!important;
-          min-width:0!important;
-        }
-
-        /* Keep only red X close controls visible; text Close buttons were removed from generated HTML. */
-        #rwph-licence-info-close-bottom{display:none!important;}
-
-        @media (max-width:700px),(pointer:coarse){
-          #rw-payout-helper .rw-head,
-          #rw-pay-all-panel .rwph-floating-panel-head,
-          .rw-pay-all-panel .rwph-floating-panel-head,
-          #rwph-xanax-send-status #rwph-payment-helper-title,
-          #rwph-member-management-panel .rwph-floating-panel-head,
-          .rwph-member-management-panel .rwph-floating-panel-head,
-          #rwph-licence-info-panel .rwph-panel-head,
-          .rwph-floating-panel .rwph-panel-head,
-          .rwph-floating-panel .rwph-floating-panel-head{
-            padding-right:50px!important;
-          }
-          #rw-payout-helper button:not(#rw-close),
-          #rw-pay-all-panel button:not(.pay-all-close),
-          .rw-pay-all-panel button:not(.pay-all-close),
-          #rwph-xanax-send-status button:not(#rwph-close-helper),
-          #rwph-member-management-panel button:not(.rwph-mini-close),
-          .rwph-member-management-panel button:not(.rwph-mini-close),
-          .rwph-floating-panel button:not(.rwph-mini-close):not(.rwph-info-popup-close){
-            min-height:38px!important;
-          }
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    } catch (e) {
-      console.warn("RWPH safe panel spacing guard failed:", e);
-    }
-  }
-
   function rwphInjectThemeLogoControlCardGuardV1452() {
     try {
       if (document.getElementById("rwph-theme-logo-control-card-guard-v1452")) return;
@@ -19400,7 +17772,6 @@
     }
   }
 
-  rwphInjectUnifiedPanelThemeV1375();
   rwphInjectThemeLogoControlCardGuardV1452();
   rwphInjectAdvancedSettingHelpStylesV1466();
 
@@ -19826,584 +18197,6 @@
     rwphFreezeCloseControlsV1506(panel);
   }
 
-  function rwphCleanUiCssV1491() {
-    return `
-      /* v1.1.491 — cleaner, flatter, consistent RWPH panel system. */
-      :root{
-        --rwph-ui-gap:10px;
-        --rwph-ui-gap-lg:14px;
-        --rwph-ui-control-h:36px;
-      }
-      #rw-payout-helper,
-      #rw-pay-all-panel,.rw-pay-all-panel,
-      #rwph-xanax-send-status,
-      #rwph-member-management-panel,.rwph-member-management-panel,
-      #rwph-saved-reports-panel,
-      #rwph-layout-theme-panel,
-      #rwph-logo-picker-panel,
-      #rwph-licence-info-panel,
-      #rw-wrong-payment-panel,
-      .rwph-floating-panel,
-      .rwph-results-loading-panel,
-      .rwph-results-html-panel,
-      .rw-results-panel{
-        background:linear-gradient(180deg,var(--rwph-theme-panel,#111827),var(--rwph-theme-bg,#020617))!important;
-        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:16px!important;
-        box-shadow:0 24px 64px rgba(0,0,0,.48),0 1px 0 rgba(255,255,255,.04) inset!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        backdrop-filter:blur(12px)!important;
-      }
-      #rw-payout-helper::before,#rw-payout-helper::after,
-      #rwph-xanax-send-status::before,.rwph-floating-panel::before{
-        display:none!important;
-      }
-      #rw-payout-helper{
-        width:min(420px,calc(100vw - 24px))!important;
-        min-width:min(320px,calc(100vw - 16px))!important;
-        min-height:300px!important;
-        overflow:hidden!important;
-      }
-      #rw-payout-helper>.rw-body,
-      #rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
-      #rwph-xanax-send-status .rwph-xanax-scroll,
-      #rwph-member-management-panel .rwph-floating-panel-body,
-      #rwph-saved-reports-panel .rwph-saved-reports-body,
-      #rwph-layout-theme-panel .rwph-layout-theme-body,
-      #rwph-logo-picker-panel .rwph-floating-panel-body,
-      #rwph-licence-info-panel .rwph-floating-panel-body,
-      #rw-wrong-payment-panel .rwph-floating-panel-body,
-      .rwph-floating-panel .rwph-floating-panel-body{
-        padding:14px!important;
-        min-height:0!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        overscroll-behavior:contain!important;
-      }
-      #rw-payout-helper>.rw-body{max-height:calc(100vh - 150px)!important;}
-      .rwph-api-key-inline{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;align-items:end!important;width:100%!important;min-width:0!important;}
-      .rwph-api-key-inline>label{margin:0!important;min-width:0!important;width:100%!important;}
-      .rwph-api-key-inline>label input{width:100%!important;min-width:0!important;box-sizing:border-box!important;}
-      .rwph-api-key-inline>.rwph-api-key-save{height:var(--rwph-ui-control-h)!important;min-height:var(--rwph-ui-control-h)!important;white-space:nowrap!important;padding-left:14px!important;padding-right:14px!important;}
-      .rwph-theme-logo-bottom-card{margin-top:14px!important;margin-bottom:2px!important;}
-
-      #rw-payout-helper .rw-head,
-      #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head,
-      #rwph-xanax-send-status #rwph-payment-helper-title,
-      #rwph-member-management-panel .rwph-floating-panel-head,.rwph-member-management-panel .rwph-floating-panel-head,
-      #rwph-saved-reports-panel .rwph-saved-reports-head,
-      #rwph-layout-theme-panel .rwph-layout-theme-head,
-      #rwph-logo-picker-panel .rwph-panel-head,
-      #rwph-licence-info-panel .rwph-panel-head,
-      #rw-wrong-payment-panel .rwph-floating-panel-head,
-      .rwph-floating-panel .rwph-floating-panel-head,
-      .rwph-floating-panel .rwph-panel-head,
-      .rwph-results-loading-panel .rwph-results-loading-head,
-      .rwph-results-loading-panel .rwph-results-loading-panel-head,
-      .rwph-results-html-panel .rwph-results-html-head,
-      .rw-results-panel .rw-head,
-      .rwph-clean-panel-head-v1491{
-        position:relative!important;
-        display:flex!important;
-        align-items:center!important;
-        justify-content:center!important;
-        gap:8px!important;
-        min-height:64px!important;
-        padding:9px 82px 9px 12px!important;
-        background:var(--rwph-theme-panel2,#111827)!important;
-        border:0!important;
-        border-bottom:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:15px 15px 0 0!important;
-        box-shadow:0 1px 0 rgba(255,255,255,.035) inset!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        text-transform:none!important;
-        letter-spacing:.01em!important;
-      }
-      #rw-payout-helper .rw-head::before,#rw-payout-helper .rw-head::after{display:none!important;}
-      #rw-payout-helper .rw-head .rwph-header-logo{height:56px!important;width:min(250px,calc(100% - 12px))!important;}
-      #rw-pay-all-panel .rw-pay-all-logo,.rw-pay-all-panel .rw-pay-all-logo,
-      #rwph-xanax-send-status .rwph-payment-helper-logo,
-      #rwph-member-management-panel .rwph-mm-panel-logo,
-      #rwph-logo-picker-panel .rwph-dynamic-logo-icon,
-      #rwph-licence-info-panel .rwph-panel-title img{
-        height:56px!important;
-        max-height:56px!important;
-        width:min(250px,72vw)!important;
-        object-fit:contain!important;
-        filter:drop-shadow(0 4px 12px rgba(0,0,0,.28))!important;
-      }
-
-      .rwph-fit-control-v1491,.rwph-clean-close-v1491{
-        position:absolute!important;
-        top:50%!important;
-        transform:translateY(-50%)!important;
-        width:32px!important;
-        height:32px!important;
-        min-width:32px!important;
-        min-height:32px!important;
-        margin:0!important;
-        padding:0!important;
-        display:grid!important;
-        place-items:center!important;
-        border-radius:9px!important;
-        font-size:17px!important;
-        line-height:1!important;
-        z-index:90!important;
-      }
-      .rwph-fit-control-v1491{right:46px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;}
-      .rwph-clean-close-v1491{right:10px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border:1px solid var(--rwph-theme-gold,#f59e0b)!important;}
-      .rwph-fit-control-v1491:hover,.rwph-clean-close-v1491:hover{filter:brightness(1.15)!important;}
-      #rw-pay-all-panel>.rw-pay-all-close,.rw-pay-all-panel>.rw-pay-all-close{
-        position:absolute!important;top:10px!important;right:10px!important;z-index:95!important;
-        width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;
-        margin:0!important;padding:0!important;border-radius:9px!important;line-height:1!important;font-size:19px!important;
-        background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border:1px solid rgba(248,113,113,.42)!important;
-      }
-      .rwph-results-loading-panel .rwph-results-loading-panel-head{
-        height:64px!important;min-height:64px!important;padding:9px 10px 9px 14px!important;
-        background:var(--rwph-theme-panel2,#111827)!important;border-bottom:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;box-shadow:0 1px 0 rgba(255,255,255,.035) inset!important;
-      }
-      .rwph-results-loading-panel .rwph-results-loading-panel-head button{
-        width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:0!important;margin:0!important;
-        border-radius:9px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;
-        border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;box-shadow:none!important;
-      }
-      .rwph-results-loading-panel .rwph-results-loading-panel-head button:last-child{
-        background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border-color:rgba(248,113,113,.42)!important;
-      }
-      .rwph-results-loading-panel>.rwph-results-resize-handle{background:transparent!important;opacity:.82!important;filter:none!important;}
-      .rwph-results-loading-panel>.rwph-results-resize-se{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
-      .rwph-results-loading-panel>.rwph-results-resize-sw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
-      .rwph-results-loading-panel>.rwph-results-resize-nw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
-
-      #rw-payout-helper :where(button,.btn,a.btn,input[type="button"],input[type="submit"]),
-      #rw-pay-all-panel :where(button,.btn,a.btn),.rw-pay-all-panel :where(button,.btn,a.btn),
-      #rwph-xanax-send-status :where(button,.btn,a.btn),
-      #rwph-member-management-panel :where(button,.btn,a.btn),
-      #rwph-saved-reports-panel :where(button,.btn,a.btn),
-      #rwph-layout-theme-panel :where(button,.btn,a.btn),
-      #rwph-logo-picker-panel :where(button,.btn,a.btn),
-      #rwph-licence-info-panel :where(button,.btn,a.btn),
-      .rwph-floating-panel :where(button,.btn,a.btn),
-      .rw-results-panel :where(button,.btn,a.btn){
-        min-height:var(--rwph-ui-control-h)!important;
-        padding:8px 11px!important;
-        margin:0!important;
-        border-radius:9px!important;
-        border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;
-        background:var(--rwph-theme-panel3,#1f2937)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 5px 14px rgba(0,0,0,.18)!important;
-        font-weight:800!important;
-        text-transform:none!important;
-        letter-spacing:.01em!important;
-      }
-      #rw-payout-helper :where(button.primary,.primary,.rw-primary,.rw-tab.active,[aria-selected="true"]),
-      #rw-pay-all-panel :where(button.primary,.primary),.rw-pay-all-panel :where(button.primary,.primary),
-      #rwph-xanax-send-status :where(button.primary,.primary),
-      #rwph-member-management-panel :where(button.primary,.primary),
-      #rwph-saved-reports-panel :where(button.primary,.primary),
-      .rwph-floating-panel :where(button.primary,.primary){
-        background:linear-gradient(135deg,var(--rwph-theme-gold,#f59e0b),var(--rwph-theme-orange,#f97316))!important;
-        color:#111827!important;
-        border-color:transparent!important;
-        box-shadow:0 8px 20px rgba(0,0,0,.22)!important;
-      }
-      #rw-payout-helper :where(button.secondary,.secondary),
-      #rw-pay-all-panel :where(button.secondary,.secondary),.rw-pay-all-panel :where(button.secondary,.secondary),
-      #rwph-xanax-send-status :where(button.secondary,.secondary),
-      #rwph-member-management-panel :where(button.secondary,.secondary),
-      #rwph-saved-reports-panel :where(button.secondary,.secondary),
-      .rwph-floating-panel :where(button.secondary,.secondary){
-        background:var(--rwph-theme-panel3,#1f2937)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-      }
-      #rw-payout-helper :where(button.danger,.danger){
-        background:var(--rwph-theme-panel3,#1f2937)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border-color:var(--rwph-theme-gold,#f59e0b)!important;
-      }
-      #rw-pay-all-panel :where(button.danger,.danger),.rw-pay-all-panel :where(button.danger,.danger),
-      #rwph-xanax-send-status :where(button.danger,.danger),
-      #rwph-member-management-panel :where(button.danger,.danger),
-      #rwph-saved-reports-panel :where(button.danger,.danger),
-      .rwph-floating-panel :where(button.danger,.danger){
-        background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border-color:var(--rwph-theme-gold,#f59e0b)!important;
-      }
-      #rw-payout-helper :where(#rw-close,.rwph-clean-close-v1491,button[id*="close" i]){
-        background:var(--rwph-theme-panel3,#1f2937)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border-color:var(--rwph-theme-gold,#f59e0b)!important;
-        box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 5px 14px rgba(0,0,0,.18)!important;
-      }
-      #rw-payout-helper :where(button:hover,.btn:hover,a.btn:hover),
-      .rwph-floating-panel :where(button:hover,.btn:hover,a.btn:hover){filter:brightness(1.08)!important;}
-
-      /* v1.1.505: Close controls may brighten, but must never move, scale, or change size on hover. */
-      :where(#rw-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-results-html-close,button[id*="close" i],button[class*="close" i],button[aria-label*="close" i],button[title*="close" i]):hover{
-        scale:1!important;
-      }
-      :where(#rw-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-results-html-close,button[id*="close" i],button[class*="close" i],button[aria-label*="close" i],button[title*="close" i]):not(.rwph-clean-close-v1491):hover{
-        transform:none!important;
-      }
-      .rwph-clean-close-v1491:hover{
-        transform:translateY(-50%)!important;
-        scale:1!important;
-        filter:brightness(1.12)!important;
-      }
-
-      #rw-payout-helper :where(input,textarea,select),
-      #rw-pay-all-panel :where(input,textarea,select),.rw-pay-all-panel :where(input,textarea,select),
-      #rwph-xanax-send-status :where(input,textarea,select),
-      #rwph-member-management-panel :where(input,textarea,select),
-      #rwph-saved-reports-panel :where(input,textarea,select),
-      .rwph-floating-panel :where(input,textarea,select){
-        min-height:36px!important;
-        margin-top:5px!important;
-        padding:8px 10px!important;
-        border-radius:9px!important;
-        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        background:var(--rwph-theme-bg2,#0f172a)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        box-shadow:none!important;
-        outline:none!important;
-      }
-      #rw-payout-helper :where(input,textarea,select):focus,
-      .rwph-floating-panel :where(input,textarea,select):focus{
-        border-color:var(--rwph-theme-gold,#f59e0b)!important;
-        box-shadow:0 0 0 2px color-mix(in srgb,var(--rwph-theme-gold,#f59e0b) 20%,transparent)!important;
-      }
-      #rw-payout-helper label,.rwph-floating-panel label{margin-top:10px!important;color:var(--rwph-theme-soft,#cbd5e1)!important;font-weight:700!important;}
-
-      #rw-payout-helper .rw-tabs{
-        position:static!important;
-        top:auto!important;
-        z-index:auto!important;
-        display:grid!important;
-        grid-template-columns:repeat(3,minmax(0,1fr))!important;
-        gap:6px!important;
-        margin:0 0 12px!important;
-        padding:6px!important;
-        background:var(--rwph-theme-bg2,#0f172a)!important;
-        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:11px!important;
-      }
-      #rw-payout-helper .rw-tab-btn{min-height:34px!important;padding:7px 8px!important;box-shadow:none!important;}
-
-      #rw-payout-helper :where(.rw-summary,.rw-card,.rw-box,.rw-section,.rw-admin-box,.rw-how-box,.rw-payment-card,.rw-api-visible-card,.rw-help-section-card,.rw-help-dropdown-content,.rw-calc-brief),
-      #rw-pay-all-panel :where(.rw-pay-all-row,.rw-pay-all-info),.rw-pay-all-panel :where(.rw-pay-all-row,.rw-pay-all-info),
-      #rwph-xanax-send-status :where(.rwph-xanax-detail-card,.rwph-xanax-actions,.rwph-xanax-steps,.rwph-xanax-safety-note,.rwph-xanax-helper-message),
-      #rwph-member-management-panel :where(.rwph-mm-card,.rwph-mm-stats,.rwph-mm-toolbar),
-      #rwph-saved-reports-panel :where(.rwph-saved-report-card,.rwph-saved-reports-slot),
-      .rwph-floating-panel :where(.rw-card,.rw-box,.rw-section){
-        background:var(--rwph-theme-panel2,#111827)!important;
-        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:11px!important;
-        box-shadow:none!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-      }
-      #rw-payout-helper .rw-summary,#rw-payout-helper .rw-admin-box,#rw-payout-helper .rw-how-box{padding:12px!important;margin:10px 0!important;}
-      #rw-payout-helper .rw-small,#rw-payout-helper .rw-muted,.rwph-floating-panel .rw-small,.rwph-floating-panel .muted{color:var(--rwph-theme-soft,#cbd5e1)!important;line-height:1.45!important;}
-
-      #rw-payout-helper details.rw-per-hit-settings,
-      #rw-payout-helper details.rw-points-settings,
-      #rw-payout-helper details.rw-help-dropdown,
-      #rw-payout-helper details{
-        margin:10px 0!important;
-        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:11px!important;
-        background:var(--rwph-theme-panel2,#111827)!important;
-        box-shadow:none!important;
-        overflow:hidden!important;
-      }
-      #rw-payout-helper details>summary{
-        min-height:40px!important;
-        padding:10px 12px!important;
-        background:var(--rwph-theme-panel3,#1f2937)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border:0!important;
-        border-bottom:1px solid transparent!important;
-        font-weight:850!important;
-      }
-      #rw-payout-helper details[open]>summary{border-bottom-color:var(--rwph-theme-line,rgba(148,163,184,.22))!important;}
-      #rw-payout-helper details::before{display:none!important;}
-
-      #rw-payout-helper .rw-actions,
-      #rw-payout-helper .rw-licence-control-grid,
-      #rw-payout-helper .rw-settings-calc-actions,
-      #rw-payout-helper .rw-settings-time-actions{
-        display:grid!important;
-        grid-template-columns:repeat(2,minmax(0,1fr))!important;
-        gap:8px!important;
-        margin-top:10px!important;
-      }
-      #rw-payout-helper .rw-primary-calc-actions{
-        display:grid!important;
-        grid-template-columns:1fr!important;
-        gap:8px!important;
-        margin:10px 0!important;
-      }
-      #rw-payout-helper .rw-primary-calc-actions>button,
-      #rw-payout-helper .rw-primary-calc-actions>details{width:100%!important;}
-
-      #rwph-saved-reports-panel .rwph-saved-reports-list{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:0!important;}
-      #rwph-saved-reports-panel .rwph-saved-report-card,
-      #rwph-saved-reports-panel [class*="slot"]{padding:12px!important;}
-      #rwph-member-management-panel .rwph-mm-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))!important;gap:10px!important;}
-      #rwph-member-management-panel .rwph-mm-toolbar{gap:8px!important;}
-      #rw-pay-all-panel .rw-pay-all-list,.rw-pay-all-panel .rw-pay-all-list{display:flex!important;flex-direction:column!important;gap:8px!important;}
-      #rw-pay-all-panel .rw-pay-all-row,.rw-pay-all-panel .rw-pay-all-row{padding:10px!important;}
-
-      #rwph-xanax-send-status{width:min(480px,calc(100vw - 20px))!important;min-width:min(320px,calc(100vw - 14px))!important;overflow:hidden!important;}
-      #rwph-xanax-send-status #rwph-payment-helper-title{min-height:70px!important;padding:8px 82px 8px 12px!important;}
-      #rwph-xanax-send-status .rwph-payment-helper-title-text{font-size:14px!important;text-transform:none!important;letter-spacing:.01em!important;}
-      #rwph-xanax-send-status .rwph-xanax-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
-
-      .rwph-results-loading-panel .rwph-loading-shell,
-      .rw-results-panel .summary-card,.rw-results-panel .result-card,
-      .rwph-results-html-panel .rwph-results-html-preview-wrap,
-      .rwph-results-html-panel .rwph-results-html-preview{
-        background:var(--rwph-theme-panel2,#111827)!important;
-        border:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:11px!important;
-        box-shadow:none!important;
-      }
-
-      #rw-payout-helper>.rw-resize-handle,
-      #rw-pay-all-panel>.rw-resize-handle,.rw-pay-all-panel>.rw-resize-handle,
-      #rwph-xanax-send-status>.rw-resize-handle,
-      #rwph-member-management-panel>.rw-resize-handle,
-      #rwph-saved-reports-panel>.rw-resize-handle,
-      #rwph-layout-theme-panel>.rw-resize-handle,
-      #rwph-logo-picker-panel>.rw-resize-handle,
-      #rwph-licence-info-panel>.rw-resize-handle,
-      #rw-wrong-payment-panel>.rw-resize-handle,
-      .rwph-floating-panel>.rw-resize-handle{
-        width:20px!important;height:20px!important;opacity:.78!important;background:transparent!important;z-index:100!important;
-      }
-      .rw-resize-handle-se{border-right:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
-      .rw-resize-handle-sw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
-      .rw-resize-handle-nw{border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:3px solid var(--rwph-theme-gold,#f59e0b)!important;}
-      .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 5px var(--rwph-theme-gold,#f59e0b))!important;}
-      #rwph-saved-reports-panel{resize:none!important;}
-      #rwph-saved-reports-panel>.rw-resize-handle{display:block!important;}
-      /* v1.1.511 — Logo Selector + Admin Setup panels use the exact shared three-corner resize grips. */
-      #rwph-logo-picker-panel>.rw-resize-handle,
-      #rwph-default-setup-panel>.rw-resize-handle,
-      #rwph-default-setup-controller>.rw-resize-handle{
-        display:block!important;position:absolute!important;width:20px!important;height:20px!important;z-index:145!important;
-        touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;opacity:.95!important;background:rgba(2,6,23,.18)!important;
-      }
-      #rwph-logo-picker-panel>.rw-resize-handle-se,#rwph-default-setup-panel>.rw-resize-handle-se,#rwph-default-setup-controller>.rw-resize-handle-se{right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;cursor:nwse-resize!important;border-right:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
-      #rwph-logo-picker-panel>.rw-resize-handle-sw,#rwph-default-setup-panel>.rw-resize-handle-sw,#rwph-default-setup-controller>.rw-resize-handle-sw{left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;cursor:nesw-resize!important;border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-bottom:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
-      #rwph-logo-picker-panel>.rw-resize-handle-nw,#rwph-default-setup-panel>.rw-resize-handle-nw,#rwph-default-setup-controller>.rw-resize-handle-nw{left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;cursor:nwse-resize!important;border-left:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-top:3px solid var(--rwph-theme-gold,#f59e0b)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
-      #rwph-logo-picker-panel>.rw-resize-handle-ne,#rwph-default-setup-panel>.rw-resize-handle-ne,#rwph-default-setup-controller>.rw-resize-handle-ne{display:none!important;pointer-events:none!important;}
-      #rwph-saved-reports-panel .rwph-saved-reports-head{cursor:move!important;touch-action:none!important;user-select:none!important;}
-      #rwph-saved-reports-panel #rwph-saved-reports-close{position:absolute!important;right:10px!important;top:50%!important;}
-
-
-
-
-      /* v1.1.506 — Cached Reports uses the same shared panel chrome and controls. */
-      #rwph-saved-reports-panel .rwph-panel-head{
-        position:relative!important;
-        cursor:move!important;
-        touch-action:none!important;
-        user-select:none!important;
-      }
-      #rwph-saved-reports-panel #rwph-saved-reports-close{
-        position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;
-        width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;
-        padding:0!important;margin:0!important;transform:none!important;scale:1!important;box-sizing:border-box!important;
-      }
-      #rwph-saved-reports-panel #rwph-saved-reports-close:hover{transform:none!important;scale:1!important;}
-
-      /* v1.1.507 — Cached Reports uses the exact same three-corner resize grips as normal RWPH panels. */
-      #rwph-saved-reports-panel > .rw-resize-handle{
-        position:absolute!important;
-        width:20px!important;
-        height:20px!important;
-        z-index:140!important;
-        touch-action:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        pointer-events:auto!important;
-        opacity:.95!important;
-        background:rgba(2,6,23,.18)!important;
-        box-sizing:border-box!important;
-      }
-      #rwph-saved-reports-panel > .rw-resize-handle-se{
-        right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;
-        cursor:nwse-resize!important;
-        border-right:2px solid var(--rwph-theme-gold,#f59e0b)!important;
-        border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;
-        border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;
-      }
-      #rwph-saved-reports-panel > .rw-resize-handle-sw{
-        left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;
-        cursor:nesw-resize!important;
-        border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;
-        border-bottom:2px solid var(--rwph-theme-gold,#f59e0b)!important;
-        border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;
-      }
-      #rwph-saved-reports-panel > .rw-resize-handle-nw{
-        left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;
-        cursor:nwse-resize!important;
-        border-left:2px solid var(--rwph-theme-gold,#f59e0b)!important;
-        border-top:2px solid var(--rwph-theme-gold,#f59e0b)!important;
-        border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;
-      }
-      #rwph-saved-reports-panel > .rw-resize-handle:hover{
-        opacity:1!important;
-        filter:drop-shadow(0 0 6px color-mix(in srgb,var(--rwph-theme-gold,#f59e0b) 65%,transparent))!important;
-      }
-      #rwph-saved-reports-panel > :where(.resize-handle,.resize-handle-se,.resize-handle-sw,.resize-handle-nw,.rw-resize-handle-ne,.resize-handle-ne){display:none!important;}
-
-      /* v1.1.508 — main tabs stay at the top of the scroll content and never follow scrolling. */
-      #rw-payout-helper{
-        display:flex!important;
-        flex-direction:column!important;
-        overflow:hidden!important;
-      }
-      #rw-payout-helper > .rw-head{flex:0 0 auto!important;}
-      #rw-payout-helper .rw-tabs,
-      #rw-payout-helper .rw-tabs.rwph-main-tabbar-fixed,
-      #rw-payout-helper .rw-tabs.rwph-mobile-tabbar-fixed{
-        position:static!important;
-        top:auto!important;
-        z-index:auto!important;
-      }
-      #rw-payout-helper > .rw-body{
-        flex:1 1 auto!important;
-        min-height:0!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        -webkit-overflow-scrolling:touch!important;
-        overscroll-behavior:contain!important;
-      }
-      :where(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491),
-      :where(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491):hover{
-        transform:none!important;scale:1!important;
-        width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;
-        margin:0!important;padding:0!important;
-      }
-
-      /* v1.1.504 — Payments Copy wizard follows the active RWPH theme */
-      #rw-pay-all-panel,.rw-pay-all-panel{
-        background:var(--rwph-theme-panel,#0f172a)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border:var(--rwph-theme-border-width,1px) var(--rwph-theme-border-style,solid) var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        border-radius:var(--rwph-theme-radius,14px)!important;
-        box-shadow:var(--rwph-theme-shadow,0 18px 50px rgba(0,0,0,.42))!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head{
-        background:var(--rwph-theme-panel2,#111827)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border-bottom:1px solid var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-title,.rw-pay-all-panel .rw-pay-all-title,
-      #rw-pay-all-panel .rw-pay-all-payment-name,.rw-pay-all-panel .rw-pay-all-payment-name,
-      #rw-pay-all-panel .rw-pay-all-complete-title,.rw-pay-all-panel .rw-pay-all-complete-title{color:var(--rwph-theme-text,#f8fafc)!important;}
-      #rw-pay-all-panel .rw-pay-all-scroll,.rw-pay-all-panel .rw-pay-all-scroll,
-      #rw-pay-all-panel .rw-pay-all-wizard-stage,.rw-pay-all-panel .rw-pay-all-wizard-stage,
-      #rw-pay-all-panel .rw-pay-all-wizard-page,.rw-pay-all-panel .rw-pay-all-wizard-page{background:var(--rwph-theme-panel,#0f172a)!important;color:var(--rwph-theme-text,#f8fafc)!important;}
-      #rw-pay-all-panel .rw-pay-all-balance-warning,.rw-pay-all-panel .rw-pay-all-balance-warning,
-      #rw-pay-all-panel .rw-pay-all-payment-card,.rw-pay-all-panel .rw-pay-all-payment-card,
-      #rw-pay-all-panel .rw-pay-all-member-hint,.rw-pay-all-panel .rw-pay-all-member-hint,
-      #rw-pay-all-panel .rw-pay-all-complete-card,.rw-pay-all-panel .rw-pay-all-complete-card,
-      #rw-pay-all-panel .rw-pay-all-progress,.rw-pay-all-panel .rw-pay-all-progress{
-        background:var(--rwph-theme-panel2,#111827)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border-color:var(--rwph-theme-line,rgba(148,163,184,.22))!important;
-        box-shadow:none!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-balance-warning,.rw-pay-all-panel .rw-pay-all-balance-warning{
-        border-left-color:var(--rwph-theme-gold,#f59e0b)!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-warning-state,.rw-pay-all-panel .rw-pay-all-warning-state,
-      #rw-pay-all-panel .rw-pay-all-payment-id,.rw-pay-all-panel .rw-pay-all-payment-id,
-      #rw-pay-all-panel .rw-pay-all-member-hint,.rw-pay-all-panel .rw-pay-all-member-hint,
-      #rw-pay-all-panel .rw-pay-all-complete-text,.rw-pay-all-panel .rw-pay-all-complete-text{color:var(--rwph-theme-soft,#cbd5e1)!important;}
-      #rw-pay-all-panel .rw-pay-all-payment-amount,.rw-pay-all-panel .rw-pay-all-payment-amount{color:var(--rwph-theme-green,#86efac)!important;}
-      #rw-pay-all-panel .rw-pay-all-accept-warning,.rw-pay-all-panel .rw-pay-all-accept-warning,
-      #rw-pay-all-panel .rw-pay-all-start-payments,.rw-pay-all-panel .rw-pay-all-start-payments,
-      #rw-pay-all-panel .rw-pay-all-next,.rw-pay-all-panel .rw-pay-all-next,
-      #rw-pay-all-panel .rw-pay-all-finish-close,.rw-pay-all-panel .rw-pay-all-finish-close{
-        background:linear-gradient(135deg,var(--rwph-theme-gold,#f59e0b),var(--rwph-theme-orange,#f97316))!important;
-        color:#111827!important;
-        border-color:transparent!important;
-        border-radius:var(--rwph-theme-button-radius,9px)!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-back,.rw-pay-all-panel .rw-pay-all-back,
-      #rw-pay-all-panel .rw-pay-all-copy,.rw-pay-all-panel .rw-pay-all-copy{
-        background:var(--rwph-theme-panel3,#1f2937)!important;
-        color:var(--rwph-theme-text,#f8fafc)!important;
-        border-color:var(--rwph-theme-line2,var(--rwph-theme-line,rgba(148,163,184,.22)))!important;
-        border-radius:var(--rwph-theme-button-radius,9px)!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-copy.rw-pay-all-copy-done,.rw-pay-all-panel .rw-pay-all-copy.rw-pay-all-copy-done,
-      #rw-pay-all-panel .rw-pay-all-accept-warning.rw-pay-all-warning-accepted,.rw-pay-all-panel .rw-pay-all-accept-warning.rw-pay-all-warning-accepted{
-        background:var(--rwph-theme-green,#16a34a)!important;
-        color:#ecfdf5!important;
-        border-color:color-mix(in srgb,var(--rwph-theme-green,#16a34a) 70%,white)!important;
-      }
-      #rw-pay-all-panel .rw-pay-all-close,.rw-pay-all-panel .rw-pay-all-close{
-        background:color-mix(in srgb,var(--rwph-theme-red,#dc2626) 58%,transparent)!important;
-        color:#fee2e2!important;
-        border-color:color-mix(in srgb,var(--rwph-theme-red,#dc2626) 65%,white)!important;
-        border-left-width:1px!important;
-        border-radius:var(--rwph-theme-button-radius,9px)!important;
-      }
-      #rw-pay-all-panel .rw-resize-handle-se,.rw-pay-all-panel .rw-resize-handle-se,
-      #rw-pay-all-panel .rw-resize-handle-sw,.rw-pay-all-panel .rw-resize-handle-sw,
-      #rw-pay-all-panel .rw-resize-handle-nw,.rw-pay-all-panel .rw-resize-handle-nw{border-color:var(--rwph-theme-gold,#f59e0b)!important;}
-      @media (max-width:760px),(pointer:coarse){
-        #rw-payout-helper{width:calc(100vw - 14px)!important;min-width:0!important;}
-        /* v1.1.508: phone/PDA tabs remain part of the normal scrolling body. */
-        #rw-payout-helper .rw-tabs,
-        #rw-payout-helper .rw-tabs.rwph-main-tabbar-fixed,
-        #rw-payout-helper .rw-tabs.rwph-mobile-tabbar-fixed{
-          position:static!important;
-          top:auto!important;
-          z-index:auto!important;
-        }
-        #rwph-saved-reports-panel > .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:rgba(2,6,23,.28)!important;}
-        #rwph-saved-reports-panel > .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:0 3px 3px 0!important;}
-        #rwph-saved-reports-panel > .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:0 0 3px 3px!important;}
-        #rwph-saved-reports-panel > .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px 0 0 3px!important;}
-        #rw-payout-helper > .rw-body{
-          flex:1 1 auto!important;
-          min-height:0!important;
-          overflow-y:auto!important;
-          overflow-x:hidden!important;
-          -webkit-overflow-scrolling:touch!important;
-          overscroll-behavior:contain!important;
-        }
-        #rw-payout-helper>.rw-body,
-        #rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
-        #rwph-xanax-send-status .rwph-xanax-scroll,
-        .rwph-floating-panel .rwph-floating-panel-body{padding:10px!important;}
-        #rw-payout-helper .rw-head,
-        #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head,
-        #rwph-xanax-send-status #rwph-payment-helper-title,
-        .rwph-floating-panel .rwph-floating-panel-head,
-        .rwph-floating-panel .rwph-panel-head,
-        .rwph-clean-panel-head-v1491{min-height:58px!important;padding:7px 80px 7px 8px!important;}
-        #rw-payout-helper .rw-head .rwph-header-logo,
-        #rw-pay-all-panel .rw-pay-all-logo,.rw-pay-all-panel .rw-pay-all-logo,
-        #rwph-xanax-send-status .rwph-payment-helper-logo,
-        #rwph-member-management-panel .rwph-mm-panel-logo{height:48px!important;max-height:48px!important;}
-        .rwph-fit-control-v1491,.rwph-clean-close-v1491{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;}
-        .rwph-fit-control-v1491{right:47px!important}.rwph-clean-close-v1491{right:8px!important}
-        #rw-payout-helper .rw-actions,#rw-payout-helper .rw-licence-control-grid,#rw-payout-helper .rw-settings-calc-actions,#rw-payout-helper .rw-settings-time-actions{grid-template-columns:1fr!important;}
-        #rwph-xanax-send-status .rwph-xanax-actions{grid-template-columns:1fr!important;}
-        #rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr!important;}
-        #rw-payout-helper>.rw-resize-handle,#rw-pay-all-panel>.rw-resize-handle,.rw-pay-all-panel>.rw-resize-handle,#rwph-xanax-send-status>.rw-resize-handle,.rwph-floating-panel>.rw-resize-handle{width:30px!important;height:30px!important;}
-      }
-    `;
-  }
-
   function rwphInstallWizardFitCssV1501() {
     try {
       let style = document.getElementById("rwph-wizard-fit-v1501");
@@ -20440,188 +18233,37 @@
   }
 
 
-  function rwphInstallCompactUiV1510() {
+  function rwphInstallUnifiedUiV1525() {
     try {
-      let style = document.getElementById("rwph-compact-ui-v1510");
+      let style = document.getElementById("rwph-unified-ui-v1525");
       if (!style) {
         style = document.createElement("style");
-        style.id = "rwph-compact-ui-v1510";
-        (document.head || document.documentElement).appendChild(style);
+        style.id = "rwph-unified-ui-v1525";
       }
-      style.textContent = `
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          #rwph-saved-reports-panel,#rwph-member-management-panel,#rwph-licence-info-panel,
-          #rwph-layout-theme-panel,#rwph-logo-picker-panel,#rw-wrong-payment-panel,
-          #rwph-default-setup-panel,#rwph-default-setup-controller,
-          .rwph-calculation-settings-panel,.rwph-results-loading-panel,.rw-results-panel,.rwph-results-html-panel){
-          --rwph-compact-gap:6px;
-          --rwph-compact-pad:8px;
-        }
-
-        #rw-payout-helper{width:min(560px,calc(100vw - 16px))!important;height:min(650px,calc(100vh - 16px))!important;}
-        #rwph-basic-calculations-panel{width:min(540px,calc(100vw - 16px))!important;height:min(560px,calc(100vh - 16px))!important;}
-        #rwph-advanced-calculations-panel{width:min(650px,calc(100vw - 16px))!important;height:min(650px,calc(100vh - 16px))!important;}
-        #rwph-saved-reports-panel{width:min(500px,calc(100vw - 16px))!important;height:min(520px,calc(100vh - 16px))!important;}
-        #rwph-member-management-panel{width:min(420px,calc(100vw - 16px))!important;height:min(390px,calc(100vh - 16px))!important;}
-        #rw-pay-all-panel,.rw-pay-all-panel{width:min(460px,calc(100vw - 16px))!important;height:min(500px,calc(100vh - 16px))!important;}
-        #rwph-xanax-send-status{width:min(390px,calc(100vw - 16px))!important;height:min(440px,calc(100vh - 16px))!important;}
-        #rwph-licence-info-panel{width:min(390px,calc(100vw - 16px))!important;height:min(300px,calc(100vh - 16px))!important;}
-        #rwph-layout-theme-panel{width:min(480px,calc(100vw - 16px))!important;height:min(550px,calc(100vh - 16px))!important;}
-        #rwph-logo-picker-panel{width:min(620px,calc(100vw - 16px))!important;height:min(560px,calc(100vh - 16px))!important;}
-        #rw-wrong-payment-panel{width:min(390px,calc(100vw - 16px))!important;height:min(250px,calc(100vh - 16px))!important;}
-        #rwph-default-setup-panel{width:min(480px,calc(100vw - 16px))!important;height:min(500px,calc(100vh - 16px))!important;}
-        #rwph-default-setup-controller{width:min(300px,calc(100vw - 16px))!important;}
-
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          .rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-results-loading-panel,.rw-results-panel,.rwph-results-html-panel)
-          :where(.rw-head,.rwph-panel-head,.rwph-floating-panel-head,.rw-pay-all-head,#rwph-payment-helper-title,.rwph-results-loading-head,.rwph-results-loading-panel-head){
-          min-height:44px!important;
-          padding:5px 42px 5px 8px!important;
-          gap:7px!important;
-        }
-
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          .rwph-floating-panel,.rwph-calculation-settings-panel)
-          :where(.rwph-header-logo,.rw-pay-all-logo,.rwph-payment-helper-logo,.rwph-mm-panel-logo,.rwph-dynamic-logo-icon){
-          max-height:42px!important;height:42px!important;width:auto!important;object-fit:contain!important;
-        }
-
-        :where(#rw-payout-helper>.rw-body,#rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
-          #rwph-xanax-send-status .rwph-xanax-scroll,.rwph-floating-panel>.rwph-floating-panel-body,
-          .rwph-calculation-settings-panel>.rwph-floating-panel-body){padding:8px!important;}
-
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          .rwph-floating-panel,.rwph-calculation-settings-panel)
-          :where(.rw-card,.rw-box,.rw-section,.rw-admin-box,.rw-how-box,.rw-help-section-card,
-          .rw-api-visible-card,.rw-payment-card,.rw-pay-all-payment-card,.rw-pay-all-member-hint,
-          .rw-pay-all-complete-card,.rw-pay-all-progress,.rw-calc-brief){
-          padding:7px!important;margin-top:5px!important;margin-bottom:5px!important;
-        }
-
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          .rwph-floating-panel,.rwph-calculation-settings-panel)
-          :where(.rw-actions,.rw-row,.rw-compact-check-grid,.rw-licence-control-grid,.rw-settings-calc-actions,
-          .rw-settings-time-actions,.rwph-xanax-actions,.rwph-mm-grid,.rw-pay-all-copy-grid,.rw-pay-all-wizard-nav){
-          gap:6px!important;
-        }
-
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          .rwph-floating-panel,.rwph-calculation-settings-panel)
-          :where(button,a.btn,.btn,input[type="button"],input[type="submit"]):not(:where(
-          #rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,
-          #rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,
-          #rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,
-          .rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491,.rwph-calculation-panel-close)){
-          min-height:32px!important;padding:5px 9px!important;line-height:1.15!important;
-        }
-
-        :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-          .rwph-floating-panel,.rwph-calculation-settings-panel)
-          :where(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),select,textarea){
-          min-height:32px!important;padding:5px 7px!important;
-        }
-
-        #rw-payout-helper .rw-tabs{gap:4px!important;margin:4px 0 6px!important;padding:3px!important;}
-        #rw-payout-helper .rw-tab-btn{min-height:30px!important;padding:4px 8px!important;}
-        #rw-payout-helper .rw-small,#rw-payout-helper .rw-muted{line-height:1.3!important;}
-        #rw-payout-helper label{gap:3px!important;}
-
-        #rw-pay-all-panel,.rw-pay-all-panel{padding:6px!important;}
-        #rw-pay-all-panel .rw-pay-all-head,.rw-pay-all-panel .rw-pay-all-head{min-height:42px!important;padding:5px 40px 5px 7px!important;}
-        #rw-pay-all-panel .rw-pay-all-scroll,.rw-pay-all-panel .rw-pay-all-scroll{padding:0!important;}
-        #rw-pay-all-panel .rw-pay-all-wizard-page,.rw-pay-all-panel .rw-pay-all-wizard-page{gap:5px!important;}
-        #rw-pay-all-panel .rw-pay-all-start-warning,.rw-pay-all-panel .rw-pay-all-start-warning{gap:5px!important;padding:7px!important;}
-        #rw-pay-all-panel .rw-pay-all-balance-warning,.rw-pay-all-panel .rw-pay-all-balance-warning{padding:6px!important;margin:0!important;}
-        #rw-pay-all-panel .rw-pay-all-payment-card,.rw-pay-all-panel .rw-pay-all-payment-card{padding:7px!important;}
-        #rw-pay-all-panel .rw-pay-all-payment-name,.rw-pay-all-panel .rw-pay-all-payment-name{font-size:14px!important;}
-        #rw-pay-all-panel .rw-pay-all-payment-id,.rw-pay-all-panel .rw-pay-all-payment-id{margin-top:2px!important;}
-        #rw-pay-all-panel .rw-pay-all-payment-amount,.rw-pay-all-panel .rw-pay-all-payment-amount{font-size:19px!important;margin:5px 0!important;}
-        #rw-pay-all-panel .rw-pay-all-copy-grid,.rw-pay-all-panel .rw-pay-all-copy-grid,
-        #rw-pay-all-panel .rw-pay-all-wizard-nav,.rw-pay-all-panel .rw-pay-all-wizard-nav{gap:5px!important;}
-        #rw-pay-all-panel .rw-pay-all-copy-grid .rw-pay-all-copy,.rw-pay-all-panel .rw-pay-all-copy-grid .rw-pay-all-copy,
-        #rw-pay-all-panel .rw-pay-all-wizard-nav button,.rw-pay-all-panel .rw-pay-all-wizard-nav button{min-height:32px!important;}
-        #rw-pay-all-panel .rw-pay-all-member-hint,.rw-pay-all-panel .rw-pay-all-member-hint{padding:6px!important;}
-
-        .rwph-calculation-settings-panel details.rw-settings-dropdown>.rw-api-tos-content{padding:8px!important;}
-        .rwph-calculation-settings-panel .rw-row{gap:6px!important;}
-        .rwph-calculation-settings-panel label{gap:3px!important;}
-        .rwph-calculation-settings-panel .rw-compact-check-grid{gap:5px!important;}
-        .rwph-calculation-settings-panel .rw-actions{gap:5px!important;}
-        .rwph-calculation-settings-panel .rw-primary-calc-actions>button{min-height:34px!important;}
-        .rwph-calculation-settings-panel .rw-calc-brief{padding:7px!important;}
-        .rwph-calculation-settings-panel .rwph-setting-label-line{font-size:1em!important;line-height:1.15!important;}
-
-        #rwph-default-setup-controller .rwph-panel-head{padding:6px 40px 6px 8px!important;}
-        #rwph-default-setup-controller .rwph-floating-panel-body{padding:8px!important;gap:6px!important;}
-        #rwph-default-setup-controller .rwph-default-setup-controller-actions{gap:5px!important;}
-        #rwph-default-setup-panel .rwph-panel-head{padding:6px 40px 6px 8px!important;}
-        #rwph-default-setup-panel .rwph-floating-panel-body{padding:8px!important;}
-        #rwph-default-setup-panel .rw-card{padding:7px!important;margin-bottom:7px!important;}
-        #rwph-default-setup-panel ol{line-height:1.35!important;}
-
-        #rwph-saved-reports-panel :where(.rwph-saved-reports-list,.rwph-saved-report-list){gap:6px!important;}
-        #rwph-member-management-panel :where(.rwph-mm-grid,.rwph-mm-list){gap:6px!important;}
-        #rwph-layout-theme-panel .rwph-layout-theme-body{padding:8px!important;}
-        #rwph-layout-theme-panel .rwph-layout-theme-options{gap:6px!important;}
-        #rwph-logo-picker-panel .rwph-layout-theme-body{padding:8px!important;}
-
-        @media(max-width:700px),(pointer:coarse){
-          #rw-payout-helper,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,
-          #rwph-saved-reports-panel,#rwph-member-management-panel,#rw-pay-all-panel,.rw-pay-all-panel,
-          #rwph-xanax-send-status,#rwph-licence-info-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,
-          #rw-wrong-payment-panel,#rwph-default-setup-panel{
-            width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;left:6px!important;
-          }
-          :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-            .rwph-floating-panel,.rwph-calculation-settings-panel)
-            :where(.rw-head,.rwph-panel-head,.rwph-floating-panel-head,.rw-pay-all-head,#rwph-payment-helper-title){
-            min-height:48px!important;padding:5px 42px 5px 7px!important;
-          }
-          :where(#rw-payout-helper,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,
-            .rwph-floating-panel,.rwph-calculation-settings-panel)
-            :where(button,a.btn,.btn,input[type="button"],input[type="submit"]):not(:where(
-            #rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,
-            #rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,
-            #rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,
-            .rwph-results-html-close,.rwph-mini-close,.rwph-clean-close-v1491,.rwph-calculation-panel-close)){
-            min-height:38px!important;
-          }
-          :where(#rw-payout-helper>.rw-body,#rw-pay-all-panel .rw-pay-all-body,.rw-pay-all-panel .rw-pay-all-body,
-            #rwph-xanax-send-status .rwph-xanax-scroll,.rwph-floating-panel>.rwph-floating-panel-body,
-            .rwph-calculation-settings-panel>.rwph-floating-panel-body){padding:7px!important;}
-          #rwph-default-setup-controller{right:6px!important;top:6px!important;width:min(288px,calc(100vw - 12px))!important;}
-        }
-      `;
-    } catch (e) {
-      console.warn("RWPH compact UI v1.1.510 failed:", e);
-    }
-  }
-
-  function rwphInstallCleanUiV1491() {
-    try {
-      let style = document.getElementById("rwph-clean-ui-v1491");
-      if (!style) {
-        style = document.createElement("style");
-        style.id = "rwph-clean-ui-v1491";
-        (document.head || document.documentElement).appendChild(style);
-      }
-      style.textContent = rwphCleanUiCssV1491();
-      (document.head || document.documentElement).appendChild(style);
-      const decorate = (root = document) => {
-        const selectors = [
-          "#rw-payout-helper","#rw-pay-all-panel",".rw-pay-all-panel","#rwph-xanax-send-status",
-          "#rwph-member-management-panel",".rwph-member-management-panel","#rwph-saved-reports-panel",
-          "#rwph-layout-theme-panel","#rwph-logo-picker-panel","#rwph-licence-info-panel","#rw-wrong-payment-panel",
-          ".rwph-floating-panel"
-        ];
-        selectors.forEach((selector) => {
-          if (root.matches?.(selector)) rwphDecorateCleanPanelV1491(root);
-          root.querySelectorAll?.(selector).forEach((panel) => rwphDecorateCleanPanelV1491(panel));
-        });
+      const keepLast = () => {
+        try {
+          const host = document.body || document.documentElement;
+          if (style.parentNode !== host || host.lastElementChild !== style) host.appendChild(style);
+        } catch (_) {}
       };
-      decorate(document);
+      const refresh = () => {
+        try { style.textContent = rwphPanelThemeCss(rwphGetPanelThemePreset(), false); } catch (_) {}
+        keepLast();
+      };
+      refresh();
+      if (!window.__rwphUnifiedUiObserverV1525) {
+        let queued = false;
+        const observer = new MutationObserver(() => {
+          if (queued) return;
+          queued = true;
+          requestAnimationFrame(() => { queued = false; keepLast(); });
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        window.__rwphUnifiedUiObserverV1525 = observer;
+      }
+      window.__rwphRefreshUnifiedUiV1525 = refresh;
     } catch (e) {
-      console.warn("RWPH clean UI v1.1.491 failed:", e);
+      console.warn("RWPH unified UI v1.1.525 failed:", e);
     }
   }
 
@@ -20630,10 +18272,9 @@
   rwphEnsureThemeSystemV3Defaults();
   rwphApplyPanelThemeChoice();
   rwphApplyLogoChoice();
-  rwphInstallCleanUiV1491();
   rwphInstallWizardFitCssV1501();
   rwphEnsureCalculationPanelStylesV1509();
-  rwphInstallCompactUiV1510();
+  rwphInstallUnifiedUiV1525();
   if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();
