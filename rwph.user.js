@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.523
+// @version      1.1.524
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.524: Main locked/unlocked panel buttons now fully follow the four-colour theme, and the Theme / Colours preset library is massively expanded.
   // v1.1.523: Completely rebuilds Theme / Colours around the Faction Helper four-colour system; old RWPH theme/custom-colour state is intentionally reset to the new RWPH Gold default.
   // v1.1.522: Newsletter faction image now comes strictly from the user faction's Faction Info tab/panel (with own-faction cache/API fallback), never from the current war target area.
   // v1.1.521: Rebuilds Results CSV/HTML exports as parent-userscript-owned downloads so generated iframe/CSP/WebView code cannot block the buttons; mobile attachment downloads no longer use hidden iframes.
@@ -3444,6 +3445,47 @@
       arcticLight: rwphBuildFourColourTheme("Arctic Light", "#e9eef2", "#ffffff", "#1d2a31", "#2b8dbd"),
       neonRose: rwphBuildFourColourTheme("Neon Rose", "#100911", "#28162b", "#fff2fd", "#ff5ed8"),
       blackout: rwphBuildFourColourTheme("Blackout", "#050607", "#13161a", "#f5f7f8", "#dfe6eb"),
+
+      oceanic: rwphBuildFourColourTheme("Oceanic", "#06131a", "#102833", "#e8fbff", "#23c4d8"),
+      sapphireNight: rwphBuildFourColourTheme("Sapphire Night", "#070b18", "#151f3a", "#edf3ff", "#4f7cff"),
+      cobaltSteel: rwphBuildFourColourTheme("Cobalt Steel", "#0b1018", "#1b2635", "#eef5ff", "#5b9dff"),
+      aquaCircuit: rwphBuildFourColourTheme("Aqua Circuit", "#041416", "#123033", "#eaffff", "#22e6d2"),
+      tealMatrix: rwphBuildFourColourTheme("Teal Matrix", "#061310", "#15302a", "#ebfff9", "#2dd4bf"),
+      mintTerminal: rwphBuildFourColourTheme("Mint Terminal", "#07110d", "#183126", "#effff6", "#6ee7b7"),
+      forestCommand: rwphBuildFourColourTheme("Forest Command", "#09100a", "#1b2a1c", "#f1faef", "#6bbf59"),
+      toxicLime: rwphBuildFourColourTheme("Toxic Lime", "#0a0f06", "#202b15", "#f7ffe8", "#a3e635"),
+      solarFlare: rwphBuildFourColourTheme("Solar Flare", "#151006", "#332513", "#fff9e8", "#facc15"),
+      amberForge: rwphBuildFourColourTheme("Amber Forge", "#120d06", "#2f2112", "#fff7e8", "#f59e0b"),
+      copperFoundry: rwphBuildFourColourTheme("Copper Foundry", "#120b08", "#2e1d17", "#fff2e9", "#d97745"),
+      bloodMoon: rwphBuildFourColourTheme("Blood Moon", "#100607", "#2b1518", "#fff0f1", "#ef4444"),
+      rubyNoir: rwphBuildFourColourTheme("Ruby Noir", "#0d0609", "#26151c", "#fff1f5", "#e11d48"),
+      magentaPulse: rwphBuildFourColourTheme("Magenta Pulse", "#120712", "#30172f", "#fff1ff", "#e879f9"),
+      purpleHaze: rwphBuildFourColourTheme("Purple Haze", "#0d0814", "#261b35", "#f8f0ff", "#c084fc"),
+      deepSpace: rwphBuildFourColourTheme("Deep Space", "#050711", "#14192b", "#f0f3ff", "#8b5cf6"),
+      midnightIndigo: rwphBuildFourColourTheme("Midnight Indigo", "#070916", "#191d38", "#eef0ff", "#6366f1"),
+      iceBlue: rwphBuildFourColourTheme("Ice Blue", "#081116", "#1a2a32", "#f2fbff", "#7dd3fc"),
+      frostedSlate: rwphBuildFourColourTheme("Frosted Slate", "#0b1014", "#202a31", "#f3f7f9", "#94a3b8"),
+      silverOps: rwphBuildFourColourTheme("Silver Ops", "#0d1012", "#262b2f", "#f6f7f8", "#cbd5e1"),
+      desertSand: rwphBuildFourColourTheme("Desert Sand", "#15110b", "#332b1f", "#fff9ee", "#d6b36a"),
+      coffeeBronze: rwphBuildFourColourTheme("Coffee Bronze", "#100c09", "#2a211b", "#fff5ec", "#b98252"),
+      sakura: rwphBuildFourColourTheme("Sakura", "#160d12", "#34202c", "#fff4f8", "#f9a8d4"),
+      candyNeon: rwphBuildFourColourTheme("Candy Neon", "#100916", "#2a1838", "#fff4ff", "#22d3ee"),
+      retroSynth: rwphBuildFourColourTheme("Retro Synth", "#0d0717", "#25163a", "#fff2ff", "#ff4fd8"),
+      matrixGreen: rwphBuildFourColourTheme("Matrix Green", "#020a04", "#0b2512", "#eaffed", "#39ff6f"),
+      crimsonSteel: rwphBuildFourColourTheme("Crimson Steel", "#0b0d10", "#242a31", "#f5f7fa", "#dc3445"),
+      navyGold: rwphBuildFourColourTheme("Navy Gold", "#07101d", "#14253a", "#f3f6fb", "#d4af37"),
+      aussieGreenGold: rwphBuildFourColourTheme("Aussie Green & Gold", "#07110a", "#173322", "#f5fff7", "#ffcc29"),
+      halloween: rwphBuildFourColourTheme("Halloween", "#100a05", "#2b1b0f", "#fff4e6", "#ff7a00"),
+      festive: rwphBuildFourColourTheme("Festive", "#07100b", "#1a2f22", "#fff7f7", "#ef4444"),
+
+      paperLight: rwphBuildFourColourTheme("Paper Light", "#f1f3f5", "#ffffff", "#20252a", "#6c757d"),
+      whiteGold: rwphBuildFourColourTheme("White Gold", "#f5f2e8", "#ffffff", "#2d2a20", "#b08d2f"),
+      lavenderLight: rwphBuildFourColourTheme("Lavender Light", "#f4f0fb", "#ffffff", "#2f2840", "#8b5cf6"),
+      mintLight: rwphBuildFourColourTheme("Mint Light", "#edf8f2", "#ffffff", "#20332a", "#2f9e69"),
+      roseLight: rwphBuildFourColourTheme("Rose Light", "#fff0f4", "#ffffff", "#3b2530", "#d94f7a"),
+      skyLight: rwphBuildFourColourTheme("Sky Light", "#eef7fb", "#ffffff", "#20313a", "#2b8dbd"),
+      monochromeLight: rwphBuildFourColourTheme("Monochrome Light", "#eeeeee", "#ffffff", "#171717", "#555555"),
+      highContrast: rwphBuildFourColourTheme("High Contrast", "#000000", "#111111", "#ffffff", "#ffff00"),
     };
   }
 
@@ -6337,22 +6379,24 @@
       #rw-payout-helper button {
         margin-top: 10px;
         padding: 9px 12px;
-        border: 1px solid rgba(183,133,85,.30);
-        border-radius: 12px;
-        background: linear-gradient(180deg, rgba(149,58,34,.98), rgba(181,84,38,.96) 18%, rgba(108,40,24,.98) 18.5%, rgba(88,30,22,.98) 100%) !important;
-        color: white !important;
+        border: 1px solid var(--rwph-theme-line2, rgba(233,189,78,.68));
+        border-radius: var(--rwph-theme-button-radius, 12px);
+        background: linear-gradient(180deg, var(--rwph-theme-panel3, #2a3036), var(--rwph-theme-panel2, #20252a)) !important;
+        color: var(--rwph-theme-text, #f4f5f6) !important;
         font-weight: 900;
         cursor: pointer;
-        box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 -4px 0 rgba(79,22,18,.55) inset, 0 10px 22px rgba(0,0,0,.40);
+        box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 8px 18px rgba(0,0,0,.24);
       }
       #rw-payout-helper button:hover { filter: brightness(1.08); }
       #rw-payout-helper #rw-start-payment,
       #rw-payout-helper #rw-extend-licence {
-        background: linear-gradient(180deg, rgba(149,58,34,.98), rgba(181,84,38,.96) 18%, rgba(108,40,24,.98) 18.5%, rgba(88,30,22,.98) 100%) !important;
-        box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 -4px 0 rgba(79,22,18,.55) inset, 0 10px 22px rgba(0,0,0,.40) !important;
+        background: linear-gradient(135deg, var(--rwph-theme-gold, #e9bd4e), var(--rwph-theme-orange, #efe0a3)) !important;
+        border-color: var(--rwph-theme-line2, rgba(233,189,78,.68)) !important;
+        color: var(--rwph-theme-bg, #0d0f11) !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.18) !important;
       }
-      #rw-payout-helper button.secondary { background: linear-gradient(180deg, rgba(70,57,45,.95), rgba(50,42,36,.95) 18%, rgba(36,31,28,.95) 100%) !important; box-shadow: 0 -3px 0 rgba(36,27,24,.45) inset; }
-      #rw-payout-helper button.danger { background: linear-gradient(180deg, rgba(126,28,24,.98), rgba(164,40,30,.96) 18%, rgba(95,21,20,.98) 100%) !important; box-shadow: 0 -3px 0 rgba(65,15,14,.45) inset; }
+      #rw-payout-helper button.secondary { background: linear-gradient(180deg, var(--rwph-theme-panel3, #2a3036), var(--rwph-theme-panel2, #20252a)) !important; color:var(--rwph-theme-text,#f4f5f6)!important; border-color:var(--rwph-theme-line2,rgba(233,189,78,.68))!important; box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 6px 14px rgba(0,0,0,.18)!important; }
+      #rw-payout-helper button.danger { background: linear-gradient(180deg, var(--rwph-theme-panel3, #2a3036), var(--rwph-theme-panel2, #20252a)) !important; color:var(--rwph-theme-text,#f4f5f6)!important; border-color:var(--rwph-theme-gold,#e9bd4e)!important; box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 6px 14px rgba(0,0,0,.18)!important; }
       #rw-payout-helper .rw-actions { display: flex; gap: 8px; flex-wrap: wrap; }
       #rw-payout-helper .rw-muted { color: #d4c1b4 !important; margin-top: 10px; line-height: 1.45; }
       #rw-payout-helper .rw-small { font-size: 11px; color: #cfaa8e !important; line-height: 1.45; }
@@ -6474,8 +6518,9 @@
         padding: 8px 10px;
       }
       #rw-payout-helper .rw-tab-btn.active {
-        background: linear-gradient(180deg, rgba(197,91,44,.98), rgba(119,39,24,.98)) !important;
-        border-color: rgba(229,177,105,.42);
+        background: linear-gradient(135deg, var(--rwph-theme-gold,#e9bd4e), var(--rwph-theme-orange,#efe0a3)) !important;
+        border-color: var(--rwph-theme-line2,rgba(233,189,78,.68)) !important;
+        color: var(--rwph-theme-bg,#0d0f11) !important;
       }
       #rw-payout-helper .rw-tab-section[hidden] {
         display: none !important;
@@ -9389,6 +9434,46 @@
         color: #ffffff !important;
         font-size: 12px !important;
         font-weight: 1000 !important;
+      }
+
+      /* v1.1.524: final main-panel button layer. Every locked/unlocked main button follows the active four-colour theme. */
+      #rw-payout-helper :where(button,.btn,a.btn,input[type="button"],input[type="submit"]){
+        background:linear-gradient(180deg,var(--rwph-theme-panel3,#2a3036),var(--rwph-theme-panel2,#20252a))!important;
+        background-color:var(--rwph-theme-panel2,#20252a)!important;
+        color:var(--rwph-theme-text,#f4f5f6)!important;
+        border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;
+        box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 6px 16px rgba(0,0,0,.20)!important;
+        text-shadow:none!important;
+      }
+      #rw-payout-helper :where(button.secondary,.secondary,button.danger,.danger){
+        background:linear-gradient(180deg,var(--rwph-theme-panel3,#2a3036),var(--rwph-theme-panel2,#20252a))!important;
+        color:var(--rwph-theme-text,#f4f5f6)!important;
+        border-color:var(--rwph-theme-gold,#e9bd4e)!important;
+      }
+      #rw-payout-helper :where(button.primary,.primary,.rw-primary,#rw-start-payment,#rw-extend-licence),
+      #rw-payout-helper .rw-tabs .rw-tab-btn.active,
+      #rw-payout-helper .rw-tabs .rw-tab-btn[aria-selected="true"]{
+        background:linear-gradient(135deg,var(--rwph-theme-gold,#e9bd4e),var(--rwph-theme-orange,#efe0a3))!important;
+        background-color:var(--rwph-theme-gold,#e9bd4e)!important;
+        color:var(--rwph-theme-bg,#0d0f11)!important;
+        border-color:var(--rwph-theme-gold,#e9bd4e)!important;
+        border-left-color:var(--rwph-theme-gold,#e9bd4e)!important;
+        box-shadow:0 0 0 1px var(--rwph-theme-line2,rgba(233,189,78,.68)) inset,0 8px 20px rgba(0,0,0,.24)!important;
+        text-shadow:none!important;
+      }
+      #rw-payout-helper .rw-tabs .rw-tab-btn.active::after,
+      #rw-payout-helper .rw-tabs .rw-tab-btn[aria-selected="true"]::after{
+        background:var(--rwph-theme-bg,#0d0f11)!important;
+        box-shadow:0 0 8px var(--rwph-theme-line2,rgba(233,189,78,.68))!important;
+      }
+      #rw-payout-helper :where(#rw-close,.rwph-clean-close-v1491,button[id*="close" i]){
+        background:var(--rwph-theme-panel3,#2a3036)!important;
+        color:var(--rwph-theme-text,#f4f5f6)!important;
+        border-color:var(--rwph-theme-gold,#e9bd4e)!important;
+      }
+      #rw-payout-helper :where(button:hover,.btn:hover,a.btn:hover,input[type="button"]:hover,input[type="submit"]:hover){
+        border-color:var(--rwph-theme-gold,#e9bd4e)!important;
+        filter:brightness(1.10)!important;
       }
 
     `;
@@ -19866,7 +19951,7 @@
         z-index:90!important;
       }
       .rwph-fit-control-v1491{right:46px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border:1px solid var(--rwph-theme-line2,var(--rwph-theme-line))!important;}
-      .rwph-clean-close-v1491{right:10px!important;background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border:1px solid rgba(248,113,113,.42)!important;}
+      .rwph-clean-close-v1491{right:10px!important;background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border:1px solid var(--rwph-theme-gold,#f59e0b)!important;}
       .rwph-fit-control-v1491:hover,.rwph-clean-close-v1491:hover{filter:brightness(1.15)!important;}
       #rw-pay-all-panel>.rw-pay-all-close,.rw-pay-all-panel>.rw-pay-all-close{
         position:absolute!important;top:10px!important;right:10px!important;z-index:95!important;
@@ -19934,13 +20019,23 @@
         background:var(--rwph-theme-panel3,#1f2937)!important;
         color:var(--rwph-theme-text,#f8fafc)!important;
       }
-      #rw-payout-helper :where(button.danger,.danger),
+      #rw-payout-helper :where(button.danger,.danger){
+        background:var(--rwph-theme-panel3,#1f2937)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border-color:var(--rwph-theme-gold,#f59e0b)!important;
+      }
       #rw-pay-all-panel :where(button.danger,.danger),.rw-pay-all-panel :where(button.danger,.danger),
       #rwph-xanax-send-status :where(button.danger,.danger),
       #rwph-member-management-panel :where(button.danger,.danger),
       #rwph-saved-reports-panel :where(button.danger,.danger),
       .rwph-floating-panel :where(button.danger,.danger){
-        background:rgba(127,29,29,.72)!important;color:#fee2e2!important;border-color:rgba(248,113,113,.36)!important;
+        background:var(--rwph-theme-panel3,#1f2937)!important;color:var(--rwph-theme-text,#f8fafc)!important;border-color:var(--rwph-theme-gold,#f59e0b)!important;
+      }
+      #rw-payout-helper :where(#rw-close,.rwph-clean-close-v1491,button[id*="close" i]){
+        background:var(--rwph-theme-panel3,#1f2937)!important;
+        color:var(--rwph-theme-text,#f8fafc)!important;
+        border-color:var(--rwph-theme-gold,#f59e0b)!important;
+        box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 5px 14px rgba(0,0,0,.18)!important;
       }
       #rw-payout-helper :where(button:hover,.btn:hover,a.btn:hover),
       .rwph-floating-panel :where(button:hover,.btn:hover,a.btn:hover){filter:brightness(1.08)!important;}
