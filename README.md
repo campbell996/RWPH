@@ -415,3 +415,7 @@ Buy/Extend, pending-payment lookup, payment confirmation, licence verification, 
 ## v1.1.483 - Faster Admin Key activation
 
 Saving the Admin Key now performs one verify + owner-licence grant request. The backend writes only the owner user/licence/metadata rows directly, returns a fresh signed licence token, and the userscript unlocks the admin controls immediately. The full licence list is no longer loaded automatically during key save. No schema migration is required from v1.1.482.
+
+
+## v1.1.527 UI rebuild
+Locked, Unlocked/Payout, Admin, Help, Results Loading and Results now render from the saved four-colour theme immediately on page load. Their old per-panel hard-coded visual CSS has been removed/replaced by the new theme-first UI.
