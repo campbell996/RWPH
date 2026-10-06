@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.533
+// @version      1.1.534
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.534: Rebuilds Results Loading/Results as normal movable RWPH panels, routes Start Payments through the parent into same-tab faction controls, and makes Default Setup target every current movable RWPH panel.
   // v1.1.533: Rebuilds Results HTML/CSV downloads using the Faction Helper direct Blob-anchor method, restores Payments Copy payout/paste controls, and removes the Xanax How-to inner scroll/card.
   // v1.1.532: Unifies every RWPH panel scrollbar/close/resize control with the main panel, moves Payments Copy to same-tab faction controls with Results auto-close, and auto-closes Cached Reports after a saved report opens.
   // v1.1.531: Keeps every Xanax Payment Helper numbered instruction on a single line by replacing the old grid-split instructions with proper numbered rows.
@@ -53,7 +54,7 @@
   // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
   // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
   // v1.1.497: Advanced Fair Fight mode selection now applies/normalizes every FF setting required by that mode and disables irrelevant FF inputs.
-  // v1.1.496: Default Setup skips Results Loading / Results because both now open fullscreen by default.
+  // v1.1.496 legacy note: Results Loading / Results previously opened fullscreen; v1.1.534 restores them as normal configurable panels.
   // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
   // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
   // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and selected Basic hit types).
@@ -263,42 +264,31 @@
   }
 
   function rwphRestoreOpenResultsPageAfterRefresh() {
+    // v1.1.534: migrate the retired standalone-results restore record into the
+    // proper Results panel state. Never replace the Torn document with Results.
     try {
       if (rwphIsPaymentsOnlyTabContext()) return false;
-      try {
-        const loadingRaw = localStorage.getItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY);
-        const loadingState = loadingRaw ? JSON.parse(loadingRaw) : null;
-        if (loadingState && loadingState.active) return false;
-      } catch (_) {}
       const raw = localStorage.getItem(LAST_RESULTS_HTML_OPEN_STORAGE_KEY);
       if (!raw) return false;
       const stored = JSON.parse(raw);
+      rwphClearRememberedOpenResultsPage();
       if (!stored || !stored.active || !stored.html) return false;
       const age = Date.now() - Number(stored.createdAt || 0);
-      if (!isFinite(age) || age < 0 || age > 24 * 60 * 60 * 1000) {
-        rwphClearRememberedOpenResultsPage();
-        return false;
-      }
-      let html = String(stored.html || "");
+      if (!isFinite(age) || age < 0 || age > 24 * 60 * 60 * 1000) return false;
+      const html = String(stored.html || "");
       if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) return false;
-      try {
-        const liveThemeCss = `<style id="rwph-restored-live-theme-v1527">${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}${rwphStandaloneResultsCssV1527()}</style>`;
-        html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${liveThemeCss}</head>`) : liveThemeCss + html;
-      } catch (_) {}
-      setTimeout(function() {
-        try {
-          document.open();
-          document.write(html);
-          document.close();
-        } catch (e) {
-          console.warn("RWPH could not restore results page after refresh:", e);
-        }
-      }, 0);
-      return true;
+      const existing = rwphReadResultsLoadingPanelState(false);
+      if (!existing?.active) {
+        localStorage.setItem(RESULTS_LOADING_PANEL_STATE_STORAGE_KEY, JSON.stringify({
+          active: true, type: "results", progressId: "", html,
+          url: rwphCurrentTopPageUrl(), createdAt: Date.now(), updatedAt: Date.now(),
+          startedAtMs: Number(stored.createdAt || Date.now()),
+        }));
+      }
     } catch (e) {
-      console.warn("RWPH restore results page check failed:", e);
-      return false;
+      console.warn("RWPH legacy results restore migration failed:", e);
     }
+    return false;
   }
 
   // v1.1.527: load the saved three-colour theme before ANY panel or restored Results document can render.
@@ -2588,9 +2578,12 @@
   }
 
 
+  // Every normal movable/resizable RWPH panel belongs here. The setup controller itself
+  // is intentionally excluded because it is the wizard used to position these targets.
   const RWPH_DEFAULT_SETUP_PANEL_TARGETS = Object.freeze([
     { id: "rw-payout-helper", label: "Main RWPH Panel", width: 560, height: 650 },
-    // Results Loading and Results are intentionally omitted: both default to fullscreen.
+    { id: "rwph-results-loading-panel", label: "Results Loading", width: 720, height: 560, className: "rwph-floating-panel rwph-results-loading-panel rwph-results-shell-v1534" },
+    { id: "rwph-results-panel", label: "Results", width: 860, height: 680, className: "rwph-floating-panel rw-results-panel rwph-results-shell-v1534" },
     { id: "rwph-basic-calculations-panel", label: "Basic Calculations", width: 540, height: 560, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 650, height: 650, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
@@ -2939,14 +2932,6 @@
   }
 
   function rwphCreateDefaultSetupActualResultsPanel() {
-    document.getElementById("rw-payout-helper")?.remove();
-    const host = document.createElement("div");
-    host.id = "rw-payout-helper";
-    host.dataset.rwphDefaultSetupHost = "1";
-    document.body.appendChild(host);
-    showMainScreen(host);
-    const panel = host.querySelector("#rw-results-panel");
-    if (!panel) return null;
     const rows = rwphDefaultSetupSampleRows();
     const summary = {
       pointsMode: true,
@@ -2960,6 +2945,7 @@
       totalRetaliationHits: 3,
       totalPoints: 41.7,
       attacksFetched: 38,
+      factionName: "Example Faction",
       selectedWar: { timeSource: "last-ranked-war-report" },
       calcMeta: { ownFactionAttacks: 38, skippedFailed: 0 },
       fairFightMode: "avg-step",
@@ -2969,26 +2955,9 @@
       fairFightStep: 0.02,
       warnings: [],
     };
-    const results = panel.querySelector("#rw-results");
-    if (results) results.innerHTML = renderRows(rows, summary);
-    panel.hidden = false;
-    panel.removeAttribute("hidden");
-    panel.style.setProperty("display", "block", "important");
-    panel.style.setProperty("visibility", "visible", "important");
-    panel.style.setProperty("opacity", "1", "important");
-    // Keep only the real fixed results child visible; the real main panel is just its style/DOM host.
-    Array.from(host.children).forEach((child) => {
-      if (child !== panel && child.tagName !== "STYLE") child.style?.setProperty?.("display", "none", "important");
-    });
-    host.style.setProperty("background", "transparent", "important");
-    host.style.setProperty("border", "0", "important");
-    host.style.setProperty("box-shadow", "none", "important");
-    host.style.setProperty("width", "0", "important");
-    host.style.setProperty("height", "0", "important");
-    host.style.setProperty("min-width", "0", "important");
-    host.style.setProperty("min-height", "0", "important");
-    host.style.setProperty("overflow", "visible", "important");
-    return panel;
+    const html = rwphInjectMainScrollbarCssIntoHtml(buildFullscreenResultsHtml(rows, summary));
+    const tab = rwphCreateResultsLoadingPanel(html, Date.now(), { mode: "results", setupPreview: true });
+    return tab?.rwphPanel || document.getElementById("rwph-results-panel");
   }
 
   async function rwphOpenDefaultSetupActualPanel(target) {
@@ -2998,13 +2967,14 @@
       case "rw-payout-helper":
         panel = rwphCreateDefaultSetupActualMainPanel();
         break;
-      case "rw-results-panel":
+      case "rwph-results-panel":
         panel = rwphCreateDefaultSetupActualResultsPanel();
         break;
-      case "rwph-results-loading-panel":
-        rwphCreateResultsLoadingPanel(buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now());
-        panel = document.getElementById("rwph-results-loading-panel");
+      case "rwph-results-loading-panel": {
+        const previewTab = rwphCreateResultsLoadingPanel(buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now(), { mode: "loading", setupPreview: true });
+        panel = previewTab?.rwphPanel || document.getElementById("rwph-results-loading-panel");
         break;
+      }
       case "rwph-basic-calculations-panel":
         panel = rwphCreateDefaultSetupActualCalculationPanel("standard");
         break;
@@ -3083,7 +3053,7 @@
     // Some real builders install their own drag/resize. Calling again is safe and guarantees setup-created results hosts have it.
     const handle = target.id === "rw-pay-all-panel" ? ".rw-pay-all-head"
       : target.id === "rwph-saved-reports-panel" ? ".rwph-panel-head, .rwph-floating-panel-head"
-      : target.id === "rwph-results-loading-panel" ? ".rwph-results-loading-head, .rwph-results-loading-panel-head"
+      : (target.id === "rwph-results-loading-panel" || target.id === "rwph-results-panel") ? ".rwph-panel-head, .rwph-results-panel-head"
       : target.id === "rwph-xanax-send-status" ? "#rwph-payment-helper-title"
       : ".rwph-panel-head, .rwph-floating-panel-head, .rw-head";
     rwphEnablePanelMoveResize(panel, handle);
@@ -4840,7 +4810,7 @@
         },
         onerror: () => { settled = true; reject(new Error("Failed to reach paywall server.")); },
         ontimeout: () => { settled = true; reject(new Error("Paywall server request timed out. On phone/Torn PDA, large wars or Torn API delays can take longer; try again in a moment.")); },
-        onabort: () => { settled = true; const err = new Error("Calculation cancelled because the results loading tab was closed."); err.cancelled = true; reject(err); },
+        onabort: () => { settled = true; const err = new Error("Calculation cancelled because the Results Loading panel was closed."); err.cancelled = true; reject(err); },
       });
     });
     return {
@@ -4852,7 +4822,7 @@
     };
   }
 
-  function rwphSendCalcCancel(progressId, reason = "Results loading tab closed before calculation finished.") {
+  function rwphSendCalcCancel(progressId, reason = "Results Loading panel closed before calculation finished.") {
     const id = String(progressId || "").trim();
     if (!id) return;
     try {
@@ -6025,6 +5995,8 @@
         embedded.style.display = "none";
       }
     } catch (_) {}
+    try { document.getElementById("rwph-results-panel")?.remove(); } catch (_) {}
+    try { document.getElementById("rwph-results-loading-panel")?.remove(); } catch (_) {}
     try { rwphCloseExistingResultsLoadingPanel(); } catch (_) {}
     try { rwphClearResultsLoadingPanelState(); } catch (_) {}
     try { rwphClearRememberedOpenResultsPage(); } catch (_) {}
@@ -6645,7 +6617,7 @@
         ${rwphNewsletterButtonsHtml}
       </div>
       <textarea id="rwph-export-csv-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(csvText)}</textarea>
-      <p class="close-hint">To close this results page, use the close button on the browser/Torn PDA web tab. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 5 saved reports.</p>
+      <p class="close-hint">Use the RWPH panel close button when you are finished. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 5 saved reports.</p>
     </section>
 
     ${rwphNewsletterPanelsHtml}
@@ -6676,22 +6648,7 @@
 
   <script>
     const rows = ${rowsJson};
-        const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
-    const rwphOpenResultsStorageKey = "rw_payout_helper_last_results_html_open";
-
-    function rwphRememberStandaloneResultsOpen() {
-      try {
-        localStorage.setItem(rwphOpenResultsStorageKey, JSON.stringify({
-          active: true,
-          url: String(location.href || ""),
-          createdAt: Date.now(),
-          html: "<!doctype html>\\n" + document.documentElement.outerHTML
-        }));
-      } catch (_) {}
-    }
-    window.addEventListener("beforeunload", rwphRememberStandaloneResultsOpen);
-    setTimeout(rwphRememberStandaloneResultsOpen, 250);
-
+    const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
     function storePayAllRowsFallback() {
       try {
         localStorage.setItem(payAllRowsFallbackStorageKey, JSON.stringify({ createdAt: Date.now(), rows: rows || [] }));
@@ -6924,9 +6881,15 @@
     var payAllOpenBtn = document.getElementById("payAllBtn");
     if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", function(ev) {
       storePayAllRowsFallback();
-      if (payAllOpenBtn.dataset.rwphParentPaymentsBound === "1") return;
-      try { ev.preventDefault(); } catch (_) {}
-      try { window.top.location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) { try { location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) {} }
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ rwphType: "rwph-start-payments", rows: rows || [] }, "*");
+          return;
+        }
+      } catch (_) {}
+      // Standalone fallback only: keep same-tab navigation if this HTML is opened outside RWPH.
+      try { location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) {}
     });
 
   </script>
@@ -6996,7 +6959,7 @@
         <li data-rwph-load-step="3">Applies your weights and splits the Member Payout across members.</li>
       </ul>
 
-      <div class="wait-note"><b>Keep this loading tab open:</b> closing it before the calculation finishes can cancel the backend job. When the data is complete, click <b>Open Results Page</b> to show the full results and tools.</div>
+      <div class="wait-note"><b>Keep this Results Loading panel open:</b> closing it before the calculation finishes can cancel the backend job. When the data is complete, click <b>Open Results</b> to show the report and tools in this panel.</div>
     </section>
   </main>
   <script>
@@ -7121,10 +7084,10 @@
           openResultsButton.disabled = false;
           openResultsButton.setAttribute("aria-disabled", "false");
           openResultsButton.setAttribute("data-state", "ready");
-          openResultsButton.textContent = "Open Results Page";
+          openResultsButton.textContent = "Open Results";
         }
-        window.rwphSetLoadingProgress(100, "Results data complete. Click Open Results Page when you are ready.", 4);
-        if (statusEl) statusEl.textContent = "Results data complete. Click Open Results Page when you are ready.";
+        window.rwphSetLoadingProgress(100, "Results data complete. Click Open Results when you are ready.", 4);
+        if (statusEl) statusEl.textContent = "Results data complete. Click Open Results when you are ready.";
       }
 
       function rwphCheckStoredManualResults(){
@@ -7475,7 +7438,7 @@
       if (Date.now() - closedSince < closedGraceMs || closedChecks < 12) return;
       cancelled = true;
       if (timer) clearInterval(timer);
-      rwphSendCalcCancel(id, "Results loading tab was closed before RWPH finished calculating.");
+      rwphSendCalcCancel(id, "Results Loading panel was closed before RWPH finished calculating.");
       try { if (typeof onClosed === "function") onClosed(); } catch (_) {}
     };
     timer = setInterval(cancelOnce, 2000);
@@ -7490,44 +7453,111 @@
 
   function rwphCloseExistingResultsLoadingPanel() {
     try {
-      const existing = document.getElementById("rwph-results-loading-panel");
-      if (existing) existing.remove();
+      document.querySelectorAll("#rwph-results-loading-panel.rwph-results-shell-v1534, #rwph-results-panel.rwph-results-shell-v1534, #rwph-results-loading-panel.rwph-results-shell-v1527, #rwph-results-panel.rwph-results-shell-v1527").forEach((existing) => existing.remove());
     } catch (_) {}
   }
 
-  function rwphCreateResultsLoadingPanel(loadingHtml = "", startedAtMs = Date.now()) {
+  function rwphResultsShellConfig(mode = "loading") {
+    const results = String(mode || "loading").toLowerCase() === "results";
+    return results
+      ? { mode: "results", id: "rwph-results-panel", title: "Results", aria: "RWPH results panel", width: 860, height: 680 }
+      : { mode: "loading", id: "rwph-results-loading-panel", title: "Results Loading", aria: "RWPH results loading panel", width: 720, height: 560 };
+  }
+
+  function rwphApplyResultsShellFallbackGeometry(panel, mode = "loading") {
+    if (!panel) return;
+    const cfg = rwphResultsShellConfig(mode);
+    const coarse = !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
+    const vw = Math.max(300, Number(window.innerWidth || 0));
+    const vh = Math.max(360, Number(window.innerHeight || 0));
+    const margin = coarse ? 6 : 16;
+    const width = Math.min(cfg.width, Math.max(280, vw - (margin * 2)));
+    const height = Math.min(cfg.height, Math.max(300, vh - (margin * 2)));
+    const left = Math.max(margin, Math.round((vw - width) / 2));
+    const top = Math.max(margin, Math.round((vh - height) / 2));
+    panel.style.setProperty("position", "fixed", "important");
+    panel.style.setProperty("left", `${left}px`, "important");
+    panel.style.setProperty("top", `${top}px`, "important");
+    panel.style.setProperty("right", "auto", "important");
+    panel.style.setProperty("bottom", "auto", "important");
+    panel.style.setProperty("width", `${width}px`, "important");
+    panel.style.setProperty("height", `${height}px`, "important");
+    panel.style.setProperty("min-width", coarse ? "260px" : "300px", "important");
+    panel.style.setProperty("min-height", coarse ? "260px" : "300px", "important");
+    panel.style.setProperty("max-width", "calc(100vw - 12px)", "important");
+    panel.style.setProperty("max-height", "calc(100vh - 12px)", "important");
+    panel.style.setProperty("transform", "none", "important");
+    panel.style.setProperty("overflow", "hidden", "important");
+  }
+
+  function rwphApplyResultsShellMode(tabOrPanel, mode = "loading", applyLayout = true) {
+    const tab = tabOrPanel?.rwphPanel ? tabOrPanel : null;
+    const panel = tab?.rwphPanel || tabOrPanel;
+    if (!panel) return null;
+    const cfg = rwphResultsShellConfig(mode);
+    const oldId = panel.id;
+    panel.id = cfg.id;
+    panel.dataset.rwphResultsMode = cfg.mode;
+    panel.dataset.rwphUiGeneration = "v1.1.534";
+    panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
+    panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
+    panel.classList.toggle("rw-results-panel", cfg.mode === "results");
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", cfg.aria);
+    const title = panel.querySelector("[data-rwph-results-shell-title]");
+    if (title) title.textContent = cfg.title;
+    const frame = panel.querySelector("#rwph-results-loading-frame, #rwph-results-frame");
+    if (frame) {
+      frame.id = cfg.mode === "results" ? "rwph-results-frame" : "rwph-results-loading-frame";
+      frame.setAttribute("title", cfg.aria);
+    }
+    if (oldId && oldId !== cfg.id) {
+      // The loading and final Results panels have independent admin/personal layouts.
+      rwphApplyResultsShellFallbackGeometry(panel, cfg.mode);
+      if (applyLayout) rwphApplyPanelLayout(panel);
+    }
+    try { rwphApplyPanelThemeChoice(); } catch (_) {}
+    try { rwphApplyLogoChoice(); } catch (_) {}
+    return panel;
+  }
+
+  function rwphInstallResultsPaymentsBridge() {
+    if (window.__rwphResultsPaymentsBridgeV1534) return;
+    window.__rwphResultsPaymentsBridgeV1534 = true;
+    window.addEventListener("message", (event) => {
+      const data = event?.data;
+      if (!data || data.rwphType !== "rwph-start-payments") return;
+      const frame = document.querySelector("#rwph-results-panel.rwph-results-shell-v1534 iframe, #rwph-results-loading-panel.rwph-results-shell-v1534 iframe");
+      if (frame?.contentWindow && event.source && event.source !== frame.contentWindow) return;
+      const rows = rwphNormalizePayAllRows(Array.isArray(data.rows) ? data.rows : []);
+      if (!rows.length) {
+        rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
+        return;
+      }
+      rwphOpenPayAllInFactionControls(rows);
+    });
+  }
+
+  function rwphCreateResultsLoadingPanel(loadingHtml = "", startedAtMs = Date.now(), options = {}) {
     rwphCloseExistingResultsLoadingPanel();
     rwphEnsureThreeColourThemeSystem();
     rwphApplyPanelThemeChoice();
     rwphEnsureMainUiCssV1527();
+    rwphInstallResultsPaymentsBridge();
 
-    const savedLayoutKey = "rwph_results_loading_panel_layout";
+    const initialMode = String(options?.mode || "loading").toLowerCase() === "results" ? "results" : "loading";
+    const cfg = rwphResultsShellConfig(initialMode);
     let closed = false;
-    let fullscreen = false;
-    let previousLayout = null;
-
-    const clamp = (value, min, max) => Math.min(Math.max(Number(value) || 0, min), max);
-    const point = (ev) => {
-      const t = (ev.touches && ev.touches[0]) || (ev.changedTouches && ev.changedTouches[0]);
-      return { x: Number((t && t.clientX) || ev.clientX || 0), y: Number((t && t.clientY) || ev.clientY || 0) };
-    };
 
     const panel = document.createElement("div");
-    panel.id = "rwph-results-loading-panel";
-    panel.className = "rwph-floating-panel rwph-results-loading-panel rwph-results-shell-v1527";
-    panel.dataset.layoutKey = savedLayoutKey;
-    panel.dataset.rwphUiGeneration = "v1.1.527";
+    panel.id = cfg.id;
+    panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
+    panel.dataset.rwphResultsMode = initialMode;
+    panel.dataset.rwphUiGeneration = "v1.1.534";
     panel.setAttribute("role", "dialog");
-    panel.setAttribute("aria-label", "RWPH results loading panel");
+    panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
-      "position:fixed",
-      "right:18px",
-      "bottom:18px",
       "z-index:2147483600",
-      "width:min(900px,calc(100vw - 24px))",
-      "height:min(820px,calc(100vh - 24px))",
-      "min-width:min(320px,calc(100vw - 24px))",
-      "min-height:min(420px,calc(100vh - 24px))",
       "display:flex",
       "flex-direction:column",
       "border-radius:var(--rwph-theme-radius,14px)",
@@ -7538,367 +7568,44 @@
       "box-sizing:border-box",
       "color:var(--rwph-theme-text)",
     ].join(";");
+    rwphApplyResultsShellFallbackGeometry(panel, initialMode);
 
-    const head = document.createElement("div");
-    head.className = "rwph-results-loading-panel-head";
-    head.style.cssText = [
-      "position:relative",
-      "z-index:2147483602",
-      "flex:0 0 auto",
-      "height:54px",
-      "display:flex",
-      "align-items:center",
-      "justify-content:space-between",
-      "gap:10px",
-      "padding:8px 10px 8px 12px",
-      "background:var(--rwph-theme-panel)",
-      "border-bottom:1px solid var(--rwph-theme-line)",
-      "cursor:move",
-      "user-select:none",
-      "touch-action:none",
-      "color:var(--rwph-theme-text)",
-      "font:950 12px/1 Arial,Helvetica,sans-serif",
-      "box-sizing:border-box",
-    ].join(";");
+    panel.innerHTML = `
+      <div class="rwph-panel-head rwph-results-panel-head" title="Drag to move ${esc(cfg.title)}">
+        <div class="rwph-panel-title">
+          <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH">
+          <span data-rwph-results-shell-title>${esc(cfg.title)}</span>
+        </div>
+        <button type="button" class="danger rwph-results-shell-close" title="Close" aria-label="Close ${esc(cfg.title)}">×</button>
+      </div>
+      <div class="rwph-floating-panel-body rwph-results-shell-body" style="padding:0;overflow:hidden;min-height:0;flex:1 1 auto;display:flex;">
+        <iframe id="${initialMode === "results" ? "rwph-results-frame" : "rwph-results-loading-frame"}" title="${esc(cfg.aria)}" style="flex:1 1 auto;width:100%;height:100%;min-height:0;border:0;background:var(--rwph-theme-bg);display:block;"></iframe>
+      </div>
+    `;
 
-    const title = document.createElement("div");
-    title.style.cssText = "min-width:0;flex:1 1 auto;overflow:hidden;";
-    title.innerHTML = '<div style="color:var(--rwph-theme-outline);font-size:10px;letter-spacing:.75px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Ranked War Payout Helper</div><div style="color:var(--rwph-theme-text);font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Results Loading</div>';
-
-    const controls = document.createElement("div");
-    controls.style.cssText = [
-      "position:relative",
-      "z-index:2147483603",
-      "display:flex",
-      "align-items:center",
-      "gap:8px",
-      "flex:0 0 auto",
-      "pointer-events:auto",
-    ].join(";");
-
-    const makeControlButton = (label, titleText, fontSize = "14px") => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      btn.title = titleText;
-      btn.setAttribute("aria-label", titleText);
-      btn.style.cssText = [
-        "display:inline-flex",
-        "align-items:center",
-        "justify-content:center",
-        "width:34px",
-        "height:34px",
-        "min-width:34px",
-        "min-height:34px",
-        "border-radius:9px",
-        "border:1px solid var(--rwph-theme-line2)",
-        "background:var(--rwph-theme-panel2)",
-        "color:var(--rwph-theme-text)",
-        `font:950 ${fontSize}/1 Arial,Helvetica,sans-serif`,
-        "cursor:pointer",
-        "box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26)",
-        "text-shadow:0 1px 0 rgba(0,0,0,.75)",
-        "padding:0",
-        "margin:0",
-        "pointer-events:auto",
-      ].join(";");
-      btn.addEventListener("mousedown", (ev) => ev.stopPropagation());
-      btn.addEventListener("touchstart", (ev) => ev.stopPropagation(), { passive: true });
-      return btn;
-    };
-
-    const fullBtn = makeControlButton("⛶", "Fullscreen results loading panel", "16px");
-    const closeBtn = makeControlButton("×", "Close results loading panel", "20px");
-    closeBtn.className = "rwph-panel-close-control";
-
-    controls.appendChild(fullBtn);
-    controls.appendChild(closeBtn);
-    head.appendChild(title);
-    head.appendChild(controls);
-
-    const frame = document.createElement("iframe");
-    frame.id = "rwph-results-loading-frame";
-    frame.setAttribute("title", "RWPH results loading");
-    frame.style.cssText = [
-      "position:relative",
-      "z-index:1",
-      "flex:1 1 auto",
-      "width:100%",
-      "min-height:0",
-      "border:0",
-      "background:var(--rwph-theme-bg)",
-      "display:block",
-    ].join(";");
-
-    panel.appendChild(head);
-    panel.appendChild(frame);
     (document.body || document.documentElement).appendChild(panel);
-    rwphApplyPanelThemeChoice();
-
-    const makeResizeHandle = (dir) => {
-      const h = document.createElement("div");
-      h.className = "rwph-results-resize-handle rwph-results-resize-" + dir;
-      h.dataset.resizeDir = dir;
-      h.title = dir === "nw" ? "Resize from top-left" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
-      h.style.cssText = [
-        "position:absolute",
-        "width:20px",
-        "height:20px",
-        "z-index:2147483604",
-        "touch-action:none",
-        "user-select:none",
-        "-webkit-user-select:none",
-        "opacity:.98",
-        "background:transparent",
-        "border-color:var(--rwph-theme-outline)",
-        "border-style:solid",
-        "box-sizing:border-box",
-        "filter:drop-shadow(0 0 6px color-mix(in srgb,var(--rwph-theme-outline) 32%,transparent))",
-      ].join(";");
-      if (dir === "se") {
-        h.style.right = "5px"; h.style.bottom = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "0 2px 2px 0"; h.style.borderRadius = "0 0 8px 0";
-      } else if (dir === "sw") {
-        h.style.left = "5px"; h.style.bottom = "5px"; h.style.cursor = "nesw-resize"; h.style.borderWidth = "0 0 2px 2px"; h.style.borderRadius = "0 0 0 8px";
-      } else {
-        h.style.left = "5px"; h.style.top = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "2px 0 0 2px"; h.style.borderRadius = "8px 0 0 0";
-      }
-      panel.appendChild(h);
-      return h;
-    };
-    ["nw", "sw", "se"].forEach(makeResizeHandle);
-
-    const saveLayout = () => {
-      if (fullscreen) return;
-      try {
-        const r = panel.getBoundingClientRect();
-        localStorage.setItem(savedLayoutKey, JSON.stringify({
-          left: Math.round(r.left),
-          top: Math.round(r.top),
-          width: Math.round(r.width),
-          height: Math.round(r.height),
-        }));
-      } catch (_) {}
-    };
-
-    const applySavedLayout = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(savedLayoutKey) || "null");
-        if (saved) {
-          const minW = 280, minH = 220;
-          const maxW = Math.max(minW, window.innerWidth - 16);
-          const maxH = Math.max(minH, window.innerHeight - 16);
-          const w = clamp(saved.width, minW, maxW);
-          const h = clamp(saved.height, minH, maxH);
-          const l = clamp(saved.left, 8, Math.max(8, window.innerWidth - w - 8));
-          const t = clamp(saved.top, 8, Math.max(8, window.innerHeight - h - 8));
-          panel.style.setProperty("left", l + "px", "important");
-          panel.style.setProperty("top", t + "px", "important");
-          panel.style.setProperty("right", "auto", "important");
-          panel.style.setProperty("bottom", "auto", "important");
-          panel.style.setProperty("width", w + "px", "important");
-          panel.style.setProperty("height", h + "px", "important");
-          panel.style.setProperty("max-height", "none", "important");
-          return true;
-        }
-
-        const device = rwphGlobalLayoutDevice();
-        const globalSaved = rwphGlobalPanelLayoutsCache.layouts?.[device]?.panels?.["rwph-results-loading-panel"];
-        if (globalSaved) {
-          rwphApplyPanelGeometry(panel, globalSaved, { normalized: true });
-          return true;
-        }
-        rwphFetchGlobalPanelLayouts(false).then((layouts) => {
-          if (!panel?.isConnected || localStorage.getItem(savedLayoutKey)) return;
-          const lateSaved = layouts?.[rwphGlobalLayoutDevice()]?.panels?.["rwph-results-loading-panel"];
-          if (lateSaved) rwphApplyPanelGeometry(panel, lateSaved, { normalized: true });
-        }).catch(() => {});
-      } catch (_) {}
-      return false;
-    };
-
-    let dragging = false;
-    let resizing = false;
-    let activeDir = "se";
-    let startX = 0, startY = 0, startLeft = 0, startTop = 0, startWidth = 0, startHeight = 0;
-
-    const beginDrag = (ev) => {
-      if (ev.target && ev.target.closest && ev.target.closest("button,.rwph-results-resize-handle")) return;
-      const p = point(ev);
-      const r = panel.getBoundingClientRect();
-      dragging = true;
-      resizing = false;
-      fullscreen = false;
-      fullBtn.textContent = "⛶";
-      fullBtn.title = "Fullscreen results loading panel";
-      startX = p.x; startY = p.y; startLeft = r.left; startTop = r.top;
-      panel.style.setProperty("left", r.left + "px", "important");
-      panel.style.setProperty("top", r.top + "px", "important");
-      panel.style.setProperty("right", "auto", "important");
-      panel.style.setProperty("bottom", "auto", "important");
-      ev.preventDefault();
-      ev.stopPropagation?.();
-    };
-
-    const beginResize = (ev) => {
-      const handle = ev.target && ev.target.closest ? ev.target.closest(".rwph-results-resize-handle") : null;
-      if (!handle || !panel.contains(handle)) return;
-      const p = point(ev);
-      const r = panel.getBoundingClientRect();
-      resizing = true;
-      dragging = false;
-      fullscreen = false;
-      fullBtn.textContent = "⛶";
-      fullBtn.title = "Fullscreen results loading panel";
-      activeDir = handle.dataset.resizeDir || "se";
-      startX = p.x; startY = p.y; startLeft = r.left; startTop = r.top; startWidth = r.width; startHeight = r.height;
-      panel.style.setProperty("left", r.left + "px", "important");
-      panel.style.setProperty("top", r.top + "px", "important");
-      panel.style.setProperty("right", "auto", "important");
-      panel.style.setProperty("bottom", "auto", "important");
-      ev.preventDefault();
-      ev.stopPropagation?.();
-    };
-
-    const move = (ev) => {
-      if (!dragging && !resizing) return;
-      const p = point(ev);
-      if (dragging) {
-        const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-        const maxTop = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
-        panel.style.setProperty("left", clamp(startLeft + p.x - startX, 8, maxLeft) + "px", "important");
-        panel.style.setProperty("top", clamp(startTop + p.y - startY, 8, maxTop) + "px", "important");
-      }
-      if (resizing) {
-        const minW = 280, minH = 220;
-        const maxW = Math.max(minW, window.innerWidth - 16);
-        const maxH = Math.max(minH, window.innerHeight - 16);
-        const dx = p.x - startX;
-        const dy = p.y - startY;
-        let w = startWidth, h = startHeight, l = startLeft, t = startTop;
-        if (activeDir.includes("e")) w = startWidth + dx;
-        if (activeDir.includes("s")) h = startHeight + dy;
-        if (activeDir.includes("w")) w = startWidth - dx;
-        if (activeDir.includes("n")) h = startHeight - dy;
-        w = clamp(w, minW, maxW);
-        h = clamp(h, minH, maxH);
-        if (activeDir.includes("w")) l = startLeft + (startWidth - w);
-        if (activeDir.includes("n")) t = startTop + (startHeight - h);
-        l = clamp(l, 8, Math.max(8, window.innerWidth - w - 8));
-        t = clamp(t, 8, Math.max(8, window.innerHeight - h - 8));
-        panel.style.setProperty("left", l + "px", "important");
-        panel.style.setProperty("top", t + "px", "important");
-        panel.style.setProperty("right", "auto", "important");
-        panel.style.setProperty("bottom", "auto", "important");
-        panel.style.setProperty("width", w + "px", "important");
-        panel.style.setProperty("height", h + "px", "important");
-      }
-      ev.preventDefault();
-    };
-
-    const endMove = () => {
-      if (dragging || resizing) saveLayout();
-      dragging = false;
-      resizing = false;
-    };
-
-    head.addEventListener("mousedown", beginDrag);
-    head.addEventListener("touchstart", beginDrag, { passive: false });
-    panel.addEventListener("mousedown", beginResize);
-    panel.addEventListener("touchstart", beginResize, { passive: false });
-    document.addEventListener("mousemove", move);
-    document.addEventListener("touchmove", move, { passive: false });
-    document.addEventListener("mouseup", endMove);
-    document.addEventListener("touchend", endMove);
-    document.addEventListener("touchcancel", endMove);
+    const frame = panel.querySelector("iframe");
+    const closeBtn = panel.querySelector(".rwph-results-shell-close");
 
     const markClosed = () => {
+      if (closed) return;
       closed = true;
-      rwphClearResultsLoadingPanelState();
-      rwphClearRememberedOpenResultsPage();
-      try { document.removeEventListener("mousemove", move); } catch (_) {}
-      try { document.removeEventListener("touchmove", move); } catch (_) {}
-      try { document.removeEventListener("mouseup", endMove); } catch (_) {}
-      try { document.removeEventListener("touchend", endMove); } catch (_) {}
-      try { document.removeEventListener("touchcancel", endMove); } catch (_) {}
+      try { rwphSavePanelLayout(panel); } catch (_) {}
       try { panel.remove(); } catch (_) {}
+      if (!options?.setupPreview) {
+        try { rwphClearResultsLoadingPanelState(); } catch (_) {}
+        try { rwphClearRememberedOpenResultsPage(); } catch (_) {}
+      }
     };
-    closeBtn.addEventListener("click", (ev) => {
+    closeBtn?.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       markClosed();
     });
 
-    const toggleFullscreen = () => {
-      try {
-        if (!fullscreen) {
-          const r = panel.getBoundingClientRect();
-          previousLayout = { left: r.left, top: r.top, width: r.width, height: r.height };
-          panel.style.setProperty("left", "6px", "important");
-          panel.style.setProperty("top", "6px", "important");
-          panel.style.setProperty("right", "auto", "important");
-          panel.style.setProperty("bottom", "auto", "important");
-          panel.style.setProperty("width", "calc(100vw - 12px)", "important");
-          panel.style.setProperty("height", "calc(100vh - 12px)", "important");
-          panel.style.setProperty("min-width", "0", "important");
-          panel.style.setProperty("min-height", "0", "important");
-          panel.style.setProperty("max-height", "none", "important");
-          panel.style.setProperty("border-radius", "14px", "important");
-          fullscreen = true;
-          fullBtn.textContent = "▣";
-          fullBtn.title = "Exit fullscreen results loading panel";
-          fullBtn.setAttribute("aria-label", "Exit fullscreen results loading panel");
-        } else {
-          const r = previousLayout || { left: 18, top: 18, width: Math.min(900, window.innerWidth - 24), height: Math.min(820, window.innerHeight - 24) };
-          panel.style.setProperty("left", clamp(r.left, 8, Math.max(8, window.innerWidth - 288)) + "px", "important");
-          panel.style.setProperty("top", clamp(r.top, 8, Math.max(8, window.innerHeight - 228)) + "px", "important");
-          panel.style.setProperty("right", "auto", "important");
-          panel.style.setProperty("bottom", "auto", "important");
-          panel.style.setProperty("width", clamp(r.width, 280, Math.max(280, window.innerWidth - 16)) + "px", "important");
-          panel.style.setProperty("height", clamp(r.height, 220, Math.max(220, window.innerHeight - 16)) + "px", "important");
-          panel.style.setProperty("min-width", "280px", "important");
-          panel.style.setProperty("min-height", "220px", "important");
-          panel.style.setProperty("border-radius", "18px", "important");
-          fullscreen = false;
-          fullBtn.textContent = "⛶";
-          fullBtn.title = "Fullscreen results loading panel";
-          fullBtn.setAttribute("aria-label", "Fullscreen results loading panel");
-          saveLayout();
-        }
-      } catch (e) {
-        console.warn("Could not toggle results loading panel fullscreen:", e);
-      }
-    };
-    fullBtn.addEventListener("click", (ev) => {
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      toggleFullscreen();
-    });
-
-    try {
-      const media = window.matchMedia?.("(max-width: 760px), (pointer: coarse)");
-      if (media && media.matches) {
-        panel.style.right = "6px";
-        panel.style.bottom = "6px";
-        panel.style.width = "calc(100vw - 12px)";
-        panel.style.height = "calc(100vh - 12px)";
-        panel.style.minWidth = "0";
-        panel.style.minHeight = "0";
-        panel.querySelectorAll(".rwph-results-resize-handle").forEach((h) => {
-          h.style.width = "30px";
-          h.style.height = "30px";
-          h.style.zIndex = "2147483605";
-        });
-        // Phone/PDA has its own admin-defined default layout. If none exists,
-        // the historical near-fullscreen mobile fallback remains in place.
-        applySavedLayout();
-      } else {
-        applySavedLayout();
-      }
-    } catch (_) {
-      applySavedLayout();
-    }
-
-    // v1.1.496: Loading and final Results share this container, so they always
-    // start fullscreen. The existing fullscreen button can still toggle back out.
-    if (!fullscreen) toggleFullscreen();
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    rwphApplyResultsShellMode(panel, initialMode, true);
+    rwphApplyPanelThemeChoice();
+    rwphApplyLogoChoice();
 
     const fakeTab = {
       rwphIsLoadingPanel: true,
@@ -7908,28 +7615,29 @@
         try { return closed || !document.body.contains(panel); } catch (_) { return true; }
       },
       get document() {
-        return frame.contentDocument || frame.contentWindow?.document || document;
+        return frame?.contentDocument || frame?.contentWindow?.document || document;
       },
       get window() {
-        return frame.contentWindow || window;
+        return frame?.contentWindow || window;
       },
       focus() {
         try { panel.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (_) {}
       },
       postMessage(message, targetOrigin) {
-        try { frame.contentWindow?.postMessage(message, targetOrigin || "*"); } catch (_) {}
+        try { frame?.contentWindow?.postMessage(message, targetOrigin || "*"); } catch (_) {}
       },
       close: markClosed,
+      setMode(nextMode) { return rwphApplyResultsShellMode(this, nextMode, true); },
     };
 
     try {
-      const doc = frame.contentDocument || frame.contentWindow?.document;
+      const doc = frame?.contentDocument || frame?.contentWindow?.document;
       doc.open();
       doc.write(String(loadingHtml || ""));
       doc.close();
-      setTimeout(() => rwphStartResultsLoadingCounter(fakeTab, startedAtMs), 250);
+      if (initialMode === "loading") setTimeout(() => rwphStartResultsLoadingCounter(fakeTab, startedAtMs), 250);
     } catch (e) {
-      console.warn("Could not write loading page into results loading panel:", e);
+      console.warn("Could not write RWPH content into results panel:", e);
     }
 
     return fakeTab;
@@ -7972,7 +7680,7 @@
 
       // Results already opened inside the panel: restore the same panel with the results HTML in the frame.
       if (type === "results" && html) {
-        rwphCreateResultsLoadingPanel(html, startedAtMs);
+        rwphCreateResultsLoadingPanel(html, startedAtMs, { mode: "results" });
         return true;
       }
 
@@ -8089,7 +7797,7 @@
         btn.disabled = false;
         btn.setAttribute("aria-disabled", "false");
         btn.setAttribute("data-state", "ready");
-        btn.textContent = "Open Results Page";
+        btn.textContent = "Open Results";
         if (btn.dataset.rwphParentResultsOpenBound !== "1") {
           btn.dataset.rwphParentResultsOpenBound = "1";
           btn.addEventListener("click", function(ev) {
@@ -8105,6 +7813,7 @@
                 progressId: id,
                 html: String(html || "")
               });
+              try { if (typeof tab.setMode === "function") tab.setMode("results"); } catch (_) {}
               doc.open();
               doc.write(String(html || ""));
               doc.close();
@@ -8117,7 +7826,7 @@
         unlocked = true;
       }
 
-      if (status) status.textContent = "Results data complete. Click Open Results Page when you are ready.";
+      if (status) status.textContent = "Results data complete. Click Open Results when you are ready.";
       if (bar) bar.style.width = "100%";
       steps.forEach((step) => {
         try {
@@ -8159,7 +7868,7 @@
       return false;
     }
 
-    try { rwphSetResultsLoadingStepDone(tab, 4, 100, "Results data complete. Unlocking Open Results Page..."); } catch (_) {}
+    try { rwphSetResultsLoadingStepDone(tab, 4, 100, "Results data complete. Preparing Open Results..."); } catch (_) {}
     rwphStoreManualResultHtmlOnServer(id, html);
     rwphDirectUnlockLoadingTab(tab, id, html);
 
@@ -9193,7 +8902,7 @@
       if (results) results.innerHTML = renderRows(lastRows, lastSummary);
       const manualOpenReady = rwphPrepareManualResultsOpenButton(preOpenedResultsTab, progressId, lastRows, lastSummary);
       if (stopProgressPolling) { stopProgressPolling(); stopProgressPolling = null; }
-      if (manualOpenReady) rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, `Saved report ${label} ready. Click Open Results Page.`);
+      if (manualOpenReady) rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, `Saved report ${label} ready. Click Open Results.`);
       else await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
       rwphCloseSavedReportsPanel();
       if (panelStatus) panelStatus.textContent = `Saved report ${label} loaded.`;
@@ -12849,9 +12558,9 @@
         const cancelBecauseTabClosed = () => {
           if (calculationFinished || calculationCancelledByClosedTab) return;
           calculationCancelledByClosedTab = true;
-          rwphSendCalcCancel(progressId, "Results loading tab was closed before RWPH finished calculating.");
+          rwphSendCalcCancel(progressId, "Results Loading panel was closed before RWPH finished calculating.");
           try { if (calcRequest && typeof calcRequest.abort === "function") calcRequest.abort(); } catch (_) {}
-          if (status) status.textContent = "Calculation cancelled because the results loading tab was closed.";
+          if (status) status.textContent = "Calculation cancelled because the Results Loading panel was closed.";
         };
         stopProgressPolling = rwphStartResultsProgressPolling(preOpenedResultsTab, progressId, cancelBecauseTabClosed);
         stopTabCloseWatcher = rwphStartResultsTabCloseWatcher(preOpenedResultsTab, progressId, cancelBecauseTabClosed);
@@ -12929,7 +12638,7 @@
           stopProgressPolling = null;
         }
         if (manualOpenReady) {
-          rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, "Results data complete. Click Open Results Page when you are ready.");
+          rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, "Results data complete. Click Open Results when you are ready.");
         } else {
           await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
         }
@@ -12940,7 +12649,7 @@
             resultsPanel.setAttribute("hidden", "");
             resultsPanel.style.display = "none";
           }
-          rwphToastPanelInfo(status, `${isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done"}${Number(result.cachedReport?.cacheId || lastSummary?.cachedReportId || 0) ? " · cached" : ""}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Click Open Results Page in the loading panel when ready.`, "info", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
+          rwphToastPanelInfo(status, `${isPointsMode ? `${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)} done` : "Done"}${Number(result.cachedReport?.cacheId || lastSummary?.cachedReportId || 0) ? " · cached" : ""}. ${lastRows.length} members. War ${Number(lastSummary.totalWarHits || 0)}, assists ${Number(lastSummary.totalAssists || 0)}, outside ${Number(lastSummary.totalOutsideHits || 0)}, retals ${Number(lastSummary.totalRetaliationHits || 0)}${isPointsMode ? `, points ${Number(lastSummary.totalPoints || lastSummary.totalWeight || 0).toFixed(2)}` : ""}. Click Open Results in the Results Loading panel when ready.`, "info", isPointsMode ? `RWPH ${rwphAdvancedCalculationSystemLabel(lastSummary?.calculationSystem || calculationSystem)}` : "RWPH Results");
         } else {
           const resultsPanel = document.getElementById("rw-results-panel");
           if (resultsPanel) {
@@ -12982,7 +12691,7 @@
           return;
         }
         if (calculationCancelledByClosedTab || e?.cancelled || /cancelled/i.test(String(e?.message || ""))) {
-          rwphToastPanelInfo(status, "Calculation stopped because the results loading tab was closed before it finished.", "warn", "RWPH Results");
+          rwphToastPanelInfo(status, "Calculation stopped because the Results Loading panel was closed before it finished.", "warn", "RWPH Results");
           return;
         }
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
