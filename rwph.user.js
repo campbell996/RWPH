@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.528
+// @version      1.1.529
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.529: Rebuilds every secondary/floating RWPH panel on one theme-first component shell; merges Body+Surface into one base colour (3 controls total), restores Xanax Payment Helper layout/3-corner resize, and fixes Newsletter panels so Rose is not forced open.
   // v1.1.528: Corrects the Theme / Colours Body and Surface field labels so they match the UI areas each colour actually controls.
   // v1.1.527: Rebuilds Locked/Unlocked/Admin/Help/Results Loading/Results around the four-colour theme from first render; removes their legacy per-panel visual CSS and applies saved theme state before any panel/restore path.
   // v1.1.526: Removes duplicate/legacy Theme/Colour UI paths and makes one Body/Surface/Text/Outline theme engine authoritative across every RWPH panel.
@@ -297,8 +298,8 @@
     }
   }
 
-  // v1.1.527: load the saved four-colour theme before ANY panel or restored Results document can render.
-  rwphEnsureFourColourThemeSystem();
+  // v1.1.527: load the saved three-colour theme before ANY panel or restored Results document can render.
+  rwphEnsureThreeColourThemeSystem();
   rwphApplyPanelThemeChoice();
   rwphEnsureMainUiCssV1527();
 
@@ -2639,7 +2640,7 @@
     { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 460, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
     { id: "rwph-xanax-send-status", label: "Xanax Payment Helper", width: 390, height: 440, className: "rwph-floating-panel" },
     { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 390, height: 300, className: "rwph-floating-panel" },
-    { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 550, className: "rwph-floating-panel rwph-layout-theme-panel" },
+    { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 500, className: "rwph-floating-panel rwph-layout-theme-panel" },
     { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
     { id: "rw-wrong-payment-panel", label: "Payment Warning", width: 390, height: 250, className: "rwph-floating-panel" },
   ]);
@@ -2942,7 +2943,7 @@
 
   function rwphCreateDefaultSetupActualMainPanel() {
     document.getElementById("rw-payout-helper")?.remove();
-    rwphEnsureFourColourThemeSystem();
+    rwphEnsureThreeColourThemeSystem();
     rwphApplyPanelThemeChoice();
     rwphEnsureMainUiCssV1527();
     const panel = document.createElement("div");
@@ -3415,7 +3416,7 @@
     const accent2 = rwphMixHexColour(safeOutline, safeText, 0.24);
     return {
       label,
-      layoutName: "Faction Helper-style four-colour theme",
+      layoutName: "RWPH three-colour theme",
       bg: safeBody,
       bg2: rwphMixHexColour(safeBody, safeSurface, 0.22),
       panel: safeSurface,
@@ -3441,6 +3442,7 @@
       cardTexture: "",
       buttonTexture: "",
       masterColours: {
+        base: safeBody,
         body: safeBody,
         surface: safeSurface,
         text: safeText,
@@ -3505,8 +3507,8 @@
     };
   }
 
-  function rwphEnsureFourColourThemeSystem() {
-    const version = "rwph-four-colour-only-v2";
+  function rwphEnsureThreeColourThemeSystem() {
+    const version = "rwph-three-colour-only-v1";
     try {
       const presets = rwphPanelThemePresets();
       let saved = String(GM_getValue(PANEL_THEME_STORAGE_KEY, "rwphGold") || "rwphGold");
@@ -3570,12 +3572,14 @@
 
   function rwphThemeMasterColours(theme = null) {
     const t = theme || rwphPanelThemePresets().rwphGold;
-    return {
-      body: rwphNormalizeHexColour(t?.masterColours?.body || t?.bg || "#0d0f11", "#0d0f11"),
-      surface: rwphNormalizeHexColour(t?.masterColours?.surface || t?.panel2 || t?.panel || "#20252a", "#20252a"),
-      text: rwphNormalizeHexColour(t?.masterColours?.text || t?.text || "#f4f5f6", "#f4f5f6"),
-      outline: rwphNormalizeHexColour(t?.masterColours?.outline || t?.accent || "#e9bd4e", "#e9bd4e"),
-    };
+    // v1.1.529: the visible theme system has three master colours only.
+    // Base controls both the page/panel body and raised surfaces; subtle depth is
+    // derived automatically so users never need separate Body and Surface pickers.
+    const base = rwphNormalizeHexColour(t?.masterColours?.base || t?.masterColours?.body || t?.bg || "#0d0f11", "#0d0f11");
+    const text = rwphNormalizeHexColour(t?.masterColours?.text || t?.text || "#f4f5f6", "#f4f5f6");
+    const outline = rwphNormalizeHexColour(t?.masterColours?.outline || t?.accent || "#e9bd4e", "#e9bd4e");
+    const surface = rwphMixHexColour(base, text, 0.085);
+    return { base, body: base, surface, text, outline };
   }
 
   function rwphGetCustomThemeMasterColours() {
@@ -3584,12 +3588,10 @@
       const raw = GM_getValue(PANEL_CUSTOM_THEME_STORAGE_KEY, "");
       const parsed = raw && typeof raw === "object" ? raw : (String(raw || "").trim() ? JSON.parse(String(raw)) : null);
       if (parsed && typeof parsed === "object") {
-        return {
-          body: rwphNormalizeHexColour(parsed.body, fallback.body),
-          surface: rwphNormalizeHexColour(parsed.surface, fallback.surface),
-          text: rwphNormalizeHexColour(parsed.text, fallback.text),
-          outline: rwphNormalizeHexColour(parsed.outline, fallback.outline),
-        };
+        const base = rwphNormalizeHexColour(parsed.base || parsed.body || parsed.surface, fallback.base);
+        const text = rwphNormalizeHexColour(parsed.text, fallback.text);
+        const outline = rwphNormalizeHexColour(parsed.outline, fallback.outline);
+        return { base, body: base, surface: rwphMixHexColour(base, text, 0.085), text, outline };
       }
     } catch (_) {}
     return fallback;
@@ -3597,18 +3599,21 @@
 
   function rwphCustomThemeFromMasterColours(master = {}) {
     const defaults = rwphThemeMasterColours(rwphPanelThemePresets().rwphGold);
-    return rwphBuildFourColourTheme(
-      "Custom",
-      rwphNormalizeHexColour(master.body, defaults.body),
-      rwphNormalizeHexColour(master.surface, defaults.surface),
-      rwphNormalizeHexColour(master.text, defaults.text),
-      rwphNormalizeHexColour(master.outline, defaults.outline),
-    );
+    const base = rwphNormalizeHexColour(master.base || master.body || master.surface, defaults.base);
+    const text = rwphNormalizeHexColour(master.text, defaults.text);
+    const outline = rwphNormalizeHexColour(master.outline, defaults.outline);
+    const surface = rwphMixHexColour(base, text, 0.085);
+    const theme = rwphBuildFourColourTheme("Custom", base, surface, text, outline);
+    theme.layoutName = "RWPH three-colour theme";
+    theme.masterColours.base = base;
+    theme.masterColours.body = base;
+    theme.masterColours.surface = surface;
+    return theme;
   }
 
   function rwphSaveCustomThemeMasterColours(master = {}) {
     const safe = rwphThemeMasterColours(rwphCustomThemeFromMasterColours(master));
-    try { GM_setValue(PANEL_CUSTOM_THEME_STORAGE_KEY, JSON.stringify(safe)); } catch (_) {}
+    try { GM_setValue(PANEL_CUSTOM_THEME_STORAGE_KEY, JSON.stringify({ base: safe.base, text: safe.text, outline: safe.outline })); } catch (_) {}
     return safe;
   }
 
@@ -3647,7 +3652,7 @@
     rwphApplyLogoChoice();
     rwphUpdateLayoutThemeButtons();
     rwphUpdateCustomColourPickerUi();
-    if (showPopup) rwphShowToast("RWPH custom four-colour theme saved.", "info", "RWPH Theme / Colours");
+    if (showPopup) rwphShowToast("RWPH custom three-colour theme saved.", "info", "RWPH Theme / Colours");
     return safe;
   }
 
@@ -3666,10 +3671,11 @@
 
   function rwphPanelThemeCss(theme, includeStandalonePage = false) {
     const t = theme || rwphGetPanelThemePreset();
-    const body = t.masterColours?.body || t.bg || "#0d0f11";
-    const surface = t.masterColours?.surface || t.panel || "#20252a";
-    const text = t.masterColours?.text || t.text || "#f4f5f6";
-    const outline = t.masterColours?.outline || t.accent || "#e9bd4e";
+    const master = rwphThemeMasterColours(t);
+    const body = master.body;
+    const surface = master.surface;
+    const text = master.text;
+    const outline = master.outline;
     const surface2 = rwphMixHexColour(surface, outline, 0.10);
     const body2 = rwphMixHexColour(body, surface, 0.28);
     const soft = rwphMixHexColour(text, body, 0.32);
@@ -3804,7 +3810,7 @@
         --rwph-theme-button-radius:9px;
       }
 
-      /* v1.1.527 — single four-colour visual system for every RWPH panel. */
+      /* v1.1.527 — single theme visual system for every RWPH panel. */
       body #rw-payout-helper,
       body #rw-pay-all-panel,body .rw-pay-all-panel,
       body #rwph-xanax-send-status,
@@ -4037,6 +4043,158 @@
   const rwphLayoutThemeLabel = rwphColourThemeLabel;
 
 
+
+  function rwphIsSecondaryPanelV1529(panel) {
+    if (!panel || panel.nodeType !== 1) return false;
+    if (panel.id === "rw-payout-helper" || panel.id === "rw-results-panel") return false;
+    if (panel.classList?.contains("rw-results-panel") || panel.classList?.contains("rwph-results-loading-panel") || panel.classList?.contains("rwph-results-html-panel")) return false;
+    return panel.matches?.([
+      "#rw-pay-all-panel", ".rw-pay-all-panel", "#rwph-xanax-send-status",
+      "#rwph-member-management-panel", ".rwph-member-management-panel", "#rwph-saved-reports-panel",
+      "#rwph-layout-theme-panel", "#rwph-logo-picker-panel", "#rwph-licence-info-panel", "#rw-wrong-payment-panel",
+      "#rwph-default-setup-panel", "#rwph-default-setup-controller", "#rwph-basic-calculations-panel", "#rwph-advanced-calculations-panel",
+      ".rwph-floating-panel", ".rwph-calculation-settings-panel", ".rwph-info-popup-panel"
+    ].join(","));
+  }
+
+  function rwphDecorateSecondaryPanelV1529(panel, handleSelector = "") {
+    if (!rwphIsSecondaryPanelV1529(panel)) return panel;
+    panel.classList.add("rwph-secondary-panel-v1529");
+    panel.setAttribute("data-rwph-secondary-ui", "v1.1.529");
+    const heads = [
+      handleSelector, ".rwph-panel-head", ".rwph-floating-panel-head", ".rwph-saved-reports-head", ".rw-pay-all-head", "#rwph-payment-helper-title"
+    ].filter(Boolean).join(",");
+    const head = panel.querySelector(heads);
+    if (head) head.classList.add("rwph-secondary-head-v1529");
+    panel.querySelectorAll(":scope > .rwph-floating-panel-body, :scope > .rwph-saved-reports-body, :scope > .rw-pay-all-scroll, :scope > .rwph-xanax-scroll")
+      .forEach((body) => body.classList.add("rwph-secondary-body-v1529"));
+    panel.querySelectorAll(".rw-card,.rw-box,.rw-section,.rw-calc-brief,.rw-pay-all-payment-card,.rw-pay-all-start-warning,.rw-pay-all-complete-card,.rw-pay-all-progress,.rwph-saved-report-intro,.rwph-saved-report-auto-delete,.rwph-saved-report-card,.rwph-xanax-detail-card,.rwph-xanax-steps,.rwph-xanax-safety-note")
+      .forEach((card) => card.classList.add("rwph-secondary-card-v1529"));
+    panel.querySelectorAll('#rwph-close-helper,#rwph-saved-reports-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-layout-theme-close,#rwph-mm-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-mini-close,[data-pay-all-close]')
+      .forEach((close) => close.classList.add("rwph-secondary-close-v1529"));
+    return panel;
+  }
+
+  function rwphSecondaryPanelCssV1529() {
+    return `
+      /* v1.1.529 — rebuilt secondary/floating panel component system. The six
+         already-rebuilt Main/Locked/Admin/Help/Loading/Results surfaces are excluded. */
+      body .rwph-secondary-panel-v1529{
+        position:fixed!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;
+        overflow:hidden!important;resize:none!important;background:var(--rwph-theme-bg)!important;background-image:none!important;
+        color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:14px!important;
+        box-shadow:var(--rwph-theme-shadow)!important;font-family:Inter,Segoe UI,Arial,sans-serif!important;
+      }
+      body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,
+      body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,
+      body .rwph-secondary-panel-v1529 .rw-pay-all-head{
+        position:relative!important;flex:0 0 auto!important;min-height:104px!important;padding:12px 48px 10px!important;
+        display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;
+        text-align:center!important;cursor:move!important;touch-action:none!important;user-select:none!important;
+        background:var(--rwph-theme-panel2)!important;background-image:none!important;color:var(--rwph-theme-text)!important;
+        border:0!important;border-bottom:1px solid var(--rwph-theme-line)!important;box-shadow:none!important;
+      }
+      body .rwph-secondary-panel-v1529>.rwph-secondary-body-v1529,
+      body .rwph-secondary-panel-v1529>.rwph-floating-panel-body,
+      body .rwph-secondary-panel-v1529>.rwph-saved-reports-body,
+      body .rwph-secondary-panel-v1529>.rw-pay-all-scroll,
+      body .rwph-secondary-panel-v1529>.rwph-xanax-scroll{
+        flex:1 1 auto!important;min-height:0!important;min-width:0!important;overflow:auto!important;overflow-x:hidden!important;
+        padding:12px!important;background:var(--rwph-theme-bg)!important;color:var(--rwph-theme-text)!important;overscroll-behavior:contain!important;
+        -webkit-overflow-scrolling:touch!important;box-sizing:border-box!important;
+      }
+      body .rwph-secondary-panel-v1529 :is(.rwph-secondary-card-v1529,.rw-card,.rw-box,.rw-section,.rw-calc-brief,details,fieldset,
+        .rwph-saved-report-intro,.rwph-saved-report-auto-delete,.rwph-saved-report-card,.rw-pay-all-payment-card,.rw-pay-all-start-warning,.rw-pay-all-complete-card,
+        .rwph-xanax-detail-card,.rwph-xanax-steps,.rwph-xanax-safety-note){
+        background:var(--rwph-theme-panel)!important;background-image:none!important;color:var(--rwph-theme-text)!important;
+        border:1px solid var(--rwph-theme-line)!important;border-radius:11px!important;box-shadow:none!important;box-sizing:border-box!important;
+      }
+      body .rwph-secondary-panel-v1529 :is(button,.btn,a.btn,input[type=button],input[type=submit]){
+        appearance:none!important;min-height:38px!important;padding:8px 11px!important;border-radius:9px!important;
+        background:var(--rwph-theme-panel2)!important;background-image:none!important;color:var(--rwph-theme-text)!important;
+        border:1px solid var(--rwph-theme-line2)!important;box-shadow:none!important;text-shadow:none!important;font:inherit!important;font-weight:850!important;
+      }
+      body .rwph-secondary-panel-v1529 :is(button,.btn,a.btn,input[type=button],input[type=submit]):hover{
+        background:var(--rwph-theme-panel3)!important;border-color:var(--rwph-theme-outline)!important;color:var(--rwph-theme-text)!important;
+        transform:none!important;filter:none!important;
+      }
+      body .rwph-secondary-panel-v1529 :is(.primary,button.primary,.rw-primary,[aria-selected=true]){
+        background:var(--rwph-theme-outline)!important;color:var(--rwph-theme-selected-text)!important;border-color:var(--rwph-theme-outline)!important;
+      }
+      body .rwph-secondary-panel-v1529 :is(input:not([type=checkbox]):not([type=radio]),textarea,select){
+        width:100%;max-width:100%;min-width:0;box-sizing:border-box!important;background:var(--rwph-theme-bg2)!important;background-image:none!important;
+        color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;box-shadow:none!important;
+      }
+      body .rwph-secondary-panel-v1529 :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus{
+        outline:none!important;border-color:var(--rwph-theme-outline)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--rwph-theme-outline) 20%,transparent)!important;
+      }
+      body .rwph-secondary-panel-v1529 input[type=checkbox],body .rwph-secondary-panel-v1529 input[type=radio]{accent-color:var(--rwph-theme-outline)!important;}
+      body .rwph-secondary-panel-v1529 :is(.rw-muted,.muted,.rw-small,small,label){color:var(--rwph-theme-soft)!important;}
+      body .rwph-secondary-panel-v1529 :is(h1,h2,h3,h4,h5,h6,b,strong,.rwph-panel-title,.rwph-saved-reports-title,.rw-pay-all-title,.rwph-payment-helper-title-text){color:var(--rwph-theme-text)!important;text-shadow:none!important;}
+      body .rwph-secondary-panel-v1529 .rwph-secondary-close-v1529,
+      body .rwph-secondary-panel-v1529 #rwph-close-helper,
+      body .rwph-secondary-panel-v1529 [data-pay-all-close]{
+        position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:32px!important;height:32px!important;
+        min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;padding:0!important;margin:0!important;
+        display:grid!important;place-items:center!important;z-index:160!important;font-size:20px!important;line-height:1!important;
+      }
+      body .rwph-secondary-panel-v1529>.rw-resize-handle{
+        position:absolute!important;display:block!important;width:22px!important;height:22px!important;z-index:155!important;pointer-events:auto!important;
+        touch-action:none!important;user-select:none!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;
+      }
+      body .rwph-secondary-panel-v1529>.rw-resize-handle-nw{left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-top:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
+      body .rwph-secondary-panel-v1529>.rw-resize-handle-sw{left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
+      body .rwph-secondary-panel-v1529>.rw-resize-handle-se{right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;cursor:nwse-resize!important;border-right:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
+      body .rwph-secondary-panel-v1529>.rw-resize-handle-ne{display:none!important;}
+      body .rwph-secondary-panel-v1529 ::-webkit-scrollbar{width:8px;height:8px}body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important}body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important}
+
+      /* Basic / Advanced calculation panels. */
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529>.rwph-floating-panel-body{padding:0!important;}
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 details.rw-settings-dropdown{display:block!important;width:100%!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important;}
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 details.rw-settings-dropdown>summary{display:none!important;}
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 details.rw-settings-dropdown>.rw-api-tos-content{display:block!important;width:100%!important;margin:0!important;padding:12px!important;border:0!important;border-radius:0!important;background:var(--rwph-theme-bg)!important;}
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;}
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-actions{display:flex!important;flex-wrap:wrap!important;gap:8px!important;}
+      body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-primary-calc-actions>button{width:100%!important;}
+
+      /* Cached Reports. */
+      body #rwph-saved-reports-panel.rwph-secondary-panel-v1529 .rwph-saved-reports-body{display:flex!important;flex-direction:column!important;gap:9px!important;}
+      body #rwph-saved-reports-panel.rwph-secondary-panel-v1529 .rwph-saved-report-auto-delete{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;align-items:center!important;padding:9px!important;}
+
+      /* Theme / Logo / Default Setup forms. */
+      body #rwph-layout-theme-panel.rwph-secondary-panel-v1529 .rwph-theme-master-grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;}
+      body #rwph-layout-theme-panel.rwph-secondary-panel-v1529 .rwph-theme-master-field{padding:11px!important;display:grid!important;gap:7px!important;}
+      body #rwph-logo-picker-panel.rwph-secondary-panel-v1529 .rwph-logo-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))!important;gap:10px!important;}
+
+      /* Payments Copy wizard. */
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529,body .rw-pay-all-panel.rwph-secondary-panel-v1529{padding:0!important;}
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-scroll,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-scroll{display:flex!important;flex-direction:column!important;gap:10px!important;}
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-stage,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-stage{width:100%!important;min-width:0!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;}
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-nav,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-nav{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(110px,1fr))!important;gap:8px!important;}
+
+      /* Xanax Payment Helper — restored/rebuilt layout + standard 3-corner resize. */
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:340px!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:106px!important;padding:12px 48px 10px!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(220px,70vw)!important;height:54px!important;object-fit:contain!important;margin:0 auto!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;text-align:center!important;font-size:17px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{display:grid!important;align-content:start!important;gap:10px!important;padding:12px!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-subtitle{padding:7px 9px!important;text-align:center!important;color:var(--rwph-theme-soft)!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-message{padding:9px 10px!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;background:var(--rwph-theme-panel)!important;overflow-wrap:anywhere!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:11px!important;display:grid!important;gap:6px!important;line-height:1.45!important;text-align:left!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-title{font-weight:950!important;text-align:center!important;color:var(--rwph-theme-text)!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin:4px 0!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-code{display:inline-block!important;padding:2px 5px!important;border-radius:6px!important;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-outline)!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;overflow-wrap:anywhere!important;}
+
+      @media(max-width:760px),(pointer:coarse){
+        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{min-height:92px!important;padding:10px 44px 9px!important;}
+        body .rwph-secondary-panel-v1529>.rw-resize-handle{width:30px!important;height:30px!important;}
+        body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-row{grid-template-columns:1fr!important;}
+        body #rwph-xanax-send-status.rwph-secondary-panel-v1529{width:calc(100vw - 12px)!important;min-width:240px!important;min-height:300px!important;}
+        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions{grid-template-columns:1fr!important;}
+      }
+    `;
+  }
+
   function rwphThemeStyleHost() {
     return document.body || document.documentElement || document.head;
   }
@@ -4045,6 +4203,7 @@
     try {
       [
         "rwph-four-colour-theme-v1526",
+        "rwph-four-colour-theme-v1527",
         "rwph-unified-ui-v1525",
         "rwph-panel-theme-choice-v1379",
         "rwph-global-button-logo-sync-v1440"
@@ -4069,12 +4228,12 @@
       Object.entries(pairs).forEach(([name, value]) => root.style.setProperty(name, value));
       if (document.body) Object.entries(pairs).forEach(([name, value]) => document.body.style.setProperty(name, value));
     } catch (_) {}
-    let style = document.getElementById("rwph-four-colour-theme-v1527");
+    let style = document.getElementById("rwph-three-colour-theme-v1529");
     if (!style) {
       style = document.createElement("style");
-      style.id = "rwph-four-colour-theme-v1527";
+      style.id = "rwph-three-colour-theme-v1529";
     }
-    style.textContent = rwphPanelThemeCss(theme);
+    style.textContent = rwphPanelThemeCss(theme) + rwphSecondaryPanelCssV1529();
     const host = rwphThemeStyleHost();
     if (host && (style.parentNode !== host || host.lastElementChild !== style)) host.appendChild(style);
     document.documentElement.setAttribute("data-rwph-panel-theme", themeKey);
@@ -4122,8 +4281,7 @@
       `<option value="${esc(themeKey)}" ${themeKey === key ? "selected" : ""}>${esc(theme.label || themeKey)}</option>`
     ).join("");
     const colourFields = [
-      ["body", "CARDS / ROWS / TITLE BARS", "Controls cards, member/result rows, title bars and raised panel surfaces."],
-      ["surface", "BODY / SCROLL / INPUTS / SELECTS", "Controls the main panel background, scrolling areas, inputs and selects."],
+      ["base", "PANELS / CARDS / ROWS / INPUTS", "Controls panel bodies, cards, rows, title bars, scroll areas, inputs and selects. RWPH automatically derives subtle depth from this one colour."],
       ["text", "ALL TEXT", "Controls normal text, labels, values and muted text derived from this colour."],
       ["outline", "ALL OUTLINES / BORDERS / ACCENTS", "Controls borders, outlines, highlights and the main RWPH accent colour."],
     ];
@@ -4140,7 +4298,7 @@
       right: 18px;
       top: 120px;
       width: min(480px, calc(100vw - 18px));
-      height: min(550px, calc(100vh - 18px));
+      height: min(500px, calc(100vh - 18px));
       max-width: calc(100vw - 16px);
       max-height: calc(100vh - 16px);
       min-width: min(300px, calc(100vw - 18px));
@@ -4185,8 +4343,8 @@
         </div>
 
         <div class="rw-card" style="padding:11px 12px;margin-top:12px;">
-          <b>Four colours control the RWPH interface.</b><br>
-          <span class="rw-muted">Body controls the base areas, Surface controls raised panels/cards, Text controls readable content, and Outline controls borders/highlights/buttons.</span>
+          <b>Three colours control the RWPH interface.</b><br>
+          <span class="rw-muted">Panel colour controls bodies/cards/rows/inputs, Text controls readable content, and Outline controls borders/highlights/buttons.</span>
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
@@ -4216,7 +4374,7 @@
     const readFields = () => {
       const base = getVisibleMaster();
       const next = { ...base };
-      for (const prop of ["body", "surface", "text", "outline"]) {
+      for (const prop of ["base", "text", "outline"]) {
         const colour = panel.querySelector(`[data-rwph-theme-colour="${prop}"]`);
         const hex = panel.querySelector(`[data-rwph-theme-hex="${prop}"]`);
         next[prop] = rwphNormalizeHexColour(hex?.value || colour?.value || base[prop], base[prop]);
@@ -5492,7 +5650,7 @@
   }
 
   function panelBaseCss() {
-    // v1.1.527: structural + four-colour-theme CSS only. No legacy hard-coded palette.
+    // v1.1.527: structural + three-colour-theme CSS only. No legacy hard-coded palette.
     return `
       #rw-payout-helper,
       #rw-payout-helper *{box-sizing:border-box;}
@@ -6562,7 +6720,7 @@
       .close-hint{margin:0}.member-results-panel{padding:10px}.results-section-head{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-bottom:9px}.results-section-head>div:first-child{min-width:0}.results-section-head>div>span{color:var(--rwph-theme-outline)!important;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.results-section-head h2{margin:2px 0 0;color:var(--rwph-theme-text)!important;font-size:18px}.results-section-head p{margin:4px 0 0}
       .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}.result-card{padding:10px;min-width:0}.result-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.result-player{min-width:0}.result-name{color:var(--rwph-theme-text)!important;font-weight:950;font-size:14px}.result-rank-pill{padding:3px 6px;border:1px solid var(--rwph-theme-line);border-radius:999px;color:var(--rwph-theme-outline)!important;font-size:10px;white-space:nowrap}.payout{color:var(--rwph-theme-outline)!important;font-weight:950;font-size:18px}.result-payout-block{text-align:right}.result-quick-row,.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}.result-highlight,.stats>div{padding:7px}.result-highlight b,.stats b{display:block;margin-top:2px;color:var(--rwph-theme-text)!important}.result-highlight span{color:var(--rwph-theme-soft)!important;font-size:10px}
       .rwph-newsletter-dropdown{position:relative;display:inline-flex}.rwph-newsletter-dropdown-menu{position:absolute;z-index:50;top:calc(100% + 6px);right:0;min-width:230px;padding:6px;display:grid;gap:5px}.rwph-newsletter-dropdown:not([open]) .rwph-newsletter-dropdown-menu{display:none}.rwph-newsletter-dropdown-item{width:100%;justify-content:flex-start}
-      .rwph-results-html-panel{position:fixed;z-index:999999;inset:18px;max-width:1040px;margin:auto;display:flex;flex-direction:column;overflow:hidden}.rwph-results-html-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-results-html-title{font-size:16px;font-weight:950}.rwph-results-html-close{width:36px;min-width:36px;padding:0;font-size:20px}.rwph-results-html-status{padding:8px 10px}.rwph-results-html-preview-wrap{margin:0 10px 8px;padding:8px;overflow:auto;max-height:35vh}.rwph-results-html-preview-title{padding:6px 10px;font-weight:900;color:var(--rwph-theme-text)!important}.rwph-results-html-box{margin:0 10px 10px;min-height:240px;flex:1 1 auto;padding:9px;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;resize:none}
+      .rwph-results-html-panel[hidden]{display:none!important}.rwph-results-html-panel{position:fixed;z-index:999999;inset:18px;max-width:1040px;margin:auto;display:flex;flex-direction:column;overflow:hidden}.rwph-results-html-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-results-html-title{font-size:16px;font-weight:950}.rwph-results-html-close{width:36px;min-width:36px;padding:0;font-size:20px}.rwph-results-html-status{padding:8px 10px}.rwph-results-html-preview-wrap{margin:0 10px 8px;padding:8px;overflow:auto;max-height:35vh}.rwph-results-html-preview-title{padding:6px 10px;font-weight:900;color:var(--rwph-theme-text)!important}.rwph-results-html-box{margin:0 10px 10px;min-height:240px;flex:1 1 auto;padding:9px;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;resize:none}
       ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)}::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline);border:2px solid var(--rwph-theme-bg);border-radius:999px}
       @media(max-width:700px),(pointer:coarse){body{padding:8px}.hero{padding:10px}.results-hero-head{align-items:flex-start}.results-hero-logo{width:48px;height:48px}.results-hero-copy h1{font-size:19px}.results-action-zone>.btn,.results-action-zone>.rwph-newsletter-dropdown{flex:1 1 100%}.rwph-newsletter-dropdown-summary{width:100%}.rwph-newsletter-dropdown-menu{position:fixed;left:8px;right:8px;top:auto;bottom:8px}.grid{grid-template-columns:1fr}.results-section-head{align-items:flex-start;flex-direction:column}.results-section-head .results-meta-card{width:100%}.rwph-results-html-panel{inset:8px}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
     `;
@@ -6735,17 +6893,17 @@
     const rwphNewsletterButtonsHtml = `<details class="rwph-newsletter-dropdown">
       <summary class="btn secondary rwph-newsletter-dropdown-summary">Newsletter ▾</summary>
       <div class="rwph-newsletter-dropdown-menu">
-        ${rwphNewsletterVariants.map((variant) => `<a class="rwph-newsletter-dropdown-item" id="${esc(variant.buttonId)}" href="#${esc(variant.panelId)}" data-open-results-html-panel="${esc(variant.panelId)}">${esc(variant.label)}</a>`).join("")}
+        ${rwphNewsletterVariants.map((variant) => `<button type="button" class="rwph-newsletter-dropdown-item" id="${esc(variant.buttonId)}" data-open-results-html-panel="${esc(variant.panelId)}">${esc(variant.label)}</button>`).join("")}
       </div>
     </details>`;
     const rwphNewsletterPanelsHtml = rwphNewsletterVariants.map((variant) => `
-    <section class="rwph-results-html-panel" id="${esc(variant.panelId)}" aria-label="${esc(variant.label)} HTML panel">
+    <section class="rwph-results-html-panel" id="${esc(variant.panelId)}" aria-label="${esc(variant.label)} HTML panel" hidden>
       <div class="rwph-results-html-head">
         <div>
           <div class="rwph-results-html-title">${esc(variant.label)} HTML</div>
           <div class="rwph-results-html-note">${esc(variant.themeTitle)} theme. Preview is shown below. Right-click inside the HTML box, choose Select All, then Copy. Generated size: ${esc(variant.length)} characters.</div>
         </div>
-        <a class="rwph-results-html-close" href="#" title="Close">×</a>
+        <button class="rwph-results-html-close" type="button" data-close-results-html-panel title="Close" aria-label="Close newsletter panel">×</button>
       </div>
       <div class="rwph-results-html-status">${esc(variant.label)} preview ready. ${esc(variant.length)} characters.</div>
       <div class="rwph-results-html-preview-wrap">
@@ -6886,7 +7044,7 @@
         panelId = panelId || "rwph-results-html-panel-gold";
         var existingPanel = document.getElementById(panelId);
         if (existingPanel) {
-          try { location.hash = panelId; } catch (_) {}
+          existingPanel.hidden = false;
           existingPanel.style.display = "flex";
           existingPanel.style.visibility = "visible";
           existingPanel.style.opacity = "1";
@@ -6957,6 +7115,13 @@
       if (!btn) return;
       var panelId = btn.getAttribute("data-open-results-html-panel") || "rwph-results-html-panel-gold";
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      try {
+        document.querySelectorAll(".rwph-results-html-panel").forEach(function(panel) {
+          if (panel.id !== panelId) { panel.hidden = true; panel.style.display = "none"; }
+        });
+        var dropdown = btn.closest && btn.closest("details.rwph-newsletter-dropdown");
+        if (dropdown) dropdown.removeAttribute("open");
+      } catch (_) {}
       openResultsHtmlPanel(panelId);
     }
 
@@ -6965,6 +7130,22 @@
       btn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
     });
     document.addEventListener("click", rwphHandleResultsHtmlPanelClick, true);
+
+    function rwphCloseResultsHtmlPanel(panel) {
+      if (!panel) return;
+      panel.hidden = true;
+      panel.style.display = "none";
+      panel.style.visibility = "hidden";
+      panel.style.opacity = "0";
+    }
+    document.addEventListener("click", function(ev) {
+      var closeBtn = ev && ev.target && ev.target.closest ? ev.target.closest("[data-close-results-html-panel],.rwph-results-html-close") : null;
+      if (!closeBtn) return;
+      var panel = closeBtn.closest ? closeBtn.closest(".rwph-results-html-panel") : null;
+      if (!panel) return;
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      rwphCloseResultsHtmlPanel(panel);
+    }, true);
 
     function rwphSelectRawHtmlBox(box) {
       if (!box) return false;
@@ -7557,7 +7738,7 @@
 
   function rwphCreateResultsLoadingPanel(loadingHtml = "", startedAtMs = Date.now()) {
     rwphCloseExistingResultsLoadingPanel();
-    rwphEnsureFourColourThemeSystem();
+    rwphEnsureThreeColourThemeSystem();
     rwphApplyPanelThemeChoice();
     rwphEnsureMainUiCssV1527();
 
@@ -10345,32 +10526,20 @@
       box = document.createElement("div");
       box.id = "rwph-xanax-send-status";
       box.style.cssText = `
-        position: fixed;
-        right: 18px;
-        bottom: 18px;
-        z-index: 1000000;
-        width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "min(330px, calc(100vw - 12px))" : "min(420px, calc(100vw - 24px))"};
-        max-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vw - 12px)" : "calc(100vw - 24px)"};
-        min-width: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "240px" : "300px"};
-        max-height: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vh - 12px)" : "calc(100vh - 24px)"};
-        overflow: auto;
-        overflow-x: hidden;
-        box-sizing: border-box;
-        padding: ${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "8px" : "12px"};
-        border-radius: 16px;
-        border: 1px solid rgba(251,191,36,.35);
-        background: radial-gradient(circle at 18% 0%, rgba(245,158,11,.16), transparent 32%), linear-gradient(180deg, rgba(8,13,25,.97), rgba(15,23,42,.96));
-        color: #fff7ed;
-        font: 12px Inter, Segoe UI, Arial, sans-serif;
-        line-height: 1.45;
-        text-align: center;
-        box-shadow: 0 18px 44px rgba(0,0,0,.55), 0 0 24px rgba(245,158,11,.12);
-        backdrop-filter: blur(14px) saturate(1.2);
+        position:fixed;right:18px;bottom:18px;z-index:1000000;
+        width:${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vw - 12px)" : "min(420px, calc(100vw - 24px))"};
+        max-width:${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vw - 12px)" : "calc(100vw - 24px)"};
+        min-width:${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "240px" : "300px"};
+        min-height:${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "300px" : "340px"};
+        max-height:${window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches ? "calc(100vh - 12px)" : "calc(100vh - 24px)"};
+        overflow:hidden;box-sizing:border-box;padding:0;border-radius:14px;
+        border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68));background:var(--rwph-theme-bg,#0d0f11);color:var(--rwph-theme-text,#f4f5f6);
+        font:12px Inter,Segoe UI,Arial,sans-serif;line-height:1.45;text-align:left;box-shadow:var(--rwph-theme-shadow,0 20px 58px rgba(0,0,0,.46));
       `;
       document.body.appendChild(box);
     }
 
-    box.style.borderColor = isError ? "rgba(251,113,133,.70)" : "rgba(251,191,36,.35)";
+    box.dataset.rwphPaymentError = isError ? "1" : "0";
     box.style.setProperty("display", "flex", "important");
     box.style.setProperty("flex-direction", "column", "important");
     box.style.setProperty("overflow", "hidden", "important");
@@ -11221,12 +11390,13 @@
   function rwphEnablePanelMoveResize(panel, handleSelector = ".rw-head") {
     if (!panel) return;
     try {
-      rwphEnsureFourColourThemeSystem();
+      rwphEnsureThreeColourThemeSystem();
       rwphApplyPanelThemeChoice();
       rwphEnsureMainUiCssV1527();
-      panel.setAttribute("data-rwph-ui-generation", "v1.1.527");
+      panel.setAttribute("data-rwph-ui-generation", rwphIsSecondaryPanelV1529(panel) ? "v1.1.529" : "v1.1.527");
     } catch (_) {}
     panel.querySelectorAll?.(":scope > .rw-resize-handle-ne, :scope > .resize-handle-ne").forEach((handle) => handle.remove());
+    try { rwphDecorateSecondaryPanelV1529(panel, handleSelector); } catch (_) {}
     makeDraggable(panel, handleSelector);
     makeResizable(panel);
     rwphApplyPanelLayout(panel);
@@ -13956,13 +14126,17 @@
   }
 
 
-  function rwphInstallFourColourThemeObserverV1527() {
+  function rwphInstallThreeColourThemeObserverV1529() {
     try {
       const keepThemeLast = () => {
-        const style = document.getElementById("rwph-four-colour-theme-v1527");
+        const style = document.getElementById("rwph-three-colour-theme-v1529");
         const host = rwphThemeStyleHost();
         if (style && host && (style.parentNode !== host || host.lastElementChild !== style)) host.appendChild(style);
         rwphEnsureMainUiCssV1527();
+        try {
+          document.querySelectorAll("#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel")
+            .forEach((panel) => rwphDecorateSecondaryPanelV1529(panel));
+        } catch (_) {}
       };
       keepThemeLast();
       if (!window.__rwphFourColourThemeObserverV1527) {
@@ -13979,20 +14153,20 @@
         window.__rwphFourColourThemeObserverV1527 = observer;
       }
     } catch (e) {
-      console.warn("RWPH four-colour theme observer failed:", e);
+      console.warn("RWPH three-colour theme observer failed:", e);
     }
   }
 
 
   rwphInjectPanelTitlesUnderLogoV1450();
   rwphInjectMainPanelLogoOnlyGuardV1451();
-  rwphEnsureFourColourThemeSystem();
+  rwphEnsureThreeColourThemeSystem();
   rwphApplyPanelThemeChoice();
   rwphEnsureMainUiCssV1527();
   rwphApplyLogoChoice();
   rwphInstallWizardFitCssV1501();
   rwphEnsureCalculationPanelStylesV1509();
-  rwphInstallFourColourThemeObserverV1527();
+  rwphInstallThreeColourThemeObserverV1529();
   if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
 })();
