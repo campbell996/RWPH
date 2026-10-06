@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.537
+// @version      1.1.538
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.538: Makes Payment Checklist Complete fit without forced scrolling, adds the same Newsletter/HTML/CSV result actions there, and makes Cached Reports temporarily replace/reopen Main unless a report is loaded.
   // v1.1.537: Swaps Results/Loading header controls so Close is far-right; replaces the Results newsletter dropdown/embedded panels with one Torn-page Newsletter panel containing a selector, live preview, raw HTML, and Copy Raw HTML; removes legacy Results/newsletter/payment fallback paths.
   // v1.1.536: Rebuilds Results Loading/Results as true Torn-page floating panels with no embedded browser/iframe; Start Payments closes Results then navigates the main Torn tab to faction vault controls, and HTML/CSV downloads are owned by the main Torn document.
   // v1.1.535: Restores visible NW/SW/SE resize corners on Results Loading/Results, places Fullscreen to the right of Close, and hardens Start Payments so faction controls/Payments Copy can never load inside the Results iframe.
@@ -91,6 +92,7 @@
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PAYOUT_FORM_SCHEMA_STORAGE_KEY = "rw_payout_helper_payout_form_schema_version";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
+  const PAY_ALL_REPORT_CONTEXT_STORAGE_KEY = "rw_payout_helper_pay_all_report_context_v1";
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_HTML_OPEN_STORAGE_KEY = "rw_payout_helper_last_results_html_open";
@@ -142,8 +144,7 @@
           #rwph-results-loading-panel,
           .rwph-results-loading-panel,
           .rw-results-panel,
-          #rwph-export-html-panel,
-          #rwph-newsletter-panel {
+          #rwph-export-html-panel {
             display:none!important;
             visibility:hidden!important;
             opacity:0!important;
@@ -169,8 +170,7 @@
           "#rwph-results-loading-panel",
           ".rwph-results-loading-panel",
           ".rw-results-panel",
-          "#rwph-export-html-panel",
-          "#rwph-newsletter-panel"
+          "#rwph-export-html-panel"
         ].join(",");
         document.querySelectorAll(selectors).forEach((el) => {
           if (!el || el.id === "rw-pay-all-panel" || el.classList?.contains("rw-pay-all-panel")) return;
@@ -5934,8 +5934,7 @@
         "#rwph-results-loading-panel",
         ".rwph-results-loading-panel",
         ".rw-results-panel",
-        "#rwph-export-html-panel",
-        "#rwph-newsletter-panel"
+        "#rwph-export-html-panel"
       ].join(",");
       document.querySelectorAll(selectors).forEach((el) => {
         if (!el || el.id === "rw-pay-all-panel" || el.classList?.contains("rw-pay-all-panel")) return;
@@ -5952,6 +5951,50 @@
     } catch (e) {
       console.warn("Could not load Payments rows from userscript storage:", e);
       return [];
+    }
+  }
+
+  function rwphStorePayAllReportContext(context = {}) {
+    try {
+      const newsletters = Array.isArray(context.newsletters)
+        ? context.newsletters.filter((item) => item && item.key && item.label && typeof item.html === "string")
+        : [];
+      const payload = {
+        createdAt: Date.now(),
+        factionName: String(context.factionName || "Faction"),
+        html: String(context.html || ""),
+        csv: String(context.csv || ""),
+        newsletters,
+      };
+      if (!payload.html && !payload.csv && !payload.newsletters.length) return false;
+      GM_setValue(PAY_ALL_REPORT_CONTEXT_STORAGE_KEY, JSON.stringify(payload));
+      return true;
+    } catch (e) {
+      console.warn("Could not save Payment Checklist Results actions context:", e);
+      return false;
+    }
+  }
+
+  function rwphGetStoredPayAllReportContext() {
+    try {
+      const raw = GM_getValue(PAY_ALL_REPORT_CONTEXT_STORAGE_KEY, "");
+      if (!raw) return null;
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== "object") return null;
+      const createdAt = Number(parsed.createdAt || 0);
+      if (!createdAt || Date.now() - createdAt > 6 * 60 * 60 * 1000) return null;
+      return {
+        createdAt,
+        factionName: String(parsed.factionName || "Faction"),
+        html: String(parsed.html || ""),
+        csv: String(parsed.csv || ""),
+        newsletters: Array.isArray(parsed.newsletters)
+          ? parsed.newsletters.filter((item) => item && item.key && item.label && typeof item.html === "string")
+          : [],
+      };
+    } catch (e) {
+      console.warn("Could not load Payment Checklist Results actions context:", e);
+      return null;
     }
   }
 
@@ -6539,7 +6582,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.537">
+<body data-rwph-ui-generation="v1.1.538">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7273,7 +7316,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.537";
+    panel.dataset.rwphUiGeneration = "v1.1.538";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7462,31 +7505,56 @@
     return panel;
   }
 
+  function rwphBuildResultsActionContextV1538(root, sourceHtml = "") {
+    const csvSource = root?.querySelector?.("#rwph-export-csv-source");
+    return {
+      factionName: rwphResultsFactionNameFromRoot(root),
+      html: rwphBuildDownloadedResultsHtmlFromSource(sourceHtml),
+      csv: String(csvSource?.value || csvSource?.textContent || ""),
+      newsletters: rwphNewsletterVariantsFromResultsRoot(root),
+    };
+  }
+
+  function rwphDownloadResultsHtmlFromContextV1538(context = {}) {
+    const factionName = rwphSafeDownloadName(context.factionName || "Faction", "Faction");
+    const html = String(context.html || "");
+    const filename = `RWPH_${factionName}_Results_${rwphResultsDownloadStampV1537()}.html`;
+    const ok = !!html && rwphDownloadTextFile(filename, html, "text/html;charset=utf-8");
+    if (!ok) rwphShowToast("RWPH could not start the HTML download from the Torn page.", "warn", "RWPH Results");
+    return ok;
+  }
+
+  function rwphDownloadResultsCsvFromContextV1538(context = {}) {
+    const factionName = rwphSafeDownloadName(context.factionName || "Faction", "Faction");
+    const csv = String(context.csv || "");
+    const filename = `RWPH_${factionName}_Payouts_${rwphResultsDownloadStampV1537()}.csv`;
+    const ok = !!csv && rwphDownloadTextFile(filename, csv, "text/csv;charset=utf-8");
+    if (!ok) rwphShowToast("RWPH could not start the CSV download from the Torn page.", "warn", "RWPH Results");
+    return ok;
+  }
+
+  function rwphOpenResultsNewsletterFromContextV1538(context = {}) {
+    const variants = Array.isArray(context.newsletters) ? context.newsletters : [];
+    return rwphOpenNewsletterPanelV1537(variants);
+  }
+
   function rwphBindResultsPanelActionsV1537(tab, sourceHtml = "") {
     const root = tab?.rwphShadowRoot;
     if (!root) return;
     const rows = rwphResultsRowsFromRoot(root);
-    const factionName = () => rwphSafeDownloadName(rwphResultsFactionNameFromRoot(root), "Faction");
+    const actionContext = rwphBuildResultsActionContextV1538(root, sourceHtml);
+    rwphStorePayAllReportContext(actionContext);
 
     const htmlBtn = root.querySelector("#thisPageHtmlBtn");
     if (htmlBtn) htmlBtn.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      const filename = `RWPH_${factionName()}_Results_${rwphResultsDownloadStampV1537()}.html`;
-      const html = rwphBuildDownloadedResultsHtmlFromSource(sourceHtml);
-      if (!html || !rwphDownloadTextFile(filename, html, "text/html;charset=utf-8")) {
-        rwphShowToast("RWPH could not start the HTML download from the Torn page.", "warn", "RWPH Results");
-      }
+      rwphDownloadResultsHtmlFromContextV1538(actionContext);
     });
 
     const csvBtn = root.querySelector("#csvBtn");
     if (csvBtn) csvBtn.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      const source = root.querySelector("#rwph-export-csv-source");
-      const csv = String(source?.value || source?.textContent || "");
-      const filename = `RWPH_${factionName()}_Payouts_${rwphResultsDownloadStampV1537()}.csv`;
-      if (!csv || !rwphDownloadTextFile(filename, csv, "text/csv;charset=utf-8")) {
-        rwphShowToast("RWPH could not start the CSV download from the Torn page.", "warn", "RWPH Results");
-      }
+      rwphDownloadResultsCsvFromContextV1538(actionContext);
     });
 
     const payBtn = root.querySelector("#payAllBtn");
@@ -7496,13 +7564,14 @@
         rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
         return;
       }
+      rwphStorePayAllReportContext(actionContext);
       rwphOpenPayAllInFactionControls(rows);
     });
 
     const newsletterBtn = root.querySelector("#rwphNewsletterBtn");
     if (newsletterBtn) newsletterBtn.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      rwphOpenNewsletterPanelV1537(rwphNewsletterVariantsFromResultsRoot(root));
+      rwphOpenResultsNewsletterFromContextV1538(actionContext);
     });
   }
 
@@ -7562,7 +7631,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.537";
+    panel.dataset.rwphUiGeneration = "v1.1.538";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -8744,15 +8813,27 @@
     document.head.appendChild(style);
   }
 
+  let rwphSavedReportsRestoreMainOnClose = false;
+
   function rwphSavedReportsPanel() {
     return document.getElementById("rwph-saved-reports-panel");
   }
 
-  function rwphCloseSavedReportsPanel() {
+  function rwphCloseSavedReportsPanel(options = {}) {
+    const reopenMain = options?.reopenMain !== false;
+    const reportLoaded = options?.reportLoaded === true;
     const panel = rwphSavedReportsPanel();
-    if (!panel) return;
-    try { rwphSavePanelLayout(panel); } catch (_) {}
-    panel.remove();
+    const shouldReopenMain = reopenMain && !reportLoaded && rwphSavedReportsRestoreMainOnClose && !rwphIsPaymentsOnlyTabContext();
+    rwphSavedReportsRestoreMainOnClose = false;
+    if (panel) {
+      try { rwphSavePanelLayout(panel); } catch (_) {}
+      panel.remove();
+    }
+    if (shouldReopenMain && !document.getElementById("rw-payout-helper")) {
+      setTimeout(() => {
+        if (!document.getElementById("rw-payout-helper") && !rwphSavedReportsPanel() && !rwphIsPaymentsOnlyTabContext()) createPanel();
+      }, 0);
+    }
   }
 
   function rwphSavedReportSlotHtml(report = {}, position, highlighted = false) {
@@ -8907,7 +8988,7 @@
       if (stopProgressPolling) { stopProgressPolling(); stopProgressPolling = null; }
       if (manualOpenReady) rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, `Saved report ${label} ready. Click Open Results.`);
       else await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
-      rwphCloseSavedReportsPanel();
+      rwphCloseSavedReportsPanel({ reopenMain: false, reportLoaded: true });
       if (panelStatus) panelStatus.textContent = `Saved report ${label} loaded.`;
       rwphToastPanelInfo(mainStatus, `Saved report ${label} loaded. ${lastRows.length} member(s).`, "info", "RWPH Cached Reports");
     } catch (e) {
@@ -8950,7 +9031,11 @@
     }
 
     rwphEnsureSavedReportsPanelStyles();
-    rwphCloseSavedReportsPanel();
+    const mainPanelWasOpen = !setupMode && !!document.getElementById("rw-payout-helper");
+    const restoreMainAfterClose = rwphSavedReportsRestoreMainOnClose || mainPanelWasOpen;
+    rwphCloseSavedReportsPanel({ reopenMain: false });
+    if (mainPanelWasOpen) closePanel();
+    rwphSavedReportsRestoreMainOnClose = restoreMainAfterClose;
     const panel = document.createElement("section");
     panel.id = "rwph-saved-reports-panel";
     panel.className = "rwph-floating-panel";
@@ -9129,7 +9214,7 @@
       .rw-pay-all-wizard-stage { min-height:100%; flex:1 1 auto; width:100%; height:100%; display:flex; flex-direction:column; box-sizing:border-box; margin:0; padding:0; }
       .rw-pay-all-wizard-page { min-height:100%; flex:1 1 auto; width:100%; max-width:none; display:flex; flex-direction:column; justify-content:center; gap:clamp(6px,1.6vh,10px); margin:0; padding:0; box-sizing:border-box; overflow:auto; overflow-wrap:anywhere; }
       .rw-pay-all-wizard-page[data-pay-all-page="member"] { justify-content:space-between; }
-      .rw-pay-all-wizard-page[data-pay-all-page="complete"] { justify-content:center; }
+      .rw-pay-all-wizard-page[data-pay-all-page="complete"] { min-height:0; height:100%; justify-content:stretch; display:grid; grid-template-rows:minmax(max-content,1fr) auto auto; align-content:stretch; overflow:auto; }
       .rw-pay-all-wizard-page > * { max-width:100%; box-sizing:border-box; }
       .rw-pay-all-start-warning { flex:1 1 auto; width:100%; min-height:100%; margin:0 !important; border-radius:0 !important; border-left-width:0 !important; border-right-width:0 !important; display:flex; flex-direction:column; justify-content:center; gap:8px; box-sizing:border-box; }
       .rw-pay-all-start-payments { width:100% !important; min-height:40px !important; margin-top:2px !important; border-radius:11px !important; border:1px solid rgba(254,243,199,.72) !important; background:linear-gradient(135deg, rgba(250,204,21,.98), rgba(249,115,22,.96)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; cursor:pointer !important; }
@@ -9146,10 +9231,12 @@
       .rw-pay-all-member-hint { width:100%; padding:8px 9px; border-radius:0; border:1px solid rgba(148,163,184,.15); background:rgba(2,6,23,.44); color:#cbd5e1; font-size:9.5px; line-height:1.35; text-align:left; }
       .rw-pay-all-wizard-nav { width:100%; margin:0; margin-top:auto; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(110px,100%),1fr)); gap:8px; flex:0 0 auto; }
       .rw-pay-all-wizard-nav button { width:100% !important; min-height:38px !important; }
-      .rw-pay-all-complete-card { flex:1 1 auto; width:100%; min-height:100%; margin:0; padding:clamp(12px,2.5vh,18px) 12px; border-radius:0; display:flex; flex-direction:column; justify-content:center; border:1px solid rgba(34,197,94,.30); background:linear-gradient(180deg, rgba(20,83,45,.42), rgba(15,23,42,.84)); text-align:center; box-sizing:border-box; overflow:hidden; }
+      .rw-pay-all-complete-card { width:100%; min-height:0; margin:0; padding:clamp(10px,2vh,16px) 12px; border-radius:0; display:flex; flex-direction:column; justify-content:center; border:1px solid rgba(34,197,94,.30); background:linear-gradient(180deg, rgba(20,83,45,.42), rgba(15,23,42,.84)); text-align:center; box-sizing:border-box; overflow:hidden; }
       .rw-pay-all-complete-icon { width:46px; height:46px; margin:0 auto 10px; display:grid; place-items:center; border-radius:999px; background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.48); color:#86efac; font-size:26px; font-weight:1000; }
       .rw-pay-all-complete-title { color:#ecfdf5; font-size:16px; font-weight:950; }
       .rw-pay-all-complete-text { margin-top:7px; color:#cbd5e1; font-size:10px; line-height:1.4; }
+      .rw-pay-all-complete-actions { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin:0; padding:0; }
+      .rw-pay-all-complete-actions button { width:100% !important; min-width:0 !important; min-height:36px !important; padding:7px 6px !important; font-size:10px !important; line-height:1.15 !important; }
       .rw-resize-handle { position:absolute; width:18px; height:18px; z-index:8; touch-action:none; -webkit-user-select:none; user-select:none; opacity:.95; background:rgba(2,6,23,.18); }
       .rw-resize-handle-se { right:7px; bottom:7px; cursor:nwse-resize; border-right:2px solid rgba(251,191,36,.80); border-bottom:2px solid rgba(251,191,36,.80); border-radius:0 0 8px 0; }
       .rw-resize-handle-sw { left:7px; bottom:7px; cursor:nesw-resize; border-left:2px solid rgba(251,191,36,.80); border-bottom:2px solid rgba(251,191,36,.80); border-radius:0 0 0 8px; }
@@ -9196,6 +9283,7 @@
         .rw-pay-all-wizard-page { min-height:100% !important; height:100% !important; padding:0 !important; margin:0 !important; }
         .rw-pay-all-payment-amount { font-size:22px !important; }
         .rw-pay-all-copy-grid,.rw-pay-all-wizard-nav { grid-template-columns:repeat(auto-fit,minmax(min(108px,100%),1fr)) !important; gap:7px !important; }
+        .rw-pay-all-complete-actions { grid-template-columns:1fr !important; gap:6px !important; }
         .rw-pay-all-copy-grid .rw-pay-all-copy,.rw-pay-all-wizard-nav button { min-height:42px !important; font-size:11px !important; }
         .rw-resize-handle { width:30px !important; height:30px !important; z-index:60 !important; background:rgba(2,6,23,.28) !important; }
         .rw-resize-handle-se { right:3px !important; bottom:3px !important; border-width:3px !important; }
@@ -9297,6 +9385,11 @@
           <div class="rw-pay-all-complete-icon">✓</div>
           <div class="rw-pay-all-complete-title">Payment Checklist Complete</div>
           <div class="rw-pay-all-complete-text">You reached the end of all ${count} payment${count === 1 ? "" : "s"}. Confirm the payments were submitted correctly in Torn before closing this panel.</div>
+        </div>
+        <div class="rw-pay-all-complete-actions">
+          <button type="button" class="secondary" data-pay-all-newsletter="1">Newsletter</button>
+          <button type="button" class="secondary" data-pay-all-download-html="1">Download HTML</button>
+          <button type="button" class="secondary" data-pay-all-download-csv="1">Download CSV</button>
         </div>
         <div class="rw-pay-all-wizard-nav">
           <button type="button" class="secondary rw-pay-all-back" data-pay-all-back="1">Back</button>
@@ -9828,6 +9921,31 @@
           wizardState.index = index + 1;
         }
         renderWizard();
+        return;
+      }
+
+      const newsletterBtn = e.target.closest?.("[data-pay-all-newsletter]");
+      if (newsletterBtn) {
+        const reportContext = rwphGetStoredPayAllReportContext();
+        if (!reportContext?.newsletters?.length) {
+          rwphShowToast("Newsletter data is not available for this payment report.", "warning", "RWPH Newsletter");
+          return;
+        }
+        rwphOpenResultsNewsletterFromContextV1538(reportContext);
+        return;
+      }
+
+      const downloadHtmlBtn = e.target.closest?.("[data-pay-all-download-html]");
+      if (downloadHtmlBtn) {
+        const reportContext = rwphGetStoredPayAllReportContext();
+        rwphDownloadResultsHtmlFromContextV1538(reportContext || {});
+        return;
+      }
+
+      const downloadCsvBtn = e.target.closest?.("[data-pay-all-download-csv]");
+      if (downloadCsvBtn) {
+        const reportContext = rwphGetStoredPayAllReportContext();
+        rwphDownloadResultsCsvFromContextV1538(reportContext || {});
         return;
       }
 
