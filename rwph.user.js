@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.536
+// @version      1.1.537
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.537: Swaps Results/Loading header controls so Close is far-right; replaces the Results newsletter dropdown/embedded panels with one Torn-page Newsletter panel containing a selector, live preview, raw HTML, and Copy Raw HTML; removes legacy Results/newsletter/payment fallback paths.
   // v1.1.536: Rebuilds Results Loading/Results as true Torn-page floating panels with no embedded browser/iframe; Start Payments closes Results then navigates the main Torn tab to faction vault controls, and HTML/CSV downloads are owned by the main Torn document.
   // v1.1.535: Restores visible NW/SW/SE resize corners on Results Loading/Results, places Fullscreen to the right of Close, and hardens Start Payments so faction controls/Payments Copy can never load inside the Results iframe.
   // v1.1.534: Rebuilds Results Loading/Results as normal movable RWPH panels, routes Start Payments through the parent into same-tab faction controls, and makes Default Setup target every current movable RWPH panel.
@@ -90,7 +91,6 @@
   const PAYOUT_FORM_STATE_STORAGE_KEY = "rw_payout_helper_payout_form_state";
   const PAYOUT_FORM_SCHEMA_STORAGE_KEY = "rw_payout_helper_payout_form_schema_version";
   const PAY_ALL_ROWS_STORAGE_KEY = "rw_payout_helper_pay_all_rows";
-  const PAY_ALL_ROWS_FALLBACK_STORAGE_KEY = "rw_payout_helper_pay_all_rows_fallback";
   const CROSS_TAB_POPUP_STORAGE_KEY = "rw_payout_helper_cross_tab_popup";
   const LICENSE_CHECK_RATE_STORAGE_KEY = "rw_payout_helper_license_check_rate_window";
   const LAST_RESULTS_HTML_OPEN_STORAGE_KEY = "rw_payout_helper_last_results_html_open";
@@ -143,7 +143,7 @@
           .rwph-results-loading-panel,
           .rw-results-panel,
           #rwph-export-html-panel,
-          .rwph-results-html-panel {
+          #rwph-newsletter-panel {
             display:none!important;
             visibility:hidden!important;
             opacity:0!important;
@@ -170,7 +170,7 @@
           ".rwph-results-loading-panel",
           ".rw-results-panel",
           "#rwph-export-html-panel",
-          ".rwph-results-html-panel"
+          "#rwph-newsletter-panel"
         ].join(",");
         document.querySelectorAll(selectors).forEach((el) => {
           if (!el || el.id === "rw-pay-all-panel" || el.classList?.contains("rw-pay-all-panel")) return;
@@ -3626,9 +3626,7 @@
       html body .rwph-status-card,
       html body .rwph-side-card,
       html body .mini,
-      html body .wait-note,
-      html body .rwph-results-html-panel,
-      html body .rwph-newsletter-dropdown-menu{
+      html body .wait-note{
         background:${surface}!important;
         color:${text}!important;
         border-color:${outlineSoft}!important;
@@ -3636,7 +3634,6 @@
       }
       html body .hero,
       html body .rwph-loading-head,
-      html body .rwph-results-html-head,
       html body .pay-all-head{
         background:${surface2}!important;
         color:${text}!important;
@@ -3644,9 +3641,7 @@
       }
       html body .btn,
       html body button,
-      html body a.btn,
-      html body .rwph-newsletter-dropdown-item,
-      html body .rwph-newsletter-dropdown-summary{
+      html body a.btn{
         background:${surface2}!important;
         color:${text}!important;
         border:1px solid ${outlineStrong}!important;
@@ -3655,9 +3650,7 @@
       }
       html body .btn:hover,
       html body button:hover,
-      html body a.btn:hover,
-      html body .rwph-newsletter-dropdown-item:hover,
-      html body .rwph-newsletter-dropdown-summary:hover{
+      html body a.btn:hover{
         background:${rwphMixHexColour(surface2, outline, 0.12)}!important;
         border-color:${outline}!important;
         filter:none!important;
@@ -3672,22 +3665,19 @@
       }
       html body input,
       html body textarea,
-      html body select,
-      html body .rwph-results-html-box{
+      html body select{
         background:${body2}!important;
         color:${text}!important;
         border-color:${outlineSoft}!important;
       }
       html body h1,html body h2,html body h3,
       html body .title-text,html body .results-side-title,
-      html body .rwph-results-html-title,html body .rwph-results-html-preview-title,
       html body .result-name,html body .summary-card b,html body .stats b{
         color:${text}!important;
       }
       html body .muted,html body .result-id,html body .stats span,
       html body .summary-card span,html body .results-action-note,
-      html body .close-hint,html body .pay-all-note,
-      html body .rwph-results-html-note,html body .rwph-results-html-status{
+      html body .close-hint,html body .pay-all-note{
         color:${soft}!important;
       }
       html body .payout,html body .pay-all-payout,
@@ -3699,9 +3689,7 @@
       html body .results-meta-card,
       html body .results-section,
       html body .pay-all-row,
-      html body .pay-all-info,
-      html body .rwph-results-html-preview-wrap,
-      html body .rwph-results-html-preview{
+      html body .pay-all-info{
         background:${body2}!important;
         color:${text}!important;
         border-color:${outlineSoft}!important;
@@ -3757,7 +3745,6 @@
       body .rwph-floating-panel,
       body .rwph-calculation-settings-panel,
       body .rwph-results-loading-panel,
-      body .rwph-results-html-panel,
       body .rw-results-panel,
       body .rw-main-panel,body .rw-locked-panel,body .rw-admin-panel,body .rw-help-panel,
       body .rw-payment-panel,body .rw-settings-panel,body .rw-modal,
@@ -3788,7 +3775,6 @@
       body .rwph-floating-panel .rwph-layout-theme-head,
       body .rwph-results-loading-panel .rwph-results-loading-head,
       body .rwph-results-loading-panel .rwph-results-loading-panel-head,
-      body .rwph-results-html-panel .rwph-results-html-head,
       body .rw-results-panel .rw-head,
       body #rwph-default-setup-controller .rwph-panel-head{
         background:${surface2}!important;
@@ -3807,7 +3793,6 @@
       body .rwph-floating-panel :is(button,a.btn),
       body .rwph-calculation-settings-panel :is(button,a.btn),
       body .rwph-results-loading-panel :is(button,a.btn),
-      body .rwph-results-html-panel :is(button,a.btn),
       body .rw-results-panel :is(button,a.btn),
       body [id^="rwph-"][class*="panel"] :is(button,.btn,a.btn,input[type="button"],input[type="submit"]),
       body [id^="rw-"][class*="panel"] :is(button,.btn,a.btn,input[type="button"],input[type="submit"]),
@@ -3828,7 +3813,6 @@
       body .rwph-floating-panel :is(button,a.btn):hover,
       body .rwph-calculation-settings-panel :is(button,a.btn):hover,
       body .rwph-results-loading-panel :is(button,a.btn):hover,
-      body .rwph-results-html-panel :is(button,a.btn):hover,
       body .rw-results-panel :is(button,a.btn):hover,
       body [id^="rwph-"][class*="panel"] :is(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
       body [id^="rw-"][class*="panel"] :is(button,.btn,a.btn,input[type="button"],input[type="submit"]):hover,
@@ -3845,7 +3829,6 @@
       body #rw-pay-all-panel .primary,body .rw-pay-all-panel .primary,
       body .rwph-floating-panel .primary,
       body .rwph-calculation-settings-panel .primary,
-      body .rwph-results-html-panel .primary,
       body .rw-results-panel .primary{
         background:${outline}!important;
         background-image:none!important;
@@ -3860,7 +3843,6 @@
       body .rwph-floating-panel :is(input,textarea,select),
       body .rwph-calculation-settings-panel :is(input,textarea,select),
       body .rw-results-panel :is(input,textarea,select),
-      body .rwph-results-html-panel :is(input,textarea,select),
       body [id^="rwph-"][class*="panel"] :is(input,textarea,select),
       body [id^="rw-"][class*="panel"] :is(input,textarea,select){
         background:${body2}!important;
@@ -3883,8 +3865,7 @@
       body .rw-pay-all-panel :is(.rw-pay-all-row,.rw-pay-all-payment-card,.rw-pay-all-member-hint,.rw-pay-all-complete-card,.rw-pay-all-progress,.rw-pay-all-start-warning,.rw-pay-all-balance-warning),
       body #rwph-xanax-send-status :is(.rw-card,.rw-box,.rw-section),
       body .rwph-floating-panel :is(.rw-card,.rw-box,.rw-section,.rw-summary,.rw-api-visible-card,.rw-help-section-card,.rw-calc-brief,details,.rw-api-tos-content),
-      body .rwph-calculation-settings-panel :is(.rw-card,.rw-box,.rw-section,.rw-calc-brief,details,.rw-api-tos-content),
-      body .rwph-results-html-panel :is(.rwph-results-html-preview-wrap,.rwph-results-html-preview){
+      body .rwph-calculation-settings-panel :is(.rw-card,.rw-box,.rw-section,.rw-calc-brief,details,.rw-api-tos-content){
         background:${body2}!important;
         background-image:none!important;
         color:${text}!important;
@@ -3897,15 +3878,13 @@
       body #rwph-xanax-send-status :is(h1,h2,h3,strong,b),
       body .rwph-floating-panel :is(h1,h2,h3,h4,strong,b),
       body .rwph-calculation-settings-panel :is(h1,h2,h3,h4,strong,b),
-      body .rw-results-panel :is(h1,h2,h3,strong,b),
-      body .rwph-results-html-panel :is(h1,h2,h3,strong,b,.rwph-results-html-title,.rwph-results-html-preview-title){color:${text}!important;text-shadow:none!important;}
+      body .rw-results-panel :is(h1,h2,h3,strong,b){color:${text}!important;text-shadow:none!important;}
 
       body #rw-payout-helper :is(label,.rw-muted,.muted,.rw-small,small,.rw-stat-label,.rw-result-id,.rw-calc-brief),
       body #rw-pay-all-panel :is(.muted,.rw-small,small),body .rw-pay-all-panel :is(.muted,.rw-small,small),
       body #rwph-xanax-send-status :is(.muted,.rw-small,small),
       body .rwph-floating-panel :is(label,.muted,.rw-muted,.rw-small,small),
       body .rwph-calculation-settings-panel :is(label,.muted,.rw-muted,.rw-small,small),
-      body .rwph-results-html-panel :is(.rwph-results-html-note,.rwph-results-html-status),
       body .rw-results-panel :is(.muted,.rw-small,small){color:${soft}!important;text-shadow:none!important;}
 
       body #rw-payout-helper :is(.rw-tabs,.rw-tab-section,.rw-unified-tab-panel),
@@ -3977,7 +3956,7 @@
   function rwphIsSecondaryPanelV1529(panel) {
     if (!panel || panel.nodeType !== 1) return false;
     if (panel.id === "rw-payout-helper" || panel.id === "rw-results-panel") return false;
-    if (panel.classList?.contains("rw-results-panel") || panel.classList?.contains("rwph-results-loading-panel") || panel.classList?.contains("rwph-results-html-panel")) return false;
+    if (panel.classList?.contains("rw-results-panel") || panel.classList?.contains("rwph-results-loading-panel")) return false;
     return panel.matches?.([
       "#rw-pay-all-panel", ".rw-pay-all-panel", "#rwph-xanax-send-status",
       "#rwph-member-management-panel", ".rwph-member-management-panel", "#rwph-saved-reports-panel",
@@ -4138,7 +4117,7 @@
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important;border-radius:999px!important;}
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb:hover{background:var(--rwph-theme-outline)!important;filter:brightness(1.08)!important;}
-      body :is(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,[data-pay-all-close]){position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;padding:0!important;margin:0!important;display:grid!important;place-items:center!important;font-size:20px!important;line-height:1!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:var(--rwph-theme-button-radius,9px)!important;background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;box-shadow:none!important;transform:none!important;z-index:170!important;}
+      body :is(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-mini-close,[data-pay-all-close]){position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;padding:0!important;margin:0!important;display:grid!important;place-items:center!important;font-size:20px!important;line-height:1!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:var(--rwph-theme-button-radius,9px)!important;background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;box-shadow:none!important;transform:none!important;z-index:170!important;}
       body :is(.rw-resize-handle,.rwph-results-resize-handle){width:20px!important;height:20px!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;border-color:var(--rwph-theme-outline)!important;}
 
       @media(max-width:760px),(pointer:coarse){
@@ -5938,11 +5917,6 @@
     } catch (e) {
       console.warn("Could not save Payments rows to userscript storage:", e);
     }
-    try {
-      localStorage.setItem(PAY_ALL_ROWS_FALLBACK_STORAGE_KEY, payload);
-    } catch (e) {
-      console.warn("Could not save Payments rows to fallback storage:", e);
-    }
   }
 
   function rwphSetPaymentsOnlyTabRestoreState() {
@@ -5961,7 +5935,7 @@
         ".rwph-results-loading-panel",
         ".rw-results-panel",
         "#rwph-export-html-panel",
-        ".rwph-results-html-panel"
+        "#rwph-newsletter-panel"
       ].join(",");
       document.querySelectorAll(selectors).forEach((el) => {
         if (!el || el.id === "rw-pay-all-panel" || el.classList?.contains("rw-pay-all-panel")) return;
@@ -5972,20 +5946,13 @@
   }
 
   function rwphGetStoredPayAllRows() {
-    const sources = [];
-    try { sources.push(GM_getValue(PAY_ALL_ROWS_STORAGE_KEY, "")); } catch (_) {}
-    try { sources.push(localStorage.getItem(PAY_ALL_ROWS_FALLBACK_STORAGE_KEY) || ""); } catch (_) {}
-
-    let best = null;
-    for (const raw of sources) {
-      try {
-        const payload = rwphParsePayAllRowsPayload(raw);
-        if (payload?.rows?.length && (!best || payload.createdAt > best.createdAt)) best = payload;
-      } catch (e) {
-        console.warn("Could not load Payments rows from one storage source:", e);
-      }
+    try {
+      const payload = rwphParsePayAllRowsPayload(GM_getValue(PAY_ALL_ROWS_STORAGE_KEY, ""));
+      return rwphNormalizePayAllRows(payload?.rows || []);
+    } catch (e) {
+      console.warn("Could not load Payments rows from userscript storage:", e);
+      return [];
     }
-    return rwphNormalizePayAllRows(best?.rows || []);
   }
 
   function rwphCloseResultsForPaymentsHandoff() {
@@ -5999,6 +5966,7 @@
     } catch (_) {}
     try { document.getElementById("rwph-results-panel")?.remove(); } catch (_) {}
     try { document.getElementById("rwph-results-loading-panel")?.remove(); } catch (_) {}
+    try { document.getElementById("rwph-newsletter-panel")?.remove(); } catch (_) {}
     try { rwphCloseExistingResultsLoadingPanel(); } catch (_) {}
     try { rwphClearResultsLoadingPanelState(); } catch (_) {}
     try { rwphClearRememberedOpenResultsPage(); } catch (_) {}
@@ -6342,30 +6310,28 @@
     return `
       *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--rwph-theme-bg)!important;color:var(--rwph-theme-text)!important}
       body{padding:14px;overflow-x:hidden}.app{width:min(1180px,100%);margin:0 auto;display:grid;gap:12px}
-      .hero,.results-actions-panel,.summary,.member-results-panel,.rwph-results-html-panel,.rwph-newsletter-dropdown-menu{
+      .hero,.results-actions-panel,.summary,.member-results-panel{
         background:var(--rwph-theme-panel)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:14px;box-shadow:var(--rwph-theme-shadow)!important
       }
       .hero{padding:14px}.results-hero-head{display:flex;align-items:center;gap:12px}.results-hero-logo{width:64px;height:64px;object-fit:contain;flex:0 0 auto}
       .results-hero-copy{min-width:0;flex:1}.results-hero-copy h1{margin:0;font-size:24px;line-height:1.1;color:var(--rwph-theme-text)!important}.results-mode-note{margin:6px 0 0;color:var(--rwph-theme-soft)!important;font-size:12px;line-height:1.45}
       .results-hero-meta,.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}.summary{padding:10px;margin-top:0}
-      .results-meta-card,.summary-card,.result-card,.result-highlight,.stats>div,.rwph-results-html-preview-wrap,.rwph-results-html-preview{
+      .results-meta-card,.summary-card,.result-card,.result-highlight,.stats>div{
         background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:10px
       }
-      .results-meta-card,.summary-card{padding:9px}.results-meta-card span,.summary-card span,.stats span,.result-id,.results-section-head p,.close-hint,.results-action-note,.rwph-results-html-note,.rwph-results-html-status{color:var(--rwph-theme-soft)!important;font-size:11px;line-height:1.4}
+      .results-meta-card,.summary-card{padding:9px}.results-meta-card span,.summary-card span,.stats span,.result-id,.results-section-head p,.close-hint,.results-action-note{color:var(--rwph-theme-soft)!important;font-size:11px;line-height:1.4}
       .results-meta-card b,.summary-card b{display:block;margin-top:3px;color:var(--rwph-theme-text)!important;font-size:13px}
       .results-actions-panel{padding:10px;display:grid;gap:8px}.results-action-zone{display:flex;flex-wrap:wrap;gap:7px;align-items:stretch}.results-action-note{flex:1 1 100%;margin:0 0 2px}
-      .btn,button,.rwph-newsletter-dropdown-summary,.rwph-newsletter-dropdown-item{
+      .btn,button{
         appearance:none;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 12px;cursor:pointer;
         background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:9px;font-weight:900;box-shadow:none!important
       }
-      .btn:hover,button:hover,.rwph-newsletter-dropdown-summary:hover,.rwph-newsletter-dropdown-item:hover{background:var(--rwph-theme-panel3)!important;border-color:var(--rwph-theme-outline)!important}
+      .btn:hover,button:hover{background:var(--rwph-theme-panel3)!important;border-color:var(--rwph-theme-outline)!important}
       #payAllBtn,.rwph-start-payments-btn{background:var(--rwph-theme-outline)!important;color:var(--rwph-theme-selected-text)!important;border-color:var(--rwph-theme-outline)!important}
       .close-hint{margin:0}.member-results-panel{padding:10px}.results-section-head{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-bottom:9px}.results-section-head>div:first-child{min-width:0}.results-section-head>div>span{color:var(--rwph-theme-outline)!important;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.results-section-head h2{margin:2px 0 0;color:var(--rwph-theme-text)!important;font-size:18px}.results-section-head p{margin:4px 0 0}
       .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}.result-card{padding:10px;min-width:0}.result-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.result-player{min-width:0}.result-name{color:var(--rwph-theme-text)!important;font-weight:950;font-size:14px}.result-rank-pill{padding:3px 6px;border:1px solid var(--rwph-theme-line);border-radius:999px;color:var(--rwph-theme-outline)!important;font-size:10px;white-space:nowrap}.payout{color:var(--rwph-theme-outline)!important;font-weight:950;font-size:18px}.result-payout-block{text-align:right}.result-quick-row,.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}.result-highlight,.stats>div{padding:7px}.result-highlight b,.stats b{display:block;margin-top:2px;color:var(--rwph-theme-text)!important}.result-highlight span{color:var(--rwph-theme-soft)!important;font-size:10px}
-      .rwph-newsletter-dropdown{position:relative;display:inline-flex}.rwph-newsletter-dropdown-menu{position:absolute;z-index:50;top:calc(100% + 6px);right:0;min-width:230px;padding:6px;display:grid;gap:5px}.rwph-newsletter-dropdown:not([open]) .rwph-newsletter-dropdown-menu{display:none}.rwph-newsletter-dropdown-item{width:100%;justify-content:flex-start}
-      .rwph-results-html-panel[hidden]{display:none!important}.rwph-results-html-panel{position:fixed;z-index:999999;inset:18px;max-width:1040px;margin:auto;display:flex;flex-direction:column;overflow:hidden}.rwph-results-html-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-results-html-title{font-size:16px;font-weight:950}.rwph-results-html-close{width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;max-height:34px!important;padding:0!important;font-size:20px!important;line-height:1!important;border-radius:var(--rwph-theme-button-radius,9px)!important}.rwph-results-html-status{padding:8px 10px}.rwph-results-html-preview-wrap{margin:0 10px 8px;padding:8px;overflow:auto;max-height:35vh}.rwph-results-html-preview-title{padding:6px 10px;font-weight:900;color:var(--rwph-theme-text)!important}.rwph-results-html-box{margin:0 10px 10px;min-height:240px;flex:1 1 auto;padding:9px;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;resize:none}
       ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)}::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline);border:2px solid var(--rwph-theme-bg);border-radius:999px}
-      @media(max-width:700px),(pointer:coarse){body{padding:8px}.hero{padding:10px}.results-hero-head{align-items:flex-start}.results-hero-logo{width:48px;height:48px}.results-hero-copy h1{font-size:19px}.results-action-zone>.btn,.results-action-zone>.rwph-newsletter-dropdown{flex:1 1 100%}.rwph-newsletter-dropdown-summary{width:100%}.rwph-newsletter-dropdown-menu{position:fixed;left:8px;right:8px;top:auto;bottom:8px}.grid{grid-template-columns:1fr}.results-section-head{align-items:flex-start;flex-direction:column}.results-section-head .results-meta-card{width:100%}.rwph-results-html-panel{inset:8px}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:700px),(pointer:coarse){body{padding:8px}.hero{padding:10px}.results-hero-head{align-items:flex-start}.results-hero-logo{width:48px;height:48px}.results-hero-copy h1{font-size:19px}.results-action-zone>.btn{flex:1 1 100%}.grid{grid-template-columns:1fr}.results-section-head{align-items:flex-start;flex-direction:column}.results-section-head .results-meta-card{width:100%}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
     `;
   }
 
@@ -6433,7 +6399,6 @@
     const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list, summary || {});
-    const payAllHref = rwphFactionControlsPayAllUrl();
     const factionImageUrl = String(rwphFindFactionInfoImageUrl(summary?.factionId || "") || summary?.factionImageUrl || "").trim();
     
     const rwphNewsletterThemes = {
@@ -6510,55 +6475,30 @@
     }
 
     const rwphNewsletterVariants = [
-      { key: "gold", panelId: "rwph-results-html-panel-gold", buttonId: "resultsHtmlPanelGoldBtn", label: "Newsletter", prefix: "rwph-newsletter-gold" },
-      { key: "blue", panelId: "rwph-results-html-panel-blue", buttonId: "resultsHtmlPanelBlueBtn", label: "Newsletter Blue", prefix: "rwph-newsletter-blue" },
-      { key: "green", panelId: "rwph-results-html-panel-green", buttonId: "resultsHtmlPanelGreenBtn", label: "Newsletter Green", prefix: "rwph-newsletter-green" },
-      { key: "purple", panelId: "rwph-results-html-panel-purple", buttonId: "resultsHtmlPanelPurpleBtn", label: "Newsletter Purple", prefix: "rwph-newsletter-purple" },
-      { key: "crimson", panelId: "rwph-results-html-panel-crimson", buttonId: "resultsHtmlPanelCrimsonBtn", label: "Newsletter Crimson", prefix: "rwph-newsletter-crimson" },
-      { key: "neon", panelId: "rwph-results-html-panel-neon", buttonId: "resultsHtmlPanelNeonBtn", label: "Newsletter Neon", prefix: "rwph-newsletter-neon" },
-      { key: "ice", panelId: "rwph-results-html-panel-ice", buttonId: "resultsHtmlPanelIceBtn", label: "Newsletter Ice", prefix: "rwph-newsletter-ice" },
-      { key: "sunset", panelId: "rwph-results-html-panel-sunset", buttonId: "resultsHtmlPanelSunsetBtn", label: "Newsletter Sunset", prefix: "rwph-newsletter-sunset" },
-      { key: "toxic", panelId: "rwph-results-html-panel-toxic", buttonId: "resultsHtmlPanelToxicBtn", label: "Newsletter Toxic", prefix: "rwph-newsletter-toxic" },
-      { key: "steel", panelId: "rwph-results-html-panel-steel", buttonId: "resultsHtmlPanelSteelBtn", label: "Newsletter Steel", prefix: "rwph-newsletter-steel" },
-      { key: "candy", panelId: "rwph-results-html-panel-candy", buttonId: "resultsHtmlPanelCandyBtn", label: "Newsletter Candy", prefix: "rwph-newsletter-candy" },
-      { key: "ocean", panelId: "rwph-results-html-panel-ocean", buttonId: "resultsHtmlPanelOceanBtn", label: "Newsletter Ocean", prefix: "rwph-newsletter-ocean" },
-      { key: "fire", panelId: "rwph-results-html-panel-fire", buttonId: "resultsHtmlPanelFireBtn", label: "Newsletter Fire", prefix: "rwph-newsletter-fire" },
-      { key: "forest", panelId: "rwph-results-html-panel-forest", buttonId: "resultsHtmlPanelForestBtn", label: "Newsletter Forest", prefix: "rwph-newsletter-forest" },
-      { key: "royal", panelId: "rwph-results-html-panel-royal", buttonId: "resultsHtmlPanelRoyalBtn", label: "Newsletter Royal", prefix: "rwph-newsletter-royal" },
-      { key: "ghost", panelId: "rwph-results-html-panel-ghost", buttonId: "resultsHtmlPanelGhostBtn", label: "Newsletter Ghost", prefix: "rwph-newsletter-ghost" },
-      { key: "rose", panelId: "rwph-results-html-panel-rose", buttonId: "resultsHtmlPanelRoseBtn", label: "Newsletter Rose", prefix: "rwph-newsletter-rose" },
+      { key: "gold", label: "Newsletter Gold" },
+      { key: "blue", label: "Newsletter Blue" },
+      { key: "green", label: "Newsletter Green" },
+      { key: "purple", label: "Newsletter Purple" },
+      { key: "crimson", label: "Newsletter Crimson" },
+      { key: "neon", label: "Newsletter Neon" },
+      { key: "ice", label: "Newsletter Ice" },
+      { key: "sunset", label: "Newsletter Sunset" },
+      { key: "toxic", label: "Newsletter Toxic" },
+      { key: "steel", label: "Newsletter Steel" },
+      { key: "candy", label: "Newsletter Candy" },
+      { key: "ocean", label: "Newsletter Ocean" },
+      { key: "fire", label: "Newsletter Fire" },
+      { key: "forest", label: "Newsletter Forest" },
+      { key: "royal", label: "Newsletter Royal" },
+      { key: "ghost", label: "Newsletter Ghost" },
+      { key: "rose", label: "Newsletter Rose" },
     ].map((variant) => {
       const theme = rwphNewsletterThemes[variant.key] || rwphNewsletterThemes.gold;
       const html = rwphBuildCompactThemedNewsletterHtmlStatic({ theme: variant.key });
-      return { ...variant, themeTitle: theme.title, html, length: html.length.toLocaleString() };
+      return { key: variant.key, label: variant.label, themeTitle: theme.title, html, length: html.length };
     });
-
-    const rwphNewsletterButtonsHtml = `<details class="rwph-newsletter-dropdown">
-      <summary class="btn secondary rwph-newsletter-dropdown-summary">Newsletter ▾</summary>
-      <div class="rwph-newsletter-dropdown-menu">
-        ${rwphNewsletterVariants.map((variant) => `<button type="button" class="rwph-newsletter-dropdown-item" id="${esc(variant.buttonId)}" data-open-results-html-panel="${esc(variant.panelId)}">${esc(variant.label)}</button>`).join("")}
-      </div>
-    </details>`;
-    const rwphNewsletterPanelsHtml = rwphNewsletterVariants.map((variant) => `
-    <section class="rwph-results-html-panel" id="${esc(variant.panelId)}" aria-label="${esc(variant.label)} HTML panel" hidden>
-      <div class="rwph-results-html-head">
-        <div>
-          <div class="rwph-results-html-title">${esc(variant.label)} HTML</div>
-          <div class="rwph-results-html-note">${esc(variant.themeTitle)} theme. Preview is shown below. Right-click inside the HTML box, choose Select All, then Copy. Generated size: ${esc(variant.length)} characters.</div>
-        </div>
-        <button class="rwph-results-html-close" type="button" data-close-results-html-panel title="Close" aria-label="Close newsletter panel">×</button>
-      </div>
-      <div class="rwph-results-html-status">${esc(variant.label)} preview ready. ${esc(variant.length)} characters.</div>
-      <div class="rwph-results-html-preview-wrap">
-        <div class="rwph-results-html-preview-title">Preview</div>
-        <div class="rwph-results-html-preview">${variant.html}</div>
-      </div>
-      <div class="rwph-results-html-preview-title">Raw HTML</div>
-      <div class="rwph-raw-html-copy-note">
-        On PC triple click on the raw code to select all and press Ctrl+C to copy. On Phone/PDA hold click on the raw code click Select All then click Copy then paste it in the source code in your faction newsletter tab.
-      </div>
-      <textarea class="rwph-results-html-box" id="${esc(variant.panelId)}-box" data-rwph-raw-html-box="1" readonly spellcheck="false" aria-label="${esc(variant.label)} raw HTML code" onclick="try{if(event && event.detail >= 3){this.focus();this.select();this.setSelectionRange(0,this.value.length)}}catch(e){}" ondblclick="try{this.focus();this.select();this.setSelectionRange(0,this.value.length)}catch(e){}" oncontextmenu="this.focus();">${esc(variant.html)}</textarea>
-    </section>`).join("");
+    const rwphNewsletterDataJson = JSON.stringify(rwphNewsletterVariants);
+    const rwphNewsletterButtonHtml = `<button class="btn secondary" id="rwphNewsletterBtn" type="button">Newsletter</button>`;
 
     const cards = list.map((r) => {
       const mainMetricLabel = pointsMode ? "Points" : "Weight";
@@ -6599,7 +6539,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.527">
+<body data-rwph-ui-generation="v1.1.537">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -6617,18 +6557,18 @@
     </section>
     <section class="results-actions-panel" aria-label="Results tools">
       <div class="results-action-zone" aria-label="Results actions">
-        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, download CSV for records, start the manual payment workflow, or open the Newsletter dropdown for compact themed HTML panels.</p>
+        <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, download CSV for records, start the manual payment workflow, or open the Newsletter panel.</p>
         <a class="btn secondary" id="thisPageHtmlBtn" href="#" role="button">Download HTML</a>
         <a class="btn secondary" id="csvBtn" href="#" role="button">Download CSV</a>
-        <button class="btn rwph-start-payments-btn" id="payAllBtn" type="button" data-payments-url="${esc(payAllHref)}">Start Payments</button>
-        ${rwphNewsletterButtonsHtml}
+        <button class="btn rwph-start-payments-btn" id="payAllBtn" type="button">Start Payments</button>
+        ${rwphNewsletterButtonHtml}
       </div>
       <textarea id="rwph-export-csv-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(csvText)}</textarea>
       <textarea id="rwph-export-payments-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(rowsJson)}</textarea>
+      <textarea id="rwph-newsletter-data-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(rwphNewsletterDataJson)}</textarea>
       <p class="close-hint">Use the RWPH panel close button when you are finished. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 5 saved reports.</p>
     </section>
 
-    ${rwphNewsletterPanelsHtml}
 
     <section class="summary" aria-label="Report summary">
       <div class="summary-card"><span>Member Payout</span><b>${esc(money(memberPayout))}</b></div>
@@ -6653,260 +6593,6 @@
     </section>
   </main>
 
-
-  <script>
-    const rows = ${rowsJson};
-    const payAllRowsFallbackStorageKey = "rw_payout_helper_pay_all_rows_fallback";
-    function storePayAllRowsFallback() {
-      try {
-        localStorage.setItem(payAllRowsFallbackStorageKey, JSON.stringify({ createdAt: Date.now(), rows: rows || [] }));
-      } catch (e) {}
-    }
-
-    storePayAllRowsFallback();
-
-    // v1.1.533: Results downloads intentionally mirror Faction Helper v1.4.7.
-    // Build the file locally, create an object URL, click a normal download anchor, then revoke it.
-    function rwphResultsSafeDownloadName(value, fallback) {
-      var cleaned = String(value || "")
-        .replace(/[\\\\/:*?"<>|]+/g, "-")
-        .replace(/\\s+/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^[-_.]+|[-_.]+$/g, "")
-        .slice(0, 120);
-      return cleaned || fallback || "rwph-export";
-    }
-
-    function rwphResultsDownloadTextFile(filename, text, mime) {
-      var value = String(text == null ? "" : text);
-      if (!value) throw new Error("The export file is empty.");
-      var blob = new Blob([value], { type: mime || "text/plain;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = rwphResultsSafeDownloadName(filename, "rwph-export");
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(function() { try { URL.revokeObjectURL(url); } catch (_) {} }, 1000);
-    }
-
-    function rwphResultsFactionName() {
-      try {
-        var cards = Array.prototype.slice.call(document.querySelectorAll(".results-meta-card"));
-        for (var i = 0; i < cards.length; i += 1) {
-          var label = cards[i].querySelector("span");
-          var value = cards[i].querySelector("b");
-          if (label && value && String(label.textContent || "").trim().toLowerCase() === "faction") {
-            return String(value.textContent || "").trim();
-          }
-        }
-      } catch (_) {}
-      return "Faction";
-    }
-
-    function rwphResultsDownloadStamp() {
-      return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    }
-
-    function rwphBuildDownloadedResultsHtml() {
-      var clone = document.documentElement.cloneNode(true);
-      Array.prototype.slice.call(clone.querySelectorAll("script,.rwph-results-html-panel,#rwph-export-csv-source")).forEach(function(el) {
-        try { el.remove(); } catch (_) {}
-      });
-      var actions = clone.querySelector(".results-actions-panel");
-      if (actions) actions.remove();
-      try {
-        clone.querySelectorAll("[hidden]").forEach(function(el) {
-          if (el.classList && el.classList.contains("rwph-results-html-panel")) el.remove();
-        });
-      } catch (_) {}
-      return "<!doctype html>" + String.fromCharCode(10) + clone.outerHTML;
-    }
-
-    function rwphBindDirectResultsDownloads() {
-      var htmlBtn = document.getElementById("thisPageHtmlBtn");
-      var csvBtn = document.getElementById("csvBtn");
-      if (htmlBtn) htmlBtn.addEventListener("click", function(ev) {
-        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        try {
-          var faction = rwphResultsSafeDownloadName(rwphResultsFactionName(), "Faction");
-          var filename = "RWPH_" + faction + "_Results_" + rwphResultsDownloadStamp() + ".html";
-          rwphResultsDownloadTextFile(filename, rwphBuildDownloadedResultsHtml(), "text/html;charset=utf-8");
-        } catch (err) {
-          htmlBtn.textContent = "HTML DOWNLOAD ERROR";
-          htmlBtn.title = String((err && err.message) || err || "Could not download HTML");
-        }
-      });
-      if (csvBtn) csvBtn.addEventListener("click", function(ev) {
-        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        try {
-          var source = document.getElementById("rwph-export-csv-source");
-          var csv = source ? String(source.value || source.textContent || "") : "";
-          if (!csv) throw new Error("CSV data is missing.");
-          var faction = rwphResultsSafeDownloadName(rwphResultsFactionName(), "Faction");
-          var filename = "RWPH_" + faction + "_Payouts_" + rwphResultsDownloadStamp() + ".csv";
-          rwphResultsDownloadTextFile(filename, csv, "text/csv;charset=utf-8");
-        } catch (err) {
-          csvBtn.textContent = "CSV DOWNLOAD ERROR";
-          csvBtn.title = String((err && err.message) || err || "Could not download CSV");
-        }
-      });
-    }
-
-    rwphBindDirectResultsDownloads();
-
-
-    function openResultsHtmlPanel(panelId) {
-      try {
-        panelId = panelId || "rwph-results-html-panel-gold";
-        var existingPanel = document.getElementById(panelId);
-        if (existingPanel) {
-          existingPanel.hidden = false;
-          existingPanel.style.display = "flex";
-          existingPanel.style.visibility = "visible";
-          existingPanel.style.opacity = "1";
-          var existingBox = existingPanel.querySelector(".rwph-results-html-box");
-          var existingStatus = existingPanel.querySelector(".rwph-results-html-status");
-          if (existingStatus) existingStatus.textContent = "Newsletter HTML ready. " + ((existingBox && existingBox.value) ? existingBox.value.length.toLocaleString() : "0") + " characters.";
-          return;
-        }
-
-        var panel = document.createElement("section");
-        panel.id = "rwph-results-html-panel";
-        panel.className = "rwph-results-html-panel";
-        panel.setAttribute("aria-label", "Results HTML panel");
-        panel.innerHTML = ''
-          + '<div class="rwph-results-html-head">'
-          + '<div><div class="rwph-results-html-title">Newsletter HTML</div><div class="rwph-results-html-note">Compact themed layout for Torn faction newsletters. Built to fit 120 member cards plus main stats.</div></div>'
-          + '<button class="rwph-results-html-close" type="button" title="Close">×</button>'
-          + '</div>'
-          + '<div class="rwph-results-html-status" id="resultsHtmlPanelStatus">Right-click inside the HTML box, choose Select All, then Copy.</div>'
-          + '<div class="rwph-results-html-preview-wrap"><div class="rwph-results-html-preview-title">Preview</div><div class="rwph-results-html-preview" id="resultsHtmlPanelPreview"></div></div>'
-          + '<div class="rwph-results-html-preview-title">Raw HTML — right-click here, Select All, then Copy</div>'
-          + '<textarea class="rwph-results-html-box" id="resultsHtmlPanelBox" readonly spellcheck="false" onfocus="this.select()" onclick="this.focus()" oncontextmenu="this.focus();this.select();"></textarea>';
-        (document.body || document.documentElement).appendChild(panel);
-        panel.style.display = "flex";
-        panel.style.visibility = "visible";
-        panel.style.opacity = "1";
-
-        var box = document.getElementById("resultsHtmlPanelBox");
-        var status = document.getElementById("resultsHtmlPanelStatus");
-        if (box) {
-          if (status) status.textContent = "Building themed newsletter HTML...";
-          setTimeout(function() {
-            try {
-              box.value = buildCompactThemedNewsletterHtml();
-              var preview = document.getElementById("resultsHtmlPanelPreview");
-              if (preview) preview.innerHTML = box.value;
-              if (status) status.textContent = "Themed newsletter HTML ready. " + (box.value || "").length.toLocaleString() + " characters.";
-              try { box.focus(); box.select(); } catch (_) {}
-            } catch (e) {
-              if (status) status.textContent = "Could not build results HTML.";
-              console.warn("RWPH results HTML build failed:", e);
-            }
-          }, 25);
-        }
-
-        function closeResultsHtmlPanel() {
-          try { panel.remove(); } catch (_) {}
-        }
-        var closeControl = panel.querySelector(".rwph-results-html-close");
-        if (closeControl) closeControl.addEventListener("click", closeResultsHtmlPanel);
-        panel.addEventListener("keydown", function(ev) {
-          if (ev && ev.key === "Escape") closeResultsHtmlPanel();
-        });
-} catch (e) {
-        console.warn("RWPH results HTML panel failed:", e);
-      }
-    }
-
-    // v1.1.521: Export CSV/HTML buttons are intentionally NOT bound inside
-    // this generated iframe. The parent RWPH userscript owns both click handlers
-    // so CSP/WebView restrictions on generated inline scripts cannot disable them.
-
-    window.rwphOpenResultsHtmlPanel = openResultsHtmlPanel;
-
-    function rwphHandleResultsHtmlPanelClick(ev) {
-      var target = ev && ev.target;
-      var btn = target && target.closest ? target.closest("[data-open-results-html-panel]") : null;
-      if (!btn) return;
-      var panelId = btn.getAttribute("data-open-results-html-panel") || "rwph-results-html-panel-gold";
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      try {
-        document.querySelectorAll(".rwph-results-html-panel").forEach(function(panel) {
-          if (panel.id !== panelId) { panel.hidden = true; panel.style.display = "none"; }
-        });
-        var dropdown = btn.closest && btn.closest("details.rwph-newsletter-dropdown");
-        if (dropdown) dropdown.removeAttribute("open");
-      } catch (_) {}
-      openResultsHtmlPanel(panelId);
-    }
-
-    document.querySelectorAll("[data-open-results-html-panel]").forEach(function(btn) {
-      btn.addEventListener("click", rwphHandleResultsHtmlPanelClick);
-      btn.addEventListener("touchend", rwphHandleResultsHtmlPanelClick, { passive: false });
-    });
-    document.addEventListener("click", rwphHandleResultsHtmlPanelClick, true);
-
-    function rwphCloseResultsHtmlPanel(panel) {
-      if (!panel) return;
-      panel.hidden = true;
-      panel.style.display = "none";
-      panel.style.visibility = "hidden";
-      panel.style.opacity = "0";
-    }
-    document.addEventListener("click", function(ev) {
-      var closeBtn = ev && ev.target && ev.target.closest ? ev.target.closest("[data-close-results-html-panel],.rwph-results-html-close") : null;
-      if (!closeBtn) return;
-      var panel = closeBtn.closest ? closeBtn.closest(".rwph-results-html-panel") : null;
-      if (!panel) return;
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      rwphCloseResultsHtmlPanel(panel);
-    }, true);
-
-    function rwphSelectRawHtmlBox(box) {
-      if (!box) return false;
-      try {
-        box.focus();
-        box.select();
-        if (typeof box.setSelectionRange === "function") box.setSelectionRange(0, String(box.value || "").length);
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-
-    document.addEventListener("click", function(ev) {
-      var box = ev && ev.target && ev.target.closest ? ev.target.closest(".rwph-results-html-box") : null;
-      if (!box) return;
-      if (Number(ev.detail || 0) >= 3) {
-        setTimeout(function(){ rwphSelectRawHtmlBox(box); }, 0);
-      }
-    }, true);
-
-    var payAllOpenBtn = document.getElementById("payAllBtn");
-    if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", function(ev) {
-      storePayAllRowsFallback();
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      try {
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ rwphType: "rwph-start-payments", rows: rows || [] }, "*");
-          return;
-        }
-      } catch (_) {}
-      // Standalone fallback only: keep same-tab navigation if this HTML is opened outside RWPH.
-      try {
-        var targetUrl = payAllOpenBtn.getAttribute("data-payments-url") || "https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1";
-        var targetWindow = (window.top && window.top !== window) ? window.top : window;
-        targetWindow.location.assign(targetUrl);
-      } catch (_) {
-        try { location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) {}
-      }
-    });
-
-  </script>
 </body>
 </html>`;
   }
@@ -7478,7 +7164,7 @@
       : { mode: "loading", id: "rwph-results-loading-panel", title: "Results Loading", aria: "RWPH results loading panel", width: 720, height: 560 };
   }
 
-  function rwphStyleResultsShellControlsV1535(panel) {
+  function rwphStyleResultsShellControlsV1537(panel) {
     if (!panel || !panel.classList?.contains("rwph-results-shell-v1534")) return;
 
     const handleBase = {
@@ -7530,7 +7216,7 @@
     const close = head?.querySelector(".rwph-results-shell-close, .rwph-clean-close-v1491");
     const fullscreen = head?.querySelector(".rwph-fit-control-v1491");
     if (close) {
-      close.style.setProperty("right", "52px", "important");
+      close.style.setProperty("right", "10px", "important");
       close.style.setProperty("left", "auto", "important");
     }
     if (fullscreen) {
@@ -7538,7 +7224,7 @@
       fullscreen.title = "Fullscreen";
       fullscreen.style.setProperty("position", "absolute", "important");
       fullscreen.style.setProperty("top", "10px", "important");
-      fullscreen.style.setProperty("right", "10px", "important");
+      fullscreen.style.setProperty("right", "52px", "important");
       fullscreen.style.setProperty("left", "auto", "important");
       fullscreen.style.setProperty("bottom", "auto", "important");
       fullscreen.style.setProperty("width", "34px", "important");
@@ -7553,7 +7239,7 @@
     }
   }
 
-  function rwphApplyResultsShellFallbackGeometry(panel, mode = "loading") {
+  function rwphApplyResultsShellDefaultGeometry(panel, mode = "loading") {
     if (!panel) return;
     const cfg = rwphResultsShellConfig(mode);
     const coarse = !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
@@ -7587,7 +7273,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.536";
+    panel.dataset.rwphUiGeneration = "v1.1.537";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7599,32 +7285,15 @@
     if (contentHost) contentHost.setAttribute("aria-label", cfg.aria);
     if (oldId && oldId !== cfg.id) {
       // The loading and final Results panels have independent admin/personal layouts.
-      rwphApplyResultsShellFallbackGeometry(panel, cfg.mode);
+      rwphApplyResultsShellDefaultGeometry(panel, cfg.mode);
       if (applyLayout) rwphApplyPanelLayout(panel);
     }
     try { rwphApplyPanelThemeChoice(); } catch (_) {}
     try { rwphApplyLogoChoice(); } catch (_) {}
-    try { rwphStyleResultsShellControlsV1535(panel); } catch (_) {}
+    try { rwphStyleResultsShellControlsV1537(panel); } catch (_) {}
     return panel;
   }
 
-  function rwphInstallResultsPaymentsBridge() {
-    if (window.__rwphResultsPaymentsBridgeV1535) return;
-    window.__rwphResultsPaymentsBridgeV1535 = true;
-    window.addEventListener("message", (event) => {
-      const data = event?.data;
-      if (!data || data.rwphType !== "rwph-start-payments") return;
-      // Do not compare event.source to frame.contentWindow here. Userscript/browser wrappers can
-      // make those WindowProxy objects compare unequal even when the message came from our Results iframe.
-      // The message type + normalized payout rows are the authoritative bridge contract.
-      const rows = rwphNormalizePayAllRows(Array.isArray(data.rows) ? data.rows : []);
-      if (!rows.length) {
-        rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
-        return;
-      }
-      rwphOpenPayAllInFactionControls(rows);
-    });
-  }
 
   function rwphResultsPanelDocumentAdapter(tab) {
     const root = tab?.rwphShadowRoot;
@@ -7642,24 +7311,15 @@
     };
   }
 
-  function rwphResultsRowsFromSourceHtml(sourceHtml = "", root = null) {
-    const parse = (value) => {
-      try {
-        const parsed = JSON.parse(String(value || ""));
-        return rwphNormalizePayAllRows(Array.isArray(parsed) ? parsed : []);
-      } catch (_) { return []; }
-    };
+  function rwphResultsRowsFromRoot(root) {
     try {
       const embedded = root?.querySelector?.("#rwph-export-payments-source");
-      const fromEmbedded = parse(embedded?.value || embedded?.textContent || "");
-      if (fromEmbedded.length) return fromEmbedded;
-    } catch (_) {}
-    try {
-      const match = String(sourceHtml || "").match(/const\s+rows\s*=\s*(\[[\s\S]*?\]);\s*const\s+payAllRowsFallbackStorageKey/);
-      const fromScript = match ? parse(match[1]) : [];
-      if (fromScript.length) return fromScript;
-    } catch (_) {}
-    try { return rwphNormalizePayAllRows(lastRows || []); } catch (_) { return []; }
+      const parsed = JSON.parse(String(embedded?.value || embedded?.textContent || "[]"));
+      return rwphNormalizePayAllRows(Array.isArray(parsed) ? parsed : []);
+    } catch (e) {
+      console.warn("RWPH could not read Payments rows from the Results panel:", e);
+      return [];
+    }
   }
 
   function rwphResultsFactionNameFromRoot(root) {
@@ -7675,34 +7335,145 @@
     return "Faction";
   }
 
-  function rwphResultsDownloadStampV1536() {
+  function rwphResultsDownloadStampV1537() {
     return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   }
 
   function rwphBuildDownloadedResultsHtmlFromSource(sourceHtml = "") {
     try {
       const parsed = new DOMParser().parseFromString(String(sourceHtml || ""), "text/html");
-      parsed.querySelectorAll("script,.rwph-results-html-panel,#rwph-export-csv-source,#rwph-export-payments-source").forEach((el) => el.remove());
+      parsed.querySelectorAll("script,#rwph-export-csv-source,#rwph-export-payments-source,#rwph-newsletter-data-source").forEach((el) => el.remove());
       parsed.querySelector(".results-actions-panel")?.remove();
       return "<!doctype html>\n" + parsed.documentElement.outerHTML;
     } catch (e) {
       console.warn("RWPH could not build the Results HTML download:", e);
-      return String(sourceHtml || "");
+      return "";
     }
   }
 
-  function rwphBindResultsPanelActionsV1536(tab, sourceHtml = "") {
+  function rwphNewsletterVariantsFromResultsRoot(root) {
+    try {
+      const source = root?.querySelector?.("#rwph-newsletter-data-source");
+      const parsed = JSON.parse(String(source?.value || source?.textContent || "[]"));
+      return Array.isArray(parsed)
+        ? parsed.filter((item) => item && item.key && item.label && typeof item.html === "string")
+        : [];
+    } catch (e) {
+      console.warn("RWPH could not read Newsletter data from Results:", e);
+      return [];
+    }
+  }
+
+  function rwphCloseNewsletterPanelV1537() {
+    const panel = document.getElementById("rwph-newsletter-panel");
+    if (!panel) return;
+    try { rwphSavePanelLayout(panel); } catch (_) {}
+    panel.remove();
+  }
+
+  function rwphOpenNewsletterPanelV1537(variants = []) {
+    const list = Array.isArray(variants) ? variants : [];
+    if (!list.length) {
+      rwphShowToast("Newsletter data is not available for this Results report.", "warning", "RWPH Newsletter");
+      return null;
+    }
+
+    rwphCloseNewsletterPanelV1537();
+    rwphEnsureThreeColourThemeSystem();
+    rwphApplyPanelThemeChoice();
+    rwphEnsureMainUiCssV1527();
+
+    const panel = document.createElement("div");
+    panel.id = "rwph-newsletter-panel";
+    panel.className = "rwph-floating-panel rwph-newsletter-panel-v1537";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "RWPH Newsletter panel");
+    panel.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 24px));height:min(720px,calc(100vh - 24px));min-width:300px;min-height:320px;z-index:2147483605;display:flex;flex-direction:column;overflow:hidden;";
+
+    const options = list.map((item, index) => `<option value="${esc(item.key)}" ${index === 0 ? "selected" : ""}>${esc(item.label)}</option>`).join("");
+    panel.innerHTML = `
+      <div class="rwph-panel-head" title="Drag to move Newsletter">
+        <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>Newsletter</span></div>
+        <button type="button" class="danger rwph-newsletter-close" title="Close" aria-label="Close Newsletter">×</button>
+      </div>
+      <div class="rwph-floating-panel-body" style="padding:10px;overflow:auto;min-height:0;flex:1 1 auto;display:grid;grid-template-rows:auto minmax(180px,1fr) minmax(180px,1fr);gap:10px;">
+        <div class="rw-card" style="padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;">
+          <label style="margin:0;min-width:0;">Newsletter Theme
+            <select id="rwph-newsletter-theme-select" style="width:100%;margin-top:5px;">${options}</select>
+          </label>
+          <div id="rwph-newsletter-status" class="rw-muted" style="text-align:right;align-self:center;"></div>
+        </div>
+        <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
+          <div style="font-weight:950;margin-bottom:7px;">Preview</div>
+          <div id="rwph-newsletter-preview" style="flex:1 1 auto;min-height:0;overflow:auto;padding:8px;background:var(--rwph-theme-bg2);border:1px solid var(--rwph-theme-line);border-radius:9px;"></div>
+        </section>
+        <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
+          <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:7px;">
+            <div style="font-weight:950;">Raw HTML</div>
+            <button id="rwph-copy-newsletter-html" class="secondary" type="button">Copy Raw HTML Code</button>
+          </div>
+          <textarea id="rwph-newsletter-raw-html" readonly spellcheck="false" style="width:100%;flex:1 1 auto;min-height:0;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.4;"></textarea>
+        </section>
+      </div>
+    `;
+
+    (document.body || document.documentElement).appendChild(panel);
+    const close = panel.querySelector(".rwph-newsletter-close");
+    const select = panel.querySelector("#rwph-newsletter-theme-select");
+    const preview = panel.querySelector("#rwph-newsletter-preview");
+    const raw = panel.querySelector("#rwph-newsletter-raw-html");
+    const status = panel.querySelector("#rwph-newsletter-status");
+    const copy = panel.querySelector("#rwph-copy-newsletter-html");
+
+    const update = () => {
+      const selected = list.find((item) => item.key === String(select?.value || "")) || list[0];
+      if (!selected) return;
+      if (preview) preview.innerHTML = String(selected.html || "");
+      if (raw) raw.value = String(selected.html || "");
+      if (status) status.textContent = `${selected.label} · ${Number(selected.length || String(selected.html || "").length).toLocaleString()} characters`;
+    };
+
+    close?.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      rwphCloseNewsletterPanelV1537();
+    });
+    select?.addEventListener("change", update);
+    copy?.addEventListener("click", async (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      const text = String(raw?.value || "");
+      if (!text) {
+        rwphShowToast("There is no newsletter HTML to copy.", "warning", "RWPH Newsletter");
+        return;
+      }
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard API is unavailable in this browser.");
+        await navigator.clipboard.writeText(text);
+        rwphShowToast("Raw newsletter HTML copied.", "info", "RWPH Newsletter");
+      } catch (e) {
+        console.warn("RWPH newsletter clipboard copy failed:", e);
+        rwphShowToast("Your browser blocked clipboard access. Select the Raw HTML box and copy it manually.", "warning", "RWPH Newsletter");
+      }
+    });
+
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    rwphApplyPanelThemeChoice();
+    rwphApplyLogoChoice();
+    update();
+    return panel;
+  }
+
+  function rwphBindResultsPanelActionsV1537(tab, sourceHtml = "") {
     const root = tab?.rwphShadowRoot;
     if (!root) return;
-    const rows = rwphResultsRowsFromSourceHtml(sourceHtml, root);
+    const rows = rwphResultsRowsFromRoot(root);
     const factionName = () => rwphSafeDownloadName(rwphResultsFactionNameFromRoot(root), "Faction");
 
     const htmlBtn = root.querySelector("#thisPageHtmlBtn");
     if (htmlBtn) htmlBtn.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-      const filename = `RWPH_${factionName()}_Results_${rwphResultsDownloadStampV1536()}.html`;
+      const filename = `RWPH_${factionName()}_Results_${rwphResultsDownloadStampV1537()}.html`;
       const html = rwphBuildDownloadedResultsHtmlFromSource(sourceHtml);
-      if (!rwphDownloadTextFile(filename, html, "text/html;charset=utf-8")) {
+      if (!html || !rwphDownloadTextFile(filename, html, "text/html;charset=utf-8")) {
         rwphShowToast("RWPH could not start the HTML download from the Torn page.", "warn", "RWPH Results");
       }
     });
@@ -7712,7 +7483,7 @@
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       const source = root.querySelector("#rwph-export-csv-source");
       const csv = String(source?.value || source?.textContent || "");
-      const filename = `RWPH_${factionName()}_Payouts_${rwphResultsDownloadStampV1536()}.csv`;
+      const filename = `RWPH_${factionName()}_Payouts_${rwphResultsDownloadStampV1537()}.csv`;
       if (!csv || !rwphDownloadTextFile(filename, csv, "text/csv;charset=utf-8")) {
         rwphShowToast("RWPH could not start the CSV download from the Torn page.", "warn", "RWPH Results");
       }
@@ -7725,35 +7496,13 @@
         rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
         return;
       }
-      // v1.1.536: this handler executes in the parent userscript/Torn page. The Results
-      // panel is removed first, then the user's actual Torn tab navigates to faction controls.
       rwphOpenPayAllInFactionControls(rows);
     });
 
-    root.querySelectorAll("[data-open-results-html-panel]").forEach((btn) => {
-      btn.addEventListener("click", (ev) => {
-        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        const panelId = String(btn.getAttribute("data-open-results-html-panel") || "");
-        root.querySelectorAll(".rwph-results-html-panel").forEach((panel) => {
-          const open = panel.id === panelId;
-          panel.hidden = !open;
-          panel.style.display = open ? "flex" : "none";
-        });
-        try { btn.closest("details.rwph-newsletter-dropdown")?.removeAttribute("open"); } catch (_) {}
-      });
-    });
-    root.querySelectorAll("[data-close-results-html-panel],.rwph-results-html-close").forEach((btn) => {
-      btn.addEventListener("click", (ev) => {
-        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
-        const panel = btn.closest(".rwph-results-html-panel");
-        if (panel) { panel.hidden = true; panel.style.display = "none"; }
-      });
-    });
-    root.querySelectorAll(".rwph-results-html-box").forEach((box) => {
-      box.addEventListener("click", (ev) => {
-        if (Number(ev?.detail || 0) < 3) return;
-        try { box.focus(); box.select(); box.setSelectionRange?.(0, String(box.value || "").length); } catch (_) {}
-      });
+    const newsletterBtn = root.querySelector("#rwphNewsletterBtn");
+    if (newsletterBtn) newsletterBtn.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      rwphOpenNewsletterPanelV1537(rwphNewsletterVariantsFromResultsRoot(root));
     });
   }
 
@@ -7777,8 +7526,8 @@
     style.textContent = Array.from(parsed.querySelectorAll("style")).map((node) => node.textContent || "").join("\n");
     shadow.appendChild(style);
 
-    // Preserve the generated standalone CSS without leaking any of its html/body/button
-    // selectors onto Torn. These html/body elements live only inside this panel's Shadow DOM.
+    // Preserve the generated Results/Loading CSS without leaking its html/body/button
+    // selectors onto Torn. These nodes live only inside this panel's Shadow DOM.
     const htmlNode = document.createElement("html");
     const bodyNode = document.createElement("body");
     htmlNode.lang = parsed.documentElement?.lang || "en";
@@ -7795,7 +7544,7 @@
     tab.rwphSourceHtml = String(sourceHtml || "");
     tab.rwphMode = cfg.mode;
 
-    if (cfg.mode === "results") rwphBindResultsPanelActionsV1536(tab, sourceHtml);
+    if (cfg.mode === "results") rwphBindResultsPanelActionsV1537(tab, sourceHtml);
     return true;
   }
 
@@ -7813,7 +7562,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.536";
+    panel.dataset.rwphUiGeneration = "v1.1.537";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -7828,7 +7577,7 @@
       "box-sizing:border-box",
       "color:var(--rwph-theme-text)",
     ].join(";");
-    rwphApplyResultsShellFallbackGeometry(panel, initialMode);
+    rwphApplyResultsShellDefaultGeometry(panel, initialMode);
 
     panel.innerHTML = `
       <div class="rwph-panel-head rwph-results-panel-head" title="Drag to move ${esc(cfg.title)}">
@@ -7886,7 +7635,7 @@
 
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
     rwphApplyResultsShellMode(fakeTab, initialMode, true);
-    rwphStyleResultsShellControlsV1535(panel);
+    rwphStyleResultsShellControlsV1537(panel);
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
     rwphRenderResultsPanelDocumentV1536(fakeTab, loadingHtml, initialMode);
@@ -7930,7 +7679,7 @@
         return false;
       }
 
-      // Results already opened inside the panel: restore the same panel with the results HTML in the frame.
+      // Results already opened inside the panel: restore the same floating panel with its saved Results content.
       if (type === "results" && html) {
         rwphCreateResultsLoadingPanel(html, startedAtMs, { mode: "results" });
         return true;
@@ -11341,8 +11090,8 @@
               <li><b>Start Payments:</b> opens the payment helper from the results page. RWPH helps copy/prefill details but does not send money.</li>
               <li><b>Manual safety:</b> always check Torn fields yourself before confirming any payment. Use Add To Balance where your faction process requires it.</li>
               <li><b>Export Html:</b> downloads the current results page as an HTML file for records.</li>
-              <li><b>Newsletter dropdown:</b> opens styled newsletter HTML versions. Each panel has a preview and a raw HTML box.</li>
-              <li><b>Copy newsletter HTML:</b> right-click inside the raw HTML box, choose Select All, then Copy.</li>
+              <li><b>Newsletter:</b> opens one separate Newsletter panel. Choose the newsletter style from its dropdown to update the Preview and Raw HTML sections.</li>
+              <li><b>Copy newsletter HTML:</b> use <b>Copy Raw HTML Code</b> in the Newsletter panel.</li>
             </ul>
           </div>
 
@@ -12429,8 +12178,8 @@
               <li><b>Start Payments:</b> opens the payment helper from the results page. RWPH helps copy/prefill details but does not send money.</li>
               <li><b>Manual safety:</b> always check Torn fields yourself before confirming any payment. Use Add To Balance where your faction process requires it.</li>
               <li><b>Export Html:</b> downloads the current results page as an HTML file for records.</li>
-              <li><b>Newsletter dropdown:</b> opens styled newsletter HTML versions. Each panel has a preview and a raw HTML box.</li>
-              <li><b>Copy newsletter HTML:</b> right-click inside the raw HTML box, choose Select All, then Copy.</li>
+              <li><b>Newsletter:</b> opens one separate Newsletter panel. Choose the newsletter style from its dropdown to update the Preview and Raw HTML sections.</li>
+              <li><b>Copy newsletter HTML:</b> use <b>Copy Raw HTML Code</b> in the Newsletter panel.</li>
             </ul>
           </div>
 
@@ -13727,7 +13476,7 @@
     const selectors = [
       '#rw-close','#rw-results-close','#rwph-close-helper','#rwph-saved-reports-close','#rw-wrong-payment-close',
       '#rwph-default-setup-close','#rwph-default-setup-controller-close','#rwph-layout-theme-close','#rwph-licence-info-close',
-      '#rwph-logo-picker-close','#rwph-mm-close','.rw-pay-all-close','.pay-all-close','.rwph-results-html-close','.rwph-mini-close','.rwph-clean-close-v1491'
+      '#rwph-logo-picker-close','#rwph-mm-close','.rw-pay-all-close','.pay-all-close','.rwph-mini-close','.rwph-clean-close-v1491'
     ].join(',');
     panel.querySelectorAll(selectors).forEach((close) => {
       if (!(close instanceof HTMLElement)) return;
@@ -13763,13 +13512,12 @@
       ".rwph-floating-panel-head",
       ".rwph-panel-head",
       ".rwph-saved-reports-head",
-      ".rwph-results-loading-head",
-      ".rwph-results-html-head"
+      ".rwph-results-loading-head"
     ].filter(Boolean).join(",");
     const head = panel.querySelector(headerSelectors);
     if (head) {
       head.classList.add("rwph-clean-panel-head-v1491");
-      let close = head.querySelector('[aria-label*="close" i], [title*="close" i], .rwph-results-html-close, .rw-pay-all-close, #rw-close, #rwph-close-helper, #rwph-saved-reports-close');
+      let close = head.querySelector('[aria-label*="close" i], [title*="close" i], .rw-pay-all-close, #rw-close, #rwph-close-helper, #rwph-saved-reports-close');
       if (!close) {
         close = Array.from(head.querySelectorAll("button,a")).find((el) => String(el.textContent || "").trim() === "×") || null;
       }
