@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.542
+// @version      1.1.543
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.543: Fixes Payment Helper section overlap while resizing by placing the helper body in a normal vertical flex flow; How to use remains a responsive card with wrapping instructions.
   // v1.1.542: Fixes Payment Helper resize reflow: Required payment details no longer clip/disappear, and How to use steps wrap onto extra lines instead of forcing a horizontal scrollbar.
   // v1.1.540: Renames the Advanced Own Faction Hospitalize bonus and restricts it to verified own-faction defenders, while leaving the enemy-war hospitalization bonus separate.
   // v1.1.538: Makes Payment Checklist Complete fit without forced scrolling, adds the same Newsletter/HTML/CSV result actions there, and makes Cached Reports temporarily replace/reopen Main unless a report is loaded.
@@ -4106,13 +4107,13 @@
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:86px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(220px,100%)!important;max-width:100%!important;height:44px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;text-align:center!important;font-size:16px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;overflow-wrap:anywhere!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{display:grid!important;align-content:start!important;gap:7px!important;padding:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll>*{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:8px!important;padding:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll>*{position:relative!important;inset:auto!important;transform:none!important;float:none!important;flex:0 0 auto!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-subtitle{padding:5px 7px!important;text-align:center!important;color:var(--rwph-theme-soft)!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-message{padding:7px 8px!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;background:var(--rwph-theme-panel)!important;overflow-wrap:anywhere!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:8px!important;display:grid!important;gap:4px!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:min-content!important;align-content:start!important;overflow:visible!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:8px!important;display:grid!important;gap:4px!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;align-content:start!important;overflow:visible!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card>*{width:auto!important;max-width:100%!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;box-sizing:border-box!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps{margin:0!important;padding:8px!important;display:block!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:min-content!important;overflow-x:hidden!important;overflow-y:visible!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps{position:relative!important;margin:0!important;padding:8px!important;display:block!important;flex:0 0 auto!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:visible!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps-title{margin:0 0 4px 0!important;white-space:normal!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list{margin:0!important;padding-left:24px!important;display:block!important;min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list>li{display:list-item!important;margin:0 0 3px 0!important;padding:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;line-height:1.45!important;font-size:clamp(7px,1.95vw,10.5px)!important;box-sizing:border-box!important;}
@@ -6594,7 +6595,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.542">
+<body data-rwph-ui-generation="v1.1.543">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7328,7 +7329,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.542";
+    panel.dataset.rwphUiGeneration = "v1.1.543";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7643,7 +7644,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.542";
+    panel.dataset.rwphUiGeneration = "v1.1.543";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
