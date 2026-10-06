@@ -10,7 +10,7 @@
 
 **Ranked War Payout Helper (RWPH)** is a Torn userscript for calculating ranked-war payouts, comparing member contribution, managing payout adjustments, keeping up to three saved reports per faction, and preparing manual faction payments.
 
-Current userscript version: **1.1.502**  
+Current userscript version: **1.1.532**  
 Userscript name: **Ranked War Payout Helper**  
 Namespace: **RankedWarPayoutHelper**  
 Author: **Evil_Panda_420**
@@ -382,40 +382,3 @@ Saved local settings are preserved where possible between versions.
 - Review Member Management adjustments.
 - Treat Torn/API outages, incomplete data, or rate limits as reasons to verify the report before use.
 - Keep final Torn payment/gameplay actions manual.
-
----
-
-## Current Version Summary — v1.1.487
-
-RWPH v1.1.487 keeps the v1.1.486 payment-helper recovery flow, makes stale expiry displays switch to Syncing immediately, applies the live database expiry as soon as it returns, and stops Buy/Extend from automatically opening the Your Expiration panel.
-
-## v1.1.487 - Payment Timer / Expiration Panel Fix
-
-- Stale payment-helper timers change to **Syncing...** immediately while the backend restores/repairs the current challenge.
-- Live expiry values are pushed into the visible helper as soon as they are received.
-- Buy/Extend payment success no longer automatically opens the Your Expiration panel.
-
-## v1.1.486 - Payment Helper Recovery
-
-- Keeps the v1.1.485 layout where Cached Reports sits between Basic Calculations and Advanced Calculations.
-- Fixes stale/expired Buy/Extend helper handoffs by remembering the original payment intent and repairing a missing/replaced payment challenge automatically.
-- If the backend supplies a replacement payment code, the Torn helper switches to that current code and updates its URL instead of continuing with the stale code.
-- Starts payment auto-check on the Torn item/helper page after the database-backed payment code is confirmed.
-- Backend v1.1.484 remains compatible and does not need redeploying; no database migration is required.
-
-RWPH v1.1.484 keeps the v1.1.482 fast Cached Reports system and v1.1.483 fast Admin Key activation, while converting the remaining common licence/payment/admin hot paths to targeted indexed MySQL operations. Buy/Extend, licence checks, payment confirmation, trial activation, and admin licence changes no longer need the legacy full-state database loader.
-
-The Advanced preset/shared-settings system, persistent per-setting help, themed dropdowns, calculation formulas, licensing, payment tools, Member Management, Cached Reports, and Torn attack-data speed cache remain available.
-
-
-## v1.1.484 - Faster Licence, Payment, and Admin Hot Paths
-
-Buy/Extend, pending-payment lookup, payment confirmation, licence verification, Free Trial, admin licence list/grant/extend/remove, and admin status counts now use targeted indexed MySQL operations. Buy/Extend requests are click-locked, payment auto-checks cannot overlap, and extension completion reuses the returned licence expiry instead of immediately checking the licence again. The legacy full-state loader remains only for legacy JSON import. No schema migration is required from v1.1.483.
-
-## v1.1.483 - Faster Admin Key activation
-
-Saving the Admin Key now performs one verify + owner-licence grant request. The backend writes only the owner user/licence/metadata rows directly, returns a fresh signed licence token, and the userscript unlocks the admin controls immediately. The full licence list is no longer loaded automatically during key save. No schema migration is required from v1.1.482.
-
-
-## v1.1.527 UI rebuild
-Locked, Unlocked/Payout, Admin, Help, Results Loading and Results now render from the saved four-colour theme immediately on page load. Their old per-panel hard-coded visual CSS has been removed/replaced by the new theme-first UI.

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.530
+// @version      1.1.532
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,8 @@
 (function () {
   "use strict";
 
-  // v1.1.530: Removes the Payment Code Ready card from the main panel flow and tightens every secondary/helper panel without changing Main/Admin/Help/Results Loading/Results layouts.
+  // v1.1.532: Unifies every RWPH panel scrollbar/close/resize control with the main panel, moves Payments Copy to same-tab faction controls with Results auto-close, and auto-closes Cached Reports after a saved report opens.
+  // v1.1.531: Keeps every Xanax Payment Helper numbered instruction on a single line by replacing the old grid-split instructions with proper numbered rows.
   // v1.1.529: Rebuilds every secondary/floating RWPH panel on one theme-first component shell; merges Body+Surface into one base colour (3 controls total), restores Xanax Payment Helper layout/3-corner resize, and fixes Newsletter panels so Rose is not forced open.
   // v1.1.528: Corrects the Theme / Colours Body and Surface field labels so they match the UI areas each colour actually controls.
   // v1.1.527: Rebuilds Locked/Unlocked/Admin/Help/Results Loading/Results around the four-colour theme from first render; removes their legacy per-panel visual CSS and applies saved theme state before any panel/restore path.
@@ -4016,7 +4017,7 @@
   function rwphDecorateSecondaryPanelV1529(panel, handleSelector = "") {
     if (!rwphIsSecondaryPanelV1529(panel)) return panel;
     panel.classList.add("rwph-secondary-panel-v1529");
-    panel.setAttribute("data-rwph-secondary-ui", "v1.1.530");
+    panel.setAttribute("data-rwph-secondary-ui", "v1.1.532");
     const heads = [
       handleSelector, ".rwph-panel-head", ".rwph-floating-panel-head", ".rwph-saved-reports-head", ".rw-pay-all-head", "#rwph-payment-helper-title"
     ].filter(Boolean).join(",");
@@ -4033,7 +4034,7 @@
 
   function rwphSecondaryPanelCssV1529() {
     return `
-      /* v1.1.530 — compact secondary/floating panel component system. Main,
+      /* v1.1.532 — compact secondary/floating panel component system. Main,
          Admin, Help, Results Loading and Results layouts remain excluded/unchanged. */
       body .rwph-secondary-panel-v1529{
         position:fixed!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;
@@ -4090,19 +4091,25 @@
       body .rwph-secondary-panel-v1529 .rwph-secondary-close-v1529,
       body .rwph-secondary-panel-v1529 #rwph-close-helper,
       body .rwph-secondary-panel-v1529 [data-pay-all-close]{
-        position:absolute!important;top:7px!important;right:7px!important;left:auto!important;bottom:auto!important;width:30px!important;height:30px!important;
-        min-width:30px!important;min-height:30px!important;max-width:30px!important;max-height:30px!important;padding:0!important;margin:0!important;
+        position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:34px!important;height:34px!important;
+        min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;padding:0!important;margin:0!important;
         display:grid!important;place-items:center!important;z-index:160!important;font-size:20px!important;line-height:1!important;
+        border:1px solid var(--rwph-theme-line2)!important;border-radius:var(--rwph-theme-button-radius,9px)!important;
+        background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;box-shadow:none!important;
       }
       body .rwph-secondary-panel-v1529>.rw-resize-handle{
-        position:absolute!important;display:block!important;width:22px!important;height:22px!important;z-index:155!important;pointer-events:auto!important;
+        position:absolute!important;display:block!important;width:20px!important;height:20px!important;z-index:155!important;pointer-events:auto!important;
         touch-action:none!important;user-select:none!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;
       }
       body .rwph-secondary-panel-v1529>.rw-resize-handle-nw{left:5px!important;top:5px!important;right:auto!important;bottom:auto!important;cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-top:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
       body .rwph-secondary-panel-v1529>.rw-resize-handle-sw{left:5px!important;bottom:5px!important;right:auto!important;top:auto!important;cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
       body .rwph-secondary-panel-v1529>.rw-resize-handle-se{right:5px!important;bottom:5px!important;left:auto!important;top:auto!important;cursor:nwse-resize!important;border-right:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
       body .rwph-secondary-panel-v1529>.rw-resize-handle-ne{display:none!important;}
-      body .rwph-secondary-panel-v1529 ::-webkit-scrollbar{width:8px;height:8px}body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important}body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important}
+      body .rwph-secondary-panel-v1529,body .rwph-secondary-panel-v1529 *{scrollbar-width:thin!important;scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2)!important;}
+      body .rwph-secondary-panel-v1529 ::-webkit-scrollbar{width:8px!important;height:8px!important;}
+      body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important;border-radius:999px!important;}
+      body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
+      body .rwph-secondary-panel-v1529 ::-webkit-scrollbar-thumb:hover{background:var(--rwph-theme-outline)!important;filter:brightness(1.08)!important;}
       body .rwph-secondary-panel-v1529 :is(.rwph-secondary-card-v1529,.rw-card,.rw-box,.rw-section,.rw-calc-brief,fieldset){padding:8px!important;margin-block:0 6px!important;}
       body .rwph-secondary-panel-v1529 :is(label,.rw-small,.rw-muted,small,p){margin-top:0!important;margin-bottom:4px!important;line-height:1.35!important;}
       body .rwph-secondary-panel-v1529 :is(.rw-row,.rw-actions,.rw-compact-check-grid,.rw-layout-theme-action-row,.rwph-panel-layout-actions){margin-top:0!important;margin-bottom:6px!important;}
@@ -4141,14 +4148,29 @@
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{display:grid!important;align-content:start!important;gap:7px!important;padding:8px!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-subtitle{padding:5px 7px!important;text-align:center!important;color:var(--rwph-theme-soft)!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-message{padding:7px 8px!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;background:var(--rwph-theme-panel)!important;overflow-wrap:anywhere!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:8px!important;display:grid!important;gap:4px!important;line-height:1.4!important;text-align:left!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:8px!important;display:grid!important;gap:4px!important;line-height:1.4!important;text-align:left!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps{margin:0!important;padding:8px!important;display:block!important;line-height:1.4!important;text-align:left!important;overflow-x:auto!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps-title{margin:0 0 4px 0!important;white-space:nowrap!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list{margin:0!important;padding-left:24px!important;display:block!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list>li{display:list-item!important;margin:0 0 3px 0!important;padding:0!important;white-space:nowrap!important;line-height:1.45!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list>li:last-child{margin-bottom:0!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-title{font-weight:950!important;text-align:center!important;color:var(--rwph-theme-text)!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;margin:2px 0!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-code{display:inline-block!important;padding:2px 5px!important;border-radius:6px!important;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-outline)!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;overflow-wrap:anywhere!important;}
 
+      /* v1.1.532 — one main-panel scrollbar/close/resize language across every live RWPH panel. */
+      body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel),
+      body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) *{scrollbar-width:thin!important;scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2)!important;}
+      body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar{width:8px!important;height:8px!important;}
+      body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important;border-radius:999px!important;}
+      body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
+      body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb:hover{background:var(--rwph-theme-outline)!important;filter:brightness(1.08)!important;}
+      body :is(#rw-close,#rw-results-close,#rwph-close-helper,#rwph-saved-reports-close,#rw-wrong-payment-close,#rwph-default-setup-close,#rwph-default-setup-controller-close,#rwph-layout-theme-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-mm-close,.rw-pay-all-close,.pay-all-close,.rwph-results-html-close,.rwph-mini-close,[data-pay-all-close]){position:absolute!important;top:10px!important;right:10px!important;left:auto!important;bottom:auto!important;width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;padding:0!important;margin:0!important;display:grid!important;place-items:center!important;font-size:20px!important;line-height:1!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:var(--rwph-theme-button-radius,9px)!important;background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;box-shadow:none!important;transform:none!important;z-index:170!important;}
+      body :is(.rw-resize-handle,.rwph-results-resize-handle){width:20px!important;height:20px!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;border-color:var(--rwph-theme-outline)!important;}
+
       @media(max-width:760px),(pointer:coarse){
         body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{min-height:74px!important;padding:7px 40px 6px!important;}
-        body .rwph-secondary-panel-v1529>.rw-resize-handle{width:30px!important;height:30px!important;}
+        body .rwph-secondary-panel-v1529>.rw-resize-handle,body .rwph-results-resize-handle{width:30px!important;height:30px!important;}
         body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-row{grid-template-columns:1fr!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529{width:calc(100vw - 12px)!important;min-width:240px!important;min-height:300px!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions{grid-template-columns:1fr!important;}
@@ -5993,30 +6015,34 @@
     return rwphNormalizePayAllRows(best?.rows || []);
   }
 
+  function rwphCloseResultsForPaymentsHandoff() {
+    try {
+      const embedded = document.getElementById("rw-results-panel");
+      if (embedded) {
+        embedded.hidden = true;
+        embedded.setAttribute("hidden", "");
+        embedded.style.display = "none";
+      }
+    } catch (_) {}
+    try { rwphCloseExistingResultsLoadingPanel(); } catch (_) {}
+    try { rwphClearResultsLoadingPanelState(); } catch (_) {}
+    try { rwphClearRememberedOpenResultsPage(); } catch (_) {}
+  }
+
   function rwphOpenPayAllInFactionControls(rows) {
     rwphStorePayAllRows(rows || []);
     rwphSetPaymentsOnlyTabRestoreState();
+    rwphCloseResultsForPaymentsHandoff();
     const url = rwphFactionControlsPayAllUrl();
     try {
-      if (typeof GM_openInTab === "function") {
-        GM_openInTab(url, { active: true, insert: true, setParent: false });
-        setTimeout(() => closePanel(), 150);
-        return true;
-      }
+      // v1.1.532: Payments Copy always stays in the current Torn tab. This keeps
+      // PDA/phone navigation predictable and guarantees the Results panel is closed
+      // before faction controls takes over the page.
+      window.location.assign(url);
+      return true;
     } catch (e) {
-      console.warn("GM_openInTab failed for Payments controls tab:", e);
-    }
-    try {
-      const tab = window.open(url, "_blank", "noopener,noreferrer");
-      if (tab) {
-        setTimeout(() => closePanel(), 150);
-        return true;
-      }
-      try { rwphSetPanelOpenState(true); } catch (_) {}
-      try { setLauncherOpenState(true); } catch (_) {}
-      return false;
-    } catch (e) {
-      console.warn("window.open failed for Payments controls tab:", e);
+      console.warn("Same-tab Payments controls navigation failed:", e);
+      try { window.location.href = url; return true; } catch (_) {}
       try { rwphSetPanelOpenState(true); } catch (_) {}
       try { setLauncherOpenState(true); } catch (_) {}
       return false;
@@ -6211,7 +6237,8 @@
       if (!resultsDocument || !resultsDocument.getElementById) return false;
       const htmlBtn = resultsDocument.getElementById("thisPageHtmlBtn");
       const csvBtn = resultsDocument.getElementById("csvBtn");
-      if (!htmlBtn && !csvBtn) return false;
+      const payAllBtn = resultsDocument.getElementById("payAllBtn");
+      if (!htmlBtn && !csvBtn && !payAllBtn) return false;
 
       const bind = (button, kind) => {
         if (!button || button.dataset.rwphParentExportBound === "1") return;
@@ -6249,6 +6276,17 @@
 
       bind(htmlBtn, "html");
       bind(csvBtn, "csv");
+      if (payAllBtn && payAllBtn.dataset.rwphParentPaymentsBound !== "1") {
+        payAllBtn.dataset.rwphParentPaymentsBound = "1";
+        payAllBtn.setAttribute("href", "#");
+        payAllBtn.removeAttribute("target");
+        payAllBtn.removeAttribute("rel");
+        payAllBtn.addEventListener("click", (ev) => {
+          try { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); } catch (_) {}
+          rwphOpenPayAllInFactionControls(lastRows || []);
+          return false;
+        }, true);
+      }
       return true;
     } catch (e) {
       console.warn("RWPH could not bind parent-owned Results exports:", e);
@@ -6681,7 +6719,7 @@
       .close-hint{margin:0}.member-results-panel{padding:10px}.results-section-head{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-bottom:9px}.results-section-head>div:first-child{min-width:0}.results-section-head>div>span{color:var(--rwph-theme-outline)!important;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.results-section-head h2{margin:2px 0 0;color:var(--rwph-theme-text)!important;font-size:18px}.results-section-head p{margin:4px 0 0}
       .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}.result-card{padding:10px;min-width:0}.result-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.result-player{min-width:0}.result-name{color:var(--rwph-theme-text)!important;font-weight:950;font-size:14px}.result-rank-pill{padding:3px 6px;border:1px solid var(--rwph-theme-line);border-radius:999px;color:var(--rwph-theme-outline)!important;font-size:10px;white-space:nowrap}.payout{color:var(--rwph-theme-outline)!important;font-weight:950;font-size:18px}.result-payout-block{text-align:right}.result-quick-row,.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}.result-highlight,.stats>div{padding:7px}.result-highlight b,.stats b{display:block;margin-top:2px;color:var(--rwph-theme-text)!important}.result-highlight span{color:var(--rwph-theme-soft)!important;font-size:10px}
       .rwph-newsletter-dropdown{position:relative;display:inline-flex}.rwph-newsletter-dropdown-menu{position:absolute;z-index:50;top:calc(100% + 6px);right:0;min-width:230px;padding:6px;display:grid;gap:5px}.rwph-newsletter-dropdown:not([open]) .rwph-newsletter-dropdown-menu{display:none}.rwph-newsletter-dropdown-item{width:100%;justify-content:flex-start}
-      .rwph-results-html-panel[hidden]{display:none!important}.rwph-results-html-panel{position:fixed;z-index:999999;inset:18px;max-width:1040px;margin:auto;display:flex;flex-direction:column;overflow:hidden}.rwph-results-html-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-results-html-title{font-size:16px;font-weight:950}.rwph-results-html-close{width:36px;min-width:36px;padding:0;font-size:20px}.rwph-results-html-status{padding:8px 10px}.rwph-results-html-preview-wrap{margin:0 10px 8px;padding:8px;overflow:auto;max-height:35vh}.rwph-results-html-preview-title{padding:6px 10px;font-weight:900;color:var(--rwph-theme-text)!important}.rwph-results-html-box{margin:0 10px 10px;min-height:240px;flex:1 1 auto;padding:9px;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;resize:none}
+      .rwph-results-html-panel[hidden]{display:none!important}.rwph-results-html-panel{position:fixed;z-index:999999;inset:18px;max-width:1040px;margin:auto;display:flex;flex-direction:column;overflow:hidden}.rwph-results-html-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-results-html-title{font-size:16px;font-weight:950}.rwph-results-html-close{width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;max-height:34px!important;padding:0!important;font-size:20px!important;line-height:1!important;border-radius:var(--rwph-theme-button-radius,9px)!important}.rwph-results-html-status{padding:8px 10px}.rwph-results-html-preview-wrap{margin:0 10px 8px;padding:8px;overflow:auto;max-height:35vh}.rwph-results-html-preview-title{padding:6px 10px;font-weight:900;color:var(--rwph-theme-text)!important}.rwph-results-html-box{margin:0 10px 10px;min-height:240px;flex:1 1 auto;padding:9px;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;resize:none}
       ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)}::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline);border:2px solid var(--rwph-theme-bg);border-radius:999px}
       @media(max-width:700px),(pointer:coarse){body{padding:8px}.hero{padding:10px}.results-hero-head{align-items:flex-start}.results-hero-logo{width:48px;height:48px}.results-hero-copy h1{font-size:19px}.results-action-zone>.btn,.results-action-zone>.rwph-newsletter-dropdown{flex:1 1 100%}.rwph-newsletter-dropdown-summary{width:100%}.rwph-newsletter-dropdown-menu{position:fixed;left:8px;right:8px;top:auto;bottom:8px}.grid{grid-template-columns:1fr}.results-section-head{align-items:flex-start;flex-direction:column}.results-section-head .results-meta-card{width:100%}.rwph-results-html-panel{inset:8px}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
     `;
@@ -6938,7 +6976,7 @@
         <p class="results-action-note"><b>Results actions:</b> export this results page as HTML, export CSV for records, start the manual payment workflow, or open the Newsletter dropdown for compact themed HTML panels.</p>
         <a class="btn secondary" id="thisPageHtmlBtn" href="#" role="button">Export Html</a>
         <a class="btn secondary" id="csvBtn" href="#" role="button">Export CSV</a>
-        <a class="btn rwph-start-payments-btn" id="payAllBtn" href="${esc(payAllHref)}" target="_blank" rel="noopener">Start Payments</a>
+        <a class="btn rwph-start-payments-btn" id="payAllBtn" href="${esc(payAllHref)}">Start Payments</a>
         ${rwphNewsletterButtonsHtml}
       </div>
       <textarea id="rwph-export-csv-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(csvText)}</textarea>
@@ -7129,7 +7167,12 @@
     }, true);
 
     var payAllOpenBtn = document.getElementById("payAllBtn");
-    if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", storePayAllRowsFallback);
+    if (payAllOpenBtn) payAllOpenBtn.addEventListener("click", function(ev) {
+      storePayAllRowsFallback();
+      if (payAllOpenBtn.dataset.rwphParentPaymentsBound === "1") return;
+      try { ev.preventDefault(); } catch (_) {}
+      try { window.top.location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) { try { location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) {} }
+    });
 
   </script>
 </body>
@@ -7788,11 +7831,11 @@
         "display:inline-flex",
         "align-items:center",
         "justify-content:center",
-        "width:36px",
-        "height:36px",
-        "min-width:36px",
-        "min-height:36px",
-        "border-radius:12px",
+        "width:34px",
+        "height:34px",
+        "min-width:34px",
+        "min-height:34px",
+        "border-radius:9px",
         "border:1px solid var(--rwph-theme-line2)",
         "background:var(--rwph-theme-panel2)",
         "color:var(--rwph-theme-text)",
@@ -7810,7 +7853,8 @@
     };
 
     const fullBtn = makeControlButton("⛶", "Fullscreen results loading panel", "16px");
-    const closeBtn = makeControlButton("×", "Close results loading panel", "22px");
+    const closeBtn = makeControlButton("×", "Close results loading panel", "20px");
+    closeBtn.className = "rwph-panel-close-control";
 
     controls.appendChild(fullBtn);
     controls.appendChild(closeBtn);
@@ -7843,8 +7887,8 @@
       h.title = dir === "nw" ? "Resize from top-left" : dir === "sw" ? "Resize from bottom-left" : "Resize from bottom-right";
       h.style.cssText = [
         "position:absolute",
-        "width:22px",
-        "height:22px",
+        "width:20px",
+        "height:20px",
         "z-index:2147483604",
         "touch-action:none",
         "user-select:none",
@@ -7857,11 +7901,11 @@
         "filter:drop-shadow(0 0 6px color-mix(in srgb,var(--rwph-theme-outline) 32%,transparent))",
       ].join(";");
       if (dir === "se") {
-        h.style.right = "5px"; h.style.bottom = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "0 3px 3px 0"; h.style.borderRadius = "0 0 8px 0";
+        h.style.right = "5px"; h.style.bottom = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "0 2px 2px 0"; h.style.borderRadius = "0 0 8px 0";
       } else if (dir === "sw") {
-        h.style.left = "5px"; h.style.bottom = "5px"; h.style.cursor = "nesw-resize"; h.style.borderWidth = "0 0 3px 3px"; h.style.borderRadius = "0 0 0 8px";
+        h.style.left = "5px"; h.style.bottom = "5px"; h.style.cursor = "nesw-resize"; h.style.borderWidth = "0 0 2px 2px"; h.style.borderRadius = "0 0 0 8px";
       } else {
-        h.style.left = "5px"; h.style.top = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "3px 0 0 3px"; h.style.borderRadius = "8px 0 0 0";
+        h.style.left = "5px"; h.style.top = "5px"; h.style.cursor = "nwse-resize"; h.style.borderWidth = "2px 0 0 2px"; h.style.borderRadius = "8px 0 0 0";
       }
       panel.appendChild(h);
       return h;
@@ -8083,8 +8127,8 @@
         panel.style.minWidth = "0";
         panel.style.minHeight = "0";
         panel.querySelectorAll(".rwph-results-resize-handle").forEach((h) => {
-          h.style.width = "32px";
-          h.style.height = "32px";
+          h.style.width = "30px";
+          h.style.height = "30px";
           h.style.zIndex = "2147483605";
         });
         // Phone/PDA has its own admin-defined default layout. If none exists,
@@ -9400,6 +9444,7 @@
       if (stopProgressPolling) { stopProgressPolling(); stopProgressPolling = null; }
       if (manualOpenReady) rwphSetResultsLoadingStepDone(preOpenedResultsTab, 4, 100, `Saved report ${label} ready. Click Open Results Page.`);
       else await rwphShowResultsLoadingCompletion(preOpenedResultsTab);
+      rwphCloseSavedReportsPanel();
       if (panelStatus) panelStatus.textContent = `Saved report ${label} loaded.`;
       rwphToastPanelInfo(mainStatus, `Saved report ${label} loaded. ${lastRows.length} member(s).`, "info", "RWPH Cached Reports");
     } catch (e) {
@@ -9595,7 +9640,7 @@
       .rw-pay-all-head { cursor: move; touch-action:none; display:flex; justify-content:flex-start; align-items:center; min-height:46px; width:100%; box-sizing:border-box; padding:8px 48px 8px 10px; margin:0; position:sticky; top:0; z-index:5; flex:0 0 auto; text-align:left; }
       .rw-pay-all-title { font-weight:950; color:#fff2dd; font-size:13px; line-height:1.12; white-space:normal; overflow-wrap:anywhere; }
       .rw-pay-all-note { color:#c7d2fe; font-size:10px; line-height:1.35; margin:0 44px 7px 4px; text-align:left; }
-      .rw-pay-all-scroll { min-height:0; flex:1 1 auto; width:100%; display:flex; flex-direction:column; overflow:auto; padding:0; margin:0; box-sizing:border-box; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.80) rgba(15,23,42,.28); }
+      .rw-pay-all-scroll { min-height:0; flex:1 1 auto; width:100%; display:flex; flex-direction:column; overflow:auto; padding:0; margin:0; box-sizing:border-box; scrollbar-width:thin; scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2); }
       .rw-pay-all-balance-warning { margin:0 2px 8px; padding:9px 8px; border-radius:13px; border:2px solid rgba(250,204,21,.76); border-left:6px solid rgba(249,115,22,.92); background:linear-gradient(180deg, rgba(120,53,15,.88), rgba(69,26,3,.84)); color:#fff7ed; font:950 11px/1.32 Arial,Helvetica,sans-serif; text-align:center; box-shadow:0 0 20px rgba(245,158,11,.18), inset 0 1px 0 rgba(255,255,255,.07); }
       .rw-pay-all-balance-warning b { color:#fef3c7; }
       .rw-pay-all-accept-warning { display:inline-flex !important; align-items:center !important; justify-content:center !important; width:100% !important; margin:8px 0 5px !important; padding:8px 10px !important; min-height:32px !important; border-radius:11px !important; border:2px solid rgba(254,243,199,.78) !important; background:linear-gradient(135deg, rgba(250,204,21,.96), rgba(249,115,22,.94)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; letter-spacing:.35px !important; text-transform:uppercase !important; cursor:pointer !important; box-shadow:0 0 18px rgba(245,158,11,.30), inset 0 1px 0 rgba(255,255,255,.25) !important; }
@@ -9608,10 +9653,10 @@
       .rw-pay-all-info li { margin:2px 0; }
       .rw-pay-all-close { position:absolute !important; top:8px !important; right:8px !important; width:30px !important; height:30px !important; min-width:30px !important; min-height:30px !important; padding:0 !important; display:grid !important; place-items:center !important; border-radius:12px !important; border:1px solid rgba(251,191,36,.24) !important; border-left:4px solid rgba(245,158,11,.66) !important; background:linear-gradient(180deg, rgba(30,41,59,.94), rgba(2,6,23,.88)) !important; color:#fff7ed !important; font:950 17px/1 Arial,Helvetica,sans-serif !important; box-shadow:0 1px 0 rgba(255,255,255,.045) inset,0 12px 26px rgba(0,0,0,.26) !important; text-shadow:0 1px 0 rgba(0,0,0,.75) !important; cursor:pointer !important; z-index:120 !important; }
       .rw-pay-all-undo { margin:0 0 8px; padding:6px 8px; min-height:26px; border-radius:10px; border:1px solid rgba(251,191,36,.28); background:linear-gradient(135deg, rgba(30,41,59,.96), rgba(49,46,129,.88)); color:#fff7ed; font-size:10px; font-weight:950; cursor:pointer; }
-      .rw-pay-all-list { display:grid; gap:6px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:rgba(245,158,11,.86) rgba(15,23,42,.36); }
+      .rw-pay-all-list { display:grid; gap:6px; overflow-y:auto; overflow-x:hidden; min-height:0; flex:1 1 auto; padding-right:3px; scrollbar-width:thin; scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2); }
       .rw-pay-all-list::-webkit-scrollbar { width:8px; height:8px; }
-      .rw-pay-all-list::-webkit-scrollbar-track { background:rgba(15,23,42,.34); border-radius:999px; }
-      .rw-pay-all-list::-webkit-scrollbar-thumb { background:linear-gradient(180deg, rgba(251,191,36,.96), rgba(245,158,11,.88)); border:2px solid rgba(15,23,42,.50); border-radius:999px; }
+      .rw-pay-all-list::-webkit-scrollbar-track { background:var(--rwph-theme-bg2); border-radius:999px; }
+      .rw-pay-all-list::-webkit-scrollbar-thumb { background:var(--rwph-theme-outline); border:2px solid var(--rwph-theme-bg); border-radius:999px; }
       .rw-pay-all-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; align-items:center; padding:7px; border-radius:12px; border:1px solid rgba(251,191,36,.16); background:rgba(15,23,42,.72); }
       .rw-pay-all-member { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:900; color:#f8fafc; }
       .rw-pay-all-payout { display:block; margin-top:1px; color:#86efac; font-size:10px; font-weight:950; }
@@ -10677,13 +10722,15 @@
         </div>
 
       <div class="rwph-xanax-steps">
-        <b>How to use:</b><br>
-        1. Open your <b>Xanax</b> item.<br>
-        2. Click <b>Send this item</b> yourself.<br>
-        3. Click <b>Add Message</b> yourself.<br>
-        4. Press <b>Copy Receiver</b> to copy/prefill the receiver field.<br>
-        5. Press <b>Copy Code</b> to copy/prefill the message field.<br>
-        6. Choose the Xanax amount, review everything, then manually Send/Confirm.
+        <div class="rwph-xanax-steps-title"><b>How to use:</b></div>
+        <ol class="rwph-xanax-step-list">
+          <li>Open your <b>Xanax</b> item.</li>
+          <li>Click <b>Send this item</b> yourself.</li>
+          <li>Click <b>Add Message</b> yourself.</li>
+          <li>Press <b>Copy Receiver</b> to copy/prefill the receiver field.</li>
+          <li>Press <b>Copy Code</b> to copy/prefill the message field.</li>
+          <li>Choose the Xanax amount, review everything, then manually Send/Confirm.</li>
+        </ol>
       </div>
 
         <div class="rwph-xanax-safety-note">
@@ -12836,18 +12883,9 @@
       const payAllBtn = e.target.closest("[data-pay-all]");
       if (payAllBtn) {
         if (!lastRows.length) return alert("Calculate results first.");
-        rwphQueueCrossTabPopup("payments", "Payments opened in Torn faction controls. Use the copy-only panel there.", "info", "RWPH Payments");
         const opened = rwphOpenPayAllInFactionControls(lastRows);
         if (!opened) {
-          rwphClearCrossTabPopup("payments");
-          rwphToastPanelInfo(
-            status,
-            "Popup blocked. Payments data was saved; open faction controls and use the RWPH Payments link again.",
-            "warn",
-            "RWPH Payments"
-          );
-        } else if (status) {
-          status.textContent = "Payments helper opened in the new tab.";
+          rwphToastPanelInfo(status, "Could not navigate to Torn faction controls. Payments data is still saved.", "warn", "RWPH Payments");
         }
         return;
       }
@@ -13982,12 +14020,12 @@
       close.style.setProperty('right','10px','important');
       close.style.setProperty('left','auto','important');
       close.style.setProperty('bottom','auto','important');
-      close.style.setProperty('width','32px','important');
-      close.style.setProperty('height','32px','important');
-      close.style.setProperty('min-width','32px','important');
-      close.style.setProperty('min-height','32px','important');
-      close.style.setProperty('max-width','32px','important');
-      close.style.setProperty('max-height','32px','important');
+      close.style.setProperty('width','34px','important');
+      close.style.setProperty('height','34px','important');
+      close.style.setProperty('min-width','34px','important');
+      close.style.setProperty('min-height','34px','important');
+      close.style.setProperty('max-width','34px','important');
+      close.style.setProperty('max-height','34px','important');
       close.style.setProperty('padding','0','important');
       close.style.setProperty('margin','0','important');
       close.style.setProperty('transform','none','important');
