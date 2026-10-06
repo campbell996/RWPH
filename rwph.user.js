@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.527
+// @version      1.1.528
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.528: Corrects the Theme / Colours Body and Surface field labels so they match the UI areas each colour actually controls.
   // v1.1.527: Rebuilds Locked/Unlocked/Admin/Help/Results Loading/Results around the four-colour theme from first render; removes their legacy per-panel visual CSS and applies saved theme state before any panel/restore path.
   // v1.1.526: Removes duplicate/legacy Theme/Colour UI paths and makes one Body/Surface/Text/Outline theme engine authoritative across every RWPH panel.
   // v1.1.525: Rebuilds every RWPH panel around one shared four-colour UI theme, retires the old Unified/Clean/Compact visual layers, and applies the same theme system to Results Loading and Results.
@@ -4121,8 +4122,8 @@
       `<option value="${esc(themeKey)}" ${themeKey === key ? "selected" : ""}>${esc(theme.label || themeKey)}</option>`
     ).join("");
     const colourFields = [
-      ["body", "BODY / SCROLL / INPUTS / SELECTS", "Controls the main panel background, scrolling areas, inputs and selects."],
-      ["surface", "CARDS / ROWS / TITLE BARS", "Controls cards, member/result rows, title bars and raised panel surfaces."],
+      ["body", "CARDS / ROWS / TITLE BARS", "Controls cards, member/result rows, title bars and raised panel surfaces."],
+      ["surface", "BODY / SCROLL / INPUTS / SELECTS", "Controls the main panel background, scrolling areas, inputs and selects."],
       ["text", "ALL TEXT", "Controls normal text, labels, values and muted text derived from this colour."],
       ["outline", "ALL OUTLINES / BORDERS / ACCENTS", "Controls borders, outlines, highlights and the main RWPH accent colour."],
     ];
