@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.541
+// @version      1.1.542
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.541: Fixes Payment Helper resize reflow: Required payment details no longer clip/disappear, and How to use steps wrap onto extra lines instead of forcing a horizontal scrollbar.
+  // v1.1.542: Fixes Payment Helper resize reflow: Required payment details no longer clip/disappear, and How to use steps wrap onto extra lines instead of forcing a horizontal scrollbar.
   // v1.1.540: Renames the Advanced Own Faction Hospitalize bonus and restricts it to verified own-faction defenders, while leaving the enemy-war hospitalization bonus separate.
   // v1.1.538: Makes Payment Checklist Complete fit without forced scrolling, adds the same Newsletter/HTML/CSV result actions there, and makes Cached Reports temporarily replace/reopen Main unless a report is loaded.
   // v1.1.537: Swaps Results/Loading header controls so Close is far-right; replaces the Results newsletter dropdown/embedded panels with one Torn-page Newsletter panel containing a selector, live preview, raw HTML, and Copy Raw HTML; removes legacy Results/newsletter/payment fallback paths.
@@ -3979,7 +3979,7 @@
     if (head) head.classList.add("rwph-secondary-head-v1529");
     panel.querySelectorAll(":scope > .rwph-floating-panel-body, :scope > .rwph-saved-reports-body, :scope > .rw-pay-all-scroll, :scope > .rwph-xanax-scroll")
       .forEach((body) => body.classList.add("rwph-secondary-body-v1529"));
-    panel.querySelectorAll(".rw-card,.rw-box,.rw-section,.rw-calc-brief,.rw-pay-all-payment-card,.rw-pay-all-start-warning,.rw-pay-all-complete-card,.rw-pay-all-progress,.rwph-saved-report-intro,.rwph-saved-report-auto-delete,.rwph-saved-report-card,.rwph-xanax-detail-card,.rwph-xanax-safety-note")
+    panel.querySelectorAll(".rw-card,.rw-box,.rw-section,.rw-calc-brief,.rw-pay-all-payment-card,.rw-pay-all-start-warning,.rw-pay-all-complete-card,.rw-pay-all-progress,.rwph-saved-report-intro,.rwph-saved-report-auto-delete,.rwph-saved-report-card,.rwph-xanax-detail-card,.rwph-xanax-safety-note,.rwph-xanax-steps")
       .forEach((card) => card.classList.add("rwph-secondary-card-v1529"));
     panel.querySelectorAll('#rwph-close-helper,#rwph-saved-reports-close,#rwph-licence-info-close,#rwph-logo-picker-close,#rwph-layout-theme-close,#rwph-mm-close,#rw-wrong-payment-close,.rw-pay-all-close,.rwph-mini-close,[data-pay-all-close]')
       .forEach((close) => close.classList.add("rwph-secondary-close-v1529"));
@@ -4016,7 +4016,7 @@
       }
       body .rwph-secondary-panel-v1529 :is(.rwph-secondary-card-v1529,.rw-card,.rw-box,.rw-section,.rw-calc-brief,details,fieldset,
         .rwph-saved-report-intro,.rwph-saved-report-auto-delete,.rwph-saved-report-card,.rw-pay-all-payment-card,.rw-pay-all-start-warning,.rw-pay-all-complete-card,
-        .rwph-xanax-detail-card,.rwph-xanax-safety-note){
+        .rwph-xanax-detail-card,.rwph-xanax-safety-note,.rwph-xanax-steps){
         background:var(--rwph-theme-panel)!important;background-image:none!important;color:var(--rwph-theme-text)!important;
         border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;box-shadow:none!important;box-sizing:border-box!important;
       }
@@ -4112,7 +4112,7 @@
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-message{padding:7px 8px!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;background:var(--rwph-theme-panel)!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:8px!important;display:grid!important;gap:4px!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:min-content!important;align-content:start!important;overflow:visible!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card>*{width:auto!important;max-width:100%!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;box-sizing:border-box!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps{margin:0!important;padding:3px 2px!important;display:block!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:visible!important;background:transparent!important;background-image:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps{margin:0!important;padding:8px!important;display:block!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:min-content!important;overflow-x:hidden!important;overflow-y:visible!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-steps-title{margin:0 0 4px 0!important;white-space:normal!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list{margin:0!important;padding-left:24px!important;display:block!important;min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-step-list>li{display:list-item!important;margin:0 0 3px 0!important;padding:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;line-height:1.45!important;font-size:clamp(7px,1.95vw,10.5px)!important;box-sizing:border-box!important;}
@@ -6594,7 +6594,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.541">
+<body data-rwph-ui-generation="v1.1.542">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7328,7 +7328,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.541";
+    panel.dataset.rwphUiGeneration = "v1.1.542";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7643,7 +7643,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.541";
+    panel.dataset.rwphUiGeneration = "v1.1.542";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
