@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.545
+// @version      1.1.546
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.546: Makes Member Management use the same theme-aware three-corner resize styling as the other RWPH panels, removes the browser-native resize corner, and makes newsletters use only the full faction image from Faction Info (never the faction tag image).
   // v1.1.545: Adds a separate Newsletter Layout dropdown with four new compact 120-card layouts, keeps theme/colour selection independent, and enforces Torn's 65,535-character newsletter HTML limit.
   // v1.1.544: Simplifies Basic Calculations to War Hits only: War Hits are forced on, Basic always uses the ranked-war-report-only fast path, all Basic Assist/Outside/Retal/Fast Mode controls and fallbacks are removed, and Basic outputs focus on War Hits + Respect.
   // v1.1.542: Fixes Payment Helper resize reflow: Required payment details no longer clip/disappear, and How to use steps wrap onto extra lines instead of forcing a horizontal scrollbar.
@@ -6266,6 +6267,12 @@
     return metrics.map((metric) => `<div class="summary-card"><span>${esc(metric.label)}</span><b>${esc(metric.value)}</b></div>`).join("");
   }
 
+  function rwphFullFactionImageUrlV1546(value = "") {
+    const raw = String(value || "").trim().replace(/^url\(["']?|["']?\)$/g, "");
+    if (!/^https:\/\/factionimages\.torn\.com\//i.test(raw)) return "";
+    return raw;
+  }
+
   function rwphFactionInfoImageStorageKey(factionId = "") {
     const id = String(factionId || "").replace(/\D+/g, "");
     return id ? `rwphFactionInfoImage:${id}` : "";
@@ -6275,11 +6282,10 @@
     const scored = [];
     const seenRoots = new Set();
     const ownFactionId = String(expectedFactionId || "").replace(/\D+/g, "");
-    const cleanUrl = (url) => String(url || "").trim().replace(/^url\(["']?|["']?\)$/g, "");
+    const cleanUrl = (url) => rwphFullFactionImageUrlV1546(url);
     const add = (url, score = 0) => {
       const value = cleanUrl(url);
-      if (!/^https:\/\//i.test(value)) return;
-      if (!/(?:factionimages|factiontags)\.torn\.com\//i.test(value)) return;
+      if (!value) return;
       if (scored.some((item) => item.url === value)) return;
       const ownIdBonus = ownFactionId && new RegExp(`(?:^|\\D)${ownFactionId}(?:\\D|$)`).test(value) ? 2000000 : 0;
       scored.push({ url: value, score: Number(score || 0) + ownIdBonus });
@@ -6294,17 +6300,17 @@
         if (el.tagName === "IMG") {
           const src = el.currentSrc || el.src || el.getAttribute("src") || "";
           const area = Math.max(0, Number(el.naturalWidth || el.width || 0) * Number(el.naturalHeight || el.height || 0));
-          add(src, rootScore + (/factionimages\.torn\.com/i.test(src) ? 1000000 : 10000) + area);
+          add(src, rootScore + 1000000 + area);
           String(el.getAttribute("srcset") || "").split(",").forEach((part) => {
             const url = part.trim().split(/\s+/)[0];
-            add(url, rootScore + (/factionimages\.torn\.com/i.test(url) ? 950000 : 9500) + area);
+            add(url, rootScore + 950000 + area);
           });
         }
         const style = String(el.getAttribute?.("style") || "");
-        [...style.matchAll(/url\(["']?([^"')]+)["']?\)/g)].forEach((m) => add(m[1], rootScore + (/factionimages\.torn\.com/i.test(m[1]) ? 900000 : 9000)));
+        [...style.matchAll(/url\(["']?([^"')]+)["']?\)/g)].forEach((m) => add(m[1], rootScore + 900000));
         try {
           const bg = getComputedStyle(el).backgroundImage || "";
-          [...bg.matchAll(/url\(["']?([^"')]+)["']?\)/g)].forEach((m) => add(m[1], rootScore + (/factionimages\.torn\.com/i.test(m[1]) ? 850000 : 8500)));
+          [...bg.matchAll(/url\(["']?([^"')]+)["']?\)/g)].forEach((m) => add(m[1], rootScore + 850000));
         } catch (_) {}
       });
     };
@@ -6372,7 +6378,7 @@
     if (cacheKey) {
       try {
         const cached = cleanUrl(GM_getValue(cacheKey, ""));
-        if (/^https:\/\//i.test(cached) && /(?:factionimages|factiontags)\.torn\.com\//i.test(cached)) return cached;
+        if (cached) return cached;
       } catch (_) {}
     }
     return "";
@@ -6471,7 +6477,7 @@
     const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
     const rowsJson = JSON.stringify(list).replaceAll("<", "\\u003c");
     const csvText = buildPayoutCsvText(list, summary || {});
-    const factionImageUrl = String(rwphFindFactionInfoImageUrl(summary?.factionId || "") || summary?.factionImageUrl || "").trim();
+    const factionImageUrl = String(rwphFindFactionInfoImageUrl(summary?.factionId || "") || rwphFullFactionImageUrlV1546(summary?.factionImageUrl || "") || "").trim();
     
     const rwphNewsletterThemes = {
       gold: { title: "Newsletter Gold", panelA:"#1b1208", panelB:"#111827", head:"#2a1609", outer:"#120905", line:"#b88759", cardLine:"#5b3418", accent:"#ffd37a", text:"#fff7ed", muted:"#cfaa8e", good:"#86efac" },
@@ -6628,7 +6634,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.545">
+<body data-rwph-ui-generation="v1.1.546">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7362,7 +7368,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.545";
+    panel.dataset.rwphUiGeneration = "v1.1.546";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7714,7 +7720,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.545";
+    panel.dataset.rwphUiGeneration = "v1.1.546";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -8598,7 +8604,7 @@
 
   function rwphMemberManagementPanelCss() {
     return `
-      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(233,189,78,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#20252a), var(--rwph-theme-bg,#0d0f11))!important;color:var(--rwph-theme-text,#f4f5f6)!important;border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:both!important;backdrop-filter:none!important;min-width:300px!important;min-height:300px!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;}
+      #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(233,189,78,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#20252a), var(--rwph-theme-bg,#0d0f11))!important;color:var(--rwph-theme-text,#f4f5f6)!important;border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:none!important;backdrop-filter:none!important;min-width:300px!important;min-height:300px!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#2a3036), var(--rwph-theme-panel,#20252a))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;min-height:40px!important;flex:0 0 auto!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:relative!important;top:auto!important;z-index:120!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:active{cursor:grabbing!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:26px;height:26px;flex:0 0 26px;background:url("${RWPH_LAUNCHER_LOGO_DATA_URI}") center/contain no-repeat!important;filter:drop-shadow(0 0 7px rgba(251,191,36,.35))!important;}
@@ -8629,12 +8635,12 @@
       #rwph-member-management-panel .rwph-mm-empty{padding:8px!important;border:1px dashed var(--rwph-theme-line,rgba(233,189,78,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;color:var(--rwph-theme-soft,#c0c7cc)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#20252a), var(--rwph-theme-panel,#20252a))!important;font-size:11px!important;}
       #rwph-member-management-panel button{border-radius:var(--rwph-theme-button-radius,8px)!important;}
       #rwph-member-management-panel .rwph-mini-close{position:absolute!important;right:7px!important;top:7px!important;min-width:26px!important;width:26px!important;height:26px!important;min-height:26px!important;padding:0!important;display:grid!important;place-items:center!important;font-size:16px!important;line-height:1!important;z-index:130!important;}
-      #rwph-member-management-panel .rw-resize-handle{position:absolute!important;width:18px!important;height:18px!important;z-index:140!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;opacity:.95!important;background:rgba(2,6,23,.18)!important;}
-      #rwph-member-management-panel .rw-resize-handle-se{right:5px!important;bottom:5px!important;cursor:nwse-resize!important;border-right:2px solid rgba(245,158,11,.88)!important;border-bottom:2px solid rgba(245,158,11,.88)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
-      #rwph-member-management-panel .rw-resize-handle-sw{left:5px!important;bottom:5px!important;cursor:nesw-resize!important;border-left:2px solid rgba(245,158,11,.88)!important;border-bottom:2px solid rgba(245,158,11,.88)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
-      #rwph-member-management-panel .rw-resize-handle-nw{left:5px!important;top:5px!important;cursor:nwse-resize!important;border-left:2px solid rgba(245,158,11,.88)!important;border-top:2px solid rgba(245,158,11,.88)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
-      #rwph-member-management-panel .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 6px rgba(245,158,11,.65))!important;}
-      @media (max-width:560px){#rwph-member-management-panel{min-width:270px!important;}#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr!important;}#rwph-member-management-panel .rwph-mm-stats{grid-template-columns:1fr 1fr!important;}#rwph-member-management-panel .rwph-mm-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))!important;}#rwph-member-management-panel .rwph-floating-panel-head{min-height:40px!important;cursor:grab!important;}#rwph-member-management-panel .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:rgba(2,6,23,.28)!important;}#rwph-member-management-panel .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px!important;}}
+      #rwph-member-management-panel .rw-resize-handle{position:absolute!important;width:20px!important;height:20px!important;z-index:140!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;opacity:.95!important;background:transparent!important;box-shadow:none!important;border-color:var(--rwph-theme-outline)!important;}
+      #rwph-member-management-panel .rw-resize-handle-se{right:5px!important;bottom:5px!important;cursor:nwse-resize!important;border-right:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-left:0!important;border-top:0!important;border-radius:0 0 8px 0!important;}
+      #rwph-member-management-panel .rw-resize-handle-sw{left:5px!important;bottom:5px!important;cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
+      #rwph-member-management-panel .rw-resize-handle-nw{left:5px!important;top:5px!important;cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-top:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
+      #rwph-member-management-panel .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 6px var(--rwph-theme-outline))!important;}
+      @media (max-width:560px){#rwph-member-management-panel{min-width:270px!important;}#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr!important;}#rwph-member-management-panel .rwph-mm-stats{grid-template-columns:1fr 1fr!important;}#rwph-member-management-panel .rwph-mm-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))!important;}#rwph-member-management-panel .rwph-floating-panel-head{min-height:40px!important;cursor:grab!important;}#rwph-member-management-panel .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:transparent!important;}#rwph-member-management-panel .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px!important;}}
     `;
   }
 
@@ -9052,7 +9058,7 @@
       const result = await apiPost("/api/calc/cached-reports/open", rwphSavedReportsRequestBody(userKey, token, { cacheId: safeCacheId, progressId }));
       rwphRememberSavedReportsFactionId(result.factionId || result.cachedReport?.factionId);
       lastRows = result.rows || [];
-      lastSummary = { ...(result.summary || {}), factionName: result.factionName || result.summary?.factionName || "", factionId: result.factionId || result.summary?.factionId || "", factionImageUrl: rwphFindFactionInfoImageUrl(result.factionId || result.summary?.factionId || "") || result.factionImageUrl || result.summary?.factionImageUrl || "" };
+      lastSummary = { ...(result.summary || {}), factionName: result.factionName || result.summary?.factionName || "", factionId: result.factionId || result.summary?.factionId || "", factionImageUrl: rwphFindFactionInfoImageUrl(result.factionId || result.summary?.factionId || "") || rwphFullFactionImageUrlV1546(result.factionImageUrl || result.summary?.factionImageUrl || "") || "" };
       rwphStorePayAllRows(lastRows);
       rwphUpdateLastResultsButton();
       const results = document.getElementById("rw-results");
@@ -12788,7 +12794,7 @@
           stopTabCloseWatcher = null;
         }
         lastRows = result.rows || [];
-        lastSummary = { ...(result.summary || {}), factionName: result.factionName || result.summary?.factionName || "", factionId: result.factionId || result.summary?.factionId || "", factionImageUrl: rwphFindFactionInfoImageUrl(result.factionId || result.summary?.factionId || "") || result.factionImageUrl || result.summary?.factionImageUrl || "" };
+        lastSummary = { ...(result.summary || {}), factionName: result.factionName || result.summary?.factionName || "", factionId: result.factionId || result.summary?.factionId || "", factionImageUrl: rwphFindFactionInfoImageUrl(result.factionId || result.summary?.factionId || "") || rwphFullFactionImageUrlV1546(result.factionImageUrl || result.summary?.factionImageUrl || "") || "" };
         rwphStorePayAllRows(lastRows);
         rwphUpdateLastResultsButton();
         results.innerHTML = renderRows(lastRows, lastSummary);
