@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.534
+// @version      1.1.536
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.536: Rebuilds Results Loading/Results as true Torn-page floating panels with no embedded browser/iframe; Start Payments closes Results then navigates the main Torn tab to faction vault controls, and HTML/CSV downloads are owned by the main Torn document.
+  // v1.1.535: Restores visible NW/SW/SE resize corners on Results Loading/Results, places Fullscreen to the right of Close, and hardens Start Payments so faction controls/Payments Copy can never load inside the Results iframe.
   // v1.1.534: Rebuilds Results Loading/Results as normal movable RWPH panels, routes Start Payments through the parent into same-tab faction controls, and makes Default Setup target every current movable RWPH panel.
   // v1.1.533: Rebuilds Results HTML/CSV downloads using the Faction Helper direct Blob-anchor method, restores Payments Copy payout/paste controls, and removes the Xanax How-to inner scroll/card.
   // v1.1.532: Unifies every RWPH panel scrollbar/close/resize control with the main panel, moves Payments Copy to same-tab faction controls with Results auto-close, and auto-closes Cached Reports after a saved report opens.
@@ -6011,11 +6013,16 @@
       // v1.1.532: Payments Copy always stays in the current Torn tab. This keeps
       // PDA/phone navigation predictable and guarantees the Results panel is closed
       // before faction controls takes over the page.
-      window.location.assign(url);
+      const targetWindow = (window.top && window.top !== window) ? window.top : window;
+      targetWindow.location.assign(url);
       return true;
     } catch (e) {
       console.warn("Same-tab Payments controls navigation failed:", e);
-      try { window.location.href = url; return true; } catch (_) {}
+      try {
+        const targetWindow = (window.top && window.top !== window) ? window.top : window;
+        targetWindow.location.href = url;
+        return true;
+      } catch (_) {}
       try { rwphSetPanelOpenState(true); } catch (_) {}
       try { setLauncherOpenState(true); } catch (_) {}
       return false;
@@ -6613,10 +6620,11 @@
         <p class="results-action-note"><b>Results actions:</b> download this results page as HTML, download CSV for records, start the manual payment workflow, or open the Newsletter dropdown for compact themed HTML panels.</p>
         <a class="btn secondary" id="thisPageHtmlBtn" href="#" role="button">Download HTML</a>
         <a class="btn secondary" id="csvBtn" href="#" role="button">Download CSV</a>
-        <a class="btn rwph-start-payments-btn" id="payAllBtn" href="${esc(payAllHref)}">Start Payments</a>
+        <button class="btn rwph-start-payments-btn" id="payAllBtn" type="button" data-payments-url="${esc(payAllHref)}">Start Payments</button>
         ${rwphNewsletterButtonsHtml}
       </div>
       <textarea id="rwph-export-csv-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(csvText)}</textarea>
+      <textarea id="rwph-export-payments-source" aria-hidden="true" tabindex="-1" style="display:none!important">${esc(rowsJson)}</textarea>
       <p class="close-hint">Use the RWPH panel close button when you are finished. Completed calculations are saved automatically in the <b>Cached Reports</b> panel on the unlocked RWPH main panel. Each faction keeps up to 5 saved reports.</p>
     </section>
 
@@ -6889,7 +6897,13 @@
         }
       } catch (_) {}
       // Standalone fallback only: keep same-tab navigation if this HTML is opened outside RWPH.
-      try { location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) {}
+      try {
+        var targetUrl = payAllOpenBtn.getAttribute("data-payments-url") || "https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1";
+        var targetWindow = (window.top && window.top !== window) ? window.top : window;
+        targetWindow.location.assign(targetUrl);
+      } catch (_) {
+        try { location.assign("https://www.torn.com/factions.php?step=your#/tab=controls&rwphPayAll=1"); } catch (_) {}
+      }
     });
 
   </script>
@@ -6937,7 +6951,7 @@
             <div class="rwph-progress-top"><span>Calculation progress</span><span>Live backend stages</span></div>
             <div class="rwph-progress-wrap" aria-label="Calculation progress"><div id="rwph-progress-bar" class="rwph-progress-bar"></div></div>
           </div>
-          <div id="rwph-live-status" class="rwph-live-status">Starting calculation. Keep this tab open. The results button unlocks when data is complete.</div>
+          <div id="rwph-live-status" class="rwph-live-status">Starting calculation. Keep this panel open. The results button unlocks when data is complete.</div>
           <button id="rwph-open-results-button" class="rwph-open-results-button" type="button" disabled aria-disabled="true" data-state="locked">Results Locked — Loading Data</button>
         </div>
 
@@ -7464,6 +7478,81 @@
       : { mode: "loading", id: "rwph-results-loading-panel", title: "Results Loading", aria: "RWPH results loading panel", width: 720, height: 560 };
   }
 
+  function rwphStyleResultsShellControlsV1535(panel) {
+    if (!panel || !panel.classList?.contains("rwph-results-shell-v1534")) return;
+
+    const handleBase = {
+      position: "absolute", display: "block", width: "20px", height: "20px", zIndex: "155",
+      pointerEvents: "auto", touchAction: "none", userSelect: "none", background: "transparent", opacity: ".95"
+    };
+    panel.querySelectorAll(":scope > .rw-resize-handle").forEach((handle) => {
+      Object.entries(handleBase).forEach(([prop, value]) => handle.style.setProperty(prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`), value, "important"));
+      handle.style.setProperty("box-shadow", "none", "important");
+      handle.style.setProperty("border", "0", "important");
+      handle.style.setProperty("border-radius", "0", "important");
+    });
+
+    const nw = panel.querySelector(":scope > .rw-resize-handle-nw");
+    if (nw) {
+      nw.style.setProperty("left", "5px", "important"); nw.style.setProperty("top", "5px", "important");
+      nw.style.setProperty("right", "auto", "important"); nw.style.setProperty("bottom", "auto", "important");
+      nw.style.setProperty("cursor", "nwse-resize", "important");
+      nw.style.setProperty("border-left", "2px solid var(--rwph-theme-outline)", "important");
+      nw.style.setProperty("border-top", "2px solid var(--rwph-theme-outline)", "important");
+      nw.style.setProperty("border-radius", "8px 0 0 0", "important");
+    }
+    const sw = panel.querySelector(":scope > .rw-resize-handle-sw");
+    if (sw) {
+      sw.style.setProperty("left", "5px", "important"); sw.style.setProperty("bottom", "5px", "important");
+      sw.style.setProperty("right", "auto", "important"); sw.style.setProperty("top", "auto", "important");
+      sw.style.setProperty("cursor", "nesw-resize", "important");
+      sw.style.setProperty("border-left", "2px solid var(--rwph-theme-outline)", "important");
+      sw.style.setProperty("border-bottom", "2px solid var(--rwph-theme-outline)", "important");
+      sw.style.setProperty("border-radius", "0 0 0 8px", "important");
+    }
+    const se = panel.querySelector(":scope > .rw-resize-handle-se");
+    if (se) {
+      se.style.setProperty("right", "5px", "important"); se.style.setProperty("bottom", "5px", "important");
+      se.style.setProperty("left", "auto", "important"); se.style.setProperty("top", "auto", "important");
+      se.style.setProperty("cursor", "nwse-resize", "important");
+      se.style.setProperty("border-right", "2px solid var(--rwph-theme-outline)", "important");
+      se.style.setProperty("border-bottom", "2px solid var(--rwph-theme-outline)", "important");
+      se.style.setProperty("border-radius", "0 0 8px 0", "important");
+    }
+
+    const coarse = !!window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
+    if (coarse) panel.querySelectorAll(":scope > .rw-resize-handle").forEach((handle) => {
+      handle.style.setProperty("width", "30px", "important");
+      handle.style.setProperty("height", "30px", "important");
+    });
+
+    const head = panel.querySelector(".rwph-results-panel-head, .rwph-panel-head");
+    const close = head?.querySelector(".rwph-results-shell-close, .rwph-clean-close-v1491");
+    const fullscreen = head?.querySelector(".rwph-fit-control-v1491");
+    if (close) {
+      close.style.setProperty("right", "52px", "important");
+      close.style.setProperty("left", "auto", "important");
+    }
+    if (fullscreen) {
+      fullscreen.setAttribute("aria-label", "Fullscreen");
+      fullscreen.title = "Fullscreen";
+      fullscreen.style.setProperty("position", "absolute", "important");
+      fullscreen.style.setProperty("top", "10px", "important");
+      fullscreen.style.setProperty("right", "10px", "important");
+      fullscreen.style.setProperty("left", "auto", "important");
+      fullscreen.style.setProperty("bottom", "auto", "important");
+      fullscreen.style.setProperty("width", "34px", "important");
+      fullscreen.style.setProperty("height", "34px", "important");
+      fullscreen.style.setProperty("min-width", "34px", "important");
+      fullscreen.style.setProperty("min-height", "34px", "important");
+      fullscreen.style.setProperty("max-width", "34px", "important");
+      fullscreen.style.setProperty("max-height", "34px", "important");
+      fullscreen.style.setProperty("padding", "0", "important");
+      fullscreen.style.setProperty("margin", "0", "important");
+      fullscreen.style.setProperty("z-index", "160", "important");
+    }
+  }
+
   function rwphApplyResultsShellFallbackGeometry(panel, mode = "loading") {
     if (!panel) return;
     const cfg = rwphResultsShellConfig(mode);
@@ -7498,7 +7587,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.534";
+    panel.dataset.rwphUiGeneration = "v1.1.536";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7506,11 +7595,8 @@
     panel.setAttribute("aria-label", cfg.aria);
     const title = panel.querySelector("[data-rwph-results-shell-title]");
     if (title) title.textContent = cfg.title;
-    const frame = panel.querySelector("#rwph-results-loading-frame, #rwph-results-frame");
-    if (frame) {
-      frame.id = cfg.mode === "results" ? "rwph-results-frame" : "rwph-results-loading-frame";
-      frame.setAttribute("title", cfg.aria);
-    }
+    const contentHost = panel.querySelector(".rwph-results-content-host-v1536");
+    if (contentHost) contentHost.setAttribute("aria-label", cfg.aria);
     if (oldId && oldId !== cfg.id) {
       // The loading and final Results panels have independent admin/personal layouts.
       rwphApplyResultsShellFallbackGeometry(panel, cfg.mode);
@@ -7518,17 +7604,19 @@
     }
     try { rwphApplyPanelThemeChoice(); } catch (_) {}
     try { rwphApplyLogoChoice(); } catch (_) {}
+    try { rwphStyleResultsShellControlsV1535(panel); } catch (_) {}
     return panel;
   }
 
   function rwphInstallResultsPaymentsBridge() {
-    if (window.__rwphResultsPaymentsBridgeV1534) return;
-    window.__rwphResultsPaymentsBridgeV1534 = true;
+    if (window.__rwphResultsPaymentsBridgeV1535) return;
+    window.__rwphResultsPaymentsBridgeV1535 = true;
     window.addEventListener("message", (event) => {
       const data = event?.data;
       if (!data || data.rwphType !== "rwph-start-payments") return;
-      const frame = document.querySelector("#rwph-results-panel.rwph-results-shell-v1534 iframe, #rwph-results-loading-panel.rwph-results-shell-v1534 iframe");
-      if (frame?.contentWindow && event.source && event.source !== frame.contentWindow) return;
+      // Do not compare event.source to frame.contentWindow here. Userscript/browser wrappers can
+      // make those WindowProxy objects compare unequal even when the message came from our Results iframe.
+      // The message type + normalized payout rows are the authoritative bridge contract.
       const rows = rwphNormalizePayAllRows(Array.isArray(data.rows) ? data.rows : []);
       if (!rows.length) {
         rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
@@ -7538,12 +7626,184 @@
     });
   }
 
+  function rwphResultsPanelDocumentAdapter(tab) {
+    const root = tab?.rwphShadowRoot;
+    if (!root) return null;
+    return {
+      getElementById(id) {
+        try { return root.getElementById ? root.getElementById(String(id || "")) : root.querySelector(`#${CSS.escape(String(id || ""))}`); } catch (_) { return null; }
+      },
+      querySelector(selector) {
+        try { return root.querySelector(selector); } catch (_) { return null; }
+      },
+      querySelectorAll(selector) {
+        try { return root.querySelectorAll(selector); } catch (_) { return []; }
+      },
+    };
+  }
+
+  function rwphResultsRowsFromSourceHtml(sourceHtml = "", root = null) {
+    const parse = (value) => {
+      try {
+        const parsed = JSON.parse(String(value || ""));
+        return rwphNormalizePayAllRows(Array.isArray(parsed) ? parsed : []);
+      } catch (_) { return []; }
+    };
+    try {
+      const embedded = root?.querySelector?.("#rwph-export-payments-source");
+      const fromEmbedded = parse(embedded?.value || embedded?.textContent || "");
+      if (fromEmbedded.length) return fromEmbedded;
+    } catch (_) {}
+    try {
+      const match = String(sourceHtml || "").match(/const\s+rows\s*=\s*(\[[\s\S]*?\]);\s*const\s+payAllRowsFallbackStorageKey/);
+      const fromScript = match ? parse(match[1]) : [];
+      if (fromScript.length) return fromScript;
+    } catch (_) {}
+    try { return rwphNormalizePayAllRows(lastRows || []); } catch (_) { return []; }
+  }
+
+  function rwphResultsFactionNameFromRoot(root) {
+    try {
+      const cards = Array.from(root?.querySelectorAll?.(".results-meta-card") || []);
+      for (const card of cards) {
+        const label = String(card.querySelector?.("span")?.textContent || "").trim().toLowerCase();
+        if (label !== "faction") continue;
+        const value = String(card.querySelector?.("b")?.textContent || "").trim();
+        if (value) return value;
+      }
+    } catch (_) {}
+    return "Faction";
+  }
+
+  function rwphResultsDownloadStampV1536() {
+    return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  }
+
+  function rwphBuildDownloadedResultsHtmlFromSource(sourceHtml = "") {
+    try {
+      const parsed = new DOMParser().parseFromString(String(sourceHtml || ""), "text/html");
+      parsed.querySelectorAll("script,.rwph-results-html-panel,#rwph-export-csv-source,#rwph-export-payments-source").forEach((el) => el.remove());
+      parsed.querySelector(".results-actions-panel")?.remove();
+      return "<!doctype html>\n" + parsed.documentElement.outerHTML;
+    } catch (e) {
+      console.warn("RWPH could not build the Results HTML download:", e);
+      return String(sourceHtml || "");
+    }
+  }
+
+  function rwphBindResultsPanelActionsV1536(tab, sourceHtml = "") {
+    const root = tab?.rwphShadowRoot;
+    if (!root) return;
+    const rows = rwphResultsRowsFromSourceHtml(sourceHtml, root);
+    const factionName = () => rwphSafeDownloadName(rwphResultsFactionNameFromRoot(root), "Faction");
+
+    const htmlBtn = root.querySelector("#thisPageHtmlBtn");
+    if (htmlBtn) htmlBtn.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      const filename = `RWPH_${factionName()}_Results_${rwphResultsDownloadStampV1536()}.html`;
+      const html = rwphBuildDownloadedResultsHtmlFromSource(sourceHtml);
+      if (!rwphDownloadTextFile(filename, html, "text/html;charset=utf-8")) {
+        rwphShowToast("RWPH could not start the HTML download from the Torn page.", "warn", "RWPH Results");
+      }
+    });
+
+    const csvBtn = root.querySelector("#csvBtn");
+    if (csvBtn) csvBtn.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      const source = root.querySelector("#rwph-export-csv-source");
+      const csv = String(source?.value || source?.textContent || "");
+      const filename = `RWPH_${factionName()}_Payouts_${rwphResultsDownloadStampV1536()}.csv`;
+      if (!csv || !rwphDownloadTextFile(filename, csv, "text/csv;charset=utf-8")) {
+        rwphShowToast("RWPH could not start the CSV download from the Torn page.", "warn", "RWPH Results");
+      }
+    });
+
+    const payBtn = root.querySelector("#payAllBtn");
+    if (payBtn) payBtn.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      if (!rows.length) {
+        rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
+        return;
+      }
+      // v1.1.536: this handler executes in the parent userscript/Torn page. The Results
+      // panel is removed first, then the user's actual Torn tab navigates to faction controls.
+      rwphOpenPayAllInFactionControls(rows);
+    });
+
+    root.querySelectorAll("[data-open-results-html-panel]").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        const panelId = String(btn.getAttribute("data-open-results-html-panel") || "");
+        root.querySelectorAll(".rwph-results-html-panel").forEach((panel) => {
+          const open = panel.id === panelId;
+          panel.hidden = !open;
+          panel.style.display = open ? "flex" : "none";
+        });
+        try { btn.closest("details.rwph-newsletter-dropdown")?.removeAttribute("open"); } catch (_) {}
+      });
+    });
+    root.querySelectorAll("[data-close-results-html-panel],.rwph-results-html-close").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+        const panel = btn.closest(".rwph-results-html-panel");
+        if (panel) { panel.hidden = true; panel.style.display = "none"; }
+      });
+    });
+    root.querySelectorAll(".rwph-results-html-box").forEach((box) => {
+      box.addEventListener("click", (ev) => {
+        if (Number(ev?.detail || 0) < 3) return;
+        try { box.focus(); box.select(); box.setSelectionRange?.(0, String(box.value || "").length); } catch (_) {}
+      });
+    });
+  }
+
+  function rwphRenderResultsPanelDocumentV1536(tab, sourceHtml = "", mode = "loading") {
+    const panel = tab?.rwphPanel;
+    const host = tab?.rwphContentHost;
+    if (!panel || !host) return false;
+    const cfg = rwphResultsShellConfig(mode);
+    try { rwphApplyResultsShellMode(tab, cfg.mode, true); } catch (_) {}
+
+    let parsed;
+    try { parsed = new DOMParser().parseFromString(String(sourceHtml || ""), "text/html"); }
+    catch (e) { console.warn("RWPH could not parse panel content:", e); return false; }
+    parsed.querySelectorAll("script").forEach((script) => script.remove());
+
+    let shadow = host.shadowRoot;
+    if (!shadow) shadow = host.attachShadow({ mode: "open" });
+    shadow.replaceChildren();
+
+    const style = document.createElement("style");
+    style.textContent = Array.from(parsed.querySelectorAll("style")).map((node) => node.textContent || "").join("\n");
+    shadow.appendChild(style);
+
+    // Preserve the generated standalone CSS without leaking any of its html/body/button
+    // selectors onto Torn. These html/body elements live only inside this panel's Shadow DOM.
+    const htmlNode = document.createElement("html");
+    const bodyNode = document.createElement("body");
+    htmlNode.lang = parsed.documentElement?.lang || "en";
+    bodyNode.className = parsed.body?.className || "";
+    for (const attr of Array.from(parsed.body?.attributes || [])) {
+      try { bodyNode.setAttribute(attr.name, attr.value); } catch (_) {}
+    }
+    bodyNode.innerHTML = parsed.body?.innerHTML || "";
+    htmlNode.appendChild(bodyNode);
+    shadow.appendChild(htmlNode);
+
+    tab.rwphShadowRoot = shadow;
+    tab.rwphDocument = rwphResultsPanelDocumentAdapter(tab);
+    tab.rwphSourceHtml = String(sourceHtml || "");
+    tab.rwphMode = cfg.mode;
+
+    if (cfg.mode === "results") rwphBindResultsPanelActionsV1536(tab, sourceHtml);
+    return true;
+  }
+
   function rwphCreateResultsLoadingPanel(loadingHtml = "", startedAtMs = Date.now(), options = {}) {
     rwphCloseExistingResultsLoadingPanel();
     rwphEnsureThreeColourThemeSystem();
     rwphApplyPanelThemeChoice();
     rwphEnsureMainUiCssV1527();
-    rwphInstallResultsPaymentsBridge();
 
     const initialMode = String(options?.mode || "loading").toLowerCase() === "results" ? "results" : "loading";
     const cfg = rwphResultsShellConfig(initialMode);
@@ -7553,7 +7813,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.534";
+    panel.dataset.rwphUiGeneration = "v1.1.536";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -7579,12 +7839,12 @@
         <button type="button" class="danger rwph-results-shell-close" title="Close" aria-label="Close ${esc(cfg.title)}">×</button>
       </div>
       <div class="rwph-floating-panel-body rwph-results-shell-body" style="padding:0;overflow:hidden;min-height:0;flex:1 1 auto;display:flex;">
-        <iframe id="${initialMode === "results" ? "rwph-results-frame" : "rwph-results-loading-frame"}" title="${esc(cfg.aria)}" style="flex:1 1 auto;width:100%;height:100%;min-height:0;border:0;background:var(--rwph-theme-bg);display:block;"></iframe>
+        <div class="rwph-results-content-host-v1536" style="display:block;flex:1 1 auto;width:100%;height:100%;min-width:0;min-height:0;overflow:auto;background:var(--rwph-theme-bg);"></div>
       </div>
     `;
 
     (document.body || document.documentElement).appendChild(panel);
-    const frame = panel.querySelector("iframe");
+    const contentHost = panel.querySelector(".rwph-results-content-host-v1536");
     const closeBtn = panel.querySelector(".rwph-results-shell-close");
 
     const markClosed = () => {
@@ -7602,43 +7862,35 @@
       markClosed();
     });
 
-    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
-    rwphApplyResultsShellMode(panel, initialMode, true);
-    rwphApplyPanelThemeChoice();
-    rwphApplyLogoChoice();
-
     const fakeTab = {
       rwphIsLoadingPanel: true,
       rwphPanel: panel,
-      rwphFrame: frame,
+      rwphContentHost: contentHost,
+      rwphShadowRoot: null,
+      rwphDocument: null,
+      rwphSourceHtml: String(loadingHtml || ""),
+      rwphMode: initialMode,
       get closed() {
         try { return closed || !document.body.contains(panel); } catch (_) { return true; }
       },
-      get document() {
-        return frame?.contentDocument || frame?.contentWindow?.document || document;
-      },
-      get window() {
-        return frame?.contentWindow || window;
-      },
+      get document() { return this.rwphDocument || document; },
+      get window() { return window; },
       focus() {
         try { panel.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (_) {}
       },
-      postMessage(message, targetOrigin) {
-        try { frame?.contentWindow?.postMessage(message, targetOrigin || "*"); } catch (_) {}
-      },
+      postMessage() {},
       close: markClosed,
       setMode(nextMode) { return rwphApplyResultsShellMode(this, nextMode, true); },
+      render(source, nextMode = this.rwphMode || "loading") { return rwphRenderResultsPanelDocumentV1536(this, source, nextMode); },
     };
 
-    try {
-      const doc = frame?.contentDocument || frame?.contentWindow?.document;
-      doc.open();
-      doc.write(String(loadingHtml || ""));
-      doc.close();
-      if (initialMode === "loading") setTimeout(() => rwphStartResultsLoadingCounter(fakeTab, startedAtMs), 250);
-    } catch (e) {
-      console.warn("Could not write RWPH content into results panel:", e);
-    }
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    rwphApplyResultsShellMode(fakeTab, initialMode, true);
+    rwphStyleResultsShellControlsV1535(panel);
+    rwphApplyPanelThemeChoice();
+    rwphApplyLogoChoice();
+    rwphRenderResultsPanelDocumentV1536(fakeTab, loadingHtml, initialMode);
+    if (initialMode === "loading") setTimeout(() => rwphStartResultsLoadingCounter(fakeTab, startedAtMs), 250);
 
     return fakeTab;
   }
@@ -7814,9 +8066,11 @@
                 html: String(html || "")
               });
               try { if (typeof tab.setMode === "function") tab.setMode("results"); } catch (_) {}
-              doc.open();
-              doc.write(String(html || ""));
-              doc.close();
+              if (typeof tab.render === "function") {
+                tab.render(String(html || ""), "results");
+              } else {
+                rwphRenderResultsPanelDocumentV1536(tab, String(html || ""), "results");
+              }
             } catch (e) {
               console.warn("RWPH could not open/bind Results page:", e);
             }
@@ -12696,10 +12950,10 @@
         }
         if (preOpenedResultsTab && !preOpenedResultsTab.closed) {
           try {
-            preOpenedResultsTab.document.open();
-            preOpenedResultsTab.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center;background:var(--rwph-theme-bg)!important;color:var(--rwph-theme-text)!important}.box{max-width:520px;border:1px solid var(--rwph-theme-line2);border-radius:14px;background:var(--rwph-theme-panel);color:var(--rwph-theme-text);padding:22px;box-shadow:var(--rwph-theme-shadow)}h1{margin:0 0 8px;color:var(--rwph-theme-text)}p{color:var(--rwph-theme-soft);font-weight:800;line-height:1.45}
-  </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>${String(e.message || e).toLowerCase().includes("too many requests") || String(e.message || e).toLowerCase().includes("rate limit") ? "Torn is rate limiting API requests right now. RWPH now retries automatically, but if this still appears wait 1-3 minutes before running Fetch + Calculate again." : "You can close this tab and try Calculate again."}</p></div></body></html>`);
-            preOpenedResultsTab.document.close();
+            const errorHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RWPH Results Error</title><style>${rwphPanelThemeCss(rwphGetPanelThemePreset(), true)}body{margin:0;min-height:100%;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;padding:20px;text-align:center;background:var(--rwph-theme-bg)!important;color:var(--rwph-theme-text)!important}.box{max-width:520px;border:1px solid var(--rwph-theme-line2);border-radius:14px;background:var(--rwph-theme-panel);color:var(--rwph-theme-text);padding:22px;box-shadow:var(--rwph-theme-shadow)}h1{margin:0 0 8px;color:var(--rwph-theme-text)}p{color:var(--rwph-theme-soft);font-weight:800;line-height:1.45}
+  </style></head><body><div class="box"><h1>RWPH Results Error</h1><p>${esc(e.message || e)}</p><p>${String(e.message || e).toLowerCase().includes("too many requests") || String(e.message || e).toLowerCase().includes("rate limit") ? "Torn is rate limiting API requests right now. RWPH now retries automatically, but if this still appears wait 1-3 minutes before running Fetch + Calculate again." : "You can close this panel and try Calculate again."}</p></div></body></html>`;
+            if (typeof preOpenedResultsTab.render === "function") preOpenedResultsTab.render(errorHtml, "results");
+            else rwphRenderResultsPanelDocumentV1536(preOpenedResultsTab, errorHtml, "results");
           } catch (_) {}
         }
         rwphToastPanelError(status, "Error: " + e.message, "RWPH Results");
