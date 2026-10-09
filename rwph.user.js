@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.550
+// @version      1.1.555
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,11 @@
 (function () {
   "use strict";
 
+  // v1.1.555: Adds a removable admin-only 100-member test calculation that reads Cached Report 1 and builds 100 in-memory duplicate test members without saving or mutating cached reports.
+  // v1.1.554: Adds Newsletter and Member Card Stats to Admin Default Setup and makes both panels apply saved/admin default geometry when opened.
+  // v1.1.553: Adds a separate Newsletter Member Card Stats panel with optional live member stats, and converts all 42 Newsletter presets to the same three-master-colour derivation system as Custom.
+  // v1.1.552: Adds a Custom Newsletter three-colour theme builder using Panels/Cards/Rows/Inputs, All Text, and All Outlines/Borders/Accents master colours with live derived styling across all 15 layouts.
+  // v1.1.551: Expands the newsletter colour/theme library from 17 to 42 independent palettes while keeping all 15 compact layouts and Torn character-limit safeguards.
   // v1.1.550: Rebuilds newsletter HTML to mirror RWPH panel hierarchy and expands the independent Newsletter Layout library to 15 compact 120-member-safe styles while retaining all colour themes.
   // v1.1.549: Compacts the Main locked/unlocked API disclosure while keeping full terms in Help, restores Cached Reports to a single vertical report stack, and simplifies the Saved count display.
   // v1.1.547: Rebuilds the user Help and Torn API disclosure, improves user-facing panel guidance, reorganises Cached Reports within the existing RWPH UI, and renames payment prefill controls.
@@ -107,6 +112,7 @@
   const RESULTS_LOADING_PANEL_STATE_STORAGE_KEY = "rw_payout_helper_results_loading_panel_state";
   const PANEL_THEME_STORAGE_KEY = "rw_payout_helper_panel_theme_choice";
   const PANEL_CUSTOM_THEME_STORAGE_KEY = "rw_payout_helper_custom_colour_theme_v3";
+  const NEWSLETTER_CUSTOM_THEME_STORAGE_KEY = "rw_payout_helper_newsletter_custom_colour_theme_v1";
   const PANEL_THEME_SYSTEM_STORAGE_KEY = "rw_payout_helper_theme_system_v4";
   const FIRST_TUTORIAL_SHOWN_STORAGE_KEY = "rw_payout_helper_first_tutorial_shown";
   const MEMBER_MANAGEMENT_STORAGE_KEY = "rw_payout_helper_member_management_state";
@@ -2594,6 +2600,8 @@
     { id: "rw-payout-helper", label: "Main RWPH Panel", width: 560, height: 650 },
     { id: "rwph-results-loading-panel", label: "Results Loading", width: 720, height: 560, className: "rwph-floating-panel rwph-results-loading-panel rwph-results-shell-v1534" },
     { id: "rwph-results-panel", label: "Results", width: 860, height: 680, className: "rwph-floating-panel rw-results-panel rwph-results-shell-v1534" },
+    { id: "rwph-newsletter-panel", label: "Newsletter", width: 900, height: 720, className: "rwph-floating-panel rwph-newsletter-panel-v1537" },
+    { id: "rwph-newsletter-member-stats-panel", label: "Newsletter Member Card Stats", width: 470, height: 620, className: "rwph-floating-panel rwph-newsletter-member-stats-panel-v1553" },
     { id: "rwph-basic-calculations-panel", label: "Basic Calculations", width: 540, height: 560, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 650, height: 650, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
@@ -2902,6 +2910,42 @@
     ];
   }
 
+  function rwphDefaultSetupNewsletterDataV1554() {
+    try {
+      const rows = rwphDefaultSetupSampleRows();
+      const summary = {
+        pointsMode: true,
+        calculationMode: "points",
+        calculationSystem: "fair-fight",
+        memberPayout: 21250000,
+        overallTotalPayout: 21250000,
+        totalWarHits: 30,
+        totalAssists: 4,
+        totalOutsideHits: 3,
+        totalRetaliationHits: 3,
+        totalPoints: 41.7,
+        totalRespect: 73.8,
+        totalPayableEvents: 38,
+        factionName: "Example Faction",
+        factionImageUrl: "",
+        selectedWar: { timeSource: "last-ranked-war-report" },
+        calcMeta: { ownFactionAttacks: 38, skippedFailed: 0 },
+        fairFightMode: "avg-step",
+        fairFightEnabled: true,
+        fairFightCap: 3,
+        fairFightPointPerStep: 0.01,
+        fairFightStep: 0.02,
+        warnings: [],
+      };
+      const html = buildFullscreenResultsHtml(rows, summary);
+      const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+      return rwphNewsletterDataFromResultsRootV1545(doc);
+    } catch (e) {
+      console.warn("Could not build Newsletter data for Default Setup:", e);
+      return null;
+    }
+  }
+
   function rwphCreateDefaultSetupActualMainPanel() {
     document.getElementById("rw-payout-helper")?.remove();
     rwphEnsureThreeColourThemeSystem();
@@ -2980,6 +3024,14 @@
       case "rwph-results-panel":
         panel = rwphCreateDefaultSetupActualResultsPanel();
         break;
+      case "rwph-newsletter-panel":
+        panel = rwphOpenNewsletterPanelV1537(rwphDefaultSetupNewsletterDataV1554());
+        break;
+      case "rwph-newsletter-member-stats-panel": {
+        const newsletterData = rwphDefaultSetupNewsletterDataV1554();
+        panel = newsletterData ? rwphOpenNewsletterMemberStatsPanelV1553(newsletterData, new Set(), () => {}) : null;
+        break;
+      }
       case "rwph-results-loading-panel": {
         const previewTab = rwphCreateResultsLoadingPanel(buildResultsLoadingHtml("rwph-default-setup", Date.now()), Date.now(), { mode: "loading", setupPreview: true });
         panel = previewTab?.rwphPanel || document.getElementById("rwph-results-loading-panel");
@@ -5450,8 +5502,192 @@
     }
   }
 
+  // BEGIN OPTIONAL ADMIN 100 MEMBER TEST TOOL (v1.1.555)
+  // This entire block is intentionally self-contained. To remove this feature later,
+  // delete this block and the single installer call at the top of rwphBindAdminControls().
+  // It performs READ-ONLY Cached Reports list/open requests and never saves, replaces,
+  // deletes, or mutates a real cached report.
+  const RWPH_ADMIN_100_MEMBER_TEST_COUNT_V1555 = 100;
+
+  function rwphCloneAdminTestValueV1555(value) {
+    try { return JSON.parse(JSON.stringify(value ?? null)); }
+    catch (_) { return value && typeof value === "object" ? { ...value } : value; }
+  }
+
+  function rwphBuildAdmin100MemberRowsV1555(sourceRows = []) {
+    const payable = rwphRowsWithPositivePayout(Array.isArray(sourceRows) ? sourceRows : []);
+    if (!payable.length) throw new Error("Cached Report 1 has no payable member rows to duplicate.");
+    const rows = [];
+    for (let index = 0; index < RWPH_ADMIN_100_MEMBER_TEST_COUNT_V1555; index += 1) {
+      const source = payable[index % payable.length] || {};
+      const clone = rwphCloneAdminTestValueV1555(source) || {};
+      const sourceName = String(source.name || source.username || source.memberName || `Member ${index + 1}`).replace(/\s+/g, " ").trim();
+      clone.id = `TEST-${String(index + 1).padStart(3, "0")}`;
+      clone.name = `${sourceName} · Test ${String(index + 1).padStart(3, "0")}`;
+      clone.rwphAdminTestMember = true;
+      clone.rwphAdminTestIndex = index + 1;
+      clone.rwphAdminTestSourceId = String(source.id || source.tornId || source.userId || "");
+      rows.push(clone);
+    }
+    return rows;
+  }
+
+  function rwphBuildAdmin100MemberSummaryV1555(sourceSummary = {}, rows = [], sourceReport = {}) {
+    const summary = rwphCloneAdminTestValueV1555(sourceSummary) || {};
+    const pointsMode = !!(summary.pointsMode || summary.calculationMode === "points");
+    const sum = (getter) => rows.reduce((total, row) => total + Number(getter(row) || 0), 0);
+    const memberPayout = sum((row) => row.payout ?? row.payoutAmount ?? row.paymentAmount ?? row.memberPayment ?? row.amount);
+    const totalWeight = sum((row) => row.weight);
+    const totalPoints = sum((row) => row.points ?? row.weight);
+    const totalWarHits = sum((row) => row.warHits ?? row.attacks);
+    const totalRespect = sum((row) => row.totalRespect ?? row.respect);
+    const totalPayableEvents = sum((row) => pointsMode ? row.payableEvents : (row.warHits ?? row.attacks));
+
+    summary.memberPayout = memberPayout;
+    summary.totalPayout = memberPayout;
+    summary.totalPayoutDisplay = memberPayout;
+    summary.overallTotalPayout = memberPayout;
+    summary.totalWeight = totalWeight;
+    summary.totalPoints = totalPoints;
+    summary.totalWarHits = totalWarHits;
+    summary.totalHits = totalWarHits;
+    summary.totalAssists = sum((row) => row.assists);
+    summary.totalOutsideHits = sum((row) => row.outsideHits);
+    summary.totalRetaliationHits = sum((row) => row.retaliationHits);
+    summary.totalEnemyFactionHospitalizingHits = sum((row) => row.enemyFactionHospitalizingHits);
+    summary.totalEnemyFactionHospitalBonusPoints = sum((row) => row.enemyFactionHospitalBonusPoints);
+    summary.totalFairFightBonusPoints = sum((row) => row.fairFightBonusPoints);
+    summary.totalRespectBonusPoints = sum((row) => row.respectBonusPoints);
+    summary.totalRespect = totalRespect;
+    summary.totalPayableEvents = totalPayableEvents;
+    summary.attacksFetched = sum((row) => row.totalTrackedHits || row.warHits || row.attacks || 0);
+    summary.calcMeta = summary.calcMeta && typeof summary.calcMeta === "object" ? { ...summary.calcMeta } : {};
+    summary.calcMeta.payableEvents = totalPayableEvents;
+    summary.calcMeta.fairFightModifierSamples = sum((row) => row.fairFightSamples);
+    summary.calcMeta.retaliationBonusPoints = sum((row) => row.retaliationBonusPoints);
+    summary.calcMeta.overseasHits = sum((row) => row.overseasHits);
+    summary.cachedReportLoaded = false;
+    summary.cachedReportId = 0;
+    summary.rwphAdminTest100 = true;
+    summary.rwphAdminTestMemberCount = RWPH_ADMIN_100_MEMBER_TEST_COUNT_V1555;
+    summary.rwphAdminTestSourceCacheId = Number(sourceReport?.cacheId || sourceReport?.id || 0);
+    summary.rwphAdminTestSourceSavedAtMs = Number(sourceReport?.createdAtMs || sourceReport?.savedAtMs || 0);
+    const warnings = Array.isArray(summary.warnings) ? [...summary.warnings] : [];
+    warnings.unshift("ADMIN TEST ONLY — 100 synthetic duplicate members built from Cached Report 1. This test is not saved back to Cached Reports.");
+    summary.warnings = warnings;
+    return summary;
+  }
+
+  function rwphAdmin100MemberTestUserKeyV1555() {
+    return String(
+      document.getElementById("rw-key")?.value?.trim() ||
+      document.getElementById("rw-paywall-key")?.value?.trim() ||
+      GM_getValue(STORAGE_KEY, "") ||
+      ""
+    ).trim();
+  }
+
+  async function rwphRunAdmin100MemberTestV1555(rootScope, button) {
+    const status = rwphAdminQuery(rootScope, "#rw-admin-status");
+    const userKey = rwphAdmin100MemberTestUserKeyV1555();
+    const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
+    if (!userKey) throw new Error("Save your Torn API key first so RWPH can identify the faction Cached Reports list.");
+
+    const originalText = String(button?.textContent || "100 Member Test Calculation");
+    if (button) {
+      if (button.dataset.rwphRunning === "1") return;
+      button.dataset.rwphRunning = "1";
+      button.disabled = true;
+      button.textContent = "Building 100 Member Test...";
+    }
+
+    try {
+      rwphToastPanelInfo(status, "Reading Cached Report 1 for the 100-member admin test...", "info", "RWPH Admin Test");
+      const listResult = await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, {
+        databaseCheckNonce: `admin-test-${Date.now()}`,
+      }));
+      rwphRememberSavedReportsFactionId(listResult.factionId);
+      const reports = Array.isArray(listResult.reports) ? listResult.reports : [];
+      const firstReport = reports[0];
+      const cacheId = Math.max(0, Math.floor(Number(firstReport?.cacheId || firstReport?.id || 0)));
+      if (!firstReport || !cacheId) throw new Error("Cached Report 1 is empty. Save a completed report first, then run the test again.");
+
+      const sourceResult = await apiPost("/api/calc/cached-reports/open", rwphSavedReportsRequestBody(userKey, token, { cacheId }));
+      const testRows = rwphBuildAdmin100MemberRowsV1555(sourceResult.rows || []);
+      const testSummary = rwphBuildAdmin100MemberSummaryV1555(sourceResult.summary || {}, testRows, firstReport);
+      testSummary.factionName = sourceResult.factionName || testSummary.factionName || listResult.factionName || "Faction";
+      testSummary.factionId = sourceResult.factionId || testSummary.factionId || listResult.factionId || "";
+      testSummary.factionImageUrl = rwphFindFactionInfoImageUrl(testSummary.factionId || "") || rwphFullFactionImageUrlV1546(sourceResult.factionImageUrl || testSummary.factionImageUrl || "") || "";
+
+      // Keep real Cached Reports untouched: only the normal Results globals are replaced in-memory.
+      lastRows = testRows;
+      lastSummary = testSummary;
+      rwphUpdateLastResultsButton();
+      const embeddedResults = document.getElementById("rw-results");
+      if (embeddedResults) embeddedResults.innerHTML = renderRows(lastRows, lastSummary);
+
+      const progressId = `rwph-admin-test100-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const resultsPanel = openBlankResultsTab(progressId);
+      rwphSetResultsLoadingStepDone(resultsPanel, 0, 20, "Admin test authorised");
+      rwphSetResultsLoadingStepDone(resultsPanel, 1, 45, "Cached Report 1 loaded");
+      rwphSetResultsLoadingStepDone(resultsPanel, 2, 70, `Duplicated source members to ${RWPH_ADMIN_100_MEMBER_TEST_COUNT_V1555}`);
+      rwphSetResultsLoadingStepDone(resultsPanel, 3, 90, "Test totals rebuilt in memory");
+      const manualOpenReady = rwphPrepareManualResultsOpenButton(resultsPanel, progressId, lastRows, lastSummary);
+      if (manualOpenReady) {
+        rwphSetResultsLoadingStepDone(resultsPanel, 4, 100, "100-member admin test ready. Click Open Results.");
+      } else {
+        await rwphShowResultsLoadingCompletion(resultsPanel);
+      }
+      rwphToastPanelInfo(status, `100-member test ready from Cached Report 1. ${testRows.length} synthetic members were created in memory only.`, "info", "RWPH Admin Test");
+    } finally {
+      if (button) {
+        button.dataset.rwphRunning = "0";
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+  }
+
+  function rwphInstallOptionalAdmin100MemberTestV1555(root) {
+    const scope = root && root.querySelector ? root : document;
+    const adminSection = rwphFindAdminSection(scope);
+    if (!adminSection || adminSection.querySelector("#rw-admin-test-100-members")) return;
+    const adminBox = adminSection.querySelector(".rw-admin-unified-panel") || adminSection;
+    let host = adminSection.querySelector(".rw-admin-advanced-box");
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "rw-admin-advanced-box";
+      adminBox.appendChild(host);
+    }
+
+    const card = document.createElement("div");
+    card.className = "rwph-admin-100-test-tool rw-small";
+    card.style.cssText = "margin-top:8px;padding:8px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-panel2);display:grid;gap:6px;";
+    card.innerHTML = `
+      <b style="color:var(--rwph-theme-text);">100 Member Test Calculation</b>
+      <span>Reads <b>Cached Report 1</b>, duplicates its payable member rows to exactly <b>100 synthetic test members</b>, and opens the normal Results/Newsletter flow. The source cached report is never changed or replaced.</span>
+      <button id="rw-admin-test-100-members" class="secondary" type="button">100 Member Test Calculation</button>`;
+    host.appendChild(card);
+
+    const button = card.querySelector("#rw-admin-test-100-members");
+    button?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const rootScope = rwphFindAdminRoot(button);
+      const status = rwphAdminQuery(rootScope, "#rw-admin-status");
+      try {
+        if (!rwphAdminToolsAreVisible(rootScope)) throw new Error("Save a valid admin key first. Admin tools are still locked.");
+        await rwphRunAdmin100MemberTestV1555(rootScope, button);
+      } catch (e) {
+        rwphToastPanelError(status, `100-member test error: ${e.message || e}`, "RWPH Admin Test");
+      }
+    });
+  }
+  // END OPTIONAL ADMIN 100 MEMBER TEST TOOL (v1.1.555)
+
   function rwphBindAdminControls(root) {
     const panelRoot = root && root.addEventListener ? root : document;
+    rwphInstallOptionalAdmin100MemberTestV1555(panelRoot);
     if (panelRoot.__rwphAdminDelegatedBound) return;
     panelRoot.__rwphAdminDelegatedBound = true;
     panelRoot.addEventListener("click", async (event) => {
@@ -5975,33 +6211,56 @@
 
   function rwphNormalizeNewsletterDataV1545(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-    const colorKeys = ["panelA", "panelB", "head", "outer", "line", "cardLine", "accent", "text", "muted", "good"];
+    const masterKeys = ["base", "text", "outline"];
     const themes = Array.isArray(value.themes) ? value.themes.map((theme) => {
       if (!theme || !theme.key || !theme.title) return null;
       const clean = { key: String(theme.key), title: String(theme.title) };
-      for (const key of colorKeys) {
+      for (const key of masterKeys) {
         const color = String(theme[key] || "");
         if (!/^#[0-9a-f]{6}$/i.test(color)) return null;
-        clean[key] = color;
+        clean[key] = color.toLowerCase();
       }
       return clean;
     }).filter(Boolean) : [];
     const layouts = Array.isArray(value.layouts) ? value.layouts.map((layout) => {
-      if (!layout || !layout.key || !layout.label || typeof layout.template !== "string") return null;
+      if (!layout || !layout.key || !layout.label) return null;
       return {
         key: String(layout.key),
         label: String(layout.label),
-        template: String(layout.template),
-        templateLength: Number(layout.templateLength || String(layout.template).length),
-        rowCount: Math.max(0, Number(layout.rowCount || 0)),
-        sourceCount: Math.max(0, Number(layout.sourceCount || 0)),
+        columns: Math.max(1, Math.min(4, Number(layout.columns || 2))),
+        style: String(layout.style || "panel"),
+        summary: String(layout.summary || "tiles"),
       };
     }).filter(Boolean) : [];
+    const numberKeys = [
+      "payout", "points", "payableEvents", "avgFairFight", "bestFairFight", "fairFightSamples", "fairFightBonusPoints",
+      "warHits", "assists", "retaliationHits", "outsideHits", "totalRespect", "chainMaintenanceHits", "overseasHits",
+      "hospitalizingHits", "enemyFactionHospitalizingHits", "basePoints", "hospitalBonusPoints", "enemyFactionHospitalBonusPoints",
+      "retaliationBonusPoints", "overseasBonusPoints", "respectBonusPoints", "adjustedRespect", "totalTrackedHits"
+    ];
+    const rows = Array.isArray(value.rows) ? value.rows.slice(0, 120).map((row, index) => {
+      const clean = {
+        rank: Math.max(1, Number(row?.rank || index + 1)),
+        id: String(row?.id || ""),
+        name: String(row?.name || `Unknown ${row?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, 64),
+      };
+      for (const key of numberKeys) clean[key] = Number(row?.[key] || 0);
+      return clean;
+    }) : [];
+    const reportInput = value.report && typeof value.report === "object" ? value.report : {};
+    const report = {
+      pointsMode: !!reportInput.pointsMode,
+      factionName: String(reportInput.factionName || "Ranked War Payout Results"),
+      factionImageUrl: String(reportInput.factionImageUrl || ""),
+      totalRespect: Number(reportInput.totalRespect || 0),
+      totalPayableEvents: Number(reportInput.totalPayableEvents || 0),
+      perUnitAmount: Number(reportInput.perUnitAmount || 0),
+    };
     if (!themes.length || !layouts.length) return null;
     const maxCharacters = Math.max(1, Math.min(65535, Number(value.maxCharacters || 65535)));
     const defaultTheme = themes.some((theme) => theme.key === String(value.defaultTheme || "")) ? String(value.defaultTheme) : themes[0].key;
     const defaultLayout = layouts.some((layout) => layout.key === String(value.defaultLayout || "")) ? String(value.defaultLayout) : layouts[0].key;
-    return { version: 2, maxCharacters, defaultTheme, defaultLayout, themes, layouts };
+    return { version: 3, maxCharacters, defaultTheme, defaultLayout, themes, layouts, report, rows };
   }
 
   function rwphStorePayAllReportContext(context = {}) {
@@ -6056,6 +6315,7 @@
     try { document.getElementById("rwph-results-panel")?.remove(); } catch (_) {}
     try { document.getElementById("rwph-results-loading-panel")?.remove(); } catch (_) {}
     try { document.getElementById("rwph-newsletter-panel")?.remove(); } catch (_) {}
+    try { document.getElementById("rwph-newsletter-member-stats-panel")?.remove(); } catch (_) {}
     try { rwphCloseExistingResultsLoadingPanel(); } catch (_) {}
     try { rwphClearResultsLoadingPanelState(); } catch (_) {}
     try { rwphClearRememberedOpenResultsPage(); } catch (_) {}
@@ -6495,39 +6755,51 @@
     const factionImageUrl = String(rwphFindFactionInfoImageUrl(summary?.factionId || "") || rwphFullFactionImageUrlV1546(summary?.factionImageUrl || "") || "").trim();
     
     const rwphNewsletterThemes = {
-      gold: { title: "Newsletter Gold", panelA:"#1b1208", panelB:"#111827", head:"#2a1609", outer:"#120905", line:"#b88759", cardLine:"#5b3418", accent:"#ffd37a", text:"#fff7ed", muted:"#cfaa8e", good:"#86efac" },
-      blue: { title: "Newsletter Blue", panelA:"#0f172a", panelB:"#082f49", head:"#0c4a6e", outer:"#020617", line:"#38bdf8", cardLine:"#075985", accent:"#7dd3fc", text:"#f0f9ff", muted:"#bae6fd", good:"#86efac" },
-      green: { title: "Newsletter Green", panelA:"#102016", panelB:"#052e16", head:"#14532d", outer:"#020f08", line:"#22c55e", cardLine:"#166534", accent:"#86efac", text:"#f0fdf4", muted:"#bbf7d0", good:"#facc15" },
-      purple: { title: "Newsletter Purple", panelA:"#1e1233", panelB:"#2e1065", head:"#4c1d95", outer:"#0b0616", line:"#a78bfa", cardLine:"#6d28d9", accent:"#c4b5fd", text:"#faf5ff", muted:"#ddd6fe", good:"#86efac" },
-      crimson: { title: "Newsletter Crimson", panelA:"#2a0a0a", panelB:"#450a0a", head:"#7f1d1d", outer:"#160606", line:"#f87171", cardLine:"#991b1b", accent:"#fecaca", text:"#fff1f2", muted:"#fca5a5", good:"#86efac" },
-      neon: { title: "Newsletter Neon", panelA:"#07111f", panelB:"#111827", head:"#0f172a", outer:"#020617", line:"#22d3ee", cardLine:"#0e7490", accent:"#67e8f9", text:"#ecfeff", muted:"#a5f3fc", good:"#f0abfc" },
-      ice: { title: "Newsletter Ice", panelA:"#ecfeff", panelB:"#cffafe", head:"#0891b2", outer:"#f0fdfa", line:"#06b6d4", cardLine:"#67e8f9", accent:"#155e75", text:"#083344", muted:"#0e7490", good:"#047857" },
-      sunset: { title: "Newsletter Sunset", panelA:"#431407", panelB:"#7c2d12", head:"#9a3412", outer:"#1c0a04", line:"#fb923c", cardLine:"#c2410c", accent:"#fed7aa", text:"#fff7ed", muted:"#fdba74", good:"#bbf7d0" },
-      toxic: { title: "Newsletter Toxic", panelA:"#172105", panelB:"#365314", head:"#4d7c0f", outer:"#080d03", line:"#a3e635", cardLine:"#65a30d", accent:"#d9f99d", text:"#f7fee7", muted:"#bef264", good:"#67e8f9" },
-      steel: { title: "Newsletter Steel", panelA:"#111827", panelB:"#374151", head:"#4b5563", outer:"#030712", line:"#9ca3af", cardLine:"#6b7280", accent:"#e5e7eb", text:"#f9fafb", muted:"#d1d5db", good:"#86efac" },
-      candy: { title: "Newsletter Candy", panelA:"#500724", panelB:"#831843", head:"#be185d", outer:"#19020b", line:"#f9a8d4", cardLine:"#db2777", accent:"#fbcfe8", text:"#fff1f2", muted:"#f9a8d4", good:"#bbf7d0" },
-      ocean: { title: "Newsletter Ocean", panelA:"#06283d", panelB:"#075985", head:"#0369a1", outer:"#031724", line:"#38bdf8", cardLine:"#0284c7", accent:"#bae6fd", text:"#f0f9ff", muted:"#7dd3fc", good:"#86efac" },
-      fire: { title: "Newsletter Fire", panelA:"#3b0a03", panelB:"#7f1d1d", head:"#b91c1c", outer:"#160404", line:"#f97316", cardLine:"#dc2626", accent:"#fed7aa", text:"#fff7ed", muted:"#fdba74", good:"#fef08a" },
-      forest: { title: "Newsletter Forest", panelA:"#052e16", panelB:"#064e3b", head:"#065f46", outer:"#02170b", line:"#34d399", cardLine:"#047857", accent:"#a7f3d0", text:"#ecfdf5", muted:"#6ee7b7", good:"#fde68a" },
-      royal: { title: "Newsletter Royal", panelA:"#1e1b4b", panelB:"#312e81", head:"#4338ca", outer:"#0b1026", line:"#818cf8", cardLine:"#4f46e5", accent:"#c7d2fe", text:"#eef2ff", muted:"#a5b4fc", good:"#fcd34d" },
-      ghost: { title: "Newsletter Ghost", panelA:"#f8fafc", panelB:"#e2e8f0", head:"#94a3b8", outer:"#ffffff", line:"#64748b", cardLine:"#cbd5e1", accent:"#0f172a", text:"#020617", muted:"#334155", good:"#166534" },
-      rose: { title: "Newsletter Rose", panelA:"#2d0714", panelB:"#4c0519", head:"#9f1239", outer:"#17030a", line:"#fb7185", cardLine:"#be123c", accent:"#fecdd3", text:"#fff1f2", muted:"#fda4af", good:"#86efac" },
+      gold: { title: "Newsletter Gold", base:"#1b1208", text:"#fff7ed", outline:"#b88759" },
+      blue: { title: "Newsletter Blue", base:"#0f172a", text:"#f0f9ff", outline:"#38bdf8" },
+      green: { title: "Newsletter Green", base:"#102016", text:"#f0fdf4", outline:"#22c55e" },
+      purple: { title: "Newsletter Purple", base:"#1e1233", text:"#faf5ff", outline:"#a78bfa" },
+      crimson: { title: "Newsletter Crimson", base:"#2a0a0a", text:"#fff1f2", outline:"#f87171" },
+      neon: { title: "Newsletter Neon", base:"#07111f", text:"#ecfeff", outline:"#22d3ee" },
+      ice: { title: "Newsletter Ice", base:"#ecfeff", text:"#083344", outline:"#06b6d4" },
+      sunset: { title: "Newsletter Sunset", base:"#431407", text:"#fff7ed", outline:"#fb923c" },
+      toxic: { title: "Newsletter Toxic", base:"#172105", text:"#f7fee7", outline:"#a3e635" },
+      steel: { title: "Newsletter Steel", base:"#111827", text:"#f9fafb", outline:"#9ca3af" },
+      candy: { title: "Newsletter Candy", base:"#500724", text:"#fff1f2", outline:"#f9a8d4" },
+      ocean: { title: "Newsletter Ocean", base:"#06283d", text:"#f0f9ff", outline:"#38bdf8" },
+      fire: { title: "Newsletter Fire", base:"#3b0a03", text:"#fff7ed", outline:"#f97316" },
+      forest: { title: "Newsletter Forest", base:"#052e16", text:"#ecfdf5", outline:"#34d399" },
+      royal: { title: "Newsletter Royal", base:"#1e1b4b", text:"#eef2ff", outline:"#818cf8" },
+      ghost: { title: "Newsletter Ghost", base:"#f8fafc", text:"#020617", outline:"#64748b" },
+      rose: { title: "Newsletter Rose", base:"#2d0714", text:"#fff1f2", outline:"#fb7185" },
+      midnight: { title: "Newsletter Midnight", base:"#080d1a", text:"#eff6ff", outline:"#3b82f6" },
+      sapphire: { title: "Newsletter Sapphire", base:"#0b1638", text:"#eff6ff", outline:"#60a5fa" },
+      cobalt: { title: "Newsletter Cobalt", base:"#0a1740", text:"#eff6ff", outline:"#3b82f6" },
+      aqua: { title: "Newsletter Aqua", base:"#042f2e", text:"#ecfeff", outline:"#22d3ee" },
+      teal: { title: "Newsletter Teal", base:"#042f2e", text:"#f0fdfa", outline:"#2dd4bf" },
+      emerald: { title: "Newsletter Emerald", base:"#052e24", text:"#ecfdf5", outline:"#10b981" },
+      mint: { title: "Newsletter Mint", base:"#ecfdf5", text:"#022c22", outline:"#34d399" },
+      lime: { title: "Newsletter Lime", base:"#1a2e05", text:"#f7fee7", outline:"#84cc16" },
+      amber: { title: "Newsletter Amber", base:"#2d1b05", text:"#fffbeb", outline:"#f59e0b" },
+      bronze: { title: "Newsletter Bronze", base:"#2a170d", text:"#fff7ed", outline:"#d97706" },
+      copper: { title: "Newsletter Copper", base:"#31140b", text:"#fff7ed", outline:"#ea580c" },
+      mocha: { title: "Newsletter Mocha", base:"#211711", text:"#fff7ed", outline:"#a16207" },
+      sandstone: { title: "Newsletter Sandstone", base:"#f7f1e6", text:"#2b211a", outline:"#c69c72" },
+      lavender: { title: "Newsletter Lavender", base:"#f5f3ff", text:"#2e1065", outline:"#a78bfa" },
+      violet: { title: "Newsletter Violet", base:"#21123a", text:"#faf5ff", outline:"#8b5cf6" },
+      magenta: { title: "Newsletter Magenta", base:"#30051f", text:"#fdf4ff", outline:"#d946ef" },
+      cherry: { title: "Newsletter Cherry", base:"#31070b", text:"#fff1f2", outline:"#e11d48" },
+      burgundy: { title: "Newsletter Burgundy", base:"#26080f", text:"#fff1f2", outline:"#be123c" },
+      graphite: { title: "Newsletter Graphite", base:"#18181b", text:"#fafafa", outline:"#71717a" },
+      slate: { title: "Newsletter Slate", base:"#0f172a", text:"#f8fafc", outline:"#64748b" },
+      blackout: { title: "Newsletter Blackout", base:"#050505", text:"#ffffff", outline:"#525252" },
+      aurora: { title: "Newsletter Aurora", base:"#071a1f", text:"#ecfeff", outline:"#2dd4bf" },
+      matrix: { title: "Newsletter Matrix", base:"#020b05", text:"#dcfce7", outline:"#22c55e" },
+      halloween: { title: "Newsletter Halloween", base:"#1f0a00", text:"#fff7ed", outline:"#f97316" },
+      christmas: { title: "Newsletter Christmas", base:"#052e16", text:"#fff7ed", outline:"#dc2626" },
     };
 
     const RWPH_NEWSLETTER_MAX_CHARACTERS = 65535;
-    const rwphNewsletterTokenTheme = {
-      title: "@@THEME_TITLE@@",
-      panelA: "@@PANEL_A@@",
-      panelB: "@@PANEL_B@@",
-      head: "@@HEAD@@",
-      outer: "@@OUTER@@",
-      line: "@@LINE@@",
-      cardLine: "@@CARD_LINE@@",
-      accent: "@@ACCENT@@",
-      text: "@@TEXT@@",
-      muted: "@@MUTED@@",
-      good: "@@GOOD@@",
-    };
     const rwphNewsletterLayoutDefinitions = [
       { key: "classic2", label: "Panel Cards — 2 Column", columns: 2, style: "panel", summary: "tiles" },
       { key: "dense3", label: "Compact Panels — 3 Column", columns: 3, style: "dense", summary: "tiles" },
@@ -6545,97 +6817,51 @@
       { key: "slim4", label: "Slim Grid — 4 Column", columns: 4, style: "slim", summary: "strip" },
       { key: "compact2", label: "Compact Detail — 2 Column", columns: 2, style: "compact", summary: "split" },
     ];
-
-    function rwphBuildNewsletterLayoutTemplateStatic(layoutKey = "classic2") {
-      const sourceRows = Array.isArray(list) ? list : [];
-      const maxRows = 120;
-      const shownRows = sourceRows.slice(0, maxRows);
-      const theme = rwphNewsletterTokenTheme;
-      const s = summary || {};
-      const isPoints = !!(s.pointsMode || s.calculationMode === "points");
-      const title = String(s.factionName || s.newsletterTitle || "Ranked War Payout Results");
-      const totalPaid = sourceRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
-      const shownPaid = shownRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
-      const totalRespect = Number(s.totalRespect || sourceRows.reduce((sum, r) => sum + Number(r.totalRespect || r.respect || 0), 0));
-      const totalPayable = Number(s.totalPayableEvents || sourceRows.reduce((sum, r) => sum + Number(isPoints ? (r.payableEvents || 0) : (r.warHits ?? r.attacks ?? 0)), 0));
-      let perUnit = Number(isPoints ? (s.perPointAmount || s.perHitAmount || s.payPerPoint || 0) : (s.perHitAmount || s.payPerHit || 0));
-      if (!perUnit) {
-        const units = sourceRows.reduce((sum, r) => sum + Number(isPoints ? (r.points || r.weight || 0) : (r.warHits ?? r.attacks ?? 0)), 0);
-        perUnit = units ? totalPaid / units : 0;
-      }
-      const metricFor = (r) => isPoints ? Number(r.points || r.weight || 0).toFixed(1) : String(Number(r.warHits ?? r.attacks ?? 0));
-      const metricLabel = isPoints ? "Pts" : "Hits";
-      const safeName = (r) => esc(String(r?.name || ("Unknown " + (r?.id || ""))).replace(/\s+/g, " ").trim().slice(0, 32));
-      const def = rwphNewsletterLayoutDefinitions.find((item) => item.key === String(layoutKey || "")) || rwphNewsletterLayoutDefinitions[0];
-      const columns = Math.max(1, Math.min(4, Number(def.columns || 2)));
-
-      const statCell = (label, value, bg, compact = false) => `<td width="25%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:${compact ? 2 : 4}px;color:${theme.text};border-radius:7px"><span style="color:${theme.muted};font-size:8px;font-weight:bold">${esc(label)}</span><br><b style="color:${theme.accent}">${esc(value)}</b></td>`;
-      const statsTable = (style) => {
-        const items = [
-          ["Total Payout", money(totalPaid), theme.panelA],
-          [isPoints ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB],
-          [isPoints ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
-          ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
-        ];
-        if (style === "strip") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"> <tr>${items.map((x) => statCell(...x, true)).join("")}</tr></table>`;
-        if (style === "split") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${statCell(...items[0])}${statCell(...items[1])}</tr><tr>${statCell(...items[2])}${statCell(...items[3])}</tr></table>`;
-        return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${statCell(...items[0])}${statCell(...items[1])}${statCell(...items[2])}${statCell(...items[3])}</tr></table>`;
-      };
-      const rankPill = (index) => `<b style="display:inline-block;border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent};background:${theme.head}">#${index + 1}</b>`;
-      const card = (r, index, bg, style) => {
-        const name = safeName(r);
-        const metric = esc(metricFor(r));
-        const payout = esc(money(r?.payout || 0));
-        const rank = rankPill(index);
-        const border = `border:1px solid ${theme.cardLine};border-radius:8px`;
-        if (style === "dense") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text};vertical-align:top">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "leaderboard") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${metricLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b></td>`;
-        if (style === "split") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} <b style="color:${theme.accent}">${metric}</b></span> · <b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "minimal") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "stacked") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${metricLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b></td>`;
-        if (style === "rankrail") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}"><b style="background:${theme.head};color:${theme.accent};padding:2px 4px;border-radius:5px">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "payout") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span></td>`;
-        if (style === "metrics") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${metricLabel}</span> <b style="color:${theme.accent}">${metric}</b><br><span style="color:${theme.muted}">Payout</span> <b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "clean") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><span style="color:${theme.muted}"> · ${metricLabel} ${metric}</span><span style="color:${theme.good};font-weight:bold"> · ${payout}</span></td>`;
-        if (style === "ledger") return `<td bgcolor="${bg}" style="${border};padding:2px 4px;color:${theme.text}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="38" style="color:${theme.accent};font-weight:bold">#${index + 1}</td><td>${name}</td><td align="right" style="color:${theme.muted}">${metricLabel} ${metric}</td><td width="105" align="right" style="color:${theme.good};font-weight:bold">${payout}</td></tr></table></td>`;
-        if (style === "hero") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank}<br><b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${metricLabel} <b style="color:${theme.accent}">${metric}</b></span></td>`;
-        if (style === "badge") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "slim") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}"><b style="color:${theme.accent}">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${metric}</span> · <b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "compact") return `<td bgcolor="${bg}" style="${border};padding:3px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b></td>`;
-        return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text};vertical-align:top">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
-      };
-
-      let html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:separate;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif;border:1px solid ${theme.line};border-radius:12px;overflow:hidden">`;
-      if (factionImageUrl) html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" align="center" style="padding:6px;border-bottom:1px solid ${theme.line}"><img src="${esc(factionImageUrl)}" alt="${esc(title)}" style="display:block;max-width:100%;width:auto;height:auto;max-height:150px;margin:0 auto;border:0;border-radius:8px"></td></tr>`;
-      html += `<tr><td colspan="${columns}" bgcolor="${theme.panelA}" style="padding:5px;border-bottom:1px solid ${theme.cardLine}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="color:${theme.accent};font-weight:bold">War Summary</td><td align="right" style="color:${theme.muted}">${shownRows.length} members · ${esc(money(shownPaid))}</td></tr></table>${statsTable(def.summary)}</td></tr>`;
-      html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" style="padding:4px 6px;border-bottom:1px solid ${theme.line};color:${theme.accent};font-weight:bold">Member Payouts</td></tr>`;
-      for (let i = 0; i < shownRows.length; i += columns) {
-        html += `<tr>`;
-        for (let offset = 0; offset < columns; offset += 1) {
-          const row = shownRows[i + offset];
-          const bg = ((i + offset) % 2 === 0) ? theme.panelA : theme.panelB;
-          if (row) html += card(row, i + offset, bg, def.style);
-          else html += `<td bgcolor="${theme.outer}" style="padding:2px;border:0">&nbsp;</td>`;
-        }
-        html += `</tr>`;
-      }
-      if (!shownRows.length) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent};border-radius:8px">No payout rows found.</td></tr>`;
-      if (sourceRows.length > maxRows) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.head}" style="border-top:1px solid ${theme.line};padding:3px;color:${theme.muted}">Only the first 120 payout cards are included.</td></tr>`;
-      html += `</table>`;
-      html = html.replace(/>\s+</g, "><").trim();
-      return { html, rowCount: shownRows.length, sourceCount: sourceRows.length };
-    }
-
+    const rwphNewsletterRows = list.slice(0, 120).map((r, index) => ({
+      rank: index + 1,
+      id: String(r.id || ""),
+      name: String(r.name || `Unknown ${r.id || ""}`).replace(/\s+/g, " ").trim().slice(0, 64),
+      payout: Number(r.payout || 0),
+      points: Number(r.points || r.weight || 0),
+      payableEvents: Number(r.payableEvents || 0),
+      avgFairFight: Number(r.avgFairFight || 0),
+      bestFairFight: Number(r.bestFairFight || 0),
+      fairFightSamples: Number(r.fairFightSamples || 0),
+      fairFightBonusPoints: Number(r.fairFightBonusPoints || 0),
+      warHits: Number(r.warHits ?? r.attacks ?? 0),
+      assists: Number(r.assists || 0),
+      retaliationHits: Number(r.retaliationHits || 0),
+      outsideHits: Number(r.outsideHits || 0),
+      totalRespect: Number(r.totalRespect ?? r.respect ?? 0),
+      chainMaintenanceHits: Number(r.chainMaintenanceHits || 0),
+      overseasHits: Number(r.overseasHits || 0),
+      hospitalizingHits: Number(r.hospitalizingHits || 0),
+      enemyFactionHospitalizingHits: Number(r.enemyFactionHospitalizingHits || 0),
+      basePoints: Number(r.basePoints || 0),
+      hospitalBonusPoints: Number(r.hospitalBonusPoints || 0),
+      enemyFactionHospitalBonusPoints: Number(r.enemyFactionHospitalBonusPoints || 0),
+      retaliationBonusPoints: Number(r.retaliationBonusPoints || 0),
+      overseasBonusPoints: Number(r.overseasBonusPoints || 0),
+      respectBonusPoints: Number(r.respectBonusPoints || 0),
+      adjustedRespect: Number(r.adjustedRespect || 0),
+      totalTrackedHits: Number(r.totalTrackedHits || 0),
+    }));
     const rwphNewsletterPayload = {
-      version: 2,
+      version: 3,
       maxCharacters: RWPH_NEWSLETTER_MAX_CHARACTERS,
       defaultTheme: "gold",
       defaultLayout: "classic2",
       themes: Object.entries(rwphNewsletterThemes).map(([key, theme]) => ({ key, ...theme })),
-      layouts: rwphNewsletterLayoutDefinitions.map((layout) => {
-        const built = rwphBuildNewsletterLayoutTemplateStatic(layout.key);
-        return { key: layout.key, label: layout.label, template: built.html, templateLength: built.html.length, rowCount: built.rowCount, sourceCount: built.sourceCount };
-      }),
+      layouts: rwphNewsletterLayoutDefinitions.map((layout) => ({ ...layout })),
+      report: {
+        pointsMode,
+        factionName: String(summary?.factionName || summary?.faction?.name || "Ranked War Payout Results"),
+        factionImageUrl,
+        totalRespect: Number(summary?.totalRespect || list.reduce((sum, r) => sum + Number(r.totalRespect || r.respect || 0), 0)),
+        totalPayableEvents: Number(summary?.totalPayableEvents || list.reduce((sum, r) => sum + Number(pointsMode ? (r.payableEvents || 0) : (r.warHits ?? r.attacks ?? 0)), 0)),
+        perUnitAmount: Number(pointsMode ? (summary?.perPointAmount || perPointAmount || 0) : (summary?.perHitAmount || perHitAmount || 0)),
+      },
+      rows: rwphNewsletterRows,
     };
     const rwphNewsletterDataJson = JSON.stringify(rwphNewsletterPayload);
     const rwphNewsletterButtonHtml = `<button class="btn secondary" id="rwphNewsletterBtn" type="button">Newsletter</button>`;
@@ -6679,7 +6905,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.550">
+<body data-rwph-ui-generation="v1.1.555">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7413,7 +7639,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.550";
+    panel.dataset.rwphUiGeneration = "v1.1.555";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7502,35 +7728,273 @@
     }
   }
 
-  function rwphRenderNewsletterHtmlV1545(data, themeKey, layoutKey) {
+  function rwphNewsletterCustomThemeDefaultsV1552() {
+    return { base: "#06131a", text: "#e8fbff", outline: "#23c4d8" };
+  }
+
+  function rwphGetNewsletterCustomThemeMasterColoursV1552() {
+    const defaults = rwphNewsletterCustomThemeDefaultsV1552();
+    try {
+      const raw = GM_getValue(NEWSLETTER_CUSTOM_THEME_STORAGE_KEY, "");
+      const parsed = raw && typeof raw === "object" ? raw : (String(raw || "").trim() ? JSON.parse(String(raw)) : null);
+      if (parsed && typeof parsed === "object") {
+        return {
+          base: rwphNormalizeHexColour(parsed.base, defaults.base),
+          text: rwphNormalizeHexColour(parsed.text, defaults.text),
+          outline: rwphNormalizeHexColour(parsed.outline, defaults.outline),
+        };
+      }
+    } catch (_) {}
+    return defaults;
+  }
+
+  function rwphSaveNewsletterCustomThemeMasterColoursV1552(master = {}) {
+    const defaults = rwphNewsletterCustomThemeDefaultsV1552();
+    const safe = {
+      base: rwphNormalizeHexColour(master.base, defaults.base),
+      text: rwphNormalizeHexColour(master.text, defaults.text),
+      outline: rwphNormalizeHexColour(master.outline, defaults.outline),
+    };
+    try { GM_setValue(NEWSLETTER_CUSTOM_THEME_STORAGE_KEY, JSON.stringify(safe)); } catch (_) {}
+    return safe;
+  }
+
+  function rwphBuildNewsletterThemeFromMasterV1553(master = {}, key = "theme", title = "Newsletter Theme") {
+    const defaults = rwphNewsletterCustomThemeDefaultsV1552();
+    const safe = {
+      base: rwphNormalizeHexColour(master.base, defaults.base),
+      text: rwphNormalizeHexColour(master.text, defaults.text),
+      outline: rwphNormalizeHexColour(master.outline, defaults.outline),
+    };
+    return {
+      key: String(key || "theme"),
+      title: String(title || "Newsletter Theme"),
+      outer: rwphMixHexColour(safe.base, "#000000", 0.12),
+      panelA: rwphMixHexColour(safe.base, safe.text, 0.06),
+      panelB: rwphMixHexColour(safe.base, safe.text, 0.11),
+      head: rwphMixHexColour(safe.base, safe.outline, 0.18),
+      line: safe.outline,
+      cardLine: rwphMixHexColour(safe.outline, safe.base, 0.30),
+      accent: safe.outline,
+      text: safe.text,
+      muted: rwphMixHexColour(safe.text, safe.base, 0.30),
+      good: rwphMixHexColour(safe.outline, safe.text, 0.20),
+      masterColours: safe,
+    };
+  }
+
+  function rwphBuildNewsletterCustomThemeV1552(master = {}) {
+    const safe = rwphSaveNewsletterCustomThemeMasterColoursV1552(master);
+    return rwphBuildNewsletterThemeFromMasterV1553(safe, "custom", "Custom");
+  }
+
+  function rwphNewsletterMemberStatDefinitionsV1553(data) {
+    const pointsMode = !!data?.report?.pointsMode;
+    const defs = [
+      { key: "points", label: "Points", value: (r) => Number(r.points || 0).toFixed(2), advancedOnly: true },
+      { key: "payableEvents", label: "Payable Hits", value: (r) => String(Number(r.payableEvents || 0)), advancedOnly: true },
+      { key: "avgFairFight", label: "Avg FF", value: (r) => `${Number(r.avgFairFight || 0).toFixed(2)}x`, advancedOnly: true },
+      { key: "bestFairFight", label: "Best FF", value: (r) => `${Number(r.bestFairFight || 0).toFixed(2)}x`, advancedOnly: true },
+      { key: "fairFightSamples", label: "FF Samples", value: (r) => String(Number(r.fairFightSamples || 0)), advancedOnly: true },
+      { key: "fairFightBonusPoints", label: "FF Bonus", value: (r) => Number(r.fairFightBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "warHits", label: "War Hits", value: (r) => String(Number(r.warHits || 0)) },
+      { key: "assists", label: "Assists", value: (r) => String(Number(r.assists || 0)), advancedOnly: true },
+      { key: "retaliationHits", label: "Retals", value: (r) => String(Number(r.retaliationHits || 0)), advancedOnly: true },
+      { key: "outsideHits", label: "Outside Hits", value: (r) => String(Number(r.outsideHits || 0)), advancedOnly: true },
+      { key: "totalRespect", label: "Respect", value: (r) => Number(r.totalRespect || 0).toFixed(2) },
+      { key: "chainMaintenanceHits", label: "Chain Maintenance", value: (r) => String(Number(r.chainMaintenanceHits || 0)), advancedOnly: true },
+      { key: "overseasHits", label: "Overseas Hits", value: (r) => String(Number(r.overseasHits || 0)), advancedOnly: true },
+      { key: "hospitalizingHits", label: "Hospitalizations", value: (r) => String(Number(r.hospitalizingHits || 0)), advancedOnly: true },
+      { key: "enemyFactionHospitalizingHits", label: "Enemy Hosps", value: (r) => String(Number(r.enemyFactionHospitalizingHits || 0)), advancedOnly: true },
+      { key: "basePoints", label: "Base Points", value: (r) => Number(r.basePoints || 0).toFixed(2), advancedOnly: true },
+      { key: "hospitalBonusPoints", label: "Own Hosp Bonus", value: (r) => Number(r.hospitalBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "enemyFactionHospitalBonusPoints", label: "Enemy Hosp Bonus", value: (r) => Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "retaliationBonusPoints", label: "Retal Bonus", value: (r) => Number(r.retaliationBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "overseasBonusPoints", label: "Overseas Bonus", value: (r) => Number(r.overseasBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "respectBonusPoints", label: "Respect Bonus", value: (r) => Number(r.respectBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "adjustedRespect", label: "Adjusted Respect", value: (r) => Number(r.adjustedRespect || 0).toFixed(2), advancedOnly: true },
+      { key: "totalTrackedHits", label: "Tracked Hits", value: (r) => String(Number(r.totalTrackedHits || 0)), advancedOnly: true },
+    ];
+    const primaryKey = pointsMode ? "points" : "warHits";
+    return defs.filter((def) => (!def.advancedOnly || pointsMode) && def.key !== primaryKey);
+  }
+
+  function rwphBuildNewsletterHtmlV1553(data, theme, layout, selectedStats = []) {
+    const rows = Array.isArray(data?.rows) ? data.rows.slice(0, 120) : [];
+    const report = data?.report || {};
+    const pointsMode = !!report.pointsMode;
+    const columns = Math.max(1, Math.min(4, Number(layout?.columns || 2)));
+    const totalPaid = rows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
+    const totalRespect = Number(report.totalRespect || rows.reduce((sum, r) => sum + Number(r.totalRespect || 0), 0));
+    const totalPayable = Number(report.totalPayableEvents || rows.reduce((sum, r) => sum + Number(pointsMode ? (r.payableEvents || 0) : (r.warHits || 0)), 0));
+    let perUnit = Number(report.perUnitAmount || 0);
+    if (!perUnit) {
+      const units = rows.reduce((sum, r) => sum + Number(pointsMode ? (r.points || 0) : (r.warHits || 0)), 0);
+      perUnit = units ? totalPaid / units : 0;
+    }
+    const primaryLabel = pointsMode ? "Points" : "War Hits";
+    const primaryValue = (r) => pointsMode ? Number(r.points || 0).toFixed(2) : String(Number(r.warHits || 0));
+    const statDefs = rwphNewsletterMemberStatDefinitionsV1553(data);
+    const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
+    const selectedDefs = statDefs.filter((def) => selected.has(def.key));
+    const statCell = (label, value, bg, compact = false) => `<td width="25%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:${compact ? 2 : 4}px;color:${theme.text};border-radius:7px"><span style="color:${theme.muted};font-size:8px;font-weight:bold">${esc(label)}</span><br><b style="color:${theme.accent}">${esc(value)}</b></td>`;
+    const summaryItems = [
+      ["Total Payout", money(totalPaid), theme.panelA],
+      [pointsMode ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB],
+      [pointsMode ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
+      ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
+    ];
+    const statsTable = () => {
+      if (layout.summary === "strip") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${summaryItems.map((x) => statCell(...x, true)).join("")}</tr></table>`;
+      if (layout.summary === "split") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${statCell(...summaryItems[0])}${statCell(...summaryItems[1])}</tr><tr>${statCell(...summaryItems[2])}${statCell(...summaryItems[3])}</tr></table>`;
+      return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${summaryItems.map((x) => statCell(...x)).join("")}</tr></table>`;
+    };
+    const rankPill = (index) => `<b style="display:inline-block;border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent};background:${theme.head}">#${index + 1}</b>`;
+    const extraBlock = (r) => {
+      if (!selectedDefs.length) return "";
+      const bits = selectedDefs.map((def) => `${esc(def.label)} <b style="color:${theme.accent}">${esc(def.value(r))}</b>`);
+      return `<br><span style="color:${theme.muted};font-size:8px;line-height:1.35">${bits.join(" · ")}</span>`;
+    };
+    const card = (r, index, bg) => {
+      const style = String(layout.style || "panel");
+      const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, 32));
+      const metric = esc(primaryValue(r));
+      const payout = esc(money(r?.payout || 0));
+      const rank = rankPill(index);
+      const border = `border:1px solid ${theme.cardLine};border-radius:8px`;
+      const extras = extraBlock(r);
+      if (style === "dense") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text};vertical-align:top">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "leaderboard") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${primaryLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b>${extras}</td>`;
+      if (style === "split") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "minimal") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "stacked") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${primaryLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b>${extras}</td>`;
+      if (style === "rankrail") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}"><b style="background:${theme.head};color:${theme.accent};padding:2px 4px;border-radius:5px">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "payout") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span>${extras}</td>`;
+      if (style === "metrics") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel}</span> <b style="color:${theme.accent}">${metric}</b><br><span style="color:${theme.muted}">Payout</span> <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "clean") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><span style="color:${theme.muted}"> · ${primaryLabel} ${metric}</span><span style="color:${theme.good};font-weight:bold"> · ${payout}</span>${extras}</td>`;
+      if (style === "ledger") return `<td bgcolor="${bg}" style="${border};padding:2px 4px;color:${theme.text}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="38" style="color:${theme.accent};font-weight:bold">#${index + 1}</td><td>${name}</td><td align="right" style="color:${theme.muted}">${primaryLabel} ${metric}</td><td width="105" align="right" style="color:${theme.good};font-weight:bold">${payout}</td></tr></table>${extras}</td>`;
+      if (style === "hero") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank}<br><b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}</td>`;
+      if (style === "badge") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "slim") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}"><b style="color:${theme.accent}">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "compact") return `<td bgcolor="${bg}" style="${border};padding:3px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text};vertical-align:top">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+    };
+    let html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:separate;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif;border:1px solid ${theme.line};border-radius:12px;overflow:hidden">`;
+    const factionImageUrl = String(report.factionImageUrl || "");
+    if (factionImageUrl) html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" align="center" style="padding:6px;border-bottom:1px solid ${theme.line}"><img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" style="display:block;max-width:100%;width:auto;height:auto;max-height:150px;margin:0 auto;border:0;border-radius:8px"></td></tr>`;
+    html += `<tr><td colspan="${columns}" bgcolor="${theme.panelA}" style="padding:5px;border-bottom:1px solid ${theme.cardLine}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="color:${theme.accent};font-weight:bold">War Summary</td><td align="right" style="color:${theme.muted}">${rows.length} members · ${esc(money(totalPaid))}</td></tr></table>${statsTable()}</td></tr>`;
+    html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" style="padding:4px 6px;border-bottom:1px solid ${theme.line};color:${theme.accent};font-weight:bold">Member Payouts</td></tr>`;
+    for (let i = 0; i < rows.length; i += columns) {
+      html += `<tr>`;
+      for (let offset = 0; offset < columns; offset += 1) {
+        const row = rows[i + offset];
+        const bg = ((i + offset) % 2 === 0) ? theme.panelA : theme.panelB;
+        html += row ? card(row, i + offset, bg) : `<td bgcolor="${theme.outer}" style="padding:2px;border:0">&nbsp;</td>`;
+      }
+      html += `</tr>`;
+    }
+    if (!rows.length) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent};border-radius:8px">No payout rows found.</td></tr>`;
+    html += `</table>`;
+    return html.replace(/>\s+</g, "><").trim();
+  }
+
+  function rwphRenderNewsletterHtmlV1545(data, themeKey, layoutKey, customThemeMaster = null, selectedStats = []) {
     const normalized = rwphNormalizeNewsletterDataV1545(data);
     if (!normalized) return { html: "", length: 0, tooLong: false, theme: null, layout: null, limit: 65535 };
-    const theme = normalized.themes.find((item) => item.key === String(themeKey || "")) || normalized.themes.find((item) => item.key === normalized.defaultTheme) || normalized.themes[0];
+    const requestedThemeKey = String(themeKey || "");
+    const masterTheme = normalized.themes.find((item) => item.key === requestedThemeKey) || normalized.themes.find((item) => item.key === normalized.defaultTheme) || normalized.themes[0];
+    const theme = requestedThemeKey === "custom"
+      ? rwphBuildNewsletterCustomThemeV1552(customThemeMaster || rwphGetNewsletterCustomThemeMasterColoursV1552())
+      : rwphBuildNewsletterThemeFromMasterV1553(masterTheme, masterTheme.key, masterTheme.title);
     const layout = normalized.layouts.find((item) => item.key === String(layoutKey || "")) || normalized.layouts.find((item) => item.key === normalized.defaultLayout) || normalized.layouts[0];
-    const replacements = {
-      "@@THEME_TITLE@@": esc(theme.title),
-      "@@PANEL_A@@": theme.panelA,
-      "@@PANEL_B@@": theme.panelB,
-      "@@HEAD@@": theme.head,
-      "@@OUTER@@": theme.outer,
-      "@@LINE@@": theme.line,
-      "@@CARD_LINE@@": theme.cardLine,
-      "@@ACCENT@@": theme.accent,
-      "@@TEXT@@": theme.text,
-      "@@MUTED@@": theme.muted,
-      "@@GOOD@@": theme.good,
-    };
-    let html = String(layout.template || "");
-    for (const [token, value] of Object.entries(replacements)) html = html.split(token).join(String(value));
+    const html = rwphBuildNewsletterHtmlV1553(normalized, theme, layout, selectedStats);
     const length = html.length;
-    return { html, length, tooLong: length > normalized.maxCharacters, theme, layout, limit: normalized.maxCharacters };
+    const renderedLayout = { ...layout, rowCount: normalized.rows.length, sourceCount: normalized.rows.length };
+    return { html, length, tooLong: length > normalized.maxCharacters, theme, layout: renderedLayout, limit: normalized.maxCharacters };
+  }
+
+  function rwphCloseNewsletterMemberStatsPanelV1553() {
+    const panel = document.getElementById("rwph-newsletter-member-stats-panel");
+    if (!panel) return;
+    try { rwphSavePanelLayout(panel); } catch (_) {}
+    panel.remove();
   }
 
   function rwphCloseNewsletterPanelV1537() {
+    rwphCloseNewsletterMemberStatsPanelV1553();
     const panel = document.getElementById("rwph-newsletter-panel");
     if (!panel) return;
     try { rwphSavePanelLayout(panel); } catch (_) {}
     panel.remove();
+  }
+
+  function rwphOpenNewsletterMemberStatsPanelV1553(data, selectedStats, onChange, canEnableStat = null) {
+    rwphCloseNewsletterMemberStatsPanelV1553();
+    const normalized = rwphNormalizeNewsletterDataV1545(data);
+    if (!normalized) return null;
+    const selected = selectedStats instanceof Set ? selectedStats : new Set();
+    const primaryLabel = normalized.report.pointsMode ? "Points" : "War Hits";
+    const defs = rwphNewsletterMemberStatDefinitionsV1553(normalized);
+    const panel = document.createElement("div");
+    panel.id = "rwph-newsletter-member-stats-panel";
+    panel.className = "rwph-floating-panel rwph-newsletter-member-stats-panel-v1553";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "Newsletter Member Card Stats panel");
+    panel.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(470px,calc(100vw - 24px));height:min(620px,calc(100vh - 24px));min-width:290px;min-height:300px;z-index:2147483606;display:flex;flex-direction:column;overflow:hidden;";
+    const items = defs.map((def) => `<label class="rw-card" style="margin:0;padding:8px;display:flex;gap:8px;align-items:center;min-width:0;cursor:pointer"><input type="checkbox" data-rwph-newsletter-stat="${esc(def.key)}" ${selected.has(def.key) ? "checked" : ""}><span style="min-width:0"><b>${esc(def.label)}</b></span></label>`).join("");
+    panel.innerHTML = `
+      <div class="rwph-panel-head" title="Drag to move Member Card Stats">
+        <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>Member Card Stats</span></div>
+        <button type="button" class="danger rwph-newsletter-stats-close" title="Close" aria-label="Close Member Card Stats">×</button>
+      </div>
+      <div class="rwph-floating-panel-body" style="padding:10px;overflow:auto;min-height:0;flex:1 1 auto;display:flex;flex-direction:column;gap:10px;">
+        <section class="rw-card" style="padding:10px;">
+          <div style="font-weight:950;margin-bottom:4px;">Choose extra member information</div>
+          <div class="rw-muted" style="line-height:1.4;">Every checkbox starts off. Member name, rank, <b>Pay Amount</b> and the primary <b>${esc(primaryLabel)}</b> stat are always shown. Tick only the extra stats you want added to every newsletter member card.</div>
+        </section>
+        <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;align-content:start;">${items || `<div class="rw-card" style="padding:9px;">No extra stats are available for this report.</div>`}</section>
+        <section class="rw-card" style="padding:9px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div class="rw-muted" data-rwph-newsletter-stats-count>${selected.size} extra stats selected</div>
+          <button type="button" class="secondary" data-rwph-newsletter-stats-clear>Clear All</button>
+        </section>
+      </div>`;
+    (document.body || document.documentElement).appendChild(panel);
+    const refreshCount = () => {
+      const count = panel.querySelector("[data-rwph-newsletter-stats-count]");
+      if (count) count.textContent = `${selected.size} extra stat${selected.size === 1 ? "" : "s"} selected`;
+    };
+    panel.querySelector(".rwph-newsletter-stats-close")?.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      rwphCloseNewsletterMemberStatsPanelV1553();
+    });
+    panel.querySelectorAll("[data-rwph-newsletter-stat]").forEach((input) => input.addEventListener("change", () => {
+      const key = String(input.dataset.rwphNewsletterStat || "");
+      if (input.checked) {
+        let allowed = true;
+        try { allowed = canEnableStat ? canEnableStat(key) !== false : true; } catch (_) { allowed = true; }
+        if (!allowed) {
+          input.checked = false;
+          refreshCount();
+          return;
+        }
+        selected.add(key);
+      } else {
+        selected.delete(key);
+      }
+      refreshCount();
+      try { onChange?.(); } catch (_) {}
+    }));
+    panel.querySelector("[data-rwph-newsletter-stats-clear]")?.addEventListener("click", () => {
+      selected.clear();
+      panel.querySelectorAll("[data-rwph-newsletter-stat]").forEach((input) => { input.checked = false; });
+      refreshCount();
+      try { onChange?.(); } catch (_) {}
+    });
+    rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    try { rwphApplyPanelLayout(panel); } catch (_) {}
+    rwphApplyPanelThemeChoice();
+    rwphApplyLogoChoice();
+    return panel;
   }
 
   function rwphOpenNewsletterPanelV1537(newsletterData = null) {
@@ -7552,7 +8016,8 @@
     panel.setAttribute("aria-label", "RWPH Newsletter panel");
     panel.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 24px));height:min(720px,calc(100vh - 24px));min-width:300px;min-height:320px;z-index:2147483605;display:flex;flex-direction:column;overflow:hidden;";
 
-    const themeOptions = data.themes.map((item) => `<option value="${esc(item.key)}" ${item.key === data.defaultTheme ? "selected" : ""}>${esc(item.title)}</option>`).join("");
+    const customNewsletterTheme = rwphGetNewsletterCustomThemeMasterColoursV1552();
+    const themeOptions = data.themes.map((item) => `<option value="${esc(item.key)}" ${item.key === data.defaultTheme ? "selected" : ""}>${esc(item.title)}</option>`).join("") + `<option value="custom">Custom</option>`;
     const layoutOptions = data.layouts.map((item) => `<option value="${esc(item.key)}" ${item.key === data.defaultLayout ? "selected" : ""}>${esc(item.label)}</option>`).join("");
     panel.innerHTML = `
       <div class="rwph-panel-head" title="Drag to move Newsletter">
@@ -7567,7 +8032,29 @@
           <label style="margin:0;min-width:0;">Newsletter Layout
             <select id="rwph-newsletter-layout-select" style="width:100%;margin-top:5px;">${layoutOptions}</select>
           </label>
-          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a colour and layout; Preview and Raw HTML update together. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
+          <div style="margin:0;min-width:0;display:flex;flex-direction:column;gap:5px;">
+            <span style="font-weight:850;">Member Cards</span>
+            <button id="rwph-newsletter-member-stats" class="secondary" type="button" style="width:100%;">Member Card Stats</button>
+          </div>
+          <div id="rwph-newsletter-custom-theme-controls" style="display:none;grid-column:1/-1;min-width:0;padding:9px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-bg2);">
+            <div style="font-weight:950;margin-bottom:3px;">Custom Newsletter Theme</div>
+            <div class="rw-muted" style="font-size:10px;line-height:1.4;margin-bottom:8px;">Uses the same three master-colour model as RWPH panels. Card depth, headers, muted text and secondary borders are derived automatically.</div>
+            <div style="display:grid;gap:7px;">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-panel);">
+                <div style="min-width:0;"><b>PANELS / CARDS / ROWS / INPUTS</b><div class="rw-muted" style="font-size:9.5px;line-height:1.35;margin-top:2px;">Controls newsletter panel bodies, cards, rows, title areas and stat sections. RWPH derives subtle depth from this one colour.</div></div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><input type="color" data-rwph-newsletter-custom-colour="base" value="${customNewsletterTheme.base}" title="Panels / Cards / Rows / Inputs"><input type="text" data-rwph-newsletter-custom-hex="base" value="${customNewsletterTheme.base.toUpperCase()}" maxlength="7" spellcheck="false" style="width:90px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-panel);">
+                <div style="min-width:0;"><b>ALL TEXT</b><div class="rw-muted" style="font-size:9.5px;line-height:1.35;margin-top:2px;">Controls normal text, labels and values; muted text is derived from this colour.</div></div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><input type="color" data-rwph-newsletter-custom-colour="text" value="${customNewsletterTheme.text}" title="All Text"><input type="text" data-rwph-newsletter-custom-hex="text" value="${customNewsletterTheme.text.toUpperCase()}" maxlength="7" spellcheck="false" style="width:90px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-panel);">
+                <div style="min-width:0;"><b>ALL OUTLINES / BORDERS / ACCENTS</b><div class="rw-muted" style="font-size:9.5px;line-height:1.35;margin-top:2px;">Controls newsletter borders, outlines, highlights and the main accent colour.</div></div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><input type="color" data-rwph-newsletter-custom-colour="outline" value="${customNewsletterTheme.outline}" title="All Outlines / Borders / Accents"><input type="text" data-rwph-newsletter-custom-hex="outline" value="${customNewsletterTheme.outline.toUpperCase()}" maxlength="7" spellcheck="false" style="width:90px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
           <div id="rwph-newsletter-status" class="rw-muted" style="grid-column:1/-1;text-align:left;align-self:center;line-height:1.4;"></div>
         </div>
         <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
@@ -7588,13 +8075,48 @@
     const close = panel.querySelector(".rwph-newsletter-close");
     const themeSelect = panel.querySelector("#rwph-newsletter-theme-select");
     const layoutSelect = panel.querySelector("#rwph-newsletter-layout-select");
+    const customControls = panel.querySelector("#rwph-newsletter-custom-theme-controls");
+    const customColourInputs = Array.from(panel.querySelectorAll("[data-rwph-newsletter-custom-colour]"));
+    const customHexInputs = Array.from(panel.querySelectorAll("[data-rwph-newsletter-custom-hex]"));
     const preview = panel.querySelector("#rwph-newsletter-preview");
     const raw = panel.querySelector("#rwph-newsletter-raw-html");
     const status = panel.querySelector("#rwph-newsletter-status");
     const copy = panel.querySelector("#rwph-copy-newsletter-html");
+    const memberStatsButton = panel.querySelector("#rwph-newsletter-member-stats");
+    const selectedMemberStats = new Set();
+
+    const readCustomThemeFromUi = () => {
+      const defaults = rwphNewsletterCustomThemeDefaultsV1552();
+      const next = { ...defaults };
+      for (const prop of ["base", "text", "outline"]) {
+        const hexInput = panel.querySelector(`[data-rwph-newsletter-custom-hex="${prop}"]`);
+        const colourInput = panel.querySelector(`[data-rwph-newsletter-custom-colour="${prop}"]`);
+        next[prop] = rwphNormalizeHexColour(hexInput?.value || colourInput?.value, defaults[prop]);
+      }
+      return next;
+    };
+
+    const syncCustomThemeUi = (master) => {
+      const safe = rwphSaveNewsletterCustomThemeMasterColoursV1552(master);
+      for (const prop of ["base", "text", "outline"]) {
+        const colourInput = panel.querySelector(`[data-rwph-newsletter-custom-colour="${prop}"]`);
+        const hexInput = panel.querySelector(`[data-rwph-newsletter-custom-hex="${prop}"]`);
+        if (colourInput) colourInput.value = safe[prop];
+        if (hexInput) hexInput.value = safe[prop].toUpperCase();
+      }
+      return safe;
+    };
+
+    const renderForMemberStats = (stats) => {
+      const isCustom = themeSelect?.value === "custom";
+      const customMaster = isCustom ? readCustomThemeFromUi() : null;
+      return rwphRenderNewsletterHtmlV1545(data, themeSelect?.value, layoutSelect?.value, customMaster, Array.from(stats || []));
+    };
 
     const update = () => {
-      const rendered = rwphRenderNewsletterHtmlV1545(data, themeSelect?.value, layoutSelect?.value);
+      const isCustom = themeSelect?.value === "custom";
+      if (customControls) customControls.style.display = isCustom ? "block" : "none";
+      const rendered = renderForMemberStats(selectedMemberStats);
       if (preview) preview.innerHTML = rendered.html;
       if (raw) raw.value = rendered.html;
       if (copy) copy.disabled = !rendered.html || rendered.tooLong;
@@ -7602,9 +8124,26 @@
         const cards = Number(rendered.layout?.rowCount || 0);
         const sourceCount = Number(rendered.layout?.sourceCount || cards);
         const cardText = sourceCount > cards ? `${cards} / ${sourceCount} cards` : `${cards} cards`;
-        status.textContent = `${rendered.layout?.label || "Newsletter"} · ${rendered.theme?.title || "Theme"} · ${rendered.length.toLocaleString()} / ${rendered.limit.toLocaleString()} characters · ${cardText}`;
+        const limitText = rendered.tooLong ? " · TOO LONG — deselect stats or choose a more compact layout" : "";
+        status.textContent = `${rendered.layout?.label || "Newsletter"} · ${rendered.theme?.title || "Theme"} · ${rendered.length.toLocaleString()} / ${rendered.limit.toLocaleString()} characters · ${cardText} · ${selectedMemberStats.size} extra stat${selectedMemberStats.size === 1 ? "" : "s"}${limitText}`;
         status.style.color = rendered.tooLong ? "#f87171" : "";
       }
+      return rendered;
+    };
+
+    const canEnableMemberStat = (key) => {
+      const candidateStats = new Set(selectedMemberStats);
+      candidateStats.add(String(key || ""));
+      const candidate = renderForMemberStats(candidateStats);
+      if (!candidate.tooLong) return true;
+      const def = rwphNewsletterMemberStatDefinitionsV1553(data).find((item) => item.key === String(key || ""));
+      const label = def?.label || "That stat";
+      rwphShowToast(
+        `${label} was not added because it would make this newsletter ${candidate.length.toLocaleString()} characters, over Torn's ${candidate.limit.toLocaleString()}-character limit. Deselect another stat or choose a more compact layout first.`,
+        "warn",
+        "Newsletter Character Limit"
+      );
+      return false;
     };
 
     close?.addEventListener("click", (ev) => {
@@ -7613,6 +8152,36 @@
     });
     themeSelect?.addEventListener("change", update);
     layoutSelect?.addEventListener("change", update);
+    memberStatsButton?.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      rwphOpenNewsletterMemberStatsPanelV1553(data, selectedMemberStats, update, canEnableMemberStat);
+    });
+    customColourInputs.forEach((input) => input.addEventListener("input", () => {
+      const prop = String(input.dataset.rwphNewsletterCustomColour || "");
+      const hexInput = panel.querySelector(`[data-rwph-newsletter-custom-hex="${prop}"]`);
+      if (hexInput) hexInput.value = String(input.value || "").toUpperCase();
+      syncCustomThemeUi(readCustomThemeFromUi());
+      update();
+    }));
+    customHexInputs.forEach((input) => {
+      const applyHex = (normalizeInvalid = false) => {
+        const prop = String(input.dataset.rwphNewsletterCustomHex || "");
+        let value = String(input.value || "").trim();
+        if (value && value.charAt(0) !== "#") value = `#${value}`;
+        if (!/^#[0-9a-f]{6}$/i.test(value)) {
+          if (!normalizeInvalid) return;
+          value = rwphNewsletterCustomThemeDefaultsV1552()[prop] || "#06131a";
+        }
+        const colourInput = panel.querySelector(`[data-rwph-newsletter-custom-colour="${prop}"]`);
+        if (colourInput) colourInput.value = value.toLowerCase();
+        input.value = value.toUpperCase();
+        syncCustomThemeUi(readCustomThemeFromUi());
+        update();
+      };
+      input.addEventListener("input", () => applyHex(false));
+      input.addEventListener("change", () => applyHex(true));
+      input.addEventListener("blur", () => applyHex(true));
+    });
     copy?.addEventListener("click", async (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       const text = String(raw?.value || "");
@@ -7635,6 +8204,7 @@
     });
 
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+    try { rwphApplyPanelLayout(panel); } catch (_) {}
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
     update();
@@ -7766,7 +8336,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.550";
+    panel.dataset.rwphUiGeneration = "v1.1.555";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -11302,10 +11872,11 @@
       <div class="rw-how-box rw-help-api-card rw-help-section-card">
         <div class="rw-how-title">Newsletter &amp; Downloads</div>
         <ul class="rw-how-list">
-          <li><b>Theme / Colour:</b> controls the newsletter colours independently of the selected layout.</li>
+          <li><b>Theme / Colour:</b> choose from 42 preset palettes or <b>Custom</b>. Every preset and Custom use the same three master controls as RWPH panels: Panels / Cards / Rows / Inputs, All Text, and All Outlines / Borders / Accents. RWPH derives the secondary depth, muted tones, headers and supporting borders automatically.</li>
           <li><b>Newsletter Layout:</b> choose from 15 panel-style layouts, including 1-column lists/leaderboards, detailed 2-column cards, 3-column compact grids and 4-column mini/slim grids. Layout and colour theme are independent.</li>
           <li><b>Faction artwork:</b> newsletters use the full faction image from Torn Faction Info, not the small faction tag image.</li>
-          <li><b>Preview + Raw HTML:</b> both update when either dropdown changes.</li>
+          <li><b>Member Card Stats:</b> opens a separate panel of optional member-stat checkboxes. All start off; member name/rank, Pay Amount and the report primary stat (Points for Advanced, War Hits for Basic) stay visible. Ticking a stat updates Preview, character count and Raw HTML immediately.</li>
+          <li><b>Preview + Raw HTML:</b> both update when theme, layout or Member Card Stats change.</li>
           <li><b>Torn HTML limit:</b> RWPH shows the live character count and blocks copying if generated HTML exceeds 65,535 characters. Layouts are compacted for reports up to 120 member cards.</li>
           <li><b>Copy Raw HTML Code:</b> copies the currently selected themed/layout HTML for pasting into a Torn newsletter.</li>
         </ul>
