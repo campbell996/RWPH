@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.561
+// @version      1.1.562
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.562: Keeps the three Torn-safe Newsletter layouts but fixes the sent canvas at Torn's full 760px newsletter/message width, applies theme text/background/outline colours explicitly inline, and scales the exact sent HTML down inside Preview without reflowing it.
   // v1.1.561: Rebuilds all three Newsletter layouts onto one full-width six-column Torn-safe table grid, removes nested width/shrink behavior, fills incomplete final rows, makes Preview responsive up to Torn width, and explicitly applies the selected newsletter text colour.
   // v1.1.560: Removes the old 15-layout Newsletter library and rebuilds three Torn-safe layouts from scratch: 2-column panel cards, 1-column leaderboard, and 3-column compact cards.
   // v1.1.559: Rebuilds sent-newsletter HTML for Torn-safe fixed-table rendering and makes Preview render the exact same HTML in an isolated 760px Torn-style message viewport.
@@ -6939,7 +6940,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.561">
+<body data-rwph-ui-generation="v1.1.562">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7673,7 +7674,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.561";
+    panel.dataset.rwphUiGeneration = "v1.1.562";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7859,7 +7860,7 @@
     );
   }
 
-  function rwphBuildNewsletterHtmlV1561(data, theme, layout, selectedStats = []) {
+  function rwphBuildNewsletterHtmlV1562(data, theme, layout, selectedStats = []) {
     const rows = Array.isArray(data?.rows) ? data.rows.slice(0, 120) : [];
     const report = data?.report || {};
     const pointsMode = !!report.pointsMode;
@@ -7879,14 +7880,18 @@
     const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
     const selectedDefs = statDefs.filter((def) => selected.has(def.key));
 
-    // Torn-safe full-width grid: one root table, six logical columns, no nested member/summary tables.
-    // Colspans force every layout to consume the whole message width and let incomplete rows expand cleanly.
+    // Torn newsletter/message canvas is intentionally fixed at the practical full 760px content width.
+    // Preview scales this exact HTML down when its panel is smaller; the sent HTML itself never reflows.
+    const canvasWidth = 760;
     const txt = theme.text;
     const normal = `color:${txt}!important`;
+    const muted = `color:${theme.muted}!important`;
     const accent = `color:${theme.accent}!important`;
     const good = `color:${theme.good}!important`;
+    const bgStyle = (colour) => `background-color:${colour}`;
+    const borderStyle = (colour = theme.cardLine) => `border:1px solid ${colour}`;
 
-    const summaryCell = (label, value, bg) => `<td colspan="3" bgcolor="${bg}" style="border:1px solid ${theme.cardLine};padding:6px 8px;vertical-align:top;${normal}"><span style="${normal};font-size:8px">${esc(label)}</span><br><b style="${accent};font-size:11px">${esc(value)}</b></td>`;
+    const summaryCell = (label, value, bg) => `<td colspan="3" bgcolor="${bg}" style="${borderStyle()};${bgStyle(bg)};padding:6px 8px;vertical-align:top;${normal}"><span style="${muted};font-size:8px">${esc(label)}</span><br><b style="${accent};font-size:11px">${esc(value)}</b></td>`;
     const summaryItems = [
       ["Total Payout", money(totalPaid), theme.panelA],
       [pointsMode ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB],
@@ -7897,7 +7902,7 @@
     const extrasHtml = (r, compact = false) => {
       if (!selectedDefs.length) return "";
       const perLine = compact ? 1 : 2;
-      const bits = selectedDefs.map((def) => `<span style="${normal}">${esc(def.label)} <b style="${accent}">${esc(def.value(r))}</b></span>`);
+      const bits = selectedDefs.map((def) => `<span>${esc(def.label)} <b style="${accent}">${esc(def.value(r))}</b></span>`);
       const lines = [];
       for (let i = 0; i < bits.length; i += perLine) lines.push(bits.slice(i, i + perLine).join(` <span style="${accent}">•</span> `));
       return `<div style="margin-top:4px;font-size:${compact ? 8 : 9}px;line-height:1.4;${normal};word-break:break-word">${lines.join("<br>")}</div>`;
@@ -7907,7 +7912,7 @@
       const compact = layoutStyle === "compactCards";
       const nameLimit = compact ? 24 : (layoutStyle === "leaderboard" ? 40 : 32);
       const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, nameLimit));
-      return `<td colspan="${span}" bgcolor="${bg}"${compact ? ' align="center"' : ""} style="border:1px solid ${theme.cardLine};padding:${compact ? 5 : 6}px;vertical-align:top;font-size:${compact ? 9 : 10}px;line-height:1.35;word-break:break-word;${normal}"><b style="${accent}">#${index + 1}</b> <b style="${normal}">${name}</b><br><b style="${good};font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b><br><span style="${normal}">${primaryLabel} <b style="${accent}">${esc(primaryValue(r))}</b></span>${extrasHtml(r, compact)}</td>`;
+      return `<td colspan="${span}" bgcolor="${bg}"${compact ? ' align="center"' : ""} style="${borderStyle()};${bgStyle(bg)};padding:${compact ? 5 : 6}px;vertical-align:top;font-size:${compact ? 9 : 10}px;line-height:1.35;word-break:break-word;${normal}"><b style="${accent}">#${index + 1}</b> <b>${name}</b><br><b style="${good};font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b><br><span>${primaryLabel} <b style="${accent}">${esc(primaryValue(r))}</b></span>${extrasHtml(r, compact)}</td>`;
     };
 
     const rowSpans = (remaining) => {
@@ -7918,12 +7923,12 @@
       return [6];
     };
 
-    let html = `<table width="100%" cellpadding="0" cellspacing="3" border="0" bgcolor="${theme.outer}" style="width:100%!important;max-width:100%!important;table-layout:fixed!important;background:${theme.outer};${normal};font:10px Arial,Helvetica,sans-serif;line-height:1.3;border:1px solid ${theme.line}">`;
+    let html = `<table width="${canvasWidth}" cellpadding="0" cellspacing="3" border="0" bgcolor="${theme.outer}" style="width:${canvasWidth}px!important;table-layout:fixed!important;${bgStyle(theme.outer)};${normal};font:10px Arial,Helvetica,sans-serif;line-height:1.3;${borderStyle(theme.line)}">`;
     const factionImageUrl = String(report.factionImageUrl || "");
-    if (factionImageUrl) html += `<tr><td colspan="6" bgcolor="${theme.head}" align="center" style="padding:7px;border:1px solid ${theme.cardLine};${normal}"><img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="100%" style="display:block;width:100%!important;max-width:100%!important;height:auto!important;border:0"></td></tr>`;
-    html += `<tr><td colspan="6" bgcolor="${theme.head}" style="padding:5px 7px;border:1px solid ${theme.cardLine};${normal}"><b style="${accent}">War Summary</b> <span style="${normal};font-size:8px">• ${rows.length} members</span></td></tr>`;
+    if (factionImageUrl) html += `<tr><td colspan="6" bgcolor="${theme.head}" align="center" style="padding:7px;${borderStyle()};${bgStyle(theme.head)};${normal}"><img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="100%" style="display:block;width:100%!important;height:auto!important;border:0"></td></tr>`;
+    html += `<tr><td colspan="6" bgcolor="${theme.head}" style="padding:5px 7px;${borderStyle()};${bgStyle(theme.head)};${normal}"><b style="${accent}">War Summary</b> <span style="${muted};font-size:8px">• ${rows.length} members</span></td></tr>`;
     html += `<tr>${summaryCell(...summaryItems[0])}${summaryCell(...summaryItems[1])}</tr><tr>${summaryCell(...summaryItems[2])}${summaryCell(...summaryItems[3])}</tr>`;
-    html += `<tr><td colspan="6" bgcolor="${theme.head}" style="padding:5px 7px;border:1px solid ${theme.cardLine};${normal}"><b style="${accent}">Member Payouts</b></td></tr>`;
+    html += `<tr><td colspan="6" bgcolor="${theme.head}" style="padding:5px 7px;${borderStyle()};${bgStyle(theme.head)};${normal}"><b style="${accent}">Member Payouts</b></td></tr>`;
 
     for (let i = 0; i < rows.length;) {
       const remaining = Math.min(columns, rows.length - i);
@@ -7937,13 +7942,37 @@
       html += `</tr>`;
       i += remaining;
     }
-    if (!rows.length) html += `<tr><td colspan="6" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;${normal}"><b style="${accent}">No payout rows found.</b></td></tr>`;
+    if (!rows.length) html += `<tr><td colspan="6" align="center" bgcolor="${theme.panelA}" style="${borderStyle()};${bgStyle(theme.panelA)};padding:8px;${normal}"><b style="${accent}">No payout rows found.</b></td></tr>`;
     html += `</table>`;
     return html.replace(/>\s+</g, "><").trim();
   }
 
-  function rwphBuildNewsletterTornPreviewDocumentV1561(html = "") {
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;background:#000;overflow-x:hidden}body{width:100%;min-width:0;max-width:760px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}table{width:100%!important;max-width:100%!important;box-sizing:border-box}td{box-sizing:border-box}img{max-width:100%!important;height:auto!important}</style></head><body>${String(html || "")}</body></html>`;
+  function rwphBuildNewsletterTornPreviewDocumentV1562(html = "") {
+    // The generated newsletter is already the exact 760px Torn canvas. Preview must not rewrite it.
+    // This document only provides a neutral stage; the parent scales the fixed canvas down to fit.
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;background:#000;overflow:auto}body{min-width:0;font-family:Arial,Helvetica,sans-serif}#rwph-torn-preview-stage{position:relative;margin:0 auto;width:760px;min-height:1px}#rwph-torn-newsletter-canvas{position:absolute;left:0;top:0;width:760px;transform-origin:top left}</style></head><body><div id="rwph-torn-preview-stage"><div id="rwph-torn-newsletter-canvas">${String(html || "")}</div></div></body></html>`;
+  }
+
+  function rwphFitNewsletterPreviewV1562(preview) {
+    if (!preview) return;
+    try {
+      const doc = preview.contentDocument;
+      const stage = doc?.getElementById("rwph-torn-preview-stage");
+      const canvas = doc?.getElementById("rwph-torn-newsletter-canvas");
+      if (!doc || !stage || !canvas) return;
+      const sourceWidth = 760;
+      const availableWidth = Math.max(1, Number(preview.clientWidth || preview.getBoundingClientRect?.().width || sourceWidth));
+      const scale = Math.min(1, availableWidth / sourceWidth);
+      canvas.style.width = `${sourceWidth}px`;
+      canvas.style.transformOrigin = "top left";
+      canvas.style.transform = `scale(${scale})`;
+      const sourceHeight = Math.max(1, Number(canvas.scrollHeight || canvas.offsetHeight || 1));
+      stage.style.width = `${Math.ceil(sourceWidth * scale)}px`;
+      stage.style.height = `${Math.ceil(sourceHeight * scale)}px`;
+      stage.style.margin = "0 auto";
+      doc.documentElement.style.overflowX = "hidden";
+      doc.body.style.overflowX = "hidden";
+    } catch (_) {}
   }
 
   function rwphRenderNewsletterHtmlV1545(data, themeKey, layoutKey, customThemeMaster = null, selectedStats = []) {
@@ -7955,7 +7984,7 @@
       ? rwphBuildNewsletterCustomThemeV1552(customThemeMaster || rwphGetNewsletterCustomThemeMasterColoursV1552())
       : rwphBuildNewsletterThemeFromMasterV1553(masterTheme, masterTheme.key, masterTheme.title);
     const layout = normalized.layouts.find((item) => item.key === String(layoutKey || "")) || normalized.layouts.find((item) => item.key === normalized.defaultLayout) || normalized.layouts[0];
-    const html = rwphBuildNewsletterHtmlV1561(normalized, theme, layout, selectedStats);
+    const html = rwphBuildNewsletterHtmlV1562(normalized, theme, layout, selectedStats);
     const length = html.length;
     const renderedLayout = { ...layout, rowCount: normalized.rows.length, sourceCount: normalized.rows.length };
     return { html, length, tooLong: length > normalized.maxCharacters, theme, layout: renderedLayout, limit: normalized.maxCharacters };
@@ -7972,6 +8001,7 @@
     rwphCloseNewsletterMemberStatsPanelV1553();
     const panel = document.getElementById("rwph-newsletter-panel");
     if (!panel) return;
+    try { panel.rwphNewsletterPreviewResizeObserver?.disconnect?.(); } catch (_) {}
     try { rwphSavePanelLayout(panel); } catch (_) {}
     panel.remove();
   }
@@ -8109,13 +8139,13 @@
               </div>
             </div>
           </div>
-          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. The preview renders the exact same generated HTML in an isolated responsive Torn-style message viewport so it matches the sent layout much more closely. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
+          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. The preview renders the exact same full-size 760px Torn newsletter/message HTML and scales it down to fit this Preview card without reflowing or changing its colours. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
           <div id="rwph-newsletter-status" class="rw-muted" style="grid-column:1/-1;text-align:left;align-self:center;line-height:1.4;"></div>
         </div>
         <div class="rwph-newsletter-output-grid" style="min-height:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));grid-auto-rows:minmax(0,1fr);gap:10px;overflow:hidden;">
           <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:7px;"><div style="font-weight:950;">Torn Newsletter / Message Preview</div><div class="rw-muted" style="font-size:9.5px;">Responsive Torn-width render</div></div>
-            <iframe id="rwph-newsletter-preview" title="Torn newsletter/message preview" sandbox style="display:block;width:100%;min-width:0;min-height:0;flex:1 1 auto;border:1px solid var(--rwph-theme-line);border-radius:9px;background:#000;"></iframe>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:7px;"><div style="font-weight:950;">Torn Newsletter / Message Preview</div><div class="rw-muted" style="font-size:9.5px;">Exact 760px Torn render · scaled to fit</div></div>
+            <iframe id="rwph-newsletter-preview" title="Torn newsletter/message preview" sandbox="allow-same-origin" style="display:block;width:100%;min-width:0;min-height:0;flex:1 1 auto;border:1px solid var(--rwph-theme-line);border-radius:9px;background:#000;"></iframe>
           </section>
           <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
             <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;">
@@ -8144,6 +8174,12 @@
     const copy = panel.querySelector("#rwph-copy-newsletter-html");
     const memberStatsButton = panel.querySelector("#rwph-newsletter-member-stats");
     const selectedMemberStats = new Set();
+    let newsletterPreviewResizeObserver = null;
+    if (preview && typeof ResizeObserver === "function") {
+      newsletterPreviewResizeObserver = new ResizeObserver(() => rwphFitNewsletterPreviewV1562(preview));
+      newsletterPreviewResizeObserver.observe(preview);
+      panel.rwphNewsletterPreviewResizeObserver = newsletterPreviewResizeObserver;
+    }
 
     const readCustomThemeFromUi = () => {
       const defaults = rwphNewsletterCustomThemeDefaultsV1552();
@@ -8185,7 +8221,7 @@
       const isCustom = themeSelect?.value === "custom";
       if (customControls) customControls.style.display = isCustom ? "block" : "none";
       const rendered = renderForMemberStats(selectedMemberStats);
-      if (preview) preview.srcdoc = rwphBuildNewsletterTornPreviewDocumentV1561(rendered.html);
+      if (preview) { preview.onload = () => rwphFitNewsletterPreviewV1562(preview); preview.srcdoc = rwphBuildNewsletterTornPreviewDocumentV1562(rendered.html); }
       if (raw) raw.value = rendered.html;
       if (copy) copy.disabled = !rendered.html || rendered.tooLong;
       if (status) {
@@ -8410,7 +8446,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.561";
+    panel.dataset.rwphUiGeneration = "v1.1.562";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
