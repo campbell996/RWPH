@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.555
+// @version      1.1.557
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.557: Makes Newsletter Member Card Stats report-aware so only optional stats with meaningful data in the current report are offered.
+  // v1.1.556: Places Newsletter Preview and Raw HTML side by side in one responsive output row, collapsing cleanly only when the panel becomes too narrow.
   // v1.1.555: Adds a removable admin-only 100-member test calculation that reads Cached Report 1 and builds 100 in-memory duplicate test members without saving or mutating cached reports.
   // v1.1.554: Adds Newsletter and Member Card Stats to Admin Default Setup and makes both panels apply saved/admin default geometry when opened.
   // v1.1.553: Adds a separate Newsletter Member Card Stats panel with optional live member stats, and converts all 42 Newsletter presets to the same three-master-colour derivation system as Custom.
@@ -6905,7 +6907,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.555">
+<body data-rwph-ui-generation="v1.1.557">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7639,7 +7641,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.555";
+    panel.dataset.rwphUiGeneration = "v1.1.557";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7788,6 +7790,28 @@
     return rwphBuildNewsletterThemeFromMasterV1553(safe, "custom", "Custom");
   }
 
+  function rwphNewsletterMemberStatHasReportDataV1557(data, key) {
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    if (!rows.length) return false;
+    const hasNonZero = (field) => rows.some((row) => Math.abs(Number(row?.[field] || 0)) > 0.0000001);
+    const hasPositive = (field) => rows.some((row) => Number(row?.[field] || 0) > 0);
+
+    // FF averages/best values are only meaningful when the report actually has FF samples.
+    if (key === "avgFairFight" || key === "bestFairFight" || key === "fairFightSamples") {
+      return hasPositive("fairFightSamples");
+    }
+
+    // Count-style stats must have at least one real event in this report.
+    if ([
+      "payableEvents", "warHits", "assists", "retaliationHits", "outsideHits",
+      "chainMaintenanceHits", "overseasHits", "hospitalizingHits",
+      "enemyFactionHospitalizingHits", "totalTrackedHits"
+    ].includes(key)) return hasPositive(key);
+
+    // Point/respect/bonus fields can legitimately be negative, so any non-zero value counts as report data.
+    return hasNonZero(key);
+  }
+
   function rwphNewsletterMemberStatDefinitionsV1553(data) {
     const pointsMode = !!data?.report?.pointsMode;
     const defs = [
@@ -7816,7 +7840,11 @@
       { key: "totalTrackedHits", label: "Tracked Hits", value: (r) => String(Number(r.totalTrackedHits || 0)), advancedOnly: true },
     ];
     const primaryKey = pointsMode ? "points" : "warHits";
-    return defs.filter((def) => (!def.advancedOnly || pointsMode) && def.key !== primaryKey);
+    return defs.filter((def) =>
+      (!def.advancedOnly || pointsMode) &&
+      def.key !== primaryKey &&
+      rwphNewsletterMemberStatHasReportDataV1557(data, def.key)
+    );
   }
 
   function rwphBuildNewsletterHtmlV1553(data, theme, layout, selectedStats = []) {
@@ -7935,6 +7963,8 @@
     const selected = selectedStats instanceof Set ? selectedStats : new Set();
     const primaryLabel = normalized.report.pointsMode ? "Points" : "War Hits";
     const defs = rwphNewsletterMemberStatDefinitionsV1553(normalized);
+    const availableKeys = new Set(defs.map((def) => def.key));
+    for (const key of Array.from(selected)) if (!availableKeys.has(String(key))) selected.delete(key);
     const panel = document.createElement("div");
     panel.id = "rwph-newsletter-member-stats-panel";
     panel.className = "rwph-floating-panel rwph-newsletter-member-stats-panel-v1553";
@@ -7950,7 +7980,7 @@
       <div class="rwph-floating-panel-body" style="padding:10px;overflow:auto;min-height:0;flex:1 1 auto;display:flex;flex-direction:column;gap:10px;">
         <section class="rw-card" style="padding:10px;">
           <div style="font-weight:950;margin-bottom:4px;">Choose extra member information</div>
-          <div class="rw-muted" style="line-height:1.4;">Every checkbox starts off. Member name, rank, <b>Pay Amount</b> and the primary <b>${esc(primaryLabel)}</b> stat are always shown. Tick only the extra stats you want added to every newsletter member card.</div>
+          <div class="rw-muted" style="line-height:1.4;">Every checkbox starts off. Only stats that contain data in this report are listed. Member name, rank, <b>Pay Amount</b> and the primary <b>${esc(primaryLabel)}</b> stat are always shown. Tick only the extra stats you want added to every newsletter member card.</div>
         </section>
         <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;align-content:start;">${items || `<div class="rw-card" style="padding:9px;">No extra stats are available for this report.</div>`}</section>
         <section class="rw-card" style="padding:9px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
@@ -8024,7 +8054,7 @@
         <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>Newsletter</span></div>
         <button type="button" class="danger rwph-newsletter-close" title="Close" aria-label="Close Newsletter">×</button>
       </div>
-      <div class="rwph-floating-panel-body" style="padding:10px;overflow:auto;min-height:0;flex:1 1 auto;display:grid;grid-template-rows:auto minmax(180px,1fr) minmax(180px,1fr);gap:10px;">
+      <div class="rwph-floating-panel-body" style="padding:10px;overflow:auto;min-height:0;flex:1 1 auto;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;">
         <div class="rw-card" style="padding:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;align-items:end;">
           <label style="margin:0;min-width:0;">Newsletter Theme / Colour
             <select id="rwph-newsletter-theme-select" style="width:100%;margin-top:5px;">${themeOptions}</select>
@@ -8057,17 +8087,19 @@
           <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
           <div id="rwph-newsletter-status" class="rw-muted" style="grid-column:1/-1;text-align:left;align-self:center;line-height:1.4;"></div>
         </div>
-        <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
-          <div style="font-weight:950;margin-bottom:7px;">Preview</div>
-          <div id="rwph-newsletter-preview" style="flex:1 1 auto;min-height:0;overflow:auto;padding:8px;background:var(--rwph-theme-bg2);border:1px solid var(--rwph-theme-line);border-radius:9px;"></div>
-        </section>
-        <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
-          <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;">
-            <div style="font-weight:950;">Raw HTML</div>
-            <button id="rwph-copy-newsletter-html" class="secondary" type="button">Copy Raw HTML Code</button>
-          </div>
-          <textarea id="rwph-newsletter-raw-html" readonly spellcheck="false" style="width:100%;flex:1 1 auto;min-height:0;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.4;"></textarea>
-        </section>
+        <div class="rwph-newsletter-output-grid" style="min-height:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));grid-auto-rows:minmax(0,1fr);gap:10px;overflow:hidden;">
+          <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
+            <div style="font-weight:950;margin-bottom:7px;">Preview</div>
+            <div id="rwph-newsletter-preview" style="flex:1 1 auto;min-width:0;min-height:0;overflow:auto;padding:8px;background:var(--rwph-theme-bg2);border:1px solid var(--rwph-theme-line);border-radius:9px;"></div>
+          </section>
+          <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
+            <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;">
+              <div style="font-weight:950;">Raw HTML</div>
+              <button id="rwph-copy-newsletter-html" class="secondary" type="button">Copy Raw HTML Code</button>
+            </div>
+            <textarea id="rwph-newsletter-raw-html" readonly spellcheck="false" style="width:100%;min-width:0;box-sizing:border-box;flex:1 1 auto;min-height:0;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.4;"></textarea>
+          </section>
+        </div>
       </div>
     `;
 
@@ -8336,7 +8368,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.555";
+    panel.dataset.rwphUiGeneration = "v1.1.557";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -11875,7 +11907,7 @@
           <li><b>Theme / Colour:</b> choose from 42 preset palettes or <b>Custom</b>. Every preset and Custom use the same three master controls as RWPH panels: Panels / Cards / Rows / Inputs, All Text, and All Outlines / Borders / Accents. RWPH derives the secondary depth, muted tones, headers and supporting borders automatically.</li>
           <li><b>Newsletter Layout:</b> choose from 15 panel-style layouts, including 1-column lists/leaderboards, detailed 2-column cards, 3-column compact grids and 4-column mini/slim grids. Layout and colour theme are independent.</li>
           <li><b>Faction artwork:</b> newsletters use the full faction image from Torn Faction Info, not the small faction tag image.</li>
-          <li><b>Member Card Stats:</b> opens a separate panel of optional member-stat checkboxes. All start off; member name/rank, Pay Amount and the report primary stat (Points for Advanced, War Hits for Basic) stay visible. Ticking a stat updates Preview, character count and Raw HTML immediately.</li>
+          <li><b>Member Card Stats:</b> opens a separate panel of optional member-stat checkboxes. Only stats that actually contain data in the current report are listed, and all start off. Member name/rank, Pay Amount and the report primary stat (Points for Advanced, War Hits for Basic) stay visible. Ticking a stat updates Preview, character count and Raw HTML immediately.</li>
           <li><b>Preview + Raw HTML:</b> both update when theme, layout or Member Card Stats change.</li>
           <li><b>Torn HTML limit:</b> RWPH shows the live character count and blocks copying if generated HTML exceeds 65,535 characters. Layouts are compacted for reports up to 120 member cards.</li>
           <li><b>Copy Raw HTML Code:</b> copies the currently selected themed/layout HTML for pasting into a Torn newsletter.</li>
