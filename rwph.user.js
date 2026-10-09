@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.557
+// @version      1.1.559
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,8 @@
 (function () {
   "use strict";
 
+  // v1.1.559: Rebuilds sent-newsletter HTML for Torn-safe fixed-table rendering and makes Preview render the exact same HTML in an isolated 760px Torn-style message viewport.
+  // v1.1.558: Makes Newsletter Member Card Stats follow the exact metrics used by the report calculation and adds a compact Hide / Show toggle to the Custom Newsletter Theme colour controls.
   // v1.1.557: Makes Newsletter Member Card Stats report-aware so only optional stats with meaningful data in the current report are offered.
   // v1.1.556: Places Newsletter Preview and Raw HTML side by side in one responsive output row, collapsing cleanly only when the panel becomes too narrow.
   // v1.1.555: Adds a removable admin-only 100-member test calculation that reads Cached Report 1 and builds 100 in-memory duplicate test members without saving or mutating cached reports.
@@ -6235,7 +6237,8 @@
       };
     }).filter(Boolean) : [];
     const numberKeys = [
-      "payout", "points", "payableEvents", "avgFairFight", "bestFairFight", "fairFightSamples", "fairFightBonusPoints",
+      "payout", "points", "payableEvents", "avgFairFight", "bestFairFight", "fairFightSamples", "fairFightBonusPoints", "fairFightPerPayableHitBonus",
+      "hybridParticipation", "hybridPerformance", "hybridWarScore", "hybridSupport",
       "warHits", "assists", "retaliationHits", "outsideHits", "totalRespect", "chainMaintenanceHits", "overseasHits",
       "hospitalizingHits", "enemyFactionHospitalizingHits", "basePoints", "hospitalBonusPoints", "enemyFactionHospitalBonusPoints",
       "retaliationBonusPoints", "overseasBonusPoints", "respectBonusPoints", "adjustedRespect", "totalTrackedHits"
@@ -6257,12 +6260,15 @@
       totalRespect: Number(reportInput.totalRespect || 0),
       totalPayableEvents: Number(reportInput.totalPayableEvents || 0),
       perUnitAmount: Number(reportInput.perUnitAmount || 0),
+      memberStatKeys: Array.isArray(reportInput.memberStatKeys)
+        ? [...new Set(reportInput.memberStatKeys.map((key) => String(key || "").trim()).filter(Boolean))]
+        : [],
     };
     if (!themes.length || !layouts.length) return null;
     const maxCharacters = Math.max(1, Math.min(65535, Number(value.maxCharacters || 65535)));
     const defaultTheme = themes.some((theme) => theme.key === String(value.defaultTheme || "")) ? String(value.defaultTheme) : themes[0].key;
     const defaultLayout = layouts.some((layout) => layout.key === String(value.defaultLayout || "")) ? String(value.defaultLayout) : layouts[0].key;
-    return { version: 3, maxCharacters, defaultTheme, defaultLayout, themes, layouts, report, rows };
+    return { version: 4, maxCharacters, defaultTheme, defaultLayout, themes, layouts, report, rows };
   }
 
   function rwphStorePayAllReportContext(context = {}) {
@@ -6830,6 +6836,11 @@
       bestFairFight: Number(r.bestFairFight || 0),
       fairFightSamples: Number(r.fairFightSamples || 0),
       fairFightBonusPoints: Number(r.fairFightBonusPoints || 0),
+      fairFightPerPayableHitBonus: Number(r.fairFightPerPayableHitBonus || 0),
+      hybridParticipation: Number(rwphRowMetricTotal(r, "participation") || 0),
+      hybridPerformance: Number(rwphRowMetricTotal(r, "performance") || 0),
+      hybridWarScore: Number(rwphRowMetricTotal(r, "warOnly") || 0),
+      hybridSupport: Number(rwphRowMetricTotal(r, "support") || 0),
       warHits: Number(r.warHits ?? r.attacks ?? 0),
       assists: Number(r.assists || 0),
       retaliationHits: Number(r.retaliationHits || 0),
@@ -6848,8 +6859,39 @@
       adjustedRespect: Number(r.adjustedRespect || 0),
       totalTrackedHits: Number(r.totalTrackedHits || 0),
     }));
+    const rwphNewsletterMetricKeyByLabel = {
+      "Avg FF": "avgFairFight",
+      "Best FF": "bestFairFight",
+      "FF Samples": "fairFightSamples",
+      "FF Bonus": "fairFightBonusPoints",
+      "FF / Hit": "fairFightPerPayableHitBonus",
+      "Participation": "hybridParticipation",
+      "Performance": "hybridPerformance",
+      "War Score": "hybridWarScore",
+      "Support": "hybridSupport",
+      "War Hits": "warHits",
+      "Assists": "assists",
+      "Outside Hits": "outsideHits",
+      "Chain Outside": "chainMaintenanceHits",
+      "Retals": "retaliationHits",
+      "Retal Bonus": "retaliationBonusPoints",
+      "Overseas": "overseasHits",
+      "Overseas Bonus": "overseasBonusPoints",
+      "Own Faction Hospital Bonus": "hospitalBonusPoints",
+      "Enemy Hosp": "enemyFactionHospitalizingHits",
+      "Enemy Hosp Bonus": "enemyFactionHospitalBonusPoints",
+      "Respect": "totalRespect",
+      "Respect Score": "respectBonusPoints",
+    };
+    const rwphNewsletterMemberStatKeys = new Set(pointsMode ? ["payableEvents"] : []);
+    for (const row of list) {
+      for (const metric of rwphMemberInfoMetrics(row, summary)) {
+        const key = rwphNewsletterMetricKeyByLabel[String(metric?.label || "")];
+        if (key) rwphNewsletterMemberStatKeys.add(key);
+      }
+    }
     const rwphNewsletterPayload = {
-      version: 3,
+      version: 4,
       maxCharacters: RWPH_NEWSLETTER_MAX_CHARACTERS,
       defaultTheme: "gold",
       defaultLayout: "classic2",
@@ -6862,6 +6904,7 @@
         totalRespect: Number(summary?.totalRespect || list.reduce((sum, r) => sum + Number(r.totalRespect || r.respect || 0), 0)),
         totalPayableEvents: Number(summary?.totalPayableEvents || list.reduce((sum, r) => sum + Number(pointsMode ? (r.payableEvents || 0) : (r.warHits ?? r.attacks ?? 0)), 0)),
         perUnitAmount: Number(pointsMode ? (summary?.perPointAmount || perPointAmount || 0) : (summary?.perHitAmount || perHitAmount || 0)),
+        memberStatKeys: [...rwphNewsletterMemberStatKeys],
       },
       rows: rwphNewsletterRows,
     };
@@ -6907,7 +6950,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.557">
+<body data-rwph-ui-generation="v1.1.559">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7641,7 +7684,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.557";
+    panel.dataset.rwphUiGeneration = "v1.1.559";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7790,30 +7833,9 @@
     return rwphBuildNewsletterThemeFromMasterV1553(safe, "custom", "Custom");
   }
 
-  function rwphNewsletterMemberStatHasReportDataV1557(data, key) {
-    const rows = Array.isArray(data?.rows) ? data.rows : [];
-    if (!rows.length) return false;
-    const hasNonZero = (field) => rows.some((row) => Math.abs(Number(row?.[field] || 0)) > 0.0000001);
-    const hasPositive = (field) => rows.some((row) => Number(row?.[field] || 0) > 0);
-
-    // FF averages/best values are only meaningful when the report actually has FF samples.
-    if (key === "avgFairFight" || key === "bestFairFight" || key === "fairFightSamples") {
-      return hasPositive("fairFightSamples");
-    }
-
-    // Count-style stats must have at least one real event in this report.
-    if ([
-      "payableEvents", "warHits", "assists", "retaliationHits", "outsideHits",
-      "chainMaintenanceHits", "overseasHits", "hospitalizingHits",
-      "enemyFactionHospitalizingHits", "totalTrackedHits"
-    ].includes(key)) return hasPositive(key);
-
-    // Point/respect/bonus fields can legitimately be negative, so any non-zero value counts as report data.
-    return hasNonZero(key);
-  }
-
-  function rwphNewsletterMemberStatDefinitionsV1553(data) {
+  function rwphNewsletterMemberStatDefinitionsV1558(data) {
     const pointsMode = !!data?.report?.pointsMode;
+    const allowed = new Set(Array.isArray(data?.report?.memberStatKeys) ? data.report.memberStatKeys.map(String) : []);
     const defs = [
       { key: "points", label: "Points", value: (r) => Number(r.points || 0).toFixed(2), advancedOnly: true },
       { key: "payableEvents", label: "Payable Hits", value: (r) => String(Number(r.payableEvents || 0)), advancedOnly: true },
@@ -7821,29 +7843,30 @@
       { key: "bestFairFight", label: "Best FF", value: (r) => `${Number(r.bestFairFight || 0).toFixed(2)}x`, advancedOnly: true },
       { key: "fairFightSamples", label: "FF Samples", value: (r) => String(Number(r.fairFightSamples || 0)), advancedOnly: true },
       { key: "fairFightBonusPoints", label: "FF Bonus", value: (r) => Number(r.fairFightBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "fairFightPerPayableHitBonus", label: "FF / Hit", value: (r) => Number(r.fairFightPerPayableHitBonus || 0).toFixed(2), advancedOnly: true },
+      { key: "hybridParticipation", label: "Participation", value: (r) => Number(r.hybridParticipation || 0).toFixed(2), advancedOnly: true },
+      { key: "hybridPerformance", label: "Performance", value: (r) => Number(r.hybridPerformance || 0).toFixed(2), advancedOnly: true },
+      { key: "hybridWarScore", label: "War Score", value: (r) => Number(r.hybridWarScore || 0).toFixed(2), advancedOnly: true },
+      { key: "hybridSupport", label: "Support", value: (r) => Number(r.hybridSupport || 0).toFixed(2), advancedOnly: true },
       { key: "warHits", label: "War Hits", value: (r) => String(Number(r.warHits || 0)) },
       { key: "assists", label: "Assists", value: (r) => String(Number(r.assists || 0)), advancedOnly: true },
       { key: "retaliationHits", label: "Retals", value: (r) => String(Number(r.retaliationHits || 0)), advancedOnly: true },
       { key: "outsideHits", label: "Outside Hits", value: (r) => String(Number(r.outsideHits || 0)), advancedOnly: true },
-      { key: "totalRespect", label: "Respect", value: (r) => Number(r.totalRespect || 0).toFixed(2) },
-      { key: "chainMaintenanceHits", label: "Chain Maintenance", value: (r) => String(Number(r.chainMaintenanceHits || 0)), advancedOnly: true },
-      { key: "overseasHits", label: "Overseas Hits", value: (r) => String(Number(r.overseasHits || 0)), advancedOnly: true },
-      { key: "hospitalizingHits", label: "Hospitalizations", value: (r) => String(Number(r.hospitalizingHits || 0)), advancedOnly: true },
-      { key: "enemyFactionHospitalizingHits", label: "Enemy Hosps", value: (r) => String(Number(r.enemyFactionHospitalizingHits || 0)), advancedOnly: true },
-      { key: "basePoints", label: "Base Points", value: (r) => Number(r.basePoints || 0).toFixed(2), advancedOnly: true },
-      { key: "hospitalBonusPoints", label: "Own Hosp Bonus", value: (r) => Number(r.hospitalBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "chainMaintenanceHits", label: "Chain Outside", value: (r) => String(Number(r.chainMaintenanceHits || 0)), advancedOnly: true },
+      { key: "overseasHits", label: "Overseas", value: (r) => String(Number(r.overseasHits || 0)), advancedOnly: true },
+      { key: "hospitalBonusPoints", label: "Own Faction Hospital Bonus", value: (r) => Number(r.hospitalBonusPoints || 0).toFixed(2), advancedOnly: true },
+      { key: "enemyFactionHospitalizingHits", label: "Enemy Hosp", value: (r) => String(Number(r.enemyFactionHospitalizingHits || 0)), advancedOnly: true },
       { key: "enemyFactionHospitalBonusPoints", label: "Enemy Hosp Bonus", value: (r) => Number(r.enemyFactionHospitalBonusPoints || 0).toFixed(2), advancedOnly: true },
       { key: "retaliationBonusPoints", label: "Retal Bonus", value: (r) => Number(r.retaliationBonusPoints || 0).toFixed(2), advancedOnly: true },
       { key: "overseasBonusPoints", label: "Overseas Bonus", value: (r) => Number(r.overseasBonusPoints || 0).toFixed(2), advancedOnly: true },
-      { key: "respectBonusPoints", label: "Respect Bonus", value: (r) => Number(r.respectBonusPoints || 0).toFixed(2), advancedOnly: true },
-      { key: "adjustedRespect", label: "Adjusted Respect", value: (r) => Number(r.adjustedRespect || 0).toFixed(2), advancedOnly: true },
-      { key: "totalTrackedHits", label: "Tracked Hits", value: (r) => String(Number(r.totalTrackedHits || 0)), advancedOnly: true },
+      { key: "totalRespect", label: "Respect", value: (r) => Number(r.totalRespect || 0).toFixed(2) },
+      { key: "respectBonusPoints", label: "Respect Score", value: (r) => Number(r.respectBonusPoints || 0).toFixed(2), advancedOnly: true },
     ];
     const primaryKey = pointsMode ? "points" : "warHits";
     return defs.filter((def) =>
       (!def.advancedOnly || pointsMode) &&
       def.key !== primaryKey &&
-      rwphNewsletterMemberStatHasReportDataV1557(data, def.key)
+      allowed.has(def.key)
     );
   }
 
@@ -7852,6 +7875,8 @@
     const report = data?.report || {};
     const pointsMode = !!report.pointsMode;
     const columns = Math.max(1, Math.min(4, Number(layout?.columns || 2)));
+    const cardWidth = Math.max(1, Math.floor(100 / columns));
+    const fontSize = columns >= 4 ? 9 : (columns === 3 ? 9 : 10);
     const totalPaid = rows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
     const totalRespect = Number(report.totalRespect || rows.reduce((sum, r) => sum + Number(r.totalRespect || 0), 0));
     const totalPayable = Number(report.totalPayableEvents || rows.reduce((sum, r) => sum + Number(pointsMode ? (r.payableEvents || 0) : (r.warHits || 0)), 0));
@@ -7862,68 +7887,68 @@
     }
     const primaryLabel = pointsMode ? "Points" : "War Hits";
     const primaryValue = (r) => pointsMode ? Number(r.points || 0).toFixed(2) : String(Number(r.warHits || 0));
-    const statDefs = rwphNewsletterMemberStatDefinitionsV1553(data);
+    const statDefs = rwphNewsletterMemberStatDefinitionsV1558(data);
     const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
     const selectedDefs = statDefs.filter((def) => selected.has(def.key));
-    const statCell = (label, value, bg, compact = false) => `<td width="25%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:${compact ? 2 : 4}px;color:${theme.text};border-radius:7px"><span style="color:${theme.muted};font-size:8px;font-weight:bold">${esc(label)}</span><br><b style="color:${theme.accent}">${esc(value)}</b></td>`;
+
+    const summaryCell = (label, value, bg) => `<td width="50%" bgcolor="${bg}" style="border:1px solid ${theme.cardLine};padding:4px 6px;color:${theme.text};word-break:break-word"><span style="color:${theme.muted};font-size:8px">${esc(label)}</span><br><b style="color:${theme.accent};font-size:10px">${esc(value)}</b></td>`;
     const summaryItems = [
       ["Total Payout", money(totalPaid), theme.panelA],
       [pointsMode ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB],
       [pointsMode ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
       ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
     ];
-    const statsTable = () => {
-      if (layout.summary === "strip") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${summaryItems.map((x) => statCell(...x, true)).join("")}</tr></table>`;
-      if (layout.summary === "split") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${statCell(...summaryItems[0])}${statCell(...summaryItems[1])}</tr><tr>${statCell(...summaryItems[2])}${statCell(...summaryItems[3])}</tr></table>`;
-      return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${summaryItems.map((x) => statCell(...x)).join("")}</tr></table>`;
-    };
-    const rankPill = (index) => `<b style="display:inline-block;border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent};background:${theme.head}">#${index + 1}</b>`;
+    const statsTable = () => `<table width="100%" cellpadding="0" cellspacing="3" border="0" style="width:100%;table-layout:fixed"><tr>${summaryCell(...summaryItems[0])}${summaryCell(...summaryItems[1])}</tr><tr>${summaryCell(...summaryItems[2])}${summaryCell(...summaryItems[3])}</tr></table>`;
     const extraBlock = (r) => {
       if (!selectedDefs.length) return "";
+      const perLine = columns >= 3 ? 1 : 2;
       const bits = selectedDefs.map((def) => `${esc(def.label)} <b style="color:${theme.accent}">${esc(def.value(r))}</b>`);
-      return `<br><span style="color:${theme.muted};font-size:8px;line-height:1.35">${bits.join(" · ")}</span>`;
+      const lines = [];
+      for (let i = 0; i < bits.length; i += perLine) lines.push(bits.slice(i, i + perLine).join(` <span style="color:${theme.cardLine}">•</span> `));
+      return `<br><span style="color:${theme.muted};font-size:${Math.max(7, fontSize - 1)}px;line-height:1.35">${lines.join("<br>")}</span>`;
     };
     const card = (r, index, bg) => {
       const style = String(layout.style || "panel");
       const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, 32));
       const metric = esc(primaryValue(r));
       const payout = esc(money(r?.payout || 0));
-      const rank = rankPill(index);
-      const border = `border:1px solid ${theme.cardLine};border-radius:8px`;
+      const rank = `<b style="color:${theme.accent}">#${index + 1}</b>`;
+      const base = `width:${cardWidth}%;border:1px solid ${theme.cardLine};padding:${columns >= 4 ? 3 : 5}px;color:${theme.text};font-size:${fontSize}px;line-height:1.3;vertical-align:top;word-break:break-word;overflow-wrap:anywhere`;
       const extras = extraBlock(r);
-      if (style === "dense") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text};vertical-align:top">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "leaderboard") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${primaryLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b>${extras}</td>`;
-      if (style === "split") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "minimal") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "stacked") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${primaryLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b>${extras}</td>`;
-      if (style === "rankrail") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}"><b style="background:${theme.head};color:${theme.accent};padding:2px 4px;border-radius:5px">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "payout") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span>${extras}</td>`;
-      if (style === "metrics") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel}</span> <b style="color:${theme.accent}">${metric}</b><br><span style="color:${theme.muted}">Payout</span> <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "clean") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><span style="color:${theme.muted}"> · ${primaryLabel} ${metric}</span><span style="color:${theme.good};font-weight:bold"> · ${payout}</span>${extras}</td>`;
-      if (style === "ledger") return `<td bgcolor="${bg}" style="${border};padding:2px 4px;color:${theme.text}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="38" style="color:${theme.accent};font-weight:bold">#${index + 1}</td><td>${name}</td><td align="right" style="color:${theme.muted}">${primaryLabel} ${metric}</td><td width="105" align="right" style="color:${theme.good};font-weight:bold">${payout}</td></tr></table>${extras}</td>`;
-      if (style === "hero") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank}<br><b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}</td>`;
-      if (style === "badge") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "slim") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}"><b style="color:${theme.accent}">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      if (style === "compact") return `<td bgcolor="${bg}" style="${border};padding:3px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
-      return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text};vertical-align:top">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      const core = `${rank} <b>${name}</b><br><b style="color:${theme.good};font-size:${columns >= 4 ? 10 : 12}px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}`;
+      if (style === "dense") return `<td width="${cardWidth}%" bgcolor="${bg}" align="center" style="${base}">${rank}<br><b>${name}</b><br><b style="color:${theme.good};font-size:${columns >= 3 ? 10 : 12}px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}</td>`;
+      if (style === "leaderboard" || style === "stacked" || style === "clean") return `<td width="${cardWidth}%" bgcolor="${bg}" style="${base}">${rank} <b>${name}</b> <b style="color:${theme.good}">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}</td>`;
+      if (style === "minimal" || style === "slim") return `<td width="${cardWidth}%" bgcolor="${bg}" align="center" style="${base}">${rank} <b>${name}</b><br><b style="color:${theme.good}">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}</td>`;
+      if (style === "rankrail") return `<td width="${cardWidth}%" bgcolor="${bg}" style="${base};border-left:3px solid ${theme.line}">${core}</td>`;
+      if (style === "payout" || style === "hero") return `<td width="${cardWidth}%" bgcolor="${bg}" align="center" style="${base}">${rank} <b>${name}</b><br><b style="color:${theme.good};font-size:${columns >= 3 ? 11 : 14}px">${payout}</b><br><span style="color:${theme.muted}">${primaryLabel} <b style="color:${theme.accent}">${metric}</b></span>${extras}</td>`;
+      if (style === "metrics") return `<td width="${cardWidth}%" bgcolor="${bg}" align="center" style="${base}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${primaryLabel}</span> <b style="color:${theme.accent}">${metric}</b><br><span style="color:${theme.muted}">Pay</span> <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "ledger") return `<td width="${cardWidth}%" bgcolor="${bg}" style="${base}">${rank} <b>${name}</b> <span style="color:${theme.muted}">${primaryLabel} ${metric}</span> <b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      if (style === "badge") return `<td width="${cardWidth}%" bgcolor="${bg}" align="center" style="${base}">${rank}<br><b>${name}</b><br><span style="color:${theme.accent}">${primaryLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b>${extras}</td>`;
+      return `<td width="${cardWidth}%" bgcolor="${bg}" style="${base}">${core}</td>`;
     };
-    let html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:separate;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif;border:1px solid ${theme.line};border-radius:12px;overflow:hidden">`;
+
+    let html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;table-layout:fixed;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif;line-height:1.3;border:1px solid ${theme.line}">`;
     const factionImageUrl = String(report.factionImageUrl || "");
-    if (factionImageUrl) html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" align="center" style="padding:6px;border-bottom:1px solid ${theme.line}"><img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" style="display:block;max-width:100%;width:auto;height:auto;max-height:150px;margin:0 auto;border:0;border-radius:8px"></td></tr>`;
-    html += `<tr><td colspan="${columns}" bgcolor="${theme.panelA}" style="padding:5px;border-bottom:1px solid ${theme.cardLine}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="color:${theme.accent};font-weight:bold">War Summary</td><td align="right" style="color:${theme.muted}">${rows.length} members · ${esc(money(totalPaid))}</td></tr></table>${statsTable()}</td></tr>`;
-    html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" style="padding:4px 6px;border-bottom:1px solid ${theme.line};color:${theme.accent};font-weight:bold">Member Payouts</td></tr>`;
+    if (factionImageUrl) html += `<tr><td bgcolor="${theme.head}" align="center" style="padding:8px;border-bottom:1px solid ${theme.line}"><img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" style="display:block;max-width:100%;width:auto;height:auto;max-height:120px;margin:0 auto;border:0"></td></tr>`;
+    html += `<tr><td bgcolor="${theme.panelA}" style="padding:5px;border-bottom:1px solid ${theme.cardLine}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;table-layout:fixed"><tr><td style="color:${theme.accent};font-weight:bold">War Summary</td><td align="right" style="color:${theme.muted};font-size:8px">${rows.length} members</td></tr></table>${statsTable()}</td></tr>`;
+    html += `<tr><td bgcolor="${theme.head}" style="padding:4px 6px;border-bottom:1px solid ${theme.line};color:${theme.accent};font-weight:bold">Member Payouts</td></tr>`;
+    html += `<tr><td bgcolor="${theme.outer}" style="padding:3px"><table width="100%" cellpadding="0" cellspacing="3" border="0" style="width:100%;table-layout:fixed">`;
     for (let i = 0; i < rows.length; i += columns) {
       html += `<tr>`;
       for (let offset = 0; offset < columns; offset += 1) {
         const row = rows[i + offset];
         const bg = ((i + offset) % 2 === 0) ? theme.panelA : theme.panelB;
-        html += row ? card(row, i + offset, bg) : `<td bgcolor="${theme.outer}" style="padding:2px;border:0">&nbsp;</td>`;
+        html += row ? card(row, i + offset, bg) : `<td width="${cardWidth}%" bgcolor="${theme.outer}" style="width:${cardWidth}%;padding:0;border:0">&nbsp;</td>`;
       }
       html += `</tr>`;
     }
-    if (!rows.length) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent};border-radius:8px">No payout rows found.</td></tr>`;
-    html += `</table>`;
+    if (!rows.length) html += `<tr><td align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent}">No payout rows found.</td></tr>`;
+    html += `</table></td></tr></table>`;
     return html.replace(/>\s+</g, "><").trim();
+  }
+
+  function rwphBuildNewsletterTornPreviewDocumentV1559(html = "") {
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=760"><style>html,body{margin:0;padding:0;background:#000}body{width:760px;min-width:760px;max-width:760px;font-family:Arial,Helvetica,sans-serif}table{max-width:100%}img{max-width:100%;height:auto}</style></head><body>${String(html || "")}</body></html>`;
   }
 
   function rwphRenderNewsletterHtmlV1545(data, themeKey, layoutKey, customThemeMaster = null, selectedStats = []) {
@@ -7962,7 +7987,7 @@
     if (!normalized) return null;
     const selected = selectedStats instanceof Set ? selectedStats : new Set();
     const primaryLabel = normalized.report.pointsMode ? "Points" : "War Hits";
-    const defs = rwphNewsletterMemberStatDefinitionsV1553(normalized);
+    const defs = rwphNewsletterMemberStatDefinitionsV1558(normalized);
     const availableKeys = new Set(defs.map((def) => def.key));
     for (const key of Array.from(selected)) if (!availableKeys.has(String(key))) selected.delete(key);
     const panel = document.createElement("div");
@@ -7980,7 +8005,7 @@
       <div class="rwph-floating-panel-body" style="padding:10px;overflow:auto;min-height:0;flex:1 1 auto;display:flex;flex-direction:column;gap:10px;">
         <section class="rw-card" style="padding:10px;">
           <div style="font-weight:950;margin-bottom:4px;">Choose extra member information</div>
-          <div class="rw-muted" style="line-height:1.4;">Every checkbox starts off. Only stats that contain data in this report are listed. Member name, rank, <b>Pay Amount</b> and the primary <b>${esc(primaryLabel)}</b> stat are always shown. Tick only the extra stats you want added to every newsletter member card.</div>
+          <div class="rw-muted" style="line-height:1.4;">Every checkbox starts off. Only member stats used by this report's calculation are listed, including enabled categories that finished on 0. Member name, rank, <b>Pay Amount</b> and the primary <b>${esc(primaryLabel)}</b> stat are always shown. Tick only the extra stats you want added to every newsletter member card.</div>
         </section>
         <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;align-content:start;">${items || `<div class="rw-card" style="padding:9px;">No extra stats are available for this report.</div>`}</section>
         <section class="rw-card" style="padding:9px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
@@ -8067,9 +8092,13 @@
             <button id="rwph-newsletter-member-stats" class="secondary" type="button" style="width:100%;">Member Card Stats</button>
           </div>
           <div id="rwph-newsletter-custom-theme-controls" style="display:none;grid-column:1/-1;min-width:0;padding:9px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-bg2);">
-            <div style="font-weight:950;margin-bottom:3px;">Custom Newsletter Theme</div>
-            <div class="rw-muted" style="font-size:10px;line-height:1.4;margin-bottom:8px;">Uses the same three master-colour model as RWPH panels. Card depth, headers, muted text and secondary borders are derived automatically.</div>
-            <div style="display:grid;gap:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <div style="font-weight:950;">Custom Newsletter Theme</div>
+              <button type="button" class="secondary" data-rwph-newsletter-custom-toggle style="padding:3px 8px;min-height:24px;font-size:10px;line-height:1.1;">Hide</button>
+            </div>
+            <div data-rwph-newsletter-custom-body>
+              <div class="rw-muted" style="font-size:10px;line-height:1.4;margin:4px 0 8px;">Uses the same three master-colour model as RWPH panels. Card depth, headers, muted text and secondary borders are derived automatically.</div>
+              <div style="display:grid;gap:7px;">
               <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-panel);">
                 <div style="min-width:0;"><b>PANELS / CARDS / ROWS / INPUTS</b><div class="rw-muted" style="font-size:9.5px;line-height:1.35;margin-top:2px;">Controls newsletter panel bodies, cards, rows, title areas and stat sections. RWPH derives subtle depth from this one colour.</div></div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><input type="color" data-rwph-newsletter-custom-colour="base" value="${customNewsletterTheme.base}" title="Panels / Cards / Rows / Inputs"><input type="text" data-rwph-newsletter-custom-hex="base" value="${customNewsletterTheme.base.toUpperCase()}" maxlength="7" spellcheck="false" style="width:90px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></div>
@@ -8082,15 +8111,16 @@
                 <div style="min-width:0;"><b>ALL OUTLINES / BORDERS / ACCENTS</b><div class="rw-muted" style="font-size:9.5px;line-height:1.35;margin-top:2px;">Controls newsletter borders, outlines, highlights and the main accent colour.</div></div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><input type="color" data-rwph-newsletter-custom-colour="outline" value="${customNewsletterTheme.outline}" title="All Outlines / Borders / Accents"><input type="text" data-rwph-newsletter-custom-hex="outline" value="${customNewsletterTheme.outline.toUpperCase()}" maxlength="7" spellcheck="false" style="width:90px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></div>
               </div>
+              </div>
             </div>
           </div>
-          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
+          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. The preview renders the same generated HTML in an isolated 760px Torn-style message viewport so it matches the sent layout much more closely. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
           <div id="rwph-newsletter-status" class="rw-muted" style="grid-column:1/-1;text-align:left;align-self:center;line-height:1.4;"></div>
         </div>
         <div class="rwph-newsletter-output-grid" style="min-height:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));grid-auto-rows:minmax(0,1fr);gap:10px;overflow:hidden;">
           <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
-            <div style="font-weight:950;margin-bottom:7px;">Preview</div>
-            <div id="rwph-newsletter-preview" style="flex:1 1 auto;min-width:0;min-height:0;overflow:auto;padding:8px;background:var(--rwph-theme-bg2);border:1px solid var(--rwph-theme-line);border-radius:9px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:7px;"><div style="font-weight:950;">Torn Newsletter / Message Preview</div><div class="rw-muted" style="font-size:9.5px;">760px Torn-width render</div></div>
+            <iframe id="rwph-newsletter-preview" title="Torn newsletter/message preview" sandbox style="display:block;width:100%;min-width:0;min-height:0;flex:1 1 auto;border:1px solid var(--rwph-theme-line);border-radius:9px;background:#000;"></iframe>
           </section>
           <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
             <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;">
@@ -8108,6 +8138,9 @@
     const themeSelect = panel.querySelector("#rwph-newsletter-theme-select");
     const layoutSelect = panel.querySelector("#rwph-newsletter-layout-select");
     const customControls = panel.querySelector("#rwph-newsletter-custom-theme-controls");
+    const customToggle = panel.querySelector("[data-rwph-newsletter-custom-toggle]");
+    const customBody = panel.querySelector("[data-rwph-newsletter-custom-body]");
+    let customControlsCollapsed = false;
     const customColourInputs = Array.from(panel.querySelectorAll("[data-rwph-newsletter-custom-colour]"));
     const customHexInputs = Array.from(panel.querySelectorAll("[data-rwph-newsletter-custom-hex]"));
     const preview = panel.querySelector("#rwph-newsletter-preview");
@@ -8139,6 +8172,14 @@
       return safe;
     };
 
+    const syncCustomControlsCollapse = () => {
+      if (customBody) customBody.style.display = customControlsCollapsed ? "none" : "block";
+      if (customToggle) {
+        customToggle.textContent = customControlsCollapsed ? "Show" : "Hide";
+        customToggle.setAttribute("aria-expanded", customControlsCollapsed ? "false" : "true");
+      }
+    };
+
     const renderForMemberStats = (stats) => {
       const isCustom = themeSelect?.value === "custom";
       const customMaster = isCustom ? readCustomThemeFromUi() : null;
@@ -8149,7 +8190,7 @@
       const isCustom = themeSelect?.value === "custom";
       if (customControls) customControls.style.display = isCustom ? "block" : "none";
       const rendered = renderForMemberStats(selectedMemberStats);
-      if (preview) preview.innerHTML = rendered.html;
+      if (preview) preview.srcdoc = rwphBuildNewsletterTornPreviewDocumentV1559(rendered.html);
       if (raw) raw.value = rendered.html;
       if (copy) copy.disabled = !rendered.html || rendered.tooLong;
       if (status) {
@@ -8168,7 +8209,7 @@
       candidateStats.add(String(key || ""));
       const candidate = renderForMemberStats(candidateStats);
       if (!candidate.tooLong) return true;
-      const def = rwphNewsletterMemberStatDefinitionsV1553(data).find((item) => item.key === String(key || ""));
+      const def = rwphNewsletterMemberStatDefinitionsV1558(data).find((item) => item.key === String(key || ""));
       const label = def?.label || "That stat";
       rwphShowToast(
         `${label} was not added because it would make this newsletter ${candidate.length.toLocaleString()} characters, over Torn's ${candidate.limit.toLocaleString()}-character limit. Deselect another stat or choose a more compact layout first.`,
@@ -8184,6 +8225,11 @@
     });
     themeSelect?.addEventListener("change", update);
     layoutSelect?.addEventListener("change", update);
+    customToggle?.addEventListener("click", (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      customControlsCollapsed = !customControlsCollapsed;
+      syncCustomControlsCollapse();
+    });
     memberStatsButton?.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       rwphOpenNewsletterMemberStatsPanelV1553(data, selectedMemberStats, update, canEnableMemberStat);
@@ -8239,6 +8285,7 @@
     try { rwphApplyPanelLayout(panel); } catch (_) {}
     rwphApplyPanelThemeChoice();
     rwphApplyLogoChoice();
+    syncCustomControlsCollapse();
     update();
     return panel;
   }
@@ -8368,7 +8415,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.557";
+    panel.dataset.rwphUiGeneration = "v1.1.559";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -11907,8 +11954,8 @@
           <li><b>Theme / Colour:</b> choose from 42 preset palettes or <b>Custom</b>. Every preset and Custom use the same three master controls as RWPH panels: Panels / Cards / Rows / Inputs, All Text, and All Outlines / Borders / Accents. RWPH derives the secondary depth, muted tones, headers and supporting borders automatically.</li>
           <li><b>Newsletter Layout:</b> choose from 15 panel-style layouts, including 1-column lists/leaderboards, detailed 2-column cards, 3-column compact grids and 4-column mini/slim grids. Layout and colour theme are independent.</li>
           <li><b>Faction artwork:</b> newsletters use the full faction image from Torn Faction Info, not the small faction tag image.</li>
-          <li><b>Member Card Stats:</b> opens a separate panel of optional member-stat checkboxes. Only stats that actually contain data in the current report are listed, and all start off. Member name/rank, Pay Amount and the report primary stat (Points for Advanced, War Hits for Basic) stay visible. Ticking a stat updates Preview, character count and Raw HTML immediately.</li>
-          <li><b>Preview + Raw HTML:</b> both update when theme, layout or Member Card Stats change.</li>
+          <li><b>Member Card Stats:</b> opens a separate panel of optional member-stat checkboxes. Only member stats used by the current report calculation are listed, including enabled categories that are 0, and all optional checkboxes start off. Member name/rank, Pay Amount and the report primary stat (Points for Advanced, War Hits for Basic) stay visible. Ticking a stat updates Preview, character count and Raw HTML immediately.</li>
+          <li><b>Torn Newsletter / Message Preview:</b> renders the same generated Raw HTML inside an isolated 760px Torn-width viewport, so the preview is not altered by RWPH panel CSS. Theme, layout and Member Card Stats update both Preview and Raw HTML together.</li>
           <li><b>Torn HTML limit:</b> RWPH shows the live character count and blocks copying if generated HTML exceeds 65,535 characters. Layouts are compacted for reports up to 120 member cards.</li>
           <li><b>Copy Raw HTML Code:</b> copies the currently selected themed/layout HTML for pasting into a Torn newsletter.</li>
         </ul>
