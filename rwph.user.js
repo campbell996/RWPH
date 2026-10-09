@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.549
+// @version      1.1.550
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.550: Rebuilds newsletter HTML to mirror RWPH panel hierarchy and expands the independent Newsletter Layout library to 15 compact 120-member-safe styles while retaining all colour themes.
   // v1.1.549: Compacts the Main locked/unlocked API disclosure while keeping full terms in Help, restores Cached Reports to a single vertical report stack, and simplifies the Saved count display.
   // v1.1.547: Rebuilds the user Help and Torn API disclosure, improves user-facing panel guidance, reorganises Cached Reports within the existing RWPH UI, and renames payment prefill controls.
   // v1.1.546: Makes Member Management use the same theme-aware three-corner resize styling as the other RWPH panels, removes the browser-native resize corner, and makes newsletters use only the full faction image from Faction Info (never the faction tag image).
@@ -6528,11 +6529,21 @@
       good: "@@GOOD@@",
     };
     const rwphNewsletterLayoutDefinitions = [
-      { key: "classic2", label: "Classic 2-Column Cards", columns: 2, style: "classic" },
-      { key: "dense3", label: "Dense 3-Column Cards", columns: 3, style: "dense" },
-      { key: "leaderboard", label: "Wide Leaderboard Cards", columns: 1, style: "leaderboard" },
-      { key: "split2", label: "Split Detail Cards", columns: 2, style: "split" },
-      { key: "minimal4", label: "Ultra Compact 4-Column Cards", columns: 4, style: "minimal" },
+      { key: "classic2", label: "Panel Cards — 2 Column", columns: 2, style: "panel", summary: "tiles" },
+      { key: "dense3", label: "Compact Panels — 3 Column", columns: 3, style: "dense", summary: "tiles" },
+      { key: "leaderboard", label: "Leaderboard Rows", columns: 1, style: "leaderboard", summary: "strip" },
+      { key: "split2", label: "Split Detail — 2 Column", columns: 2, style: "split", summary: "tiles" },
+      { key: "minimal4", label: "Mini Panels — 4 Column", columns: 4, style: "minimal", summary: "strip" },
+      { key: "stacked", label: "Stacked Panel Rows", columns: 1, style: "stacked", summary: "tiles" },
+      { key: "rankrail2", label: "Rank Rail — 2 Column", columns: 2, style: "rankrail", summary: "split" },
+      { key: "payout2", label: "Payout Focus — 2 Column", columns: 2, style: "payout", summary: "strip" },
+      { key: "metrics3", label: "Metric Panels — 3 Column", columns: 3, style: "metrics", summary: "split" },
+      { key: "cleanlist", label: "Clean Panel List", columns: 1, style: "clean", summary: "tiles" },
+      { key: "ledger", label: "Compact Ledger", columns: 1, style: "ledger", summary: "strip" },
+      { key: "hero2", label: "Hero Cards — 2 Column", columns: 2, style: "hero", summary: "split" },
+      { key: "badge3", label: "Badge Grid — 3 Column", columns: 3, style: "badge", summary: "tiles" },
+      { key: "slim4", label: "Slim Grid — 4 Column", columns: 4, style: "slim", summary: "strip" },
+      { key: "compact2", label: "Compact Detail — 2 Column", columns: 2, style: "compact", summary: "split" },
     ];
 
     function rwphBuildNewsletterLayoutTemplateStatic(layoutKey = "classic2") {
@@ -6543,7 +6554,6 @@
       const s = summary || {};
       const isPoints = !!(s.pointsMode || s.calculationMode === "points");
       const title = String(s.factionName || s.newsletterTitle || "Ranked War Payout Results");
-      const mode = isPoints ? "Advanced" : "Basic";
       const totalPaid = sourceRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
       const shownPaid = shownRows.reduce((sum, r) => sum + Number(r.payout || 0), 0);
       const totalRespect = Number(s.totalRespect || sourceRows.reduce((sum, r) => sum + Number(r.totalRespect || r.respect || 0), 0));
@@ -6556,39 +6566,61 @@
       const metricFor = (r) => isPoints ? Number(r.points || r.weight || 0).toFixed(1) : String(Number(r.warHits ?? r.attacks ?? 0));
       const metricLabel = isPoints ? "Pts" : "Hits";
       const safeName = (r) => esc(String(r?.name || ("Unknown " + (r?.id || ""))).replace(/\s+/g, " ").trim().slice(0, 32));
-      const stat = (label, value, bg) => `<td width="50%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.line};padding:3px;color:${theme.text}"><b style="color:${theme.accent}">${esc(label)}</b><br>${esc(value)}</td>`;
+      const def = rwphNewsletterLayoutDefinitions.find((item) => item.key === String(layoutKey || "")) || rwphNewsletterLayoutDefinitions[0];
+      const columns = Math.max(1, Math.min(4, Number(def.columns || 2)));
+
+      const statCell = (label, value, bg, compact = false) => `<td width="25%" bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:${compact ? 2 : 4}px;color:${theme.text};border-radius:7px"><span style="color:${theme.muted};font-size:8px;font-weight:bold">${esc(label)}</span><br><b style="color:${theme.accent}">${esc(value)}</b></td>`;
+      const statsTable = (style) => {
+        const items = [
+          ["Total Payout", money(totalPaid), theme.panelA],
+          [isPoints ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB],
+          [isPoints ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
+          ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
+        ];
+        if (style === "strip") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"> <tr>${items.map((x) => statCell(...x, true)).join("")}</tr></table>`;
+        if (style === "split") return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${statCell(...items[0])}${statCell(...items[1])}</tr><tr>${statCell(...items[2])}${statCell(...items[3])}</tr></table>`;
+        return `<table width="100%" cellpadding="0" cellspacing="3" style="border-collapse:separate"><tr>${statCell(...items[0])}${statCell(...items[1])}${statCell(...items[2])}${statCell(...items[3])}</tr></table>`;
+      };
+      const rankPill = (index) => `<b style="display:inline-block;border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent};background:${theme.head}">#${index + 1}</b>`;
       const card = (r, index, bg, style) => {
         const name = safeName(r);
         const metric = esc(metricFor(r));
         const payout = esc(money(r?.payout || 0));
-        if (style === "dense") return `<td bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:3px;color:${theme.text};vertical-align:top"><b style="color:${theme.accent}">#${index + 1} ${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span> <b style="color:${theme.good}">${payout}</b></td>`;
-        if (style === "leaderboard") return `<td bgcolor="${bg}" style="border:1px solid ${theme.cardLine};padding:4px;color:${theme.text}"><b style="color:${theme.accent}">#${index + 1}</b> <b>${name}</b> <span style="color:${theme.muted}">• ${metricLabel} ${metric}</span> <b style="float:right;color:${theme.good}">${payout}</b></td>`;
-        if (style === "split") return `<td bgcolor="${bg}" style="border:1px solid ${theme.cardLine};padding:3px;color:${theme.text}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><b style="color:${theme.accent}">#${index + 1} ${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span></td><td align="right"><b style="color:${theme.good}">${payout}</b></td></tr></table></td>`;
-        if (style === "minimal") return `<td bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:2px;color:${theme.text}"><b style="color:${theme.accent}">#${index + 1} ${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
-        return `<td bgcolor="${bg}" align="center" style="border:1px solid ${theme.cardLine};padding:3px;color:${theme.text};vertical-align:top"><b style="color:${theme.accent}">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
+        const rank = rankPill(index);
+        const border = `border:1px solid ${theme.cardLine};border-radius:8px`;
+        if (style === "dense") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text};vertical-align:top">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "leaderboard") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${metricLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b></td>`;
+        if (style === "split") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} <b style="color:${theme.accent}">${metric}</b></span> · <b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "minimal") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "stacked") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b> <span style="color:${theme.muted}">· ${metricLabel} ${metric}</span> <b style="color:${theme.good}">· ${payout}</b></td>`;
+        if (style === "rankrail") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}"><b style="background:${theme.head};color:${theme.accent};padding:2px 4px;border-radius:5px">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "payout") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span></td>`;
+        if (style === "metrics") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="color:${theme.muted}">${metricLabel}</span> <b style="color:${theme.accent}">${metric}</b><br><span style="color:${theme.muted}">Payout</span> <b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "clean") return `<td bgcolor="${bg}" style="${border};padding:4px;color:${theme.text}">${rank} <b>${name}</b><span style="color:${theme.muted}"> · ${metricLabel} ${metric}</span><span style="color:${theme.good};font-weight:bold"> · ${payout}</span></td>`;
+        if (style === "ledger") return `<td bgcolor="${bg}" style="${border};padding:2px 4px;color:${theme.text}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="38" style="color:${theme.accent};font-weight:bold">#${index + 1}</td><td>${name}</td><td align="right" style="color:${theme.muted}">${metricLabel} ${metric}</td><td width="105" align="right" style="color:${theme.good};font-weight:bold">${payout}</td></tr></table></td>`;
+        if (style === "hero") return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text}">${rank}<br><b>${name}</b><br><b style="color:${theme.good};font-size:13px">${payout}</b><br><span style="color:${theme.muted}">${metricLabel} <b style="color:${theme.accent}">${metric}</b></span></td>`;
+        if (style === "badge") return `<td bgcolor="${bg}" align="center" style="${border};padding:3px;color:${theme.text}">${rank}<br><b>${name}</b><br><span style="border:1px solid ${theme.line};border-radius:999px;padding:1px 4px;color:${theme.accent}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "slim") return `<td bgcolor="${bg}" align="center" style="${border};padding:2px;color:${theme.text}"><b style="color:${theme.accent}">#${index + 1}</b> <b>${name}</b><br><span style="color:${theme.muted}">${metric}</span> · <b style="color:${theme.good}">${payout}</b></td>`;
+        if (style === "compact") return `<td bgcolor="${bg}" style="${border};padding:3px;color:${theme.text}">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span> · <b style="color:${theme.good}">${payout}</b></td>`;
+        return `<td bgcolor="${bg}" align="center" style="${border};padding:4px;color:${theme.text};vertical-align:top">${rank} <b>${name}</b><br><span style="color:${theme.muted}">${metricLabel} ${metric}</span><br><b style="color:${theme.good}">${payout}</b></td>`;
       };
-      const def = rwphNewsletterLayoutDefinitions.find((item) => item.key === String(layoutKey || "")) || rwphNewsletterLayoutDefinitions[0];
-      const columns = Math.max(1, Math.min(4, Number(def.columns || 2)));
-      let html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif">`;
-      if (factionImageUrl) html += `<tr><td colspan="${columns}" bgcolor="${theme.outer}" align="center" style="border:1px solid ${theme.line};padding:5px"><img src="${esc(factionImageUrl)}" alt="${esc(title)}" style="display:block;max-width:100%;width:auto;height:auto;max-height:150px;margin:0 auto;border:0"></td></tr>`;
-      if (columns === 1) {
-        html += `<tr><td><table width="100%" cellpadding="0" cellspacing="0"><tr>${stat("Total Payout", money(totalPaid), theme.panelA)}${stat(isPoints ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB)}</tr><tr>${stat(isPoints ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB)}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA)}</tr></table></td></tr>`;
-      } else {
-        html += `<tr><td colspan="${columns}"><table width="100%" cellpadding="0" cellspacing="0"><tr>${stat("Total Payout", money(totalPaid), theme.panelA)}${stat(isPoints ? "Per Point" : "Per War Hit", money(perUnit), theme.panelB)}</tr><tr>${stat(isPoints ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB)}${stat("Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA)}</tr></table></td></tr>`;
-      }
-      html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" align="center" style="border:1px solid ${theme.line};padding:3px;color:${theme.accent};font-weight:bold">Payout Cards • ${shownRows.length}${sourceRows.length > maxRows ? " / " + sourceRows.length : ""} members • ${esc(money(shownPaid))}</td></tr>`;
+
+      let html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:separate;background:${theme.outer};color:${theme.text};font:10px Arial,Helvetica,sans-serif;border:1px solid ${theme.line};border-radius:12px;overflow:hidden">`;
+      if (factionImageUrl) html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" align="center" style="padding:6px;border-bottom:1px solid ${theme.line}"><img src="${esc(factionImageUrl)}" alt="${esc(title)}" style="display:block;max-width:100%;width:auto;height:auto;max-height:150px;margin:0 auto;border:0;border-radius:8px"></td></tr>`;
+      html += `<tr><td colspan="${columns}" bgcolor="${theme.panelA}" style="padding:5px;border-bottom:1px solid ${theme.cardLine}"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="color:${theme.accent};font-weight:bold">War Summary</td><td align="right" style="color:${theme.muted}">${shownRows.length} members · ${esc(money(shownPaid))}</td></tr></table>${statsTable(def.summary)}</td></tr>`;
+      html += `<tr><td colspan="${columns}" bgcolor="${theme.head}" style="padding:4px 6px;border-bottom:1px solid ${theme.line};color:${theme.accent};font-weight:bold">Member Payouts</td></tr>`;
       for (let i = 0; i < shownRows.length; i += columns) {
-        html += "<tr>";
+        html += `<tr>`;
         for (let offset = 0; offset < columns; offset += 1) {
           const row = shownRows[i + offset];
           const bg = ((i + offset) % 2 === 0) ? theme.panelA : theme.panelB;
           if (row) html += card(row, i + offset, bg, def.style);
-          else html += `<td bgcolor="${theme.outer}" style="border:1px solid ${theme.cardLine};padding:2px">&nbsp;</td>`;
+          else html += `<td bgcolor="${theme.outer}" style="padding:2px;border:0">&nbsp;</td>`;
         }
-        html += "</tr>";
+        html += `</tr>`;
       }
-      if (!shownRows.length) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent}">No payout rows found.</td></tr>`;
-      if (sourceRows.length > maxRows) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.head}" style="border:1px solid ${theme.line};padding:3px;color:${theme.muted}">Only the first 120 payout cards are included.</td></tr>`;
+      if (!shownRows.length) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.panelA}" style="border:1px solid ${theme.cardLine};padding:8px;color:${theme.accent};border-radius:8px">No payout rows found.</td></tr>`;
+      if (sourceRows.length > maxRows) html += `<tr><td colspan="${columns}" align="center" bgcolor="${theme.head}" style="border-top:1px solid ${theme.line};padding:3px;color:${theme.muted}">Only the first 120 payout cards are included.</td></tr>`;
       html += `</table>`;
       html = html.replace(/>\s+</g, "><").trim();
       return { html, rowCount: shownRows.length, sourceCount: sourceRows.length };
@@ -6647,7 +6679,7 @@
     ${rwphStandaloneResultsCssV1527()}
   </style>
 </head>
-<body data-rwph-ui-generation="v1.1.549">
+<body data-rwph-ui-generation="v1.1.550">
   <main class="app">
     <section class="hero">
       <div class="results-hero-head">
@@ -7381,7 +7413,7 @@
     const oldId = panel.id;
     panel.id = cfg.id;
     panel.dataset.rwphResultsMode = cfg.mode;
-    panel.dataset.rwphUiGeneration = "v1.1.549";
+    panel.dataset.rwphUiGeneration = "v1.1.550";
     panel.classList.add("rwph-floating-panel", "rwph-results-shell-v1534");
     panel.classList.toggle("rwph-results-loading-panel", cfg.mode === "loading");
     panel.classList.toggle("rw-results-panel", cfg.mode === "results");
@@ -7734,7 +7766,7 @@
     panel.id = cfg.id;
     panel.className = `rwph-floating-panel rwph-results-shell-v1534 ${initialMode === "results" ? "rw-results-panel" : "rwph-results-loading-panel"}`;
     panel.dataset.rwphResultsMode = initialMode;
-    panel.dataset.rwphUiGeneration = "v1.1.549";
+    panel.dataset.rwphUiGeneration = "v1.1.550";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", cfg.aria);
     panel.style.cssText = [
@@ -11271,7 +11303,7 @@
         <div class="rw-how-title">Newsletter &amp; Downloads</div>
         <ul class="rw-how-list">
           <li><b>Theme / Colour:</b> controls the newsletter colours independently of the selected layout.</li>
-          <li><b>Newsletter Layout:</b> choose Classic 2-Column, Dense 3-Column, Wide Leaderboard, Split Detail or Ultra Compact 4-Column.</li>
+          <li><b>Newsletter Layout:</b> choose from 15 panel-style layouts, including 1-column lists/leaderboards, detailed 2-column cards, 3-column compact grids and 4-column mini/slim grids. Layout and colour theme are independent.</li>
           <li><b>Faction artwork:</b> newsletters use the full faction image from Torn Faction Info, not the small faction tag image.</li>
           <li><b>Preview + Raw HTML:</b> both update when either dropdown changes.</li>
           <li><b>Torn HTML limit:</b> RWPH shows the live character count and blocks copying if generated HTML exceeds 65,535 characters. Layouts are compacted for reports up to 120 member cards.</li>
