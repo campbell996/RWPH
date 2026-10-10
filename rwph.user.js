@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.566
+// @version      1.1.567
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  // v1.1.566: Makes sent newsletters responsive from phone/PDA through desktop by keeping one full-width outer stack, changing all inner summary/member grids to percentage widths, and removing fixed inner pixel widths that caused horizontal scrollbars.
+  // v1.1.567: Rebuilds sent newsletters without HTML tables so Torn cannot inject table overflow/sideways scrollbars; keeps full-width responsive div/card layouts for PC, phone and PDA while preserving explicit theme colours.
   // v1.1.565: Restores Torn-safe full 760px newsletter width plus explicit background and exact outline colours on the actual rendered tables/cells while preserving the v1.1.564 single-table stack and compact HTML output.
   // v1.1.564: Forces every Newsletter section to stack inside one outer Torn-safe table and structurally compacts/minifies the generated HTML without changing its visible layout, colours, member data, or 760px Preview proportions.
   // v1.1.563: Rebuilds Newsletter output into explicit full-width Torn-safe section tables so all content fills the 760px canvas, removes horizontal overflow, uses direct FONT colours so sent newsletters preserve selected text colours, and gives Newsletter the same themed outer scrollbar as Main while Preview remains the exact scaled Raw HTML.
@@ -7900,28 +7900,28 @@
     const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
     const selectedDefs = statDefs.filter((def) => selected.has(def.key));
 
-    // v1.1.566: keep one Torn-safe outer stack, but make the sent canvas fluid from phone/PDA
-    // through desktop. The outer table uses all available message width (capped at Torn's
-    // desktop canvas by CSS), while every inner grid and cell uses percentage widths so
-    // borders/padding can never make a nested table wider than its parent and trigger a
-    // horizontal scrollbar. Critical Torn colours stay repeated on the elements rendered.
-    const canvasWidth = 760;
-    const txt = theme.text;
+    // v1.1.567: Torn applies its own overflow treatment to HTML tables in sent
+    // newsletters/messages. Build the export without tables so Torn cannot create
+    // horizontal table scrollbars. The root fills the available message width and
+    // the cards use percentage-width inline blocks, so the same HTML naturally fits
+    // desktop, phone and PDA screens. Critical colours remain explicit on rendered
+    // elements rather than depending on inherited Torn page styles.
     const font = (value, body) => `<font color="${value}">${body}</font>`;
-    const normalText = (body) => font(txt, body);
+    const normalText = (body) => font(theme.text, body);
     const mutedText = (body) => font(theme.muted, body);
     const accentText = (body) => font(theme.accent, body);
     const goodText = (body) => font(theme.good, body);
+    const bgStyle = (bg) => `background:${bg}`;
     const borderStyle = () => `border:1px solid ${theme.line}`;
-    const paint = (bg) => `background:${bg}`;
-    const nestedTable = (body, extraStyle = "") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:collapse;table-layout:fixed;${paint(theme.outer)};${extraStyle}">${body}</table>`;
-    const outerRows = [];
-    const addSectionRow = (body, bg = theme.head, pad = "5px 7px", align = "left") => {
-      outerRows.push(`<tr><td width="100%" align="${align}" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${pad};overflow-wrap:anywhere;word-break:break-word">${body}</td></tr>`);
-    };
-    const addNestedRow = (body) => {
-      outerRows.push(`<tr><td width="100%" bgcolor="${theme.outer}" style="${paint(theme.outer)};padding:0;overflow:hidden">${body}</td></tr>`);
-    };
+    const sectionStyle = (bg, pad = "5px 7px", align = "left") => `${bgStyle(bg)};${borderStyle()};padding:${pad};text-align:${align}`;
+    const chunks = [];
+
+    const factionImageUrl = String(report.factionImageUrl || "");
+    if (factionImageUrl) {
+      chunks.push(`<div style="${sectionStyle(theme.head, "7px", "center")}"><img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" style="display:block;width:100%;max-width:500px;height:auto;border:0;margin:0 auto"></div>`);
+    }
+
+    chunks.push(`<div style="${sectionStyle(theme.head)}">${accentText("<b>War Summary</b>")} ${mutedText(`<span style="font-size:8px">• ${rows.length} members</span>`)}</div>`);
 
     const summaryItems = [
       ["Total Payout", money(totalPaid), theme.panelA],
@@ -7929,7 +7929,12 @@
       [pointsMode ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
       ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
     ];
-    const summaryCell = ([label, value, bg]) => `<td width="50%" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:6px 8px;overflow-wrap:anywhere;word-break:break-word">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
+    const summaryCell = ([label, value, bg]) => `<div style="${bgStyle(bg)};${borderStyle()};padding:6px 8px">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</div>`;
+    for (let i = 0; i < summaryItems.length; i += 2) {
+      chunks.push(`<div style="width:100%;overflow:hidden"><div style="float:left;width:50%">${summaryCell(summaryItems[i])}</div><div style="float:left;width:50%">${summaryCell(summaryItems[i + 1])}</div></div>`);
+    }
+
+    chunks.push(`<div style="${sectionStyle(theme.head)}">${accentText("<b>Member Payouts</b>")}</div>`);
 
     const extrasHtml = (r, compact = false) => {
       if (!selectedDefs.length) return "";
@@ -7937,62 +7942,32 @@
       const bits = selectedDefs.map((def) => `${esc(def.label)} ${accentText(`<b>${esc(def.value(r))}</b>`)}`);
       const lines = [];
       for (let i = 0; i < bits.length; i += perLine) lines.push(bits.slice(i, i + perLine).join(` ${accentText("•")} `));
-      return `<br><span style="font-size:${compact ? 8 : 9}px;line-height:1.4">${normalText(lines.join("<br>"))}</span>`;
+      return `<br><span style="font-size:${compact ? 8 : 9}px;line-height:1.4">${lines.join("<br>")}</span>`;
     };
 
-    const renderMemberCell = (r, index, bg, widthPercent) => {
+    const renderMemberCard = (r, index, widthPercent) => {
       const compact = layoutStyle === "compactCards";
       const nameLimit = compact ? 24 : (layoutStyle === "leaderboard" ? 40 : 32);
       const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, nameLimit));
-      const alignAttr = compact ? ' align="center"' : "";
-      const body = `${accentText(`<b>#${index + 1}</b>`)} ${normalText(`<b>${name}</b>`)}<br>${goodText(`<b style="font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b>`)}<br>${normalText(esc(primaryLabel))} ${accentText(`<b>${esc(primaryValue(r))}</b>`)}${extrasHtml(r, compact)}`;
-      return `<td width="${widthPercent}"${alignAttr} valign="top" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${compact ? 5 : 6}px;overflow-wrap:anywhere;word-break:break-word">${body}</td>`;
+      const bg = (index % 2 === 0) ? theme.panelA : theme.panelB;
+      const alignStyle = compact ? ";text-align:center" : "";
+      const body = normalText(`${accentText(`<b>#${index + 1}</b>`)} <b>${name}</b><br>${goodText(`<b style="font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b>`)}<br>${esc(primaryLabel)} ${accentText(`<b>${esc(primaryValue(r))}</b>`)}${extrasHtml(r, compact)}`);
+      return `<div style="float:left;width:${widthPercent}"><div style="${bgStyle(bg)};${borderStyle()};padding:${compact ? 5 : 6}px;font-size:${compact ? 9 : 10}px;line-height:1.35${alignStyle}">${body}</div></div>`;
     };
-
-    const widthsForCount = (count) => {
-      if (count <= 1) return ["100%"];
-      if (count === 2) return ["50%", "50%"];
-      return ["33.33%", "33.34%", "33.33%"];
-    };
-    const memberTableForRows = (memberRows, startIndex, count) => {
-      if (!memberRows.length) return "";
-      const widths = widthsForCount(count);
-      const compact = layoutStyle === "compactCards";
-      let body = "";
-      for (let i = 0; i < memberRows.length; i += count) {
-        const slice = memberRows.slice(i, i + count);
-        body += "<tr>";
-        slice.forEach((row, offset) => {
-          const absolute = startIndex + i + offset;
-          const bg = (absolute % 2 === 0) ? theme.panelA : theme.panelB;
-          body += renderMemberCell(row, absolute, bg, widths[offset]);
-        });
-        body += "</tr>";
-      }
-      const memberStyle = `font:${compact ? 9 : 10}px Arial,Helvetica,sans-serif;line-height:1.35;word-break:break-word${compact ? ";text-align:center" : ""}`;
-      return nestedTable(body, memberStyle);
-    };
-
-    const factionImageUrl = String(report.factionImageUrl || "");
-    if (factionImageUrl) {
-      addSectionRow(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:100%;max-width:500px;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
-    }
-    addSectionRow(`${accentText("<b>War Summary</b>")} ${mutedText(`<span style="font-size:8px">• ${rows.length} members</span>`)}`);
-    addNestedRow(nestedTable(`<tr>${summaryCell(summaryItems[0])}${summaryCell(summaryItems[1])}</tr><tr>${summaryCell(summaryItems[2])}${summaryCell(summaryItems[3])}</tr>`, "font:10px Arial,Helvetica,sans-serif;line-height:1.3"));
-    addSectionRow(accentText("<b>Member Payouts</b>"));
 
     if (!rows.length) {
-      addSectionRow(accentText("<b>No payout rows found.</b>"), theme.panelA, "8px", "center");
-    } else if (columns === 1) {
-      addNestedRow(memberTableForRows(rows, 0, 1));
+      chunks.push(`<div style="${sectionStyle(theme.panelA, "8px", "center")}">${accentText("<b>No payout rows found.</b>")}</div>`);
     } else {
-      const fullCount = Math.floor(rows.length / columns) * columns;
-      if (fullCount) addNestedRow(memberTableForRows(rows.slice(0, fullCount), 0, columns));
-      const remainder = rows.slice(fullCount);
-      if (remainder.length) addNestedRow(memberTableForRows(remainder, fullCount, remainder.length));
+      for (let i = 0; i < rows.length; i += columns) {
+        const slice = rows.slice(i, i + columns);
+        const widthPercent = slice.length === 1 ? "100%" : (slice.length === 2 ? "50%" : "33.333%" );
+        let rowHtml = "";
+        slice.forEach((row, offset) => { rowHtml += renderMemberCard(row, i + offset, widthPercent); });
+        chunks.push(`<div style="width:100%;overflow:hidden">${rowHtml}</div>`);
+      }
     }
 
-    const html = `<table width="100%" align="center" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;max-width:${canvasWidth}px;border-collapse:collapse;table-layout:fixed;box-sizing:border-box;${paint(theme.outer)};font:10px Arial,Helvetica,sans-serif;line-height:1.3">${outerRows.join("")}</table>`;
+    const html = `<div style="width:100%;margin:0 auto;overflow:hidden;${bgStyle(theme.outer)};color:${theme.text};font:10px Arial,Helvetica,sans-serif;line-height:1.3;overflow-wrap:anywhere;word-break:break-word">${chunks.join("")}</div>`;
     return rwphCompactNewsletterHtmlV1564(html);
   }
 
