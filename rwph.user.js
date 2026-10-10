@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.565
+// @version      1.1.566
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.566: Makes sent newsletters responsive from phone/PDA through desktop by keeping one full-width outer stack, changing all inner summary/member grids to percentage widths, and removing fixed inner pixel widths that caused horizontal scrollbars.
   // v1.1.565: Restores Torn-safe full 760px newsletter width plus explicit background and exact outline colours on the actual rendered tables/cells while preserving the v1.1.564 single-table stack and compact HTML output.
   // v1.1.564: Forces every Newsletter section to stack inside one outer Torn-safe table and structurally compacts/minifies the generated HTML without changing its visible layout, colours, member data, or 760px Preview proportions.
   // v1.1.563: Rebuilds Newsletter output into explicit full-width Torn-safe section tables so all content fills the 760px canvas, removes horizontal overflow, uses direct FONT colours so sent newsletters preserve selected text colours, and gives Newsletter the same themed outer scrollbar as Main while Preview remains the exact scaled Raw HTML.
@@ -7899,12 +7900,12 @@
     const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
     const selectedDefs = statDefs.filter((def) => selected.has(def.key));
 
-    // v1.1.565: one fixed Torn-size outer table keeps every section stacked, while every
-    // nested grid also gets an explicit pixel width. Torn can ignore percentage widths,
-    // inherited backgrounds and inherited borders in sent newsletters, so the values that
-    // must survive are repeated directly on the actual TABLE/TD elements that render them.
+    // v1.1.566: keep one Torn-safe outer stack, but make the sent canvas fluid from phone/PDA
+    // through desktop. The outer table uses all available message width (capped at Torn's
+    // desktop canvas by CSS), while every inner grid and cell uses percentage widths so
+    // borders/padding can never make a nested table wider than its parent and trigger a
+    // horizontal scrollbar. Critical Torn colours stay repeated on the elements rendered.
     const canvasWidth = 760;
-    const innerWidth = 758;
     const txt = theme.text;
     const font = (value, body) => `<font color="${value}">${body}</font>`;
     const normalText = (body) => font(txt, body);
@@ -7913,13 +7914,13 @@
     const goodText = (body) => font(theme.good, body);
     const borderStyle = () => `border:1px solid ${theme.line}`;
     const paint = (bg) => `background:${bg}`;
-    const nestedTable = (body, extraStyle = "") => `<table width="${innerWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:${innerWidth}px;max-width:100%;border-collapse:collapse;table-layout:fixed;${paint(theme.outer)};${extraStyle}">${body}</table>`;
+    const nestedTable = (body, extraStyle = "") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:collapse;table-layout:fixed;${paint(theme.outer)};${extraStyle}">${body}</table>`;
     const outerRows = [];
     const addSectionRow = (body, bg = theme.head, pad = "5px 7px", align = "left") => {
-      outerRows.push(`<tr><td width="${innerWidth}" align="${align}" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${pad}">${body}</td></tr>`);
+      outerRows.push(`<tr><td width="100%" align="${align}" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${pad};overflow-wrap:anywhere;word-break:break-word">${body}</td></tr>`);
     };
     const addNestedRow = (body) => {
-      outerRows.push(`<tr><td width="${innerWidth}" bgcolor="${theme.outer}" style="${paint(theme.outer)};padding:0">${body}</td></tr>`);
+      outerRows.push(`<tr><td width="100%" bgcolor="${theme.outer}" style="${paint(theme.outer)};padding:0;overflow:hidden">${body}</td></tr>`);
     };
 
     const summaryItems = [
@@ -7928,7 +7929,7 @@
       [pointsMode ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
       ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
     ];
-    const summaryCell = ([label, value, bg]) => `<td width="379" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:6px 8px">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
+    const summaryCell = ([label, value, bg]) => `<td width="50%" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:6px 8px;overflow-wrap:anywhere;word-break:break-word">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
 
     const extrasHtml = (r, compact = false) => {
       if (!selectedDefs.length) return "";
@@ -7939,19 +7940,19 @@
       return `<br><span style="font-size:${compact ? 8 : 9}px;line-height:1.4">${normalText(lines.join("<br>"))}</span>`;
     };
 
-    const renderMemberCell = (r, index, bg, widthPx) => {
+    const renderMemberCell = (r, index, bg, widthPercent) => {
       const compact = layoutStyle === "compactCards";
       const nameLimit = compact ? 24 : (layoutStyle === "leaderboard" ? 40 : 32);
       const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, nameLimit));
       const alignAttr = compact ? ' align="center"' : "";
       const body = `${accentText(`<b>#${index + 1}</b>`)} ${normalText(`<b>${name}</b>`)}<br>${goodText(`<b style="font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b>`)}<br>${normalText(esc(primaryLabel))} ${accentText(`<b>${esc(primaryValue(r))}</b>`)}${extrasHtml(r, compact)}`;
-      return `<td width="${widthPx}"${alignAttr} valign="top" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${compact ? 5 : 6}px;word-break:break-word">${body}</td>`;
+      return `<td width="${widthPercent}"${alignAttr} valign="top" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${compact ? 5 : 6}px;overflow-wrap:anywhere;word-break:break-word">${body}</td>`;
     };
 
     const widthsForCount = (count) => {
-      if (count <= 1) return [innerWidth];
-      if (count === 2) return [379, 379];
-      return [252, 254, 252];
+      if (count <= 1) return ["100%"];
+      if (count === 2) return ["50%", "50%"];
+      return ["33.33%", "33.34%", "33.33%"];
     };
     const memberTableForRows = (memberRows, startIndex, count) => {
       if (!memberRows.length) return "";
@@ -7974,7 +7975,7 @@
 
     const factionImageUrl = String(report.factionImageUrl || "");
     if (factionImageUrl) {
-      addSectionRow(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:500px;max-width:500px;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
+      addSectionRow(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:100%;max-width:500px;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
     }
     addSectionRow(`${accentText("<b>War Summary</b>")} ${mutedText(`<span style="font-size:8px">• ${rows.length} members</span>`)}`);
     addNestedRow(nestedTable(`<tr>${summaryCell(summaryItems[0])}${summaryCell(summaryItems[1])}</tr><tr>${summaryCell(summaryItems[2])}${summaryCell(summaryItems[3])}</tr>`, "font:10px Arial,Helvetica,sans-serif;line-height:1.3"));
@@ -7991,7 +7992,7 @@
       if (remainder.length) addNestedRow(memberTableForRows(remainder, fullCount, remainder.length));
     }
 
-    const html = `<table width="${canvasWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:${canvasWidth}px;max-width:100%;border-collapse:collapse;table-layout:fixed;${paint(theme.outer)};${borderStyle()};font:10px Arial,Helvetica,sans-serif;line-height:1.3">${outerRows.join("")}</table>`;
+    const html = `<table width="100%" align="center" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;max-width:${canvasWidth}px;border-collapse:collapse;table-layout:fixed;box-sizing:border-box;${paint(theme.outer)};font:10px Arial,Helvetica,sans-serif;line-height:1.3">${outerRows.join("")}</table>`;
     return rwphCompactNewsletterHtmlV1564(html);
   }
 
@@ -8192,7 +8193,7 @@
               </div>
             </div>
           </div>
-          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. The preview renders the exact same full-size 760px Torn newsletter/message HTML and scales it down to fit this Preview card without reflowing or changing its colours. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
+          <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. The preview renders the exact same responsive Torn newsletter/message HTML at the 760px desktop canvas and scales it down to fit this Preview card without changing its colours. Sent HTML automatically shrinks to phone/PDA message width without horizontal scrolling. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
           <div id="rwph-newsletter-status" class="rw-muted" style="grid-column:1/-1;text-align:left;align-self:center;line-height:1.4;"></div>
         </div>
         <div class="rwph-newsletter-output-grid" style="min-height:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));grid-auto-rows:auto;gap:10px;overflow:visible;align-items:stretch;">
@@ -12039,7 +12040,7 @@
           <li><b>Newsletter Layout:</b> choose from 3 rebuilt Torn-safe layouts: Panel Cards — 2 Column, Leaderboard — 1 Column, and Compact Cards — 3 Column. Layout and colour theme are independent.</li>
           <li><b>Faction artwork:</b> newsletters use the full faction image from Torn Faction Info, not the small faction tag image.</li>
           <li><b>Member Card Stats:</b> opens a separate panel of optional member-stat checkboxes. Only member stats used by the current report calculation are listed, including enabled categories that are 0, and all optional checkboxes start off. Member name/rank, Pay Amount and the report primary stat (Points for Advanced, War Hits for Basic) stay visible. Ticking a stat updates Preview, character count and Raw HTML immediately.</li>
-          <li><b>Torn Newsletter / Message Preview:</b> renders the exact generated 760px Torn-safe Raw HTML and scales that fixed canvas down inside the Preview card without reflowing it. Background, text and outline colours are emitted directly in the same HTML used for Copy. Theme, layout and Member Card Stats update both Preview and Raw HTML together.</li>
+          <li><b>Torn Newsletter / Message Preview:</b> renders the exact generated responsive Torn-safe Raw HTML at the 760px desktop canvas and scales that canvas down inside the Preview card without reflowing it. The sent HTML shrinks to phone/PDA message width without horizontal scrolling. Background, text and outline colours are emitted directly in the same HTML used for Copy. Theme, layout and Member Card Stats update both Preview and Raw HTML together.</li>
           <li><b>Torn HTML limit:</b> RWPH shows the live character count and blocks copying if generated HTML exceeds 65,535 characters. Layouts are compacted for reports up to 120 member cards.</li>
           <li><b>Copy Raw HTML Code:</b> copies the currently selected themed/layout HTML for pasting into a Torn newsletter.</li>
         </ul>
