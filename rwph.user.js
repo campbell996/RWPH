@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.563
+// @version      1.1.564
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.564: Forces every Newsletter section to stack inside one outer Torn-safe table and structurally compacts/minifies the generated HTML without changing its visible layout, colours, member data, or 760px Preview proportions.
   // v1.1.563: Rebuilds Newsletter output into explicit full-width Torn-safe section tables so all content fills the 760px canvas, removes horizontal overflow, uses direct FONT colours so sent newsletters preserve selected text colours, and gives Newsletter the same themed outer scrollbar as Main while Preview remains the exact scaled Raw HTML.
   // v1.1.562: Keeps the three Torn-safe Newsletter layouts but fixes the sent canvas at Torn's full 760px newsletter/message width, applies theme text/background/outline colours explicitly inline, and scales the exact sent HTML down inside Preview without reflowing it.
   // v1.1.561: Rebuilds all three Newsletter layouts onto one full-width six-column Torn-safe table grid, removes nested width/shrink behavior, fills incomplete final rows, makes Preview responsive up to Torn width, and explicitly applies the selected newsletter text colour.
@@ -7868,6 +7869,15 @@
     );
   }
 
+  function rwphCompactNewsletterHtmlV1564(html = "") {
+    // Keep the generator readable, but make the exact HTML counted/copied to Torn as small as possible.
+    // This deliberately avoids CSS classes/style blocks because Torn may strip or reinterpret them.
+    return String(html || "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/>\s+</g, "><")
+      .trim();
+  }
+
   function rwphBuildNewsletterHtmlV1562(data, theme, layout, selectedStats = []) {
     const rows = Array.isArray(data?.rows) ? data.rows.slice(0, 120) : [];
     const report = data?.report || {};
@@ -7888,21 +7898,24 @@
     const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
     const selectedDefs = statDefs.filter((def) => selected.has(def.key));
 
-    // Torn-safe output deliberately avoids the six-column colspan grid used before v1.1.563.
-    // Every visible section is its own full-width table capped at 760px. Member tables use the exact
-    // number of columns required by the selected layout, preventing Torn from collapsing
-    // the content into the left half of the newsletter canvas.
+    // One outer table is intentional. Torn can style sibling TABLE elements as inline/side-by-side;
+    // putting every visible section into a row of this single table forces vertical stacking.
     const canvasWidth = 760;
     const txt = theme.text;
-    const tableBase = `width:100%;max-width:${canvasWidth}px;border-collapse:collapse;table-layout:fixed;background-color:${theme.outer};font:10px Arial,Helvetica,sans-serif;line-height:1.3;color:${txt}`;
+    const font = (value, body) => `<font color="${value}">${body}</font>`;
+    const normalText = (body) => font(txt, body);
+    const mutedText = (body) => font(theme.muted, body);
+    const accentText = (body) => font(theme.accent, body);
+    const goodText = (body) => font(theme.good, body);
     const borderStyle = (colour = theme.cardLine) => `border:1px solid ${colour}`;
-    const colour = (value, body) => `<font color="${value}">${body}</font>`;
-    const normalText = (body) => colour(txt, body);
-    const mutedText = (body) => colour(theme.muted, body);
-    const accentText = (body) => colour(theme.accent, body);
-    const goodText = (body) => colour(theme.good, body);
-    const sectionTable = (body, extraStyle = "") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="${tableBase};${extraStyle}">${body}</table>`;
-    const singleCellSection = (body, bg = theme.head, pad = "5px 7px", align = "left") => sectionTable(`<tr><td width="100%" align="${align}" bgcolor="${bg}" style="${borderStyle(theme.line)};background-color:${bg};padding:${pad};vertical-align:top;color:${txt}">${body}</td></tr>`);
+    const nestedTable = (body, extraStyle = "") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:collapse;table-layout:fixed;${extraStyle}">${body}</table>`;
+    const outerRows = [];
+    const addSectionRow = (body, bg = theme.head, pad = "5px 7px", align = "left") => {
+      outerRows.push(`<tr><td align="${align}" bgcolor="${bg}" style="${borderStyle(theme.line)};padding:${pad}">${body}</td></tr>`);
+    };
+    const addNestedRow = (body) => {
+      outerRows.push(`<tr><td bgcolor="${theme.outer}">${body}</td></tr>`);
+    };
 
     const summaryItems = [
       ["Total Payout", money(totalPaid), theme.panelA],
@@ -7910,33 +7923,31 @@
       [pointsMode ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
       ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
     ];
-    const summaryCell = ([label, value, bg]) => `<td width="50%" bgcolor="${bg}" style="${borderStyle()};background-color:${bg};padding:6px 8px;vertical-align:top;color:${txt}">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
+    const summaryCell = ([label, value, bg]) => `<td width="50%" bgcolor="${bg}" style="${borderStyle()};padding:6px 8px">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
 
     const extrasHtml = (r, compact = false) => {
       if (!selectedDefs.length) return "";
       const perLine = compact ? 1 : 2;
-      const bits = selectedDefs.map((def) => `${normalText(esc(def.label))} ${accentText(`<b>${esc(def.value(r))}</b>`)}`);
+      const bits = selectedDefs.map((def) => `${esc(def.label)} ${accentText(`<b>${esc(def.value(r))}</b>`)}`);
       const lines = [];
       for (let i = 0; i < bits.length; i += perLine) lines.push(bits.slice(i, i + perLine).join(` ${accentText("•")} `));
-      return `<div style="margin-top:4px;font-size:${compact ? 8 : 9}px;line-height:1.4;word-break:break-word;color:${txt}">${lines.join("<br>")}</div>`;
+      return `<br><span style="font-size:${compact ? 8 : 9}px;line-height:1.4">${normalText(lines.join("<br>"))}</span>`;
     };
 
-    const renderMemberCell = (r, index, bg, width) => {
+    const renderMemberCell = (r, index, bg, width = "") => {
       const compact = layoutStyle === "compactCards";
       const nameLimit = compact ? 24 : (layoutStyle === "leaderboard" ? 40 : 32);
       const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, nameLimit));
-      const rankAndName = `${accentText(`<b>#${index + 1}</b>`)} ${normalText(`<b>${name}</b>`)}`;
-      const payout = goodText(`<b style="font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b>`);
-      const primary = `${normalText(esc(primaryLabel))} ${accentText(`<b>${esc(primaryValue(r))}</b>`)}`;
-      return `<td width="${width}" bgcolor="${bg}"${compact ? ' align="center"' : ""} style="${borderStyle()};background-color:${bg};padding:${compact ? 5 : 6}px;vertical-align:top;font-size:${compact ? 9 : 10}px;line-height:1.35;word-break:break-word">${rankAndName}<br>${payout}<br>${primary}${extrasHtml(r, compact)}</td>`;
+      const widthAttr = width ? ` width="${width}"` : "";
+      const alignAttr = compact ? ' align="center"' : "";
+      const body = `${accentText(`<b>#${index + 1}</b>`)} ${normalText(`<b>${name}</b>`)}<br>${goodText(`<b style="font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b>`)}<br>${normalText(esc(primaryLabel))} ${accentText(`<b>${esc(primaryValue(r))}</b>`)}${extrasHtml(r, compact)}`;
+      return `<td${widthAttr}${alignAttr} valign="top" bgcolor="${bg}" style="${borderStyle()};padding:${compact ? 5 : 6}px;word-break:break-word">${body}</td>`;
     };
 
     const memberTableForRows = (memberRows, startIndex, count) => {
       if (!memberRows.length) return "";
-      let widths;
-      if (count === 1) widths = ["100%"];
-      else if (count === 2) widths = ["50%", "50%"];
-      else widths = ["33%", "34%", "33%"];
+      const widths = count === 1 ? ["100%"] : (count === 2 ? ["50%", "50%"] : ["33%", "34%", "33%"]);
+      const compact = layoutStyle === "compactCards";
       let body = "";
       for (let i = 0; i < memberRows.length; i += count) {
         const slice = memberRows.slice(i, i + count);
@@ -7944,35 +7955,36 @@
         slice.forEach((row, offset) => {
           const absolute = startIndex + i + offset;
           const bg = (absolute % 2 === 0) ? theme.panelA : theme.panelB;
-          body += renderMemberCell(row, absolute, bg, widths[offset]);
+          // Column widths only need to be declared on the first row of each table.
+          body += renderMemberCell(row, absolute, bg, i === 0 ? widths[offset] : "");
         });
         body += "</tr>";
       }
-      return sectionTable(body);
+      const memberStyle = `font:${compact ? 9 : 10}px Arial,Helvetica,sans-serif;line-height:1.35;word-break:break-word${compact ? ";text-align:center" : ""}`;
+      return nestedTable(body, memberStyle);
     };
 
-    let html = "";
     const factionImageUrl = String(report.factionImageUrl || "");
     if (factionImageUrl) {
-      // Use the faction artwork at its intended 500px width, centred inside the full Torn canvas.
-      html += singleCellSection(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
+      addSectionRow(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
     }
-    html += singleCellSection(`${accentText("<b>War Summary</b>")} ${mutedText(`<span style="font-size:8px">• ${rows.length} members</span>`)}`);
-    html += sectionTable(`<tr>${summaryCell(summaryItems[0])}${summaryCell(summaryItems[1])}</tr><tr>${summaryCell(summaryItems[2])}${summaryCell(summaryItems[3])}</tr>`);
-    html += singleCellSection(accentText("<b>Member Payouts</b>"));
+    addSectionRow(`${accentText("<b>War Summary</b>")} ${mutedText(`<span style="font-size:8px">• ${rows.length} members</span>`)}`);
+    addNestedRow(nestedTable(`<tr>${summaryCell(summaryItems[0])}${summaryCell(summaryItems[1])}</tr><tr>${summaryCell(summaryItems[2])}${summaryCell(summaryItems[3])}</tr>`, "font:10px Arial,Helvetica,sans-serif;line-height:1.3"));
+    addSectionRow(accentText("<b>Member Payouts</b>"));
 
     if (!rows.length) {
-      html += singleCellSection(accentText("<b>No payout rows found.</b>"), theme.panelA, "8px", "center");
+      addSectionRow(accentText("<b>No payout rows found.</b>"), theme.panelA, "8px", "center");
     } else if (columns === 1) {
-      html += memberTableForRows(rows, 0, 1);
+      addNestedRow(memberTableForRows(rows, 0, 1));
     } else {
       const fullCount = Math.floor(rows.length / columns) * columns;
-      if (fullCount) html += memberTableForRows(rows.slice(0, fullCount), 0, columns);
+      if (fullCount) addNestedRow(memberTableForRows(rows.slice(0, fullCount), 0, columns));
       const remainder = rows.slice(fullCount);
-      if (remainder.length) html += memberTableForRows(remainder, fullCount, remainder.length);
+      if (remainder.length) addNestedRow(memberTableForRows(remainder, fullCount, remainder.length));
     }
 
-    return html.replace(/>\s+</g, "><").trim();
+    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;max-width:${canvasWidth}px;border-collapse:collapse;table-layout:fixed;font:10px Arial,Helvetica,sans-serif;line-height:1.3">${outerRows.join("")}</table>`;
+    return rwphCompactNewsletterHtmlV1564(html);
   }
 
   function rwphBuildNewsletterTornPreviewDocumentV1562(html = "") {
