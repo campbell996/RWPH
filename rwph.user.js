@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.564
+// @version      1.1.565
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.565: Restores Torn-safe full 760px newsletter width plus explicit background and exact outline colours on the actual rendered tables/cells while preserving the v1.1.564 single-table stack and compact HTML output.
   // v1.1.564: Forces every Newsletter section to stack inside one outer Torn-safe table and structurally compacts/minifies the generated HTML without changing its visible layout, colours, member data, or 760px Preview proportions.
   // v1.1.563: Rebuilds Newsletter output into explicit full-width Torn-safe section tables so all content fills the 760px canvas, removes horizontal overflow, uses direct FONT colours so sent newsletters preserve selected text colours, and gives Newsletter the same themed outer scrollbar as Main while Preview remains the exact scaled Raw HTML.
   // v1.1.562: Keeps the three Torn-safe Newsletter layouts but fixes the sent canvas at Torn's full 760px newsletter/message width, applies theme text/background/outline colours explicitly inline, and scales the exact sent HTML down inside Preview without reflowing it.
@@ -7818,7 +7819,7 @@
       panelB: rwphMixHexColour(safe.base, safe.text, 0.11),
       head: rwphMixHexColour(safe.base, safe.outline, 0.18),
       line: safe.outline,
-      cardLine: rwphMixHexColour(safe.outline, safe.base, 0.30),
+      cardLine: safe.outline,
       accent: safe.outline,
       text: safe.text,
       muted: rwphMixHexColour(safe.text, safe.base, 0.30),
@@ -7898,23 +7899,27 @@
     const selected = new Set(Array.isArray(selectedStats) ? selectedStats.map(String) : []);
     const selectedDefs = statDefs.filter((def) => selected.has(def.key));
 
-    // One outer table is intentional. Torn can style sibling TABLE elements as inline/side-by-side;
-    // putting every visible section into a row of this single table forces vertical stacking.
+    // v1.1.565: one fixed Torn-size outer table keeps every section stacked, while every
+    // nested grid also gets an explicit pixel width. Torn can ignore percentage widths,
+    // inherited backgrounds and inherited borders in sent newsletters, so the values that
+    // must survive are repeated directly on the actual TABLE/TD elements that render them.
     const canvasWidth = 760;
+    const innerWidth = 758;
     const txt = theme.text;
     const font = (value, body) => `<font color="${value}">${body}</font>`;
     const normalText = (body) => font(txt, body);
     const mutedText = (body) => font(theme.muted, body);
     const accentText = (body) => font(theme.accent, body);
     const goodText = (body) => font(theme.good, body);
-    const borderStyle = (colour = theme.cardLine) => `border:1px solid ${colour}`;
-    const nestedTable = (body, extraStyle = "") => `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;border-collapse:collapse;table-layout:fixed;${extraStyle}">${body}</table>`;
+    const borderStyle = () => `border:1px solid ${theme.line}`;
+    const paint = (bg) => `background:${bg}`;
+    const nestedTable = (body, extraStyle = "") => `<table width="${innerWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:${innerWidth}px;max-width:100%;border-collapse:collapse;table-layout:fixed;${paint(theme.outer)};${extraStyle}">${body}</table>`;
     const outerRows = [];
     const addSectionRow = (body, bg = theme.head, pad = "5px 7px", align = "left") => {
-      outerRows.push(`<tr><td align="${align}" bgcolor="${bg}" style="${borderStyle(theme.line)};padding:${pad}">${body}</td></tr>`);
+      outerRows.push(`<tr><td width="${innerWidth}" align="${align}" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${pad}">${body}</td></tr>`);
     };
     const addNestedRow = (body) => {
-      outerRows.push(`<tr><td bgcolor="${theme.outer}">${body}</td></tr>`);
+      outerRows.push(`<tr><td width="${innerWidth}" bgcolor="${theme.outer}" style="${paint(theme.outer)};padding:0">${body}</td></tr>`);
     };
 
     const summaryItems = [
@@ -7923,7 +7928,7 @@
       [pointsMode ? "Payable Hits" : "War Hits", String(totalPayable || 0), theme.panelB],
       ["Total Respect", Number(totalRespect || 0).toFixed(2), theme.panelA],
     ];
-    const summaryCell = ([label, value, bg]) => `<td width="50%" bgcolor="${bg}" style="${borderStyle()};padding:6px 8px">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
+    const summaryCell = ([label, value, bg]) => `<td width="379" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:6px 8px">${mutedText(`<span style="font-size:8px">${esc(label)}</span>`)}<br>${accentText(`<b style="font-size:11px">${esc(value)}</b>`)}</td>`;
 
     const extrasHtml = (r, compact = false) => {
       if (!selectedDefs.length) return "";
@@ -7934,19 +7939,23 @@
       return `<br><span style="font-size:${compact ? 8 : 9}px;line-height:1.4">${normalText(lines.join("<br>"))}</span>`;
     };
 
-    const renderMemberCell = (r, index, bg, width = "") => {
+    const renderMemberCell = (r, index, bg, widthPx) => {
       const compact = layoutStyle === "compactCards";
       const nameLimit = compact ? 24 : (layoutStyle === "leaderboard" ? 40 : 32);
       const name = esc(String(r?.name || `Unknown ${r?.id || ""}`).replace(/\s+/g, " ").trim().slice(0, nameLimit));
-      const widthAttr = width ? ` width="${width}"` : "";
       const alignAttr = compact ? ' align="center"' : "";
       const body = `${accentText(`<b>#${index + 1}</b>`)} ${normalText(`<b>${name}</b>`)}<br>${goodText(`<b style="font-size:${compact ? 11 : 12}px">${esc(money(r?.payout || 0))}</b>`)}<br>${normalText(esc(primaryLabel))} ${accentText(`<b>${esc(primaryValue(r))}</b>`)}${extrasHtml(r, compact)}`;
-      return `<td${widthAttr}${alignAttr} valign="top" bgcolor="${bg}" style="${borderStyle()};padding:${compact ? 5 : 6}px;word-break:break-word">${body}</td>`;
+      return `<td width="${widthPx}"${alignAttr} valign="top" bgcolor="${bg}" style="${paint(bg)};${borderStyle()};padding:${compact ? 5 : 6}px;word-break:break-word">${body}</td>`;
     };
 
+    const widthsForCount = (count) => {
+      if (count <= 1) return [innerWidth];
+      if (count === 2) return [379, 379];
+      return [252, 254, 252];
+    };
     const memberTableForRows = (memberRows, startIndex, count) => {
       if (!memberRows.length) return "";
-      const widths = count === 1 ? ["100%"] : (count === 2 ? ["50%", "50%"] : ["33%", "34%", "33%"]);
+      const widths = widthsForCount(count);
       const compact = layoutStyle === "compactCards";
       let body = "";
       for (let i = 0; i < memberRows.length; i += count) {
@@ -7955,8 +7964,7 @@
         slice.forEach((row, offset) => {
           const absolute = startIndex + i + offset;
           const bg = (absolute % 2 === 0) ? theme.panelA : theme.panelB;
-          // Column widths only need to be declared on the first row of each table.
-          body += renderMemberCell(row, absolute, bg, i === 0 ? widths[offset] : "");
+          body += renderMemberCell(row, absolute, bg, widths[offset]);
         });
         body += "</tr>";
       }
@@ -7966,7 +7974,7 @@
 
     const factionImageUrl = String(report.factionImageUrl || "");
     if (factionImageUrl) {
-      addSectionRow(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:500px;max-width:100%;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
+      addSectionRow(`<img src="${esc(factionImageUrl)}" alt="${esc(report.factionName || "Faction")}" width="500" style="display:block;width:500px;max-width:500px;height:auto;border:0;margin:0 auto">`, theme.head, "7px", "center");
     }
     addSectionRow(`${accentText("<b>War Summary</b>")} ${mutedText(`<span style="font-size:8px">• ${rows.length} members</span>`)}`);
     addNestedRow(nestedTable(`<tr>${summaryCell(summaryItems[0])}${summaryCell(summaryItems[1])}</tr><tr>${summaryCell(summaryItems[2])}${summaryCell(summaryItems[3])}</tr>`, "font:10px Arial,Helvetica,sans-serif;line-height:1.3"));
@@ -7983,7 +7991,7 @@
       if (remainder.length) addNestedRow(memberTableForRows(remainder, fullCount, remainder.length));
     }
 
-    const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:100%;max-width:${canvasWidth}px;border-collapse:collapse;table-layout:fixed;font:10px Arial,Helvetica,sans-serif;line-height:1.3">${outerRows.join("")}</table>`;
+    const html = `<table width="${canvasWidth}" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.outer}" style="width:${canvasWidth}px;max-width:100%;border-collapse:collapse;table-layout:fixed;${paint(theme.outer)};${borderStyle()};font:10px Arial,Helvetica,sans-serif;line-height:1.3">${outerRows.join("")}</table>`;
     return rwphCompactNewsletterHtmlV1564(html);
   }
 
