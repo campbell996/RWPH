@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.575
+// @version      1.1.579
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1113,17 +1113,9 @@
     }
   }
 
-  function buildXanaxPaymentUrl(code) {
-    const params = new URLSearchParams({
-      rwphSendXanax: "1",
-      rwphCode: String(code || ""),
-      rwphTo: PAYMENT_RECEIVER_ID,
-      rwphName: PAYMENT_RECEIVER_NAME,
-      rwphItemId: PAYMENT_ITEM_ID,
-      step: "inventory",
-    });
-
-    return `https://www.torn.com/item.php?${params.toString()}#inventory`;
+  function buildXanaxPaymentUrl(_code) {
+    // Payment intent and recipient are retained in RWPH userscript storage, never the URL.
+    return "https://www.torn.com/item.php";
   }
 
   function openXanaxPaymentPage(code, mode = "unlock") {
@@ -2628,7 +2620,7 @@
       url.searchParams.set("rwphDefaultSetup", "payment-helper");
       return url.toString();
     } catch (_) {
-      return "https://www.torn.com/item.php?rwphSendXanax=1&rwphCode=RWPH-SETUP-CODE&rwphDefaultSetup=payment-helper&step=inventory#inventory";
+      return "https://www.torn.com/item.php?rwphDefaultSetup=payment-helper";
     }
   }
 
@@ -11190,7 +11182,7 @@
           <div class="rwph-xanax-days-result"><b>${qty} Xanax</b> / ${billable} Xanax per 10-day block = <b>${totalDays} licence days</b></div>
           <div class="rw-muted">RWPH uses this amount later when you reach the Prefill Xanax Amount step.</div>
         </div>
-        ${nav()}
+        ${nav("Prefill Name / ID")}
       </div>`;
 
     if (page === "receiver") return `
@@ -11202,7 +11194,7 @@
           <button id="rwph-payment-helper-prefill-name" type="button" class="primary ${state?.receiverDone ? "rwph-xanax-step-done" : "rwph-helper-expected-action"}">${state?.receiverDone ? "Prefill Name / ID ✓" : "Prefill Name / ID"}</button>
           <div class="rw-muted">RWPH prefills the visible Torn receiver field and also copies the value as a fallback.</div>
         </div>
-        ${nav("Next Step", true, state?.receiverDone ? "rwph-helper-expected-action" : "")}
+        ${nav("Prefill Message Code", true, state?.receiverDone ? "rwph-helper-expected-action" : "")}
       </div>`;
 
     if (page === "code") return `
@@ -11214,7 +11206,7 @@
           <button id="rwph-payment-helper-prefill-code" type="button" class="primary ${state?.codeDone ? "rwph-xanax-step-done" : "rwph-helper-expected-action"}">${state?.codeDone ? "Prefill Message Code ✓" : "Prefill Message Code"}</button>
           <div class="rw-muted">The exact payment code must be in Torn's Add Message field for automatic verification.</div>
         </div>
-        ${nav("Next Step", true, state?.codeDone ? "rwph-helper-expected-action" : "")}
+        ${nav("Prefill Xanax Amount", true, state?.codeDone ? "rwph-helper-expected-action" : "")}
       </div>`;
 
     if (page === "send-amount") return `
@@ -11261,7 +11253,7 @@
           </ol>
           <div class="rwph-xanax-safety-note">RWPH only prefills visible fields. It never clicks Torn's Send/Confirm control and never sends an item automatically.</div>
         </div>
-        ${nav("Next Step", false)}
+        ${nav("Select Licence Type", false)}
       </div>`;
   }
 
@@ -11476,13 +11468,8 @@
     }
   }
 
-  function rwphReplacePaymentHelperUrlCode(code) {
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set("rwphSendXanax", "1");
-      url.searchParams.set("rwphCode", String(code || ""));
-      history.replaceState(history.state, "", url.toString());
-    } catch (_) {}
+  function rwphReplacePaymentHelperUrlCode(_code) {
+    // Intentionally no URL changes: the payment helper uses saved pending payment state.
   }
 
   function shouldRunXanaxPaymentAutofill() {
@@ -11499,17 +11486,17 @@
   async function runXanaxPaymentAutofillFromUrl() {
     if (!shouldRunXanaxPaymentAutofill()) return;
 
-    const params = new URLSearchParams(window.location.search || "");
-    const explicitRequest = params.get("rwphSendXanax") === "1" && !!params.get("rwphCode");
-    let code = params.get("rwphCode") || getXanaxPaymentHelper()?.code || "";
+    // Recover the payment handoff from userscript storage on the plain Torn items page.
+    // A newly initiated Buy/Extend overrides any previously closed helper state.
+    const storedHelper = getXanaxPaymentHelper();
+    const initialCode = String(storedHelper?.code || getPendingPayment()?.code || "");
+    const newlyRequested = rwphGetFreshPaymentHelperOpenRequest(initialCode);
+    const explicitRequest = !!newlyRequested;
+    let code = initialCode;
     if (!code) return;
 
-    if (explicitRequest) {
-      // A fresh helper tab/open request should override an old close flag in this tab.
-      sessionStorage.removeItem("rwph_xanax_helper_closed");
-    }
-
-    if (sessionStorage.getItem("rwph_xanax_helper_closed") === "1" && !explicitRequest) return;
+    if (explicitRequest) sessionStorage.removeItem("rwph_xanax_helper_closed");
+    if (sessionStorage.getItem("rwph_xanax_helper_closed") === "1") return;
 
     const existingPanel = document.getElementById("rwph-xanax-send-status");
     const existingPayload = getXanaxPaymentHelper();
@@ -11880,14 +11867,25 @@
       startLeft = rect.left;
       startTop = rect.top;
 
+      // Payment Helper: moving the panel must not reflow its cards or rescale text.
+      // Capture the computed box before swapping right/bottom positioning for left/top.
+      if (panel.id === "rwph-xanax-send-status") {
+        rwphSetPanelStyle(panel, "width", `${rect.width}px`);
+        rwphSetPanelStyle(panel, "height", `${rect.height}px`);
+      }
       rwphSetPanelStyle(panel, "left", `${rect.left}px`);
       rwphSetPanelStyle(panel, "top", `${rect.top}px`);
       rwphSetPanelStyle(panel, "right", "auto");
       rwphSetPanelStyle(panel, "bottom", "auto");
       rwphSetPanelStyle(panel, "position", "fixed");
       rwphSetPanelStyle(panel, "transform", "none");
-      rwphSetPanelStyle(panel, "max-width", "calc(100vw - 16px)");
-      rwphSetPanelStyle(panel, "max-height", "calc(100vh - 16px)");
+      if (panel.id === "rwph-xanax-send-status") {
+        rwphSetPanelStyle(panel, "max-width", "none");
+        rwphSetPanelStyle(panel, "max-height", "none");
+      } else {
+        rwphSetPanelStyle(panel, "max-width", "calc(100vw - 16px)");
+        rwphSetPanelStyle(panel, "max-height", "calc(100vh - 16px)");
+      }
 
       rwphBlockTouchDefaults(handle);
       e.preventDefault?.();
