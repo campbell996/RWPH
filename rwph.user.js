@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.567
+// @version      1.1.570
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -18,6 +18,7 @@
 (function () {
   "use strict";
 
+  // v1.1.568: Adds expected-next-action highlighting to Payments Copy, rebuilds Xanax Payment Helper as a guided amount-aware prefill wizard, restores Newsletter Preview/Raw HTML on phone/PDA, and updates Admin Default Setup for the new wizard.
   // v1.1.567: Rebuilds sent newsletters without HTML tables so Torn cannot inject table overflow/sideways scrollbars; keeps full-width responsive div/card layouts for PC, phone and PDA while preserving explicit theme colours.
   // v1.1.565: Restores Torn-safe full 760px newsletter width plus explicit background and exact outline colours on the actual rendered tables/cells while preserving the v1.1.564 single-table stack and compact HTML output.
   // v1.1.564: Forces every Newsletter section to stack inside one outer Torn-safe table and structurally compacts/minifies the generated HTML without changing its visible layout, colours, member data, or 760px Preview proportions.
@@ -1115,6 +1116,7 @@
       instructions: String(result.instructions || ""),
       tornId: result.tornId ? String(result.tornId) : "",
       name: result.name ? String(result.name) : "",
+      daysPerItem: Math.max(1, Math.floor(Number(result.daysPerItem || 10))),
       createdAtMs,
       source: String(result.source || "database-pending-payment"),
       databaseBacked: true,
@@ -1165,6 +1167,7 @@
       receiverText: PAYMENT_RECEIVER_TEXT,
       itemId: PAYMENT_ITEM_ID,
       itemName: PAYMENT_ITEM_NAME,
+      daysPerItem: Math.max(1, Math.floor(Number(pending.daysPerItem || 10))),
       createdAtMs: pending.createdAtMs || Date.now(),
       source: pending.source || "database-pending-payment",
       databaseBacked: true,
@@ -2618,7 +2621,7 @@
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
     { id: "rwph-member-management-panel", label: "Member Management", width: 420, height: 390, className: "rwph-floating-panel rwph-member-management-panel" },
     { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 460, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
-    { id: "rwph-xanax-send-status", label: "Xanax Payment Helper", width: 390, height: 440, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status", label: "Xanax Payment Helper Wizard", width: 420, height: 560, className: "rwph-floating-panel" },
     { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 390, height: 300, className: "rwph-floating-panel" },
     { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 500, className: "rwph-floating-panel rwph-layout-theme-panel" },
     { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
@@ -2746,7 +2749,7 @@
       status.textContent = target.id === "rw-pay-all-panel"
         ? "Opening Torn faction controls for the real Payments Copy Panel..."
         : target.id === "rwph-xanax-send-status"
-          ? "Opening Torn Items for the real Xanax Payment Helper..."
+          ? "Opening Torn Items for the real Xanax Payment Helper Wizard..."
           : "Returning to the Torn page where Default Setup started...";
     }
     setTimeout(() => {
@@ -3066,8 +3069,8 @@
         break;
       case "rwph-xanax-send-status":
         sessionStorage.removeItem("rwph_xanax_helper_closed");
-        rwphSendHelperPanelStatus(rwphPaymentHelperHtml("RWPH-SETUP-CODE", "Default Setup preview. This is the real Xanax Payment Helper panel; no payment is being created.", false), false);
-        panel = document.getElementById("rwph-xanax-send-status");
+        panel = rwphRenderPaymentHelperPanel("RWPH-SETUP-CODE", "Default Setup preview. This is the real Xanax Payment Helper wizard; no payment is being created.", false, { setupPreview: true, daysPerItem: 10 });
+        rwphSetupPaymentHelperPanelClicks("RWPH-SETUP-CODE");
         break;
       case "rwph-licence-info-panel":
         rwphOpenLicenceInfoPanel({ valid: true, name: "Example User", tornId: "1000001", expiresAt: Math.floor(Date.now() / 1000) + (30 * 86400) });
@@ -4167,7 +4170,7 @@
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 :is(button,.rw-pay-all-copy),body .rw-pay-all-panel.rwph-secondary-panel-v1529 :is(button,.rw-pay-all-copy){max-width:100%!important;min-width:0!important;}
 
       /* Xanax Payment Helper — restored/rebuilt layout + standard 3-corner resize. */
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:320px!important;overflow:hidden!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:420px!important;overflow:hidden!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:86px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(220px,100%)!important;max-width:100%!important;height:44px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;text-align:center!important;font-size:16px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;overflow-wrap:anywhere!important;}
@@ -5269,7 +5272,7 @@
           <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Base licence</div><div class="rwph-stat-value">15 days per Xanax</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Base licence</div><div class="rwph-stat-value">10 days per Xanax</div></div>
         </div>
       </div>
     `;
@@ -8171,6 +8174,15 @@
           <div class="rw-muted" style="grid-column:1/-1;text-align:left;line-height:1.4;">Choose a preset or Custom three-colour theme, choose a layout, then optionally add member-card stats. Preview, character count and Raw HTML update together. The preview renders the exact same responsive Torn newsletter/message HTML at the 760px desktop canvas and scales it down to fit this Preview card without changing its colours. Sent HTML automatically shrinks to phone/PDA message width without horizontal scrolling. RWPH uses your full Faction Info image and checks the 65,535-character Torn newsletter limit before Copy is allowed.</div>
           <div id="rwph-newsletter-status" class="rw-muted" style="grid-column:1/-1;text-align:left;align-self:center;line-height:1.4;"></div>
         </div>
+        <style>
+          @media(max-width:760px),(pointer:coarse){
+            #rwph-newsletter-panel .rwph-newsletter-main-scroll{display:flex!important;flex-direction:column!important;align-items:stretch!important;overflow-y:auto!important;overflow-x:hidden!important;}
+            #rwph-newsletter-panel .rwph-newsletter-output-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-auto-rows:auto!important;width:100%!important;min-width:0!important;overflow:visible!important;flex:0 0 auto!important;}
+            #rwph-newsletter-panel .rwph-newsletter-output-grid>section{display:flex!important;flex-direction:column!important;width:100%!important;min-width:0!important;min-height:360px!important;height:auto!important;overflow:visible!important;flex:0 0 auto!important;}
+            #rwph-newsletter-panel #rwph-newsletter-preview{display:block!important;width:100%!important;min-width:0!important;height:320px!important;min-height:280px!important;flex:0 0 320px!important;visibility:visible!important;opacity:1!important;overflow:hidden!important;}
+            #rwph-newsletter-panel #rwph-newsletter-raw-html{display:block!important;width:100%!important;min-width:0!important;height:300px!important;min-height:300px!important;flex:0 0 300px!important;visibility:visible!important;opacity:1!important;overflow-y:auto!important;overflow-x:hidden!important;}
+          }
+        </style>
         <div class="rwph-newsletter-output-grid" style="min-height:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));grid-auto-rows:auto;gap:10px;overflow:visible;align-items:stretch;">
           <section class="rw-card" style="padding:10px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:7px;"><div style="font-weight:950;">Torn Newsletter / Message Preview</div><div class="rw-muted" style="font-size:9.5px;">Exact sent HTML · 760px scaled to fit</div></div>
@@ -10089,6 +10101,10 @@
       .rw-pay-all-start-warning { flex:1 1 auto; width:100%; min-height:100%; margin:0 !important; border-radius:0 !important; border-left-width:0 !important; border-right-width:0 !important; display:flex; flex-direction:column; justify-content:center; gap:8px; box-sizing:border-box; }
       .rw-pay-all-start-payments { width:100% !important; min-height:40px !important; margin-top:2px !important; border-radius:11px !important; border:1px solid rgba(254,243,199,.72) !important; background:linear-gradient(135deg, rgba(250,204,21,.98), rgba(249,115,22,.96)) !important; color:#1b1208 !important; font:950 12px/1.15 Arial,Helvetica,sans-serif !important; cursor:pointer !important; }
       .rw-pay-all-start-payments:disabled { opacity:.45 !important; cursor:not-allowed !important; }
+      @keyframes rwphExpectedActionPulseV1568 { 0%,100% { box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 13px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 58%,transparent); } 50% { box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 25px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 92%,transparent); } }
+      .rwph-next-action { position:relative !important; outline:3px solid var(--rwph-theme-outline,#23c4d8) !important; outline-offset:2px !important; box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 18px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 78%,transparent) !important; animation:rwphExpectedActionPulseV1568 1.15s ease-in-out infinite !important; z-index:2 !important; }
+      .rw-pay-all-warning-copy.rwph-next-action { padding:8px !important; border-radius:9px !important; background:color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 13%,transparent) !important; }
+      @media (prefers-reduced-motion: reduce) { .rwph-next-action { animation:none !important; } }
       .rw-pay-all-progress { width:100%; padding:7px 9px; border-radius:0; background:rgba(15,23,42,.78); border:1px solid rgba(251,191,36,.16); color:#fef3c7; font-size:10px; font-weight:850; text-align:center; }
       .rw-pay-all-payment-card { width:100%; min-width:0; padding:clamp(9px,2vh,13px) clamp(8px,2vw,11px); border-radius:0; border:1px solid var(--rwph-theme-line2); background:var(--rwph-theme-panel); box-shadow:none; box-sizing:border-box; overflow:hidden; display:grid; gap:4px; }
       .rw-pay-all-payment-name { color:#f8fafc; font-size:clamp(13px,4.4vw,17px); line-height:1.15; font-weight:950; overflow-wrap:anywhere; word-break:break-word; }
@@ -10209,8 +10225,8 @@
     return `
       <div class="rw-pay-all-wizard-page" data-pay-all-page="warning">
         <div class="rw-pay-all-balance-warning rw-pay-all-start-warning">
-          <div><b>Before every payment:</b> make sure Torn faction controls are set to <b>Add To Balance</b>, not Give money. RWPH only prefills the visible fields; you review and manually submit each payment.</div>
-          <button type="button" class="rw-pay-all-accept-warning" data-pay-warning-accept="1" aria-pressed="false">Accept Warning</button>
+          <div class="rw-pay-all-warning-copy rwph-next-action" data-pay-warning-copy="1"><b>Before every payment:</b> make sure Torn faction controls are set to <b>Add To Balance</b>, not Give money. RWPH only prefills the visible fields; you review and manually submit each payment.</div>
+          <button type="button" class="rw-pay-all-accept-warning rwph-next-action" data-pay-warning-accept="1" aria-pressed="false">Accept Warning</button>
           <div class="rw-pay-all-warning-state" data-pay-warning-state="1">${count ? `${count} payment${count === 1 ? "" : "s"} ready. Accept the warning to unlock Start Payments.` : "No payable members were found."}</div>
           <button type="button" class="rw-pay-all-start-payments" data-pay-all-start="1" disabled>Start Payments</button>
         </div>
@@ -10225,6 +10241,7 @@
     const payout = rwphPayAllRowAmount(row);
     const nameDone = copiedState?.name === true;
     const amountDone = copiedState?.amount === true;
+    const expectedAction = !nameDone ? "name" : (!amountDone ? "amount" : "next");
     const last = safeIndex >= safeTotal - 1;
     return `
       <div class="rw-pay-all-wizard-page" data-pay-all-page="member" data-pay-all-member-index="${safeIndex}">
@@ -10235,14 +10252,14 @@
           <div class="rw-pay-all-payment-amount-label">Member payout amount</div>
           <div class="rw-pay-all-payment-amount">${money(payout)}</div>
           <div class="rw-pay-all-copy-grid">
-            <button type="button" class="rw-pay-all-copy ${nameDone ? "rw-pay-all-copy-done" : ""}" data-pay-copy-name="${safeIndex}">${nameDone ? "Prefill Name / ID ✓" : "Prefill Name / ID"}</button>
-            <button type="button" class="rw-pay-all-copy ${amountDone ? "rw-pay-all-copy-done" : ""}" data-pay-copy-amount="${safeIndex}">${amountDone ? "Prefill Amount ✓" : "Prefill Amount"}</button>
+            <button type="button" class="rw-pay-all-copy ${nameDone ? "rw-pay-all-copy-done" : ""} ${expectedAction === "name" ? "rwph-next-action" : ""}" data-pay-copy-name="${safeIndex}">${nameDone ? "Prefill Name / ID ✓" : "Prefill Name / ID"}</button>
+            <button type="button" class="rw-pay-all-copy ${amountDone ? "rw-pay-all-copy-done" : ""} ${expectedAction === "amount" ? "rwph-next-action" : ""}" data-pay-copy-amount="${safeIndex}" ${nameDone ? "" : "disabled aria-disabled=\"true\""}>${amountDone ? "Prefill Amount ✓" : "Prefill Amount"}</button>
           </div>
         </div>
         <div class="rw-pay-all-member-hint">Use the Prefill buttons, verify the member and amount in Torn, manually submit the payment, then continue to the next member.</div>
         <div class="rw-pay-all-wizard-nav">
           <button type="button" class="secondary rw-pay-all-back" data-pay-all-back="1">Back</button>
-          <button type="button" class="primary rw-pay-all-next" data-pay-all-next="1">${last ? "Finish Payments" : "Next Payment"}</button>
+          <button type="button" class="primary rw-pay-all-next ${expectedAction === "next" ? "rwph-next-action" : ""}" data-pay-all-next="1" ${expectedAction === "next" ? "" : "disabled aria-disabled=\"true\""}>${last ? "Finish Payments" : "Next Payment"}</button>
         </div>
       </div>`;
   }
@@ -10299,10 +10316,13 @@
         btn.setAttribute("data-pay-prefill-locked", "1");
       }
     }
+    const warningCopy = panel.querySelector("[data-pay-warning-copy]");
+    if (warningCopy) warningCopy.classList.toggle("rwph-next-action", !isAccepted);
     const acceptBtn = panel.querySelector("[data-pay-warning-accept]");
     if (acceptBtn) {
       acceptBtn.disabled = isAccepted;
       acceptBtn.classList.toggle("rw-pay-all-warning-accepted", isAccepted);
+      acceptBtn.classList.toggle("rwph-next-action", !isAccepted);
       acceptBtn.textContent = isAccepted ? "Warning Accepted" : "Accept Warning";
       acceptBtn.setAttribute("aria-pressed", isAccepted ? "true" : "false");
     }
@@ -10311,6 +10331,7 @@
       const hasPayments = Number(panel.dataset?.payAllTotal || 0) > 0;
       startBtn.disabled = !isAccepted || !hasPayments;
       startBtn.setAttribute("aria-disabled", startBtn.disabled ? "true" : "false");
+      startBtn.classList.toggle("rwph-next-action", isAccepted && hasPayments);
     }
     const state = panel.querySelector("[data-pay-warning-state]");
     if (state) {
@@ -11092,6 +11113,48 @@
     }) || null;
   }
 
+  function rwphFindXanaxAmountField(panel) {
+    const scope = panel || document;
+    const fields = Array.from(scope.querySelectorAll("input, [role='spinbutton']"))
+      .filter(rwphSendHelperVisible)
+      .filter((el) => !el.disabled && !el.readOnly)
+      .filter((el) => !el.closest?.("#rwph-xanax-send-status"));
+
+    const scored = fields.map((el, index) => {
+      const meta = `${el.placeholder || ""} ${el.name || ""} ${el.id || ""} ${el.className || ""} ${el.getAttribute?.("aria-label") || ""} ${el.getAttribute?.("title") || ""} ${rwphSendHelperText(el.closest?.("label, div, li, form") || el.parentElement)}`.toLowerCase();
+      const type = String(el.type || "").toLowerCase();
+      const inputMode = String(el.getAttribute?.("inputmode") || "").toLowerCase();
+      let score = 0;
+      if (/\b(amount|qty|quantity|how many|number of|send amount|item amount)\b/.test(meta)) score += 24;
+      if (/\bxanax\b/.test(meta)) score += 9;
+      if (/\b(send|item)\b/.test(meta)) score += 4;
+      if (type === "number") score += 10;
+      if (el.getAttribute?.("role") === "spinbutton") score += 8;
+      if (/\b(numeric|decimal)\b/.test(inputMode)) score += 5;
+      if (/\b(user|player|recipient|name|message|comment|code|search|filter)\b/.test(meta) && !/\b(amount|qty|quantity)\b/.test(meta)) score -= 30;
+      score -= Math.min(index, 30) * 0.01;
+      return { el, score };
+    }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
+
+    return scored[0]?.el || null;
+  }
+
+  async function rwphPasteXanaxAmountIntoOpenForm(amount) {
+    const qty = Math.max(1, Math.floor(Number(amount || 1)));
+    const panel = rwphFindLikelySendPanel() || document;
+    let field = rwphFindXanaxAmountField(panel) || rwphFindXanaxAmountField(document);
+    let filled = rwphSendHelperSetValue(field, String(qty));
+    for (let attempt = 0; !filled && attempt < 4; attempt += 1) {
+      await rwphSendHelperSleep(120);
+      field = rwphFindXanaxAmountField(rwphFindLikelySendPanel() || document) || rwphFindXanaxAmountField(document);
+      filled = rwphSendHelperSetValue(field, String(qty));
+    }
+    await copyText(String(qty)).catch(() => false);
+    return filled
+      ? { ok: true, amount: qty }
+      : { ok: false, amount: qty, error: `Could not find Torn's Xanax amount field. The selected amount (${qty}) was copied to your clipboard as a fallback.` };
+  }
+
   function rwphSetContentEditable(el, value) {
     if (!el) return false;
     const touchMode = rwphIsTouchPhoneOrPda();
@@ -11116,7 +11179,7 @@
     await copyText(PAYMENT_RECEIVER_TEXT).catch(() => false);
 
     if (!userField) {
-      return { ok: false, error: "Could not find the User ID field. Open Xanax > Send this item first, then press Prefill Receiver again. Receiver copied to clipboard as fallback." };
+      return { ok: false, error: "Could not find the User ID field. Open Xanax > Send this item first, then press Prefill Name / ID again. The receiver was copied to your clipboard as a fallback." };
     }
 
     rwphSendHelperSetValue(userField, PAYMENT_RECEIVER_TEXT);
@@ -11141,7 +11204,7 @@
 
     const msgField = rwphFindMessageField(panel) || rwphFindMessageField(document);
     if (!msgField) {
-      return { ok: false, error: "Could not find the Add Message field. Open the message box first, then press Prefill Code again. Code copied to clipboard as fallback." };
+      return { ok: false, error: "Could not find the Add Message field. Open Add Message first, then press Prefill Message Code again. The code was copied to your clipboard as a fallback." };
     }
 
     if (msgField.getAttribute?.("contenteditable") === "true") rwphSetContentEditable(msgField, paymentCode);
@@ -11150,112 +11213,342 @@
     return { ok: true };
   }
 
+  function rwphPaymentHelperDaysPerXanaxV1568() {
+    const helper = getXanaxPaymentHelper();
+    const pending = getPendingPayment();
+    return Math.max(1, Math.floor(Number(helper?.daysPerItem || pending?.daysPerItem || 10)));
+  }
+
+  function rwphClampXanaxAmountV1568(value) {
+    const parsed = Math.floor(Number(value || 1));
+    if (!Number.isFinite(parsed)) return 1;
+    return Math.min(9999, Math.max(1, parsed));
+  }
+
+  function rwphIncludePurchaserInFactionSelectionV1570(state) {
+    const ownId = String(state?.ownTornId || '');
+    if (state?.mode === 'faction' && /^\d+$/.test(ownId) && !state.selected.includes(ownId)) state.selected = [ownId, ...state.selected];
+  }
+
+  function rwphPaymentHelperWizardPageHtmlV1568(state) {
+    rwphIncludePurchaserInFactionSelectionV1570(state);
+    const page = String(state?.page || "start");
+    const qty = rwphClampXanaxAmountV1568(state?.amount || 1);
+    const daysPerItem = Math.max(1, Math.floor(Number(state?.daysPerItem || 10)));
+    const billable = state.mode === 'faction' ? Math.max(1, state.selected.length - Math.floor(state.selected.length / 3)) : 1;
+    const totalDays = Math.floor(qty / billable) * daysPerItem;
+    const code = String(state?.code || "");
+    const message = String(state?.message || "");
+    const errorClass = state?.isError ? " rwph-xanax-helper-error" : "";
+    const nav = (nextLabel = "Next Step", canBack = true, nextClass = "rwph-helper-expected-action") => `
+      <div class="rwph-xanax-wizard-nav">
+        ${canBack ? '<button id="rwph-payment-helper-back" type="button" class="secondary">Back</button>' : '<span></span>'}
+        <button id="rwph-payment-helper-next" type="button" class="primary ${nextClass}">${nextLabel}</button>
+      </div>`;
+
+    if (page === "licence") return `
+      <div class="rwph-xanax-wizard-page"><div class="rwph-xanax-wizard-progress">Select licence type</div>
+      <div class="rwph-xanax-wizard-card"><div class="rwph-xanax-wizard-heading">Who is this licence for?</div>
+        <label><input type="radio" name="rwph-licence-mode" value="solo" ${state.mode !== 'faction' ? 'checked' : ''}> Solo licence — 1 Xanax per 10 days</label>
+        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> Faction licence — every third member free</label>
+        ${state.mode === 'faction' ? `<div class="rwph-xanax-wizard-copy">Select other faction members below. Your own account is always included as one selected member and cannot be removed. Every third member is free.</div>
+        ${state.renewalCount ? `<div class="rwph-xanax-wizard-copy"><b>Renew existing licence:</b> ${state.renewalCount} previously selected members loaded. Leave these ticked to extend the same group, or add/remove members below. Removed members keep their existing paid time but receive no additional time.</div>` : ''}
+        <button type="button" id="rwph-load-faction-members">Reload current faction members</button>
+        <button type="button" id="rwph-restore-faction-renewal" ${state.renewalCount ? '' : 'disabled'}>Restore existing licensed members</button>
+        <div style="max-height:190px;overflow-y:auto">${(state.members || []).map(m => `<label style="display:block"><input type="checkbox" class="rwph-faction-member-choice" value="${esc(m.id)}" ${state.selected.includes(String(m.id)) ? 'checked' : ''} ${String(m.id) === String(state.ownTornId) ? 'disabled' : ''}> ${esc(m.name)} [${esc(m.id)}]</label>`).join('') || 'Load members to choose a roster.'}</div>
+        <div>${state.selected.length} members · ${Math.max(1,state.selected.length-Math.floor(state.selected.length/3))} paid · ${Math.floor(state.selected.length/3)} free per 10-day block</div>` : ''}
+      </div>${nav('Confirm licence type')}</div>`;
+
+    if (page === "amount") return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="amount">
+        <div class="rwph-xanax-wizard-progress">Step 2 of 6 · Choose payment amount</div>
+        <div class="rwph-xanax-wizard-card rwph-helper-expected-action">
+          <div class="rwph-xanax-wizard-heading">How many Xanax do you want to pay?</div>
+          <div class="rwph-xanax-wizard-copy">Current licence rate: <b>${billable} Xanax per ${daysPerItem} days</b> for ${state.mode === 'faction' ? state.selected.length + ' selected faction members' : 'a solo licence'}.</div>
+          <label class="rwph-xanax-amount-label">Xanax amount
+            <input id="rwph-payment-helper-xanax-count" type="number" min="${billable}" max="9999" step="1" inputmode="numeric" value="${qty}">
+          </label>
+          <div class="rwph-xanax-days-result"><b>${qty} Xanax</b> / ${billable} Xanax per 10-day block = <b>${totalDays} licence days</b></div>
+          <div class="rw-muted">RWPH uses this amount later when you reach the Prefill Xanax Amount step.</div>
+        </div>
+        ${nav()}
+      </div>`;
+
+    if (page === "receiver") return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="receiver">
+        <div class="rwph-xanax-wizard-progress">Step 3 of 6 · Prefill Name / ID</div>
+        <div class="rwph-xanax-wizard-card">
+          <div class="rwph-xanax-wizard-heading">Prefill the receiver</div>
+          <div class="rwph-xanax-wizard-copy">Torn receiver: <b>${esc(PAYMENT_RECEIVER_TEXT)}</b></div>
+          <button id="rwph-payment-helper-prefill-name" type="button" class="primary ${state?.receiverDone ? "rwph-xanax-step-done" : "rwph-helper-expected-action"}">${state?.receiverDone ? "Prefill Name / ID ✓" : "Prefill Name / ID"}</button>
+          <div class="rw-muted">RWPH prefills the visible Torn receiver field and also copies the value as a fallback.</div>
+        </div>
+        ${nav("Next Step", true, state?.receiverDone ? "rwph-helper-expected-action" : "")}
+      </div>`;
+
+    if (page === "code") return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="code">
+        <div class="rwph-xanax-wizard-progress">Step 4 of 6 · Prefill message code</div>
+        <div class="rwph-xanax-wizard-card">
+          <div class="rwph-xanax-wizard-heading">Prefill the Add Message field</div>
+          <div class="rwph-xanax-wizard-code">${esc(code)}</div>
+          <button id="rwph-payment-helper-prefill-code" type="button" class="primary ${state?.codeDone ? "rwph-xanax-step-done" : "rwph-helper-expected-action"}">${state?.codeDone ? "Prefill Message Code ✓" : "Prefill Message Code"}</button>
+          <div class="rw-muted">The exact payment code must be in Torn's Add Message field for automatic verification.</div>
+        </div>
+        ${nav("Next Step", true, state?.codeDone ? "rwph-helper-expected-action" : "")}
+      </div>`;
+
+    if (page === "send-amount") return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="send-amount">
+        <div class="rwph-xanax-wizard-progress">Step 5 of 6 · Prefill Xanax amount</div>
+        <div class="rwph-xanax-wizard-card">
+          <div class="rwph-xanax-wizard-heading">Prefill the Xanax send amount</div>
+          <div class="rwph-xanax-days-result"><b>${qty} Xanax</b> = <b>${totalDays} licence days</b></div>
+          <button id="rwph-payment-helper-prefill-amount" type="button" class="primary ${state?.amountDone ? "rwph-xanax-step-done" : "rwph-helper-expected-action"}">${state?.amountDone ? `Prefill Xanax Amount (${qty}) ✓` : `Prefill Xanax Amount (${qty})`}</button>
+          <div class="rw-muted">This button prefills the Xanax quantity/amount input in the Torn Send Item form you opened. It never clicks Send or Confirm.</div>
+        </div>
+        ${nav("Review Payment", true, state?.amountDone ? "rwph-helper-expected-action" : "")}
+      </div>`;
+
+    if (page === "review") return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="review">
+        <div class="rwph-xanax-wizard-progress">Step 6 of 6 · Review and manually send</div>
+        <div class="rwph-xanax-wizard-card rwph-helper-expected-action">
+          <div class="rwph-xanax-wizard-heading">Review Torn before sending</div>
+          <div class="rwph-xanax-review-grid">
+            <div><span>Item</span><b>${esc(PAYMENT_ITEM_NAME)}</b></div>
+            <div><span>Receiver</span><b>${esc(PAYMENT_RECEIVER_TEXT)}</b></div>
+            <div><span>Message code</span><b class="rwph-xanax-code">${esc(code)}</b></div>
+            <div><span>Amount</span><b>${qty} Xanax</b></div>
+            <div><span>Licence type</span><b>${state.mode === 'faction' ? `Faction (${state.selected.length} members, ${billable} paid)` : 'Solo'}</b></div><div><span>Licence time</span><b>${totalDays} days</b></div>
+          </div>
+          <div class="rwph-xanax-final-warning"><b>Final action is manual:</b> review Torn's visible fields, then press Torn's Send/Confirm control yourself. RWPH is already checking automatically for the payment.</div>
+        </div>
+        <div class="rwph-xanax-wizard-nav"><button id="rwph-payment-helper-back" type="button" class="secondary">Back</button><button id="rwph-payment-helper-close-wizard" type="button" class="secondary">Close Helper</button></div>
+      </div>`;
+
+    return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="start">
+        <div class="rwph-xanax-wizard-progress">Step 1 of 6 · Open the Torn send form</div>
+        ${message ? `<div class="rwph-xanax-helper-message${errorClass}">${message}</div>` : ""}
+        <div class="rwph-xanax-wizard-card">
+          <div class="rwph-xanax-wizard-heading">Prepare the Xanax payment in Torn</div>
+          <ol class="rwph-xanax-step-list rwph-xanax-wizard-list">
+            <li>Open your Torn <b>Items</b> page.</li>
+            <li>Find your <b>Xanax</b>.</li>
+            <li>Click <b>Send this item</b> yourself.</li>
+            <li>Click <b>Add Message</b> yourself.</li>
+            <li><b>Do not type anything yet.</b> Leave the receiver, message and amount for the RWPH wizard steps.</li>
+          </ol>
+          <div class="rwph-xanax-safety-note">RWPH only prefills visible fields. It never clicks Torn's Send/Confirm control and never sends an item automatically.</div>
+        </div>
+        ${nav("Next Step", false)}
+      </div>`;
+  }
+
   function rwphPaymentHelperHtml(code, message, isError = false) {
     return `
+      <style>
+        #rwph-xanax-send-status .rwph-xanax-scroll{display:flex!important;flex-direction:column!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:8px!important;gap:8px!important;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-stage{display:flex;flex:1 1 auto;min-height:0;width:100%;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-page{display:flex;flex-direction:column;gap:9px;width:100%;min-width:0;min-height:100%;box-sizing:border-box;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-progress{padding:7px 9px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-panel2);color:var(--rwph-theme-soft);font-size:10px;font-weight:900;text-align:center;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-card{display:grid;gap:9px;width:100%;min-width:0;padding:11px;border:1px solid var(--rwph-theme-line2);border-radius:12px;background:var(--rwph-theme-panel);box-sizing:border-box;overflow-wrap:anywhere;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-heading{font-size:14px;font-weight:950;color:var(--rwph-theme-text);}
+        #rwph-xanax-send-status .rwph-xanax-wizard-copy{line-height:1.45;color:var(--rwph-theme-text);}
+        #rwph-xanax-send-status .rwph-xanax-wizard-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr));gap:8px;width:100%;margin-top:auto;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-nav button,#rwph-xanax-send-status .rwph-xanax-wizard-card>button{width:100%!important;min-height:40px!important;}
+        #rwph-xanax-send-status .rwph-xanax-amount-label{display:grid;gap:5px;font-weight:900;}
+        #rwph-xanax-send-status #rwph-payment-helper-xanax-count{width:100%!important;min-height:42px!important;font-size:18px!important;font-weight:950!important;text-align:center!important;box-sizing:border-box!important;}
+        #rwph-xanax-send-status .rwph-xanax-days-result{padding:10px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-bg2);color:var(--rwph-theme-text);font-size:13px;line-height:1.4;text-align:center;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-code{padding:8px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-bg2);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:900;overflow-wrap:anywhere;text-align:center;}
+        #rwph-xanax-send-status .rwph-xanax-review-grid{display:grid;gap:6px;}
+        #rwph-xanax-send-status .rwph-xanax-review-grid>div{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:8px;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-bg2);align-items:start;}
+        #rwph-xanax-send-status .rwph-xanax-review-grid span{color:var(--rwph-theme-soft);font-weight:850;}
+        #rwph-xanax-send-status .rwph-xanax-review-grid b{min-width:0;overflow-wrap:anywhere;}
+        #rwph-xanax-send-status .rwph-xanax-final-warning{padding:9px;border:2px solid var(--rwph-theme-outline);border-radius:9px;background:color-mix(in srgb,var(--rwph-theme-outline) 12%,var(--rwph-theme-panel));line-height:1.45;}
+        #rwph-xanax-send-status .rwph-xanax-step-done{border-color:#22c55e!important;background:color-mix(in srgb,#22c55e 26%,var(--rwph-theme-panel2))!important;}
+        #rwph-xanax-send-status .rwph-helper-expected-action{outline:3px solid var(--rwph-theme-outline,#23c4d8)!important;outline-offset:2px!important;box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 20px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 78%,transparent)!important;animation:rwphExpectedActionPulseV1568 1.15s ease-in-out infinite!important;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-list{margin:0;padding-left:20px;display:grid;gap:6px;}
+        @media(max-width:760px),(pointer:coarse){#rwph-xanax-send-status .rwph-xanax-review-grid>div{grid-template-columns:1fr!important;}#rwph-xanax-send-status .rwph-xanax-scroll{padding:7px!important;}#rwph-xanax-send-status .rwph-xanax-wizard-card{padding:9px!important;}}
+        @media(prefers-reduced-motion:reduce){#rwph-xanax-send-status .rwph-helper-expected-action{animation:none!important;}}
+      </style>
       <button id="rwph-close-helper" class="danger" type="button" title="Close" aria-label="Close Xanax Payment Helper">×</button>
       <div id="rwph-payment-helper-title"><img class="rwph-dynamic-logo-icon rwph-payment-helper-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span class="rwph-payment-helper-title-text">Payment Helper</span></div>
       <div class="rwph-xanax-scroll">
-        <div class="rwph-xanax-helper-subtitle">Xanax licence payment • Prefill helper only • You review and confirm manually</div>
-        <div class="rwph-xanax-helper-message ${isError ? 'rwph-xanax-helper-error' : ''}">${message}</div>
-
-        <div class="rwph-xanax-detail-card">
-          <div class="rwph-xanax-detail-title">Required payment details</div>
-
-          <div class="rwph-xanax-expiry-note">RWPH checks automatically after you send. The pending code is managed by the backend/database.</div>
-
-          <div class="rwph-xanax-actions" aria-label="Xanax payment helper actions">
-            <button id="rwph-copy-receiver" type="button">Prefill Receiver</button>
-            <button id="rwph-copy-code" type="button">Prefill Code</button>
-          </div>
-
-          <div><b>Send item:</b> ${esc(PAYMENT_ITEM_NAME)} <span class="rwph-xanax-small-blue">only</span></div>
-          <div><b>Send to:</b> ${esc(PAYMENT_RECEIVER_TEXT)}</div>
-          <div><b>Message code:</b> <span class="rwph-xanax-code">${esc(code)}</span></div>
-          <div><b>Licence time:</b> 15 days per Xanax, plus any active bonus deals.</div>
-        </div>
-
-      <div class="rwph-xanax-steps">
-        <div class="rwph-xanax-steps-title"><b>How to use:</b></div>
-        <ol class="rwph-xanax-step-list">
-          <li>Open your <b>Xanax</b> item.</li>
-          <li>Click <b>Send this item</b> yourself.</li>
-          <li>Click <b>Add Message</b> yourself.</li>
-          <li>Press <b>Prefill Receiver</b> to prefill the receiver field (and copy it as a fallback).</li>
-          <li>Press <b>Prefill Code</b> to prefill the message field (and copy it as a fallback).</li>
-          <li>Choose the Xanax amount, review everything, then manually Send/Confirm.</li>
-        </ol>
-      </div>
-
-        <div class="rwph-xanax-safety-note">
-          RWPH never clicks Send, never clicks Confirm, and never sends items for you. Only Xanax with the exact payment code can auto-add licence time. Wrong items or missing/incorrect codes need manual review.
-        </div>
-      </div>
-    `;
+        <div class="rwph-xanax-helper-subtitle">Xanax licence payment wizard · Prefill only · Final Send/Confirm is always manual</div>
+        <div class="rwph-xanax-wizard-stage" data-rwph-payment-helper-stage></div>
+      </div>`;
   }
 
-  function rwphRenderPaymentHelperPanel(code, message, isError = false) {
+  function rwphRenderPaymentHelperWizardV1568(box) {
+    if (!box) return;
+    const state = box.__rwphPaymentWizardState;
+    const stage = box.querySelector("[data-rwph-payment-helper-stage]");
+    if (!state || !stage) return;
+    state.amount = rwphClampXanaxAmountV1568(state.amount);
+    if (state.mode === 'faction') state.amount = Math.max(state.amount, Math.max(1, state.selected.length - Math.floor(state.selected.length / 3)));
+    stage.innerHTML = rwphPaymentHelperWizardPageHtmlV1568(state);
+    try { box.querySelector(".rwph-xanax-scroll")?.scrollTo?.({ top: 0, behavior: "auto" }); } catch (_) {}
+  }
+
+  function rwphRenderPaymentHelperPanel(code, message, isError = false, options = {}) {
     rwphSendHelperPanelStatus(rwphPaymentHelperHtml(code, message, isError), isError);
     const box = document.getElementById("rwph-xanax-send-status");
-    if (box) box.dataset.rwphPaymentCode = String(code || "");
+    if (!box) return null;
+    box.dataset.rwphPaymentCode = String(code || "");
+    box.__rwphPaymentWizardState = {
+      page: "start",
+      mode: "solo", members: [], selected: [], billable: 1,
+      code: String(code || ""),
+      message: String(message || ""),
+      isError: !!isError,
+      amount: rwphClampXanaxAmountV1568(options.amount || 1),
+      daysPerItem: Math.max(1, Math.floor(Number(options.daysPerItem || rwphPaymentHelperDaysPerXanaxV1568()))),
+      receiverDone: false,
+      codeDone: false,
+      amountDone: false,
+      setupPreview: !!options.setupPreview,
+    };
+    rwphRenderPaymentHelperWizardV1568(box);
+    return box;
   }
 
-  function rwphMaybeAutoClosePaymentHelper() {
-    const state = window.__rwphPaymentHelperButtonState || {};
-    if (state.receiverClicked && state.codeClicked) {
-      sessionStorage.setItem("rwph_xanax_helper_closed", "1");
-      setTimeout(() => {
-        document.getElementById("rwph-xanax-send-status")?.remove();
-      }, 650);
-    }
+  function rwphPaymentHelperNextPageV1568(state) {
+    const order = ["start", "licence", "amount", "receiver", "code", "send-amount", "review"];
+    const idx = Math.max(0, order.indexOf(String(state?.page || "start")));
+    return order[Math.min(order.length - 1, idx + 1)];
+  }
+
+  function rwphPaymentHelperPreviousPageV1568(state) {
+    const order = ["start", "licence", "amount", "receiver", "code", "send-amount", "review"];
+    const idx = Math.max(0, order.indexOf(String(state?.page || "start")));
+    return order[Math.max(0, idx - 1)];
   }
 
   function rwphSetupPaymentHelperPanelClicks(code) {
-    window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
-
     if (window.__rwphPaymentHelperClicksInstalled) return;
     window.__rwphPaymentHelperClicksInstalled = true;
 
-    document.addEventListener("click", async (e) => {
-      const target = e.target;
-      if (!target || !target.id || !String(target.id).startsWith("rwph-")) return;
+    document.addEventListener("input", (e) => {
+      const input = e.target?.closest?.("#rwph-payment-helper-xanax-count");
+      if (!input) return;
+      const box = input.closest("#rwph-xanax-send-status");
+      const state = box?.__rwphPaymentWizardState;
+      if (!state) return;
+      state.amount = rwphClampXanaxAmountV1568(input.value);
+      const result = box.querySelector(".rwph-xanax-days-result");
+      if (result) { const billed = state.mode === 'faction' ? Math.max(1, state.billable || 1) : 1; result.innerHTML = `<b>${state.amount} Xanax</b> / ${billed} per block = <b>${Math.floor(state.amount / billed) * state.daysPerItem} licence days</b>`; }
+    });
 
-      if (target.id === "rwph-close-helper") {
+    document.addEventListener("change", (e) => {
+      const input = e.target?.closest?.("#rwph-payment-helper-xanax-count");
+      if (!input) return;
+      const box = input.closest("#rwph-xanax-send-status");
+      const state = box?.__rwphPaymentWizardState;
+      if (!state) return;
+      state.amount = rwphClampXanaxAmountV1568(input.value);
+      input.value = String(state.amount);
+      rwphRenderPaymentHelperWizardV1568(box);
+    });
+
+    document.addEventListener('change', e => {
+      const el = e.target;
+      const box = el?.closest?.('#rwph-xanax-send-status');
+      const state = box?.__rwphPaymentWizardState;
+      if (!state) return;
+      if (el.name === 'rwph-licence-mode') { state.mode = el.value; if (el.value === 'faction' && !state.selected.length) state.selected = [...(state.renewalMemberIds || [])]; rwphIncludePurchaserInFactionSelectionV1570(state); rwphRenderPaymentHelperWizardV1568(box); }
+      if (el.classList?.contains('rwph-faction-member-choice')) { state.selected = [...box.querySelectorAll('.rwph-faction-member-choice:checked')].map(el => el.value); rwphIncludePurchaserInFactionSelectionV1570(state); rwphRenderPaymentHelperWizardV1568(box); }
+    });
+    document.addEventListener("click", async (e) => {
+      const target = e.target?.closest?.("#rwph-xanax-send-status button");
+      if (!target) return;
+      const box = target.closest("#rwph-xanax-send-status");
+      const state = box?.__rwphPaymentWizardState;
+
+      if (target.id === "rwph-close-helper" || target.id === "rwph-payment-helper-close-wizard") {
         e.preventDefault();
         e.stopPropagation();
         sessionStorage.setItem("rwph_xanax_helper_closed", "1");
-        document.getElementById("rwph-xanax-send-status")?.remove();
+        box?.remove();
+        return;
+      }
+      if (!state) return;
+
+      if (target.id === 'rwph-restore-faction-renewal') {
+        e.preventDefault();
+        state.selected = [...(state.renewalMemberIds || [])];
+        rwphIncludePurchaserInFactionSelectionV1570(state);
+        rwphRenderPaymentHelperWizardV1568(box);
+        return;
+      }
+      if (target.id === 'rwph-load-faction-members') {
+        e.preventDefault();
+        try { const result = await apiPost('/api/paywall/faction-members', { userKey: getPaymentUserKey() }); state.members = result.members || []; state.ownTornId = String(result.ownTornId || state.ownTornId || ''); rwphIncludePurchaserInFactionSelectionV1570(state); rwphRenderPaymentHelperWizardV1568(box); }
+        catch (err) { rwphShowToast(String(err?.message || err), 'error', 'Faction members'); }
+        return;
+      }
+      if (target.id === "rwph-payment-helper-back") {
+        e.preventDefault();
+        state.page = rwphPaymentHelperPreviousPageV1568(state);
+        rwphRenderPaymentHelperWizardV1568(box);
         return;
       }
 
-      const payload = getXanaxPaymentHelper();
-      const currentCode = payload?.code || code;
-
-      if (target.id === "rwph-copy-receiver") {
+      if (target.id === "rwph-payment-helper-next") {
         e.preventDefault();
-        window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
-        window.__rwphPaymentHelperButtonState.receiverClicked = true;
-
-        const res = await rwphPasteReceiverIntoOpenForm();
-        if (res.ok) {
-          rwphShowToast(`Receiver prefilled: ${PAYMENT_RECEIVER_TEXT}. Review the Torn field before sending.`, "info", "RWPH Payment Helper");
-        } else {
-          rwphShowToast(res.error, "warn", "RWPH Payment Helper");
+        if (state.page === 'licence') {
+          rwphIncludePurchaserInFactionSelectionV1570(state);
+          if (state.mode === 'faction' && !state.selected.length) { rwphShowToast('Select at least one faction member.', 'warning', 'Faction licence'); return; }
+          if (!state.setupPreview) {
+            try {
+              const result = await apiPost('/api/paywall/configure', { userKey: getPaymentUserKey(), mode: state.mode, memberIds: state.selected });
+              state.billable = result.billable;
+            } catch (err) { rwphShowToast(String(err?.message || err), 'error', 'Licence setup'); return; }
+          }
+          state.amount = Math.max(state.amount, state.mode === 'faction' ? state.billable : 1);
         }
-        rwphMaybeAutoClosePaymentHelper();
+        if (state.page === "receiver" && !state.receiverDone) {
+          rwphShowToast("Use Prefill Name / ID first. If Torn blocks the prefill, use the clipboard fallback, then press the Prefill button again to mark the step.", "warning", "RWPH Payment Helper");
+          return;
+        }
+        if (state.page === "code" && !state.codeDone) {
+          rwphShowToast("Use Prefill Message Code first before continuing.", "warning", "RWPH Payment Helper");
+          return;
+        }
+        if (state.page === "send-amount" && !state.amountDone) {
+          rwphShowToast("Use Prefill Xanax Amount first before continuing.", "warning", "RWPH Payment Helper");
+          return;
+        }
+        state.page = rwphPaymentHelperNextPageV1568(state);
+        rwphRenderPaymentHelperWizardV1568(box);
+        return;
       }
 
-      if (target.id === "rwph-copy-code") {
+      if (target.id === "rwph-payment-helper-prefill-name") {
         e.preventDefault();
-        window.__rwphPaymentHelperButtonState ||= { receiverClicked: false, codeClicked: false };
-        window.__rwphPaymentHelperButtonState.codeClicked = true;
+        const res = state.setupPreview ? { ok: true } : await rwphPasteReceiverIntoOpenForm();
+        state.receiverDone = true; // Clicked is enough because clipboard fallback is always populated.
+        rwphRenderPaymentHelperWizardV1568(box);
+        rwphShowToast(res.ok ? `Name / ID prefilled: ${PAYMENT_RECEIVER_TEXT}. Review the Torn field.` : res.error, res.ok ? "info" : "warn", "RWPH Payment Helper");
+        return;
+      }
 
-        const res = await rwphPastePaymentCodeIntoOpenForm(currentCode);
-        if (res.ok) {
-          rwphShowToast("Payment code prefilled into Add Message. Review the Torn field before sending.", "info", "RWPH Payment Helper");
-        } else {
-          rwphShowToast(res.error, "warn", "RWPH Payment Helper");
-        }
-        rwphMaybeAutoClosePaymentHelper();
+      if (target.id === "rwph-payment-helper-prefill-code") {
+        e.preventDefault();
+        const res = state.setupPreview ? { ok: true } : await rwphPastePaymentCodeIntoOpenForm(state.code || code);
+        state.codeDone = true;
+        rwphRenderPaymentHelperWizardV1568(box);
+        rwphShowToast(res.ok ? "Message code prefilled into Torn's Add Message field. Review it before sending." : res.error, res.ok ? "info" : "warn", "RWPH Payment Helper");
+        return;
+      }
+
+      if (target.id === "rwph-payment-helper-prefill-amount") {
+        e.preventDefault();
+        const res = state.setupPreview ? { ok: true, amount: state.amount } : await rwphPasteXanaxAmountIntoOpenForm(state.amount);
+        state.amountDone = true;
+        rwphRenderPaymentHelperWizardV1568(box);
+        rwphShowToast(res.ok ? `Xanax amount prefilled: ${state.amount}. Review the Torn amount before sending.` : res.error, res.ok ? "info" : "warn", "RWPH Payment Helper");
       }
     });
   }
@@ -11378,7 +11671,6 @@
       }
     }
 
-    window.__rwphPaymentHelperButtonState = { receiverClicked: false, codeClicked: false };
     rwphSetupPaymentHelperPanelClicks(code);
 
     if (!helperConfirmed) {
@@ -11395,9 +11687,39 @@
     rwphRenderPaymentHelperPanel(
       code,
       recoveredPayment
-        ? `The previous payment code was no longer active, so RWPH restored/created the current database-backed code automatically. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the Prefill buttons below for the current receiver/code.`
-        : `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then use the Prefill buttons below for the receiver and code.`
+        ? `The previous payment code was no longer active, so RWPH restored/created the current database-backed code automatically. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then follow the Payment Helper wizard one step at a time.`
+        : `Payment helper loaded. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then follow the Payment Helper wizard one step at a time.`
     );
+    try {
+      const wizard = document.querySelector('#rwph-xanax-send-status');
+      const wizardState = wizard?.__rwphPaymentWizardState;
+      const renewal = await apiPost('/api/paywall/faction-renewal-members', { userKey: getPaymentUserKey() });
+      if (wizardState) {
+        wizardState.ownTornId = String(renewal?.ownTornId || wizardState.ownTornId || '');
+        wizardState.renewalMemberIds = renewal?.memberIds || [];
+        wizardState.renewalCount = wizardState.renewalMemberIds.length;
+        if (wizardState.renewalCount) {
+          wizardState.mode = 'faction';
+          wizardState.selected = [...wizardState.renewalMemberIds];
+          const roster = await apiPost('/api/paywall/faction-members', { userKey: getPaymentUserKey() });
+          wizardState.members = roster?.members || [];
+          wizardState.ownTornId = String(roster?.ownTornId || wizardState.ownTornId || '');
+        }
+        rwphIncludePurchaserInFactionSelectionV1570(wizardState);
+        rwphRenderPaymentHelperWizardV1568(wizard);
+      }
+    } catch (err) { console.warn('Could not load existing faction licence members', err); }
+    try {
+      const savedIntent = await apiPost('/api/paywall/intent', { userKey: getPaymentUserKey() });
+      const wizard = document.querySelector('#rwph-xanax-send-status');
+      if (wizard?.__rwphPaymentWizardState && savedIntent?.mode === 'faction') {
+        wizard.__rwphPaymentWizardState.mode = 'faction';
+        wizard.__rwphPaymentWizardState.selected = savedIntent.memberIds || [];
+        wizard.__rwphPaymentWizardState.ownTornId = String(savedIntent.ownTornId || wizard.__rwphPaymentWizardState.ownTornId || '');
+        rwphIncludePurchaserInFactionSelectionV1570(wizard.__rwphPaymentWizardState);
+        wizard.__rwphPaymentWizardState.billable = savedIntent.billable || 1;
+      }
+    } catch (err) { console.warn('Could not restore licence purchase choice', err); }
     startAutoPaymentCheck(getPaymentUserKey(), helperMode);
     rwphConsumeCrossTabPopup("xanax-payment", 650);
   }
@@ -11934,9 +12256,9 @@
       <div class="rw-how-box rw-help-api-card rw-help-section-card">
         <div class="rw-how-title">Licence &amp; Xanax Payment Helper</div>
         <ul class="rw-how-list">
-          <li><b>Licence time:</b> each correctly verified Xanax payment adds the licence time shown in the Payment Helper, including any active deal shown there.</li>
+          <li><b>Licence time:</b> the Payment Helper shows the current days-per-Xanax rate and calculates the licence days from the Xanax amount you select before you send.</li>
           <li><b>Payment code:</b> use the exact generated RWPH message code with the Xanax send. RWPH checks the pending payment automatically.</li>
-          <li><b>Prefill Receiver / Prefill Code:</b> these helper buttons place/copy the required receiver or code into the open Torn send form where possible.</li>
+          <li><b>Wizard flow:</b> open Items → Xanax → Send this item → Add Message, choose the Xanax amount, then follow Prefill Name / ID → Prefill Message Code → Prefill Xanax Amount → final manual review/send.</li>
           <li><b>You confirm:</b> RWPH never presses Torn's final Send/Confirm button for you. Check the item, recipient, amount and message before manually submitting.</li>
           <li><b>Your Expiration:</b> shows the current licence expiry/time remaining.</li>
         </ul>
@@ -12103,7 +12425,7 @@
         <button id="rw-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
       </div>
       <div class="rw-body">
-        <div class="rw-lock-pay-heading">Each Xanax will extend your licence by 15 days</div>
+        <div class="rw-lock-pay-heading">Each Xanax will extend your licence by 10 days</div>
         <div class="rw-small">
           RWPH calculates completed ranked-war payouts while keeping Torn transactions manual. Save your API key, then unlock an active licence or start a Xanax licence payment.
         </div>
