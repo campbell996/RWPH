@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.579
+// @version      1.1.581
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -11260,7 +11260,25 @@
   function rwphPaymentHelperHtml(code, message, isError = false) {
     return `
       <style>
-        #rwph-xanax-send-status .rwph-xanax-scroll{display:flex!important;flex-direction:column!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:8px!important;gap:8px!important;}
+        /* v1.1.581: fixed typography and one predictable content box across all wizard steps.
+           The shared secondary-panel CSS must not force the stage to flex:0 0 auto. */
+        body #rwph-xanax-send-status{display:flex!important;flex-direction:column!important;min-width:0!important;box-sizing:border-box!important;}
+        body #rwph-xanax-send-status .rwph-xanax-scroll{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;align-items:stretch!important;min-width:0!important;min-height:0!important;width:100%!important;max-width:100%!important;overflow-y:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;padding:8px!important;gap:8px!important;}
+        body #rwph-xanax-send-status .rwph-xanax-scroll > .rwph-xanax-wizard-stage{position:relative!important;inset:auto!important;transform:none!important;float:none!important;display:flex!important;flex:1 0 auto!important;flex-direction:column!important;align-items:stretch!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;height:auto!important;margin:0!important;box-sizing:border-box!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-stage > .rwph-xanax-wizard-page{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;align-items:stretch!important;gap:9px!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:100%!important;height:auto!important;margin:0!important;box-sizing:border-box!important;overflow:visible!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-page > *{min-width:0!important;max-width:100%!important;box-sizing:border-box!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-card{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-content:start!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;box-sizing:border-box!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-card > *{min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow-wrap:anywhere!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;margin-top:auto!important;box-sizing:border-box!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-nav > button{min-width:0!important;max-width:100%!important;width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;box-sizing:border-box!important;}
+        body #rwph-xanax-send-status .rwph-xanax-review-grid{min-width:0!important;max-width:100%!important;}
+        body #rwph-xanax-send-status .rwph-xanax-review-grid > div{grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr)!important;min-width:0!important;max-width:100%!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-page :is(label,button,input,.rwph-xanax-wizard-copy,.rw-muted){font-size:12px!important;line-height:1.45!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-heading{font-size:14px!important;line-height:1.35!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-progress{font-size:11px!important;line-height:1.4!important;}
+        body #rwph-xanax-send-status .rwph-xanax-wizard-page input[type=radio],body #rwph-xanax-send-status .rwph-xanax-wizard-page input[type=checkbox]{flex:0 0 auto!important;width:auto!important;min-width:initial!important;}
+        @media(max-width:760px),(pointer:coarse){body #rwph-xanax-send-status .rwph-xanax-review-grid > div{grid-template-columns:minmax(0,1fr)!important;}}
+
         #rwph-xanax-send-status .rwph-xanax-wizard-stage{display:flex;flex:1 1 auto;min-height:0;width:100%;}
         #rwph-xanax-send-status .rwph-xanax-wizard-page{display:flex;flex-direction:column;gap:9px;width:100%;min-width:0;min-height:100%;box-sizing:border-box;}
         #rwph-xanax-send-status .rwph-xanax-wizard-progress{padding:7px 9px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-panel2);color:var(--rwph-theme-soft);font-size:10px;font-weight:900;text-align:center;}
@@ -11805,6 +11823,8 @@
 
   function rwphEnsurePanelTextScale(panel, requestedScale = null) {
     if (!panel) return 1;
+    // Payment Helper uses stable pixel typography; moving/resizing must never alter font metrics.
+    if (panel.id === "rwph-xanax-send-status") return 1;
     const state = rwphGetPanelTextScaleState(panel);
     if (!state) return 1;
 
@@ -12000,7 +12020,7 @@
       startWidth = rect.width || panel.offsetWidth || 300;
       startHeight = rect.height || panel.offsetHeight || 240;
       startTextScale = rwphEnsurePanelTextScale(panel);
-      resizeTextMetrics = rwphCollectPanelTextMetrics(panel);
+      resizeTextMetrics = panel.id === "rwph-xanax-send-status" ? [] : rwphCollectPanelTextMetrics(panel);
       rwphSetPanelStyle(panel, "left", `${rect.left}px`);
       rwphSetPanelStyle(panel, "top", `${rect.top}px`);
       rwphSetPanelStyle(panel, "right", "auto");
@@ -12046,7 +12066,7 @@
       const heightRatio = startHeight > 0 ? (newHeight / startHeight) : 1;
       const sizeRatio = Math.sqrt(Math.max(0.01, widthRatio * heightRatio));
       const desiredTextScale = rwphClampPanelTextScale(startTextScale * sizeRatio);
-      rwphApplyPanelResizeTextScale(panel, resizeTextMetrics, startTextScale, desiredTextScale);
+      if (panel.id !== "rwph-xanax-send-status") rwphApplyPanelResizeTextScale(panel, resizeTextMetrics, startTextScale, desiredTextScale);
 
       rwphSetPanelStyle(panel, "left", `${newLeft}px`);
       rwphSetPanelStyle(panel, "top", `${newTop}px`);
