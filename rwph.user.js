@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.580
+// @version      1.1.579
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -4081,7 +4081,7 @@
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 :is(button,.rw-pay-all-copy),body .rw-pay-all-panel.rwph-secondary-panel-v1529 :is(button,.rw-pay-all-copy){max-width:100%!important;min-width:0!important;}
 
       /* Xanax Payment Helper — restored/rebuilt layout + standard 3-corner resize. */
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529{container-type:inline-size;padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:420px!important;overflow:hidden!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:420px!important;overflow:hidden!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:86px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(220px,100%)!important;max-width:100%!important;height:44px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;text-align:center!important;font-size:16px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;overflow-wrap:anywhere!important;}
@@ -11261,36 +11261,26 @@
     return `
       <style>
         #rwph-xanax-send-status .rwph-xanax-scroll{display:flex!important;flex-direction:column!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:8px!important;gap:8px!important;}
-        /* v1.1.580: Make the wizard fill the resizable panel without fighting legacy flex rules. */
-        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{flex:1 1 auto!important;height:auto!important;min-height:0!important;max-height:100%!important;box-sizing:border-box!important;}
-        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll>.rwph-xanax-wizard-stage{position:relative!important;flex:1 0 auto!important;width:100%!important;min-height:0!important;max-width:100%!important;margin:0!important;box-sizing:border-box!important;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-stage{display:flex;flex-direction:column;flex:1 0 auto;min-width:0;min-height:0;width:100%;box-sizing:border-box;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-page{display:flex;flex-direction:column;flex:1 0 auto;gap:9px;width:100%;max-width:100%;min-width:0;min-height:100%;box-sizing:border-box;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-page>*,#rwph-xanax-send-status .rwph-xanax-wizard-card>*{min-width:0;max-width:100%;box-sizing:border-box;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-card label{max-width:100%;min-width:0;overflow-wrap:anywhere;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-card input:not([type=radio]):not([type=checkbox]){max-width:100%;box-sizing:border-box;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-card button{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;box-sizing:border-box;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-card label input:is([type=checkbox],[type=radio]){flex:0 0 auto;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-nav>*{min-width:0;max-width:100%;box-sizing:border-box;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-stage{display:flex;flex:1 1 auto;min-height:0;width:100%;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-page{display:flex;flex-direction:column;gap:9px;width:100%;min-width:0;min-height:100%;box-sizing:border-box;}
         #rwph-xanax-send-status .rwph-xanax-wizard-progress{padding:7px 9px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-panel2);color:var(--rwph-theme-soft);font-size:10px;font-weight:900;text-align:center;}
         #rwph-xanax-send-status .rwph-xanax-wizard-card{display:grid;gap:9px;width:100%;min-width:0;padding:11px;border:1px solid var(--rwph-theme-line2);border-radius:12px;background:var(--rwph-theme-panel);box-sizing:border-box;overflow-wrap:anywhere;}
         #rwph-xanax-send-status .rwph-xanax-wizard-heading{font-size:14px;font-weight:950;color:var(--rwph-theme-text);}
         #rwph-xanax-send-status .rwph-xanax-wizard-copy{line-height:1.45;color:var(--rwph-theme-text);}
-        #rwph-xanax-send-status .rwph-xanax-wizard-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr));gap:8px;width:100%;min-width:0;max-width:100%;margin-top:auto;box-sizing:border-box;}
+        #rwph-xanax-send-status .rwph-xanax-wizard-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr));gap:8px;width:100%;margin-top:auto;}
         #rwph-xanax-send-status .rwph-xanax-wizard-nav button,#rwph-xanax-send-status .rwph-xanax-wizard-card>button{width:100%!important;min-height:40px!important;}
         #rwph-xanax-send-status .rwph-xanax-amount-label{display:grid;gap:5px;font-weight:900;}
         #rwph-xanax-send-status #rwph-payment-helper-xanax-count{width:100%!important;min-height:42px!important;font-size:18px!important;font-weight:950!important;text-align:center!important;box-sizing:border-box!important;}
         #rwph-xanax-send-status .rwph-xanax-days-result{padding:10px;border:1px solid var(--rwph-theme-line);border-radius:9px;background:var(--rwph-theme-bg2);color:var(--rwph-theme-text);font-size:13px;line-height:1.4;text-align:center;}
         #rwph-xanax-send-status .rwph-xanax-wizard-code{padding:8px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-bg2);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:900;overflow-wrap:anywhere;text-align:center;}
-        #rwph-xanax-send-status .rwph-xanax-review-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;width:100%;min-width:0;}
-        #rwph-xanax-send-status .rwph-xanax-review-grid>div{display:grid;min-width:0;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:8px;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-bg2);align-items:start;}
+        #rwph-xanax-send-status .rwph-xanax-review-grid{display:grid;gap:6px;}
+        #rwph-xanax-send-status .rwph-xanax-review-grid>div{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:8px;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;background:var(--rwph-theme-bg2);align-items:start;}
         #rwph-xanax-send-status .rwph-xanax-review-grid span{color:var(--rwph-theme-soft);font-weight:850;}
         #rwph-xanax-send-status .rwph-xanax-review-grid b{min-width:0;overflow-wrap:anywhere;}
         #rwph-xanax-send-status .rwph-xanax-final-warning{padding:9px;border:2px solid var(--rwph-theme-outline);border-radius:9px;background:color-mix(in srgb,var(--rwph-theme-outline) 12%,var(--rwph-theme-panel));line-height:1.45;}
         #rwph-xanax-send-status .rwph-xanax-step-done{border-color:#22c55e!important;background:color-mix(in srgb,#22c55e 26%,var(--rwph-theme-panel2))!important;}
         #rwph-xanax-send-status .rwph-helper-expected-action{outline:3px solid var(--rwph-theme-outline,#23c4d8)!important;outline-offset:2px!important;box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 20px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 78%,transparent)!important;animation:rwphExpectedActionPulseV1568 1.15s ease-in-out infinite!important;}
-        #rwph-xanax-send-status .rwph-xanax-wizard-list{margin:0;padding-left:20px;display:grid;gap:6px;width:100%;min-width:0;box-sizing:border-box;}
-        @container (max-width:360px){#rwph-xanax-send-status .rwph-xanax-review-grid>div{grid-template-columns:minmax(0,1fr)!important;}}
+        #rwph-xanax-send-status .rwph-xanax-wizard-list{margin:0;padding-left:20px;display:grid;gap:6px;}
         @media(max-width:760px),(pointer:coarse){#rwph-xanax-send-status .rwph-xanax-review-grid>div{grid-template-columns:1fr!important;}#rwph-xanax-send-status .rwph-xanax-scroll{padding:7px!important;}#rwph-xanax-send-status .rwph-xanax-wizard-card{padding:9px!important;}}
         @media(prefers-reduced-motion:reduce){#rwph-xanax-send-status .rwph-helper-expected-action{animation:none!important;}}
       </style>
