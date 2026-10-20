@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.600
+// @version      1.1.601
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2375,7 +2375,9 @@
     const minWidth = mobilePanel
       ? (isResults ? 170 : (isXanaxHelper ? 240 : (isPayAll ? 240 : 150)))
       : (isResults ? 280 : (isXanaxHelper ? 300 : (isPayAll ? 260 : 150)));
-    const minHeight = isPayAll ? (mobilePanel ? 260 : 310) : (isXanaxHelper ? (mobilePanel ? 180 : 260) : 110);
+    // v1.1.601: All panels and wizard pages may be shortened.  Their bodies
+    // scroll independently; don't use content height as the resize minimum.
+    const minHeight = 88;
     return { minWidth, minHeight };
   }
 
@@ -2410,6 +2412,8 @@
     panel.style.setProperty("bottom", "auto", "important");
     panel.style.setProperty("width", `${Math.round(width)}px`, "important");
     panel.style.setProperty("height", `${Math.round(height)}px`, "important");
+    rwphCompactShortPanelHeaderV1601(panel,height);
+    panel.style.setProperty("min-height", "0px", "important");
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
     rwphEnsurePanelTextScale(panel);
@@ -11851,45 +11855,24 @@
             target.disabled = true;
             target.textContent = 'Confirming licence...';
             try {
-              // Only after the user clicks Confirm Licence Type can the server
-              // create/reuse a payment code. A failed configuration keeps the user
-              // on this page and a retry reuses the same database-backed code.
-              if (state.selectionFirst && !state.code) {
-                const started = await apiPost('/api/paywall/start', {
-                  userKey: getPaymentUserKey(), extend: state.purchaseAction === 'extend'
-                });
-                if (started?.alreadyPaid) throw new Error('Your licence is already active. Choose Extend Licence to add time.');
-                if (!started?.code) throw new Error('Could not create a payment code. Please try Confirm Licence Type again.');
-                savePendingPayment(started);
-                if (!saveXanaxPaymentHelper(started.code)) throw new Error('Could not save the new payment code. Try confirming again.');
-                state.code = String(started.code);
-                state.daysPerItem = Math.max(1, Math.floor(Number(started.daysPerItem || state.daysPerItem || 10)));
-                box.dataset.rwphPaymentCode = state.code;
-                updatePendingPaymentUi();
-              }
-              const configureSelection = () => apiPost('/api/paywall/configure', { userKey: getPaymentUserKey(), mode: state.mode, memberIds: state.selected });
-              let result;
-              try {
-                result = await configureSelection();
-              } catch (configureError) {
-                // The wizard may outlive its database payment challenge (30-minute TTL).
-                // Recover the code once and retry the same selection instead of trapping
-                // Solo and Faction users on the Confirm Licence Type button.
-                if (!/create a new payment code first/i.test(String(configureError?.message || configureError))) throw configureError;
-                const renewed = await apiPost('/api/paywall/start', { userKey: getPaymentUserKey(), extend: true });
-                if (!renewed?.code) throw new Error('Could not create a new payment code. Reopen Buy/Extend Licence and try again.');
-                savePendingPayment(renewed);
-                if (!saveXanaxPaymentHelper(renewed.code)) throw new Error('Could not save the new payment code. Reopen Buy/Extend Licence and try again.');
-                state.code = String(renewed.code);
-                box.dataset.rwphPaymentCode = state.code;
-                // Keep the item-page handoff and subsequent payment checks on the new code.
-                GM_setValue('rwph_xanax_helper_open_request', JSON.stringify({
-                  code: state.code, mode: 'extend', createdAtMs: Date.now()
-                }));
-                updatePendingPaymentUi();
-                result = await configureSelection();
-                rwphShowToast('Your previous payment code expired. A new code has been created and saved; use the new code shown in this wizard.', 'info', 'Payment code refreshed');
-              }
+              // Atomic server confirmation: issue/reuse one database-backed code
+              // and save its Solo/Faction selection together. There is no window
+              // where /configure can reject a newly created payment as missing.
+              // This endpoint must be deployed with the matching RWPH Worker.
+              const result = await apiPost('/api/paywall/confirm-selection', {
+                userKey: getPaymentUserKey(),
+                extend: state.purchaseAction === 'extend',
+                mode: state.mode,
+                memberIds: state.mode === 'faction' ? state.selected : [],
+              });
+              if (result?.alreadyPaid) throw new Error('Your licence is already active. Choose Extend Licence to add time.');
+              if (!result?.code || !result?.pending) throw new Error('The server did not confirm a pending payment code. Please try again.');
+              savePendingPayment(result);
+              if (!saveXanaxPaymentHelper(result.code)) throw new Error('Could not save the payment code on this device. Please try again.');
+              state.code = String(result.code);
+              state.daysPerItem = Math.max(1, Math.floor(Number(result.daysPerItem || state.daysPerItem || 10)));
+              box.dataset.rwphPaymentCode = state.code;
+              updatePendingPaymentUi();
               state.billable = result.billable;
               if (state.selectionFirst) {
                 state.selectionFirst = false;
@@ -11900,7 +11883,13 @@
                 startAutoPaymentCheck(getPaymentUserKey(), state.purchaseAction);
                 rwphShowToast('Licence type confirmed. Your payment code is ready. Follow the prefill steps and send Xanax manually.', 'info', 'RWPH Payment');
               }
-            } catch (err) { rwphShowToast(String(err?.message || err), 'error', 'Licence setup'); return; }
+            } catch (err) {
+              const detail = String(err?.message || err);
+              const msg = /404|not found|unknown route|confirm-selection/i.test(detail)
+                ? 'Your Cloudflare Worker needs the v1.1.601 update. Deploy the included backend, then confirm your licence again.'
+                : detail;
+              rwphShowToast(msg, 'error', 'Licence setup'); return;
+            }
             finally {
               state.confirming = false;
               if (target.isConnected) { target.disabled = false; target.textContent = previousLabel; }
@@ -12268,6 +12257,17 @@
         overflow:hidden!important;resize:none!important;
         contain:layout!important;min-width:0!important;min-height:0!important;
       }
+      /* A short panel retains a usable compact header and scrolls its body.
+         Applies to every supported RWPH panel and wizard page. */
+      body .rwph-unified-layout-v1593.rwph-short-height-v1601 > .rwph-unified-header-v1596{
+        min-height:0!important;max-height:52px!important;flex:0 1 auto!important;
+        overflow-x:hidden!important;overflow-y:hidden!important;
+      }
+      body .rwph-unified-layout-v1593.rwph-short-height-v1601 > .rwph-unified-body-v1596{
+        flex:1 1 0%!important;min-height:0!important;
+        overflow-y:auto!important;overflow-x:hidden!important;
+        overscroll-behavior:contain!important;
+      }
       body .rwph-unified-layout-v1593 > .rwph-unified-part-v1596{
         zoom:var(--rwph-ui-scale,1)!important;
         width:100%!important;max-width:100%!important;min-width:0!important;
@@ -12400,6 +12400,28 @@
     }
   }
 
+  function rwphCompactShortPanelHeaderV1601(panel, height) {
+    const compact = Number(height) < 180;
+    panel.classList.toggle('rwph-short-height-v1601',compact);
+    const headers = panel.querySelectorAll(':scope > .rwph-unified-header-v1596');
+    for (const head of headers) {
+      if (compact) {
+        // Old panel-specific header heights have higher specificity than the
+        // shared CSS; normalize only while the panel is shortened.
+        head.style.setProperty('height','52px','important');
+        head.style.setProperty('min-height','0px','important');
+        head.style.setProperty('max-height','52px','important');
+        head.style.setProperty('flex','0 0 52px','important');
+        head.style.setProperty('padding-top','4px','important');
+        head.style.setProperty('padding-bottom','4px','important');
+        head.style.setProperty('overflow','hidden','important');
+      } else {
+        for (const name of ['height','min-height','max-height','flex','padding-top','padding-bottom','overflow'])
+          head.style.removeProperty(name);
+      }
+    }
+  }
+
   function rwphAttachUnifiedPanelEngineV1593(panel, handleSelector = '.rw-head') {
     if (!panel) return;
     if (panel.dataset.rwphUnifiedLayoutReady === '1') {
@@ -12443,8 +12465,9 @@
       for (const [name,value] of Object.entries({
         position:'fixed',left:`${Math.round(left)}px`,top:`${Math.round(top)}px`,
         right:'auto',bottom:'auto',width:`${Math.round(width)}px`,
-        height:`${Math.round(height)}px`,transform:'none',
+        height:`${Math.round(height)}px`,minHeight:'0px',maxHeight:'none',transform:'none',
       })) panel.style.setProperty(name,value,'important');
+      rwphCompactShortPanelHeaderV1601(panel,height);
       if (notify) {
         const size=`${Math.round(width)}:${Math.round(height)}`;
         if (size!==lastSize) {
@@ -12531,7 +12554,10 @@
     // A narrow panel can be rerendered by the host. Reapply flow classes on
     // root-level child replacements without replacing or moving any controls.
     if (typeof MutationObserver==='function') {
-      const observer=new MutationObserver(()=>rwphMarkWidthDrivenPanelPartsV1596(panel,handleSelector));
+      const observer=new MutationObserver(()=>{
+        rwphMarkWidthDrivenPanelPartsV1596(panel,handleSelector);
+        if(panel.classList.contains('rwph-short-height-v1601')) rwphCompactShortPanelHeaderV1601(panel,panel.getBoundingClientRect().height);
+      });
       observer.observe(panel,{childList:true});
       abort.signal.addEventListener('abort',()=>observer.disconnect(),{once:true});
     }
