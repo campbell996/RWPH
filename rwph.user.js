@@ -2411,6 +2411,7 @@
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
     rwphEnsurePanelTextScale(panel);
+    rwphApplyUnifiedPanelContentScaleV1594(panel, width, height);
     rwphUnifiedPanelLayoutEventV1593(panel);
     return true;
   }
@@ -4156,25 +4157,25 @@
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions>button{max-width:100%!important;min-width:0!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-code{display:inline-block!important;max-width:100%!important;padding:2px 5px!important;border-radius:6px!important;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-outline)!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;overflow-wrap:anywhere!important;word-break:break-word!important;box-sizing:border-box!important;}
 
-      /* v1.1.592 — legible Torn City Time war fields with visible calendar action. */
+      /* v1.1.594 — Basic/Advanced TCT rows use one visible native calendar/time icon only. */
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry{
-        display:flex!important;align-items:stretch!important;gap:6px!important;width:100%!important;max-width:100%!important;min-width:0!important;
+        display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;
       }
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]{
-        min-width:0!important;flex:1 1 auto!important;width:100%!important;min-height:40px!important;
-        color:var(--rwph-theme-text)!important;color-scheme:dark;
+        min-width:0!important;display:block!important;width:100%!important;min-height:40px!important;
+        padding-right:42px!important;color:var(--rwph-theme-text)!important;color-scheme:dark;
         font-variant-numeric:tabular-nums!important;
       }
-      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-calendar-open{
-        flex:0 0 43px!important;width:43px!important;min-width:43px!important;min-height:40px!important;
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+        opacity:1!important;cursor:pointer!important;width:22px!important;height:22px!important;padding:5px!important;
         border:2px solid var(--rwph-theme-outline)!important;border-radius:9px!important;
-        color:var(--rwph-theme-text)!important;background:var(--rwph-theme-panel2)!important;
-        font-size:23px!important;line-height:1!important;cursor:pointer!important;
-        display:inline-flex!important;align-items:center!important;justify-content:center!important;
+        background:var(--rwph-theme-panel2)!important;
+        filter:invert(93%) sepia(8%) saturate(295%) hue-rotate(176deg) brightness(109%) contrast(94%)!important;
       }
-      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-calendar-open:focus-visible{
-        outline:3px solid var(--rwph-theme-outline)!important;outline-offset:2px!important;
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover{
+        filter:invert(93%) sepia(8%) saturate(295%) hue-rotate(176deg) brightness(118%) contrast(98%)!important;
       }
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry .rwph-tct-calendar-open{display:none!important;}
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-caption{
         display:block!important;margin-top:3px!important;color:var(--rwph-theme-soft)!important;
         font-size:11px!important;font-weight:700!important;letter-spacing:.03em!important;
@@ -4186,6 +4187,31 @@
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important;border-radius:999px!important;}
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb:hover{background:var(--rwph-theme-outline)!important;filter:brightness(1.08)!important;}
+      /* v1.1.594 — one shared content-scaling policy for all unified panels. */
+      body .rwph-unified-layout-v1593{--rwph-ui-scale:1;--rwph-ui-scale-inverse:1;}
+      body .rwph-unified-layout-v1593>.rw-head,
+      body .rwph-unified-layout-v1593>.rw-body,
+      body .rwph-unified-layout-v1593>.rwph-panel-head,
+      body .rwph-unified-layout-v1593>.rwph-panel-body,
+      body .rwph-unified-layout-v1593>.rw-pay-all-head,
+      body .rwph-unified-layout-v1593>.rw-pay-all-body,
+      body .rwph-unified-layout-v1593>.rwph-saved-reports-head,
+      body .rwph-unified-layout-v1593>.rwph-saved-reports-body,
+      body .rwph-unified-layout-v1593>.rwph-mm-head,
+      body .rwph-unified-layout-v1593>.rwph-mm-body,
+      body .rwph-unified-layout-v1593>.rwph-layout-theme-head,
+      body .rwph-unified-layout-v1593>.rwph-layout-theme-body,
+      body .rwph-unified-layout-v1593>.rwph-default-setup-head,
+      body .rwph-unified-layout-v1593>.rwph-default-setup-body,
+      body .rwph-unified-layout-v1593>.rwph-licence-info-head,
+      body .rwph-unified-layout-v1593>.rwph-licence-info-body,
+      body .rwph-unified-layout-v1593>.rwph-panel-content,
+      body .rwph-unified-layout-v1593>.rw-results-head,
+      body .rwph-unified-layout-v1593>.rw-results-body{
+        zoom:var(--rwph-ui-scale)!important;
+        width:calc(100% / var(--rwph-ui-scale))!important;
+        max-width:none!important;
+      }
       /* v1.1.563 — Newsletter outer scroll matches Main; Preview owns no scrollbars. */
       body #rwph-newsletter-panel .rwph-newsletter-main-scroll{scrollbar-width:thin!important;scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2)!important;}
       body #rwph-newsletter-panel .rwph-newsletter-main-scroll::-webkit-scrollbar{width:8px!important;height:8px!important;}
@@ -12127,6 +12153,26 @@
     return 1;
   }
 
+  function rwphApplyUnifiedPanelContentScaleV1594(panel, width = null, height = null) {
+    if (!panel || !panel.isConnected) return 1;
+    const rect = panel.getBoundingClientRect();
+    const currentWidth = Number(width || rect.width || panel.offsetWidth || 0);
+    const currentHeight = Number(height || rect.height || panel.offsetHeight || 0);
+    const minSize = rwphPanelMinimumLayoutSize(panel);
+    const baseWidth = Number(panel.dataset.rwphBaseWidth || currentWidth || minSize.minWidth || 320);
+    const baseHeight = Number(panel.dataset.rwphBaseHeight || currentHeight || minSize.minHeight || 220);
+    if (!panel.dataset.rwphBaseWidth && currentWidth > 40) panel.dataset.rwphBaseWidth = String(Math.round(currentWidth));
+    if (!panel.dataset.rwphBaseHeight && currentHeight > 40) panel.dataset.rwphBaseHeight = String(Math.round(currentHeight));
+    const widthRatio = currentWidth > 0 && baseWidth > 0 ? currentWidth / baseWidth : 1;
+    const heightRatio = currentHeight > 0 && baseHeight > 0 ? currentHeight / baseHeight : 1;
+    const raw = Math.min(widthRatio, heightRatio);
+    const factor = Math.min(1.35, Math.max(0.72, Number.isFinite(raw) && raw > 0 ? raw : 1));
+    panel.style.setProperty("--rwph-ui-scale", factor.toFixed(3), "important");
+    panel.style.setProperty("--rwph-ui-scale-inverse", (1 / factor).toFixed(4), "important");
+    panel.dataset.rwphUiScale = factor.toFixed(3);
+    return factor;
+  }
+
   function rwphUnifiedPanelBoundsV1593(panel) {
     const sizes = rwphPanelMinimumLayoutSize(panel);
     const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1024);
@@ -12169,6 +12215,9 @@
     panel.dataset.rwphDragReady = "1";
     panel.dataset.rwphResizeReady = "1";
     panel.classList.add("rwph-unified-layout-v1593");
+    const initialRect = panel.getBoundingClientRect();
+    if (initialRect.width > 40) panel.dataset.rwphBaseWidth = String(Math.round(initialRect.width));
+    if (initialRect.height > 40) panel.dataset.rwphBaseHeight = String(Math.round(initialRect.height));
     const handles = [
       ["nw", "Resize from top-left"],
       ["sw", "Resize from bottom-left"],
@@ -12203,6 +12252,7 @@
         width: `${Math.round(w)}px`, height: `${Math.round(h)}px`, transform: "none" })) {
         panel.style.setProperty(k, v, "important");
       }
+      rwphApplyUnifiedPanelContentScaleV1594(panel, w, h);
       rwphUnifiedPanelLayoutEventV1593(panel);
     };
     const begin = e => {
@@ -13449,10 +13499,10 @@
             <div class="rw-api-tos-content">
               <div class="rw-row">
                 <label>War start date/time
-                  <span class="rwph-tct-date-entry"><input id="rw-from" type="datetime-local" step="1" value="${toDateTimeLocalValue(twoDaysAgo)}" aria-label="War start date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-from" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
+                  <span class="rwph-tct-date-entry"><input id="rw-from" type="datetime-local" step="1" value="${toDateTimeLocalValue(twoDaysAgo)}" aria-label="War start date/time in Torn City Time, including seconds"></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
                 </label>
                 <label>War end date/time
-                  <span class="rwph-tct-date-entry"><input id="rw-to" type="datetime-local" step="1" value="${toDateTimeLocalValue(current)}" aria-label="War end date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-to" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
+                  <span class="rwph-tct-date-entry"><input id="rw-to" type="datetime-local" step="1" value="${toDateTimeLocalValue(current)}" aria-label="War end date/time in Torn City Time, including seconds"></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
                 </label>
               </div>
               <div class="rw-actions rw-settings-time-actions">
@@ -13510,10 +13560,10 @@
 
 <div class="rw-row">
 <label>War start date/time
-                    <span class="rwph-tct-date-entry"><input id="rw-points-from" type="datetime-local" step="1" value="${toDateTimeLocalValue(twoDaysAgo)}" aria-label="War start date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-points-from" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
+                    <span class="rwph-tct-date-entry"><input id="rw-points-from" type="datetime-local" step="1" value="${toDateTimeLocalValue(twoDaysAgo)}" aria-label="War start date/time in Torn City Time, including seconds"></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
 </label>
 <label>War end date/time
-                    <span class="rwph-tct-date-entry"><input id="rw-points-to" type="datetime-local" step="1" value="${toDateTimeLocalValue(current)}" aria-label="War end date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-points-to" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
+                    <span class="rwph-tct-date-entry"><input id="rw-points-to" type="datetime-local" step="1" value="${toDateTimeLocalValue(current)}" aria-label="War end date/time in Torn City Time, including seconds"></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
 </label>
 </div>
 <div class="rw-actions rw-settings-time-actions">
