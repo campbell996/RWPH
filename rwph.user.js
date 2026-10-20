@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.584
+// @version      1.1.586
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -11259,6 +11259,12 @@
     if (state?.mode === 'faction' && /^\d+$/.test(ownId) && !state.selected.includes(ownId)) state.selected = [ownId, ...state.selected];
   }
 
+  // The purchaser is always part of a faction licence; at least one more member is required.
+  function rwphFactionHasAdditionalMemberV1586(state) {
+    const ownId = String(state?.ownTornId || '');
+    return !!ownId && [...new Set((state?.selected || []).map(String))].some(id => id && id !== ownId);
+  }
+
   function rwphPaymentHelperWizardPageHtmlV1568(state) {
     rwphIncludePurchaserInFactionSelectionV1570(state);
     const page = String(state?.page || "start");
@@ -11286,7 +11292,7 @@
         <button type="button" id="rwph-restore-faction-renewal" ${state.renewalCount ? '' : 'disabled'}>Restore existing licensed members</button>
         <div style="max-height:190px;overflow-y:auto">${(state.members || []).map(m => `<label style="display:block"><input type="checkbox" class="rwph-faction-member-choice" value="${esc(m.id)}" ${state.selected.includes(String(m.id)) ? 'checked' : ''} ${String(m.id) === String(state.ownTornId) ? 'disabled' : ''}> ${esc(m.name)} [${esc(m.id)}]</label>`).join('') || 'Load members to choose a roster.'}</div>
         <div>${state.selected.length} members · ${Math.max(1,state.selected.length-Math.floor(state.selected.length/3))} paid · ${Math.floor(state.selected.length/3)} free per 10-day block</div>` : ''}
-      </div>${nav('Confirm licence type')}</div>`;
+      </div>${state.mode === 'faction' && !rwphFactionHasAdditionalMemberV1586(state) ? '<div class="rwph-xanax-wizard-copy" role="status">Select at least one other faction member alongside yourself to continue.</div>' : ''}${nav('Confirm licence type', true, state.mode === 'faction' && !rwphFactionHasAdditionalMemberV1586(state) ? 'rwph-faction-confirm-unready' : 'rwph-helper-expected-action')}</div>`;
 
     if (page === "amount") return `
       <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="amount">
@@ -11416,6 +11422,7 @@
         #rwph-xanax-send-status .rwph-xanax-final-warning{padding:9px;border:2px solid var(--rwph-theme-outline);border-radius:9px;background:color-mix(in srgb,var(--rwph-theme-outline) 12%,var(--rwph-theme-panel));line-height:1.45;}
         #rwph-xanax-send-status .rwph-xanax-step-done{border-color:#22c55e!important;background:color-mix(in srgb,#22c55e 26%,var(--rwph-theme-panel2))!important;}
         #rwph-xanax-send-status .rwph-helper-expected-action{outline:3px solid var(--rwph-theme-outline,#23c4d8)!important;outline-offset:2px!important;box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 20px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 78%,transparent)!important;animation:rwphExpectedActionPulseV1568 1.15s ease-in-out infinite!important;}
+        #rwph-xanax-send-status .rwph-faction-confirm-unready{opacity:.48!important;filter:grayscale(.45);cursor:not-allowed!important;box-shadow:none!important;animation:none!important;}
         #rwph-xanax-send-status .rwph-xanax-wizard-list{margin:0;padding-left:20px;display:grid;gap:6px;}
         @media(max-width:760px),(pointer:coarse){#rwph-xanax-send-status .rwph-xanax-review-grid>div{grid-template-columns:1fr!important;}#rwph-xanax-send-status .rwph-xanax-scroll{padding:7px!important;}#rwph-xanax-send-status .rwph-xanax-wizard-card{padding:9px!important;}}
         @media(prefers-reduced-motion:reduce){#rwph-xanax-send-status .rwph-helper-expected-action{animation:none!important;}}
@@ -11546,10 +11553,32 @@
         e.preventDefault();
         if (state.page === 'licence') {
           rwphIncludePurchaserInFactionSelectionV1570(state);
-          if (state.mode === 'faction' && !state.selected.length) { rwphShowToast('Select at least one faction member.', 'warning', 'Faction licence'); return; }
+          if (state.mode === 'faction' && !rwphFactionHasAdditionalMemberV1586(state)) { rwphShowToast('Select at least one other faction member alongside yourself before confirming a faction licence.', 'warning', 'Faction licence'); return; }
           if (!state.setupPreview) {
             try {
-              const result = await apiPost('/api/paywall/configure', { userKey: getPaymentUserKey(), mode: state.mode, memberIds: state.selected });
+              const configureSelection = () => apiPost('/api/paywall/configure', { userKey: getPaymentUserKey(), mode: state.mode, memberIds: state.selected });
+              let result;
+              try {
+                result = await configureSelection();
+              } catch (configureError) {
+                // The wizard may outlive its database payment challenge (30-minute TTL).
+                // Recover the code once and retry the same selection instead of trapping
+                // Solo and Faction users on the Confirm Licence Type button.
+                if (!/create a new payment code first/i.test(String(configureError?.message || configureError))) throw configureError;
+                const renewed = await apiPost('/api/paywall/start', { userKey: getPaymentUserKey(), extend: true });
+                if (!renewed?.code) throw new Error('Could not create a new payment code. Reopen Buy/Extend Licence and try again.');
+                savePendingPayment(renewed);
+                if (!saveXanaxPaymentHelper(renewed.code)) throw new Error('Could not save the new payment code. Reopen Buy/Extend Licence and try again.');
+                state.code = String(renewed.code);
+                box.dataset.rwphPaymentCode = state.code;
+                // Keep the item-page handoff and subsequent payment checks on the new code.
+                GM_setValue('rwph_xanax_helper_open_request', JSON.stringify({
+                  code: state.code, mode: 'extend', createdAtMs: Date.now()
+                }));
+                updatePendingPaymentUi();
+                result = await configureSelection();
+                rwphShowToast('Your previous payment code expired. A new code has been created and saved; use the new code shown in this wizard.', 'info', 'Payment code refreshed');
+              }
               state.billable = result.billable;
             } catch (err) { rwphShowToast(String(err?.message || err), 'error', 'Licence setup'); return; }
           }
