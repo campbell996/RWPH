@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.594
+// @version      1.1.596
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2411,6 +2411,9 @@
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
     rwphEnsurePanelTextScale(panel);
+    if (panel.dataset.rwphUnifiedLayoutReady === "1") {
+      rwphMarkWidthDrivenPanelPartsV1596(panel);
+    }
     rwphApplyUnifiedPanelContentScaleV1594(panel, width, height);
     rwphUnifiedPanelLayoutEventV1593(panel);
     return true;
@@ -4157,9 +4160,17 @@
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions>button{max-width:100%!important;min-width:0!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-code{display:inline-block!important;max-width:100%!important;padding:2px 5px!important;border-radius:6px!important;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-outline)!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;overflow-wrap:anywhere!important;word-break:break-word!important;box-sizing:border-box!important;}
 
-      /* v1.1.594 — Basic/Advanced TCT rows use one visible native calendar/time icon only. */
+      /* v1.1.595 — Basic/Advanced TCT rows keep one simple calendar icon using the outline theme colour. */
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry{
-        display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;
+        position:relative!important;display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;
+      }
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry::after{
+        content:""!important;position:absolute!important;right:11px!important;top:50%!important;transform:translateY(-50%)!important;
+        width:18px!important;height:18px!important;background:var(--rwph-theme-outline)!important;pointer-events:none!important;opacity:1!important;
+        -webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>")!important;
+        mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>")!important;
+        -webkit-mask-repeat:no-repeat!important;mask-repeat:no-repeat!important;-webkit-mask-position:center!important;mask-position:center!important;
+        -webkit-mask-size:contain!important;mask-size:contain!important;
       }
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]{
         min-width:0!important;display:block!important;width:100%!important;min-height:40px!important;
@@ -4167,13 +4178,7 @@
         font-variant-numeric:tabular-nums!important;
       }
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]::-webkit-calendar-picker-indicator{
-        opacity:1!important;cursor:pointer!important;width:22px!important;height:22px!important;padding:5px!important;
-        border:2px solid var(--rwph-theme-outline)!important;border-radius:9px!important;
-        background:var(--rwph-theme-panel2)!important;
-        filter:invert(93%) sepia(8%) saturate(295%) hue-rotate(176deg) brightness(109%) contrast(94%)!important;
-      }
-      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover{
-        filter:invert(93%) sepia(8%) saturate(295%) hue-rotate(176deg) brightness(118%) contrast(98%)!important;
+        opacity:0!important;cursor:pointer!important;width:32px!important;height:32px!important;margin-right:2px!important;
       }
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry .rwph-tct-calendar-open{display:none!important;}
       body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-caption{
@@ -4187,31 +4192,8 @@
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-track{background:var(--rwph-theme-bg2)!important;border-radius:999px!important;}
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb{background:var(--rwph-theme-outline)!important;border:2px solid var(--rwph-theme-bg)!important;border-radius:999px!important;}
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) ::-webkit-scrollbar-thumb:hover{background:var(--rwph-theme-outline)!important;filter:brightness(1.08)!important;}
-      /* v1.1.594 — one shared content-scaling policy for all unified panels. */
-      body .rwph-unified-layout-v1593{--rwph-ui-scale:1;--rwph-ui-scale-inverse:1;}
-      body .rwph-unified-layout-v1593>.rw-head,
-      body .rwph-unified-layout-v1593>.rw-body,
-      body .rwph-unified-layout-v1593>.rwph-panel-head,
-      body .rwph-unified-layout-v1593>.rwph-panel-body,
-      body .rwph-unified-layout-v1593>.rw-pay-all-head,
-      body .rwph-unified-layout-v1593>.rw-pay-all-body,
-      body .rwph-unified-layout-v1593>.rwph-saved-reports-head,
-      body .rwph-unified-layout-v1593>.rwph-saved-reports-body,
-      body .rwph-unified-layout-v1593>.rwph-mm-head,
-      body .rwph-unified-layout-v1593>.rwph-mm-body,
-      body .rwph-unified-layout-v1593>.rwph-layout-theme-head,
-      body .rwph-unified-layout-v1593>.rwph-layout-theme-body,
-      body .rwph-unified-layout-v1593>.rwph-default-setup-head,
-      body .rwph-unified-layout-v1593>.rwph-default-setup-body,
-      body .rwph-unified-layout-v1593>.rwph-licence-info-head,
-      body .rwph-unified-layout-v1593>.rwph-licence-info-body,
-      body .rwph-unified-layout-v1593>.rwph-panel-content,
-      body .rwph-unified-layout-v1593>.rw-results-head,
-      body .rwph-unified-layout-v1593>.rw-results-body{
-        zoom:var(--rwph-ui-scale)!important;
-        width:calc(100% / var(--rwph-ui-scale))!important;
-        max-width:none!important;
-      }
+      /* v1.1.596 — width-driven content scale, height-driven scrolling is installed by the unified engine. */
+      body .rwph-unified-layout-v1593{--rwph-ui-scale:1;}
       /* v1.1.563 — Newsletter outer scroll matches Main; Preview owns no scrollbars. */
       body #rwph-newsletter-panel .rwph-newsletter-main-scroll{scrollbar-width:thin!important;scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2)!important;}
       body #rwph-newsletter-panel .rwph-newsletter-main-scroll::-webkit-scrollbar{width:8px!important;height:8px!important;}
@@ -10938,65 +10920,34 @@
     };
 
     const stage = () => panel.querySelector("[data-pay-all-stage]");
-    // Fit each complete wizard page inside its own available body area. Never
-    // scroll inner containers or let a hidden overflow region eat controls.
-    // A fitted scale is necessary when the user shrinks a resizable panel.
+    // v1.1.596: The shared engine scales the entire wizard with panel WIDTH.
+    // Panel HEIGHT is independent: when pages exceed it, scroll normally.
     let fitQueued = false;
     const fitWizardPage = () => {
       fitQueued = false;
       if (!panel.isConnected || panel.hidden) return;
-      const viewport = panel.querySelector(".rw-pay-all-scroll");
+      const viewport = panel.querySelector('.rw-pay-all-scroll');
       const target = stage();
       if (!viewport || !target) return;
-      const bounds = viewport.getBoundingClientRect();
-      const availableW = Math.max(1, bounds.width);
-      const availableH = Math.max(1, bounds.height);
-      target.style.transform = "none";
-      target.style.height = "auto";
-      target.style.maxHeight = "none";
-      const measure = (factor) => {
-        const layoutWidth = availableW / factor;
-        // Override the legacy width:100%!important with the dedicated CSS variable.
-        target.style.setProperty("--rwph-paycopy-layout-width", `${layoutWidth}px`);
-        const page = target.firstElementChild;
-        const naturalH = Math.max(target.scrollHeight, page?.scrollHeight || 0, page?.getBoundingClientRect().height || 0);
-        const naturalW = Math.max(target.scrollWidth, page?.scrollWidth || 0);
-        return naturalH * factor <= availableH - 2 && naturalW * factor <= availableW + 2;
-      };
-      let factor = 1;
-      if (!measure(1)) {
-        let low = 0.10, high = 1;
-        if (!measure(low)) factor = low;
-        else {
-          for (let i = 0; i < 16; i += 1) {
-            const mid = (low + high) / 2;
-            if (measure(mid)) low = mid;
-            else high = mid;
-          }
-          factor = Math.max(0.10, low - 0.003);
-        }
-      }
-      target.style.setProperty("--rwph-paycopy-layout-width", `${availableW / factor}px`);
-      target.style.transform = `scale(${factor})`;
-      target.dataset.fitScale = factor.toFixed(3);
-      // Emergency fallback for impossibly short browser viewports: never clip
-      // controls even when no usable scale can fit the page.
-      const finalRect = target.getBoundingClientRect();
-      viewport.style.setProperty("overflow-y", finalRect.height > availableH + 2 ? "auto" : "hidden", "important");
+      target.style.removeProperty('transform');
+      target.style.removeProperty('height');
+      target.style.removeProperty('max-height');
+      target.style.setProperty('--rwph-paycopy-layout-width','100%');
+      viewport.style.setProperty('overflow-y','auto','important');
+      viewport.style.setProperty('overflow-x','hidden','important');
+      rwphMarkWidthDrivenPanelPartsV1596(panel,'.rw-pay-all-head');
     };
     const requestWizardFit = () => {
       if (fitQueued) return;
       fitQueued = true;
       requestAnimationFrame(fitWizardPage);
     };
-    const wizardFitObserver = typeof ResizeObserver === "function"
+    const wizardFitObserver = typeof ResizeObserver === 'function'
       ? new ResizeObserver(requestWizardFit) : null;
     if (wizardFitObserver) {
       wizardFitObserver.observe(panel);
-      const viewport = panel.querySelector(".rw-pay-all-scroll");
-      if (viewport) wizardFitObserver.observe(viewport);
     }
-    window.addEventListener("resize", requestWizardFit, { passive: true });
+    window.addEventListener('resize',requestWizardFit,{passive:true});
     requestWizardFit();
     const renderWizard = () => {
       const target = stage();
@@ -12153,23 +12104,21 @@
     return 1;
   }
 
+  // v1.1.596: Geometry controls only the available viewport. Panel typography,
+  // cards and buttons scale with WIDTH, never with height. Height creates a
+  // scrollport when content does not fit; dragging does not alter scale.
   function rwphApplyUnifiedPanelContentScaleV1594(panel, width = null, height = null) {
     if (!panel || !panel.isConnected) return 1;
     const rect = panel.getBoundingClientRect();
     const currentWidth = Number(width || rect.width || panel.offsetWidth || 0);
-    const currentHeight = Number(height || rect.height || panel.offsetHeight || 0);
-    const minSize = rwphPanelMinimumLayoutSize(panel);
-    const baseWidth = Number(panel.dataset.rwphBaseWidth || currentWidth || minSize.minWidth || 320);
-    const baseHeight = Number(panel.dataset.rwphBaseHeight || currentHeight || minSize.minHeight || 220);
-    if (!panel.dataset.rwphBaseWidth && currentWidth > 40) panel.dataset.rwphBaseWidth = String(Math.round(currentWidth));
-    if (!panel.dataset.rwphBaseHeight && currentHeight > 40) panel.dataset.rwphBaseHeight = String(Math.round(currentHeight));
-    const widthRatio = currentWidth > 0 && baseWidth > 0 ? currentWidth / baseWidth : 1;
-    const heightRatio = currentHeight > 0 && baseHeight > 0 ? currentHeight / baseHeight : 1;
-    const raw = Math.min(widthRatio, heightRatio);
-    const factor = Math.min(1.35, Math.max(0.72, Number.isFinite(raw) && raw > 0 ? raw : 1));
-    panel.style.setProperty("--rwph-ui-scale", factor.toFixed(3), "important");
-    panel.style.setProperty("--rwph-ui-scale-inverse", (1 / factor).toFixed(4), "important");
-    panel.dataset.rwphUiScale = factor.toFixed(3);
+    const baseWidth = Number(panel.dataset.rwphBaseWidth || currentWidth || 360);
+    if (!panel.dataset.rwphBaseWidth && currentWidth > 40) {
+      panel.dataset.rwphBaseWidth = String(Math.round(currentWidth));
+    }
+    const ratio = currentWidth > 0 && baseWidth > 0 ? currentWidth / baseWidth : 1;
+    const factor = Math.min(1.75, Math.max(0.10, Number.isFinite(ratio) && ratio > 0 ? ratio : 1));
+    panel.style.setProperty("--rwph-ui-scale", factor.toFixed(4), "important");
+    panel.dataset.rwphUiScale = factor.toFixed(4);
     return factor;
   }
 
@@ -12209,12 +12158,100 @@
     rwphUnifiedEngineCleanupObserverV1593.observe(document.documentElement, { childList: true, subtree: true });
   }
 
+  function rwphInstallWidthDrivenPanelStylesV1596() {
+    if (document.getElementById('rwph-width-driven-panel-styles-v1596')) return;
+    const style = document.createElement('style');
+    style.id = 'rwph-width-driven-panel-styles-v1596';
+    style.textContent = `
+      /* One width scale for panel contents. Widths are measured AFTER zoom, so
+         no inverse-width multiplier is needed. Never zoom the panel shell. */
+      body .rwph-unified-layout-v1593 { box-sizing:border-box!important; overflow:hidden!important; }
+      body .rwph-unified-layout-v1593 > .rwph-unified-part-v1596 {
+        zoom:var(--rwph-ui-scale,1)!important;
+        box-sizing:border-box!important;
+        width:100%!important;max-width:100%!important;min-width:0!important;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 {
+        flex:1 1 0!important; min-height:0!important;
+        overflow-x:hidden!important; overflow-y:auto!important;
+        overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-header-v1596 {
+        flex:0 0 auto!important;min-width:0!important;
+        overflow-x:hidden!important;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 *,
+      body .rwph-unified-layout-v1593 > .rwph-unified-header-v1596 *{
+        box-sizing:border-box;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 :is(.rw-row,.rw-actions,.rwph-calc-ux-card,fieldset,details,
+        .rwph-saved-report-card,.rwph-xanax-wizard-card,.rw-pay-all-wizard-page,
+        .rw-pay-all-wizard-stage,.rw-pay-all-copy-grid,.rw-pay-all-wizard-nav){
+        max-width:100%!important;min-width:0!important;overflow-wrap:anywhere!important;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 :is(input,select,textarea){
+        max-width:100%!important;min-width:0!important;
+      }
+      /* Theme/logo labels wrap instead of overflowing the panel at narrow widths. */
+      body #rw-payout-helper.rwph-unified-layout-v1593 .rwph-theme-logo-current-label,
+      body #rw-payout-helper.rwph-unified-layout-v1593 #rw-current-logo-label{
+        white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;
+        text-overflow:clip!important;max-width:100%!important;
+      }
+      /* Payment Copy is no longer height-fit/scaled twice: same width scaling
+         and ordinary vertical scrolling as every other wizard panel. */
+      body #rw-pay-all-panel.rwph-unified-layout-v1593 > .rw-pay-all-scroll{
+        display:block!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin!important;
+        touch-action:pan-y!important;overscroll-behavior:contain!important;
+      }
+      body #rw-pay-all-panel.rwph-unified-layout-v1593 > .rw-pay-all-scroll .rw-pay-all-wizard-stage{
+        display:block!important;flex:0 0 auto!important;align-self:stretch!important;
+        width:100%!important;max-width:100%!important;min-width:0!important;
+        transform:none!important;height:max-content!important;min-height:0!important;
+        --rwph-paycopy-layout-width:100%;
+      }
+      body #rw-pay-all-panel.rwph-unified-layout-v1593 .rw-pay-all-wizard-page{
+        width:100%!important;max-width:100%!important;min-width:0!important;
+        height:auto!important;min-height:0!important;overflow:visible!important;
+      }
+      /* No accidental horizontal scrollbar. Users can always scroll to the
+         bottom, and scrollbars appear only when the content actually exceeds height. */
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596::-webkit-scrollbar{width:7px!important;}
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector = '.rw-head') {
+    if (!panel?.isConnected) return;
+    const heads = [handleSelector,'.rw-head','.rwph-panel-head','.rw-pay-all-head',
+      '.rwph-saved-reports-head','.rwph-mm-head','.rwph-secondary-head-v1529',
+      '.rw-results-head','.rwph-results-loading-head','.rwph-xanax-head'];
+    const bodies = ['.rw-body','.rwph-floating-panel-body','.rwph-panel-body',
+      '.rwph-saved-reports-body','.rw-pay-all-scroll','.rwph-xanax-scroll',
+      '.rwph-secondary-body-v1529','.rw-results-body','.rwph-results-body',
+      '.rwph-layout-theme-body','.rwph-mm-body','.rwph-panel-content',
+      '.rwph-newsletter-main-scroll','.rwph-default-setup-body'];
+    const direct = Array.from(panel.children);
+    const match = (el, choices) => choices.some(sel => {try{return el.matches(sel);}catch(_){return false;}});
+    direct.forEach(el => {
+      if (!(el instanceof HTMLElement)) return;
+      const isHead = match(el,heads);
+      const isBody = match(el,bodies);
+      if (!isHead && !isBody) return;
+      el.classList.add('rwph-unified-part-v1596');
+      el.classList.toggle('rwph-unified-header-v1596',isHead && !isBody);
+      el.classList.toggle('rwph-unified-body-v1596',isBody);
+    });
+  }
+
   function rwphAttachUnifiedPanelEngineV1593(panel, handleSelector = ".rw-head") {
     if (!panel || panel.dataset.rwphUnifiedLayoutReady === "1") return;
     panel.dataset.rwphUnifiedLayoutReady = "1";
     panel.dataset.rwphDragReady = "1";
     panel.dataset.rwphResizeReady = "1";
     panel.classList.add("rwph-unified-layout-v1593");
+    rwphInstallWidthDrivenPanelStylesV1596();
+    rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector);
     const initialRect = panel.getBoundingClientRect();
     if (initialRect.width > 40) panel.dataset.rwphBaseWidth = String(Math.round(initialRect.width));
     if (initialRect.height > 40) panel.dataset.rwphBaseHeight = String(Math.round(initialRect.height));
@@ -12252,6 +12289,7 @@
         width: `${Math.round(w)}px`, height: `${Math.round(h)}px`, transform: "none" })) {
         panel.style.setProperty(k, v, "important");
       }
+      rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector);
       rwphApplyUnifiedPanelContentScaleV1594(panel, w, h);
       rwphUnifiedPanelLayoutEventV1593(panel);
     };
@@ -12311,6 +12349,14 @@
       setGeometry(r.left, r.top, r.width, r.height);
     };
     window.addEventListener("resize", viewportChanged, { passive: true, signal: listeners.signal });
+    // Re-mark content on panel rerenders without requiring a drag or resize.
+    if (typeof MutationObserver === 'function') {
+      const contentObserver = new MutationObserver(() => {
+        if (panel.isConnected) rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector);
+      });
+      contentObserver.observe(panel, { childList: true });
+      listeners.signal.addEventListener('abort', () => contentObserver.disconnect(), { once: true });
+    }
     panel.style.setProperty("box-sizing", "border-box", "important");
     // Normalize geometry immediately rather than on the user's first drag.
     viewportChanged();
