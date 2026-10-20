@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.597
+// @version      1.1.598
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2412,9 +2412,7 @@
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
     rwphEnsurePanelTextScale(panel);
-    if (panel.dataset.rwphUnifiedLayoutReady === "1") {
-      rwphMarkWidthDrivenPanelPartsV1596(panel);
-    }
+    if (panel.dataset.rwphUnifiedLayoutReady === "1") rwphMarkWidthDrivenPanelPartsV1596(panel);
     rwphApplyUnifiedPanelContentScaleV1594(panel, width, height);
     rwphUnifiedPanelLayoutEventV1593(panel);
     return true;
@@ -10884,35 +10882,9 @@
     };
 
     const stage = () => panel.querySelector("[data-pay-all-stage]");
-    // v1.1.596: The shared engine scales the entire wizard with panel WIDTH.
-    // Panel HEIGHT is independent: when pages exceed it, scroll normally.
-    let fitQueued = false;
-    const fitWizardPage = () => {
-      fitQueued = false;
-      if (!panel.isConnected || panel.hidden) return;
-      const viewport = panel.querySelector('.rw-pay-all-scroll');
-      const target = stage();
-      if (!viewport || !target) return;
-      target.style.removeProperty('transform');
-      target.style.removeProperty('height');
-      target.style.removeProperty('max-height');
-      target.style.setProperty('--rwph-paycopy-layout-width','100%');
-      viewport.style.setProperty('overflow-y','auto','important');
-      viewport.style.setProperty('overflow-x','hidden','important');
-      rwphMarkWidthDrivenPanelPartsV1596(panel,'.rw-pay-all-head');
-    };
-    const requestWizardFit = () => {
-      if (fitQueued) return;
-      fitQueued = true;
-      requestAnimationFrame(fitWizardPage);
-    };
-    const wizardFitObserver = typeof ResizeObserver === 'function'
-      ? new ResizeObserver(requestWizardFit) : null;
-    if (wizardFitObserver) {
-      wizardFitObserver.observe(panel);
-    }
-    window.addEventListener('resize',requestWizardFit,{passive:true});
-    requestWizardFit();
+    // The unified panel body now owns vertical scrolling; there is no
+    // independent Payment Copy fit, height-scaled transform or resize listener.
+    const requestWizardFit = () => rwphMarkWidthDrivenPanelPartsV1596(panel,'.rw-pay-all-head');
     const renderWizard = () => {
       const target = stage();
       if (!target) return;
@@ -10934,10 +10906,7 @@
       requestWizardFit();
     };
 
-    const cleanupWizardFit = () => {
-      wizardFitObserver?.disconnect();
-      window.removeEventListener("resize", requestWizardFit);
-    };
+    const cleanupWizardFit = () => {}; // Controller cleans up with panel removal.
     panel.addEventListener("click", async (e) => {
       const closeBtn = e.target.closest?.("[data-pay-all-close]");
       if (closeBtn) {
@@ -12114,65 +12083,111 @@
     rwphUnifiedEngineCleanupObserverV1593.observe(document.documentElement, { childList: true, subtree: true });
   }
 
+  // RWPH v1.1.598: single authoritative geometry and content-flow system.
+  // Deliberately uses *existing* theme variables and leaves the Theme/Colour
+  // selector and palette creation fully separate from the layout controller.
   function rwphInstallWidthDrivenPanelStylesV1596() {
-    if (document.getElementById('rwph-width-driven-panel-styles-v1596')) return;
+    if (document.getElementById('rwph-layout-engine-v1598')) return;
     const style = document.createElement('style');
-    style.id = 'rwph-width-driven-panel-styles-v1596';
+    style.id = 'rwph-layout-engine-v1598';
     style.textContent = `
-      /* One user-selected content size for all panels. No resize-based zoom;
-         geometry only changes reflow and scroll. Never zoom the panel shell. */
-      body .rwph-unified-layout-v1593 { box-sizing:border-box!important; overflow:hidden!important; }
-      body .rwph-unified-layout-v1593 > .rwph-unified-part-v1596 {
+      body .rwph-unified-layout-v1593{
+        box-sizing:border-box!important; display:flex!important;
+        flex-direction:column!important; align-items:stretch!important;
+        overflow:hidden!important;resize:none!important;
+        contain:layout!important;min-width:0!important;min-height:0!important;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-part-v1596{
         zoom:var(--rwph-ui-scale,1)!important;
-        box-sizing:border-box!important;
         width:100%!important;max-width:100%!important;min-width:0!important;
+        box-sizing:border-box!important; margin-left:0!important;margin-right:0!important;
       }
-      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 {
-        flex:1 1 0!important; min-height:0!important;
-        overflow-x:hidden!important; overflow-y:auto!important;
+      body .rwph-unified-layout-v1593 > .rwph-unified-header-v1596{
+        flex:0 0 auto!important;min-height:0!important;overflow-x:clip!important;
+        user-select:none!important;touch-action:none!important;
+      }
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596{
+        flex:1 1 0%!important;min-height:0!important;
+        overflow-x:hidden!important;overflow-y:auto!important;
         overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;
-      }
-      body .rwph-unified-layout-v1593 > .rwph-unified-header-v1596 {
-        flex:0 0 auto!important;min-width:0!important;
-        overflow-x:hidden!important;
+        scrollbar-width:thin!important;
+        scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2)!important;
+        touch-action:pan-y!important;
       }
       body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 *,
       body .rwph-unified-layout-v1593 > .rwph-unified-header-v1596 *{
-        box-sizing:border-box;
+        box-sizing:border-box;min-width:0;
       }
-      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 :is(.rw-row,.rw-actions,.rwph-calc-ux-card,fieldset,details,
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 :is(
+        .rw-row,.rw-actions,.rwph-calc-ux-card,.rwph-ux-section,fieldset,details,
         .rwph-saved-report-card,.rwph-xanax-wizard-card,.rw-pay-all-wizard-page,
-        .rw-pay-all-wizard-stage,.rw-pay-all-copy-grid,.rw-pay-all-wizard-nav){
-        max-width:100%!important;min-width:0!important;overflow-wrap:anywhere!important;
+        .rw-pay-all-wizard-stage,.rw-pay-all-copy-grid,.rw-pay-all-wizard-nav,
+        .rwph-newsletter-main-scroll,.rwph-panel-content){
+        width:auto;max-width:100%!important;min-width:0!important;
+        overflow-wrap:anywhere!important;
       }
-      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 :is(input,select,textarea){
+      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596 :is(input,select,textarea,button){
         max-width:100%!important;min-width:0!important;
       }
-      /* Theme/logo labels wrap instead of overflowing the panel at narrow widths. */
-      body #rw-payout-helper.rwph-unified-layout-v1593 .rwph-theme-logo-current-label,
-      body #rw-payout-helper.rwph-unified-layout-v1593 #rw-current-logo-label{
-        white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;
-        text-overflow:clip!important;max-width:100%!important;
+      body .rwph-unified-layout-v1593 .rwph-theme-logo-current-label,
+      body .rwph-unified-layout-v1593 #rw-current-logo-label{
+        white-space:normal!important;overflow-wrap:anywhere!important;text-overflow:clip!important;
       }
-      /* Payment Copy uses the same independent content size and ordinary
-         vertical scrolling as every other wizard panel. */
       body #rw-pay-all-panel.rwph-unified-layout-v1593 > .rw-pay-all-scroll{
-        display:block!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin!important;
-        touch-action:pan-y!important;overscroll-behavior:contain!important;
+        display:block!important;overflow-y:auto!important;overflow-x:hidden!important;
+        overscroll-behavior:contain!important;touch-action:pan-y!important;
       }
-      body #rw-pay-all-panel.rwph-unified-layout-v1593 > .rw-pay-all-scroll .rw-pay-all-wizard-stage{
-        display:block!important;flex:0 0 auto!important;align-self:stretch!important;
-        width:100%!important;max-width:100%!important;min-width:0!important;
-        transform:none!important;height:max-content!important;min-height:0!important;
+      body #rw-pay-all-panel.rwph-unified-layout-v1593 .rw-pay-all-wizard-stage,
+      body #rw-pay-all-panel.rwph-unified-layout-v1593 .rw-pay-all-wizard-page{
+        display:block!important;transform:none!important;
+        flex:none!important;width:100%!important;max-width:100%!important;
+        height:auto!important;min-height:0!important;overflow:visible!important;
         --rwph-paycopy-layout-width:100%;
       }
-      body #rw-pay-all-panel.rwph-unified-layout-v1593 .rw-pay-all-wizard-page{
-        width:100%!important;max-width:100%!important;min-width:0!important;
-        height:auto!important;min-height:0!important;overflow:visible!important;
+      /* Override the older Payment Copy flex/height rules with higher specificity.
+         The STAGE grows to natural page height; only the outer BODY scrolls. */
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529.rwph-unified-layout-v1593 > .rw-pay-all-scroll{
+        display:block!important;flex:1 1 0%!important;height:auto!important;min-height:0!important;
+        overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin!important;
       }
-      /* No accidental horizontal scrollbar. Users can always scroll to the
-         bottom, and scrollbars appear only when the content actually exceeds height. */
-      body .rwph-unified-layout-v1593 > .rwph-unified-body-v1596::-webkit-scrollbar{width:7px!important;}
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529.rwph-unified-layout-v1593 .rw-pay-all-wizard-stage{
+        display:block!important;flex:none!important;height:max-content!important;min-height:0!important;
+        overflow:visible!important;transform:none!important;width:100%!important;max-width:100%!important;
+      }
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529.rwph-unified-layout-v1593 .rw-pay-all-wizard-page{
+        display:flex!important;flex:none!important;flex-direction:column!important;
+        height:auto!important;min-height:0!important;width:100%!important;max-width:100%!important;
+        overflow:visible!important;justify-content:flex-start!important;
+      }
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529.rwph-unified-layout-v1593 .rw-pay-all-wizard-page[data-pay-all-page="complete"]{
+        display:flex!important;flex-direction:column!important;min-height:0!important;height:auto!important;
+      }
+      body .rwph-unified-layout-v1593 > .rw-resize-handle{
+        position:absolute!important;display:block!important;z-index:175!important;
+        width:20px!important;height:20px!important;touch-action:none!important;
+        background:transparent!important;box-shadow:none!important;
+        border-color:var(--rwph-theme-outline)!important;
+      }
+      body .rwph-unified-layout-v1593 > .rw-resize-handle-nw{
+        top:5px!important;left:5px!important;right:auto!important;bottom:auto!important;
+        cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;
+        border-top:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-bottom:0!important;
+      }
+      body .rwph-unified-layout-v1593 > .rw-resize-handle-sw{
+        bottom:5px!important;left:5px!important;right:auto!important;top:auto!important;
+        cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;
+        border-bottom:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-top:0!important;
+      }
+      body .rwph-unified-layout-v1593 > .rw-resize-handle-se{
+        bottom:5px!important;right:5px!important;left:auto!important;top:auto!important;
+        cursor:nwse-resize!important;border-right:2px solid var(--rwph-theme-outline)!important;
+        border-bottom:2px solid var(--rwph-theme-outline)!important;border-left:0!important;border-top:0!important;
+      }
+      @media (pointer:coarse){
+        body .rwph-unified-layout-v1593 > .rw-resize-handle{
+          width:28px!important;height:28px!important;
+        }
+      }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
@@ -12181,142 +12196,181 @@
     if (!panel?.isConnected) return;
     const heads = [handleSelector,'.rw-head','.rwph-panel-head','.rw-pay-all-head',
       '.rwph-saved-reports-head','.rwph-mm-head','.rwph-secondary-head-v1529',
-      '.rw-results-head','.rwph-results-loading-head','.rwph-xanax-head'];
+      '.rw-results-head','.rwph-results-loading-head','.rwph-xanax-head',
+      '#rwph-payment-helper-title','.rwph-floating-panel-head'];
     const bodies = ['.rw-body','.rwph-floating-panel-body','.rwph-panel-body',
       '.rwph-saved-reports-body','.rw-pay-all-scroll','.rwph-xanax-scroll',
       '.rwph-secondary-body-v1529','.rw-results-body','.rwph-results-body',
       '.rwph-layout-theme-body','.rwph-mm-body','.rwph-panel-content',
-      '.rwph-newsletter-main-scroll','.rwph-default-setup-body'];
-    const direct = Array.from(panel.children);
-    const match = (el, choices) => choices.some(sel => {try{return el.matches(sel);}catch(_){return false;}});
-    direct.forEach(el => {
-      if (!(el instanceof HTMLElement)) return;
-      const isHead = match(el,heads);
-      const isBody = match(el,bodies);
-      if (!isHead && !isBody) return;
-      el.classList.add('rwph-unified-part-v1596');
-      el.classList.toggle('rwph-unified-header-v1596',isHead && !isBody);
+      '.rwph-newsletter-main-scroll','.rwph-default-setup-body',
+      '.rwph-results-content-host-v1536'];
+    const match = (el, tests) => tests.some(sel=>{try{return el.matches(sel);}catch(_){return false;}});
+    const children = [...panel.children].filter(e=>e instanceof HTMLElement);
+    let bodyCount=0;
+    children.forEach(el=>{
+      const isBody=match(el,bodies);
+      const isHead=!isBody && match(el,heads);
+      el.classList.toggle('rwph-unified-part-v1596',isBody||isHead);
+      el.classList.toggle('rwph-unified-header-v1596',isHead);
       el.classList.toggle('rwph-unified-body-v1596',isBody);
+      if (isBody) bodyCount++;
     });
+    // In unusual legacy panels, preserve children and events rather than
+    // wrapping/moving nodes; pick the existing body-like direct child.
+    if (!bodyCount) {
+      const fallback=children.find(el=>el.matches('.rwph-newsletter-main-scroll,.rwph-main-scroll'))
+        || children.find(el=>el.matches('main,[role=main],section'))
+        || children.find(el=>!el.classList.contains('rwph-unified-header-v1596')
+          && !el.matches('button,.rw-resize-handle,.resize-handle,style,script'));
+      if (fallback) {
+        fallback.classList.add('rwph-unified-part-v1596','rwph-unified-body-v1596');
+        fallback.classList.remove('rwph-unified-header-v1596');
+      }
+    }
   }
 
-  function rwphAttachUnifiedPanelEngineV1593(panel, handleSelector = ".rw-head") {
-    if (!panel || panel.dataset.rwphUnifiedLayoutReady === "1") return;
-    panel.dataset.rwphUnifiedLayoutReady = "1";
-    panel.dataset.rwphDragReady = "1";
-    panel.dataset.rwphResizeReady = "1";
-    panel.classList.add("rwph-unified-layout-v1593");
+  function rwphAttachUnifiedPanelEngineV1593(panel, handleSelector = '.rw-head') {
+    if (!panel) return;
+    if (panel.dataset.rwphUnifiedLayoutReady === '1') {
+      rwphMarkWidthDrivenPanelPartsV1596(panel,handleSelector);
+      return;
+    }
+    panel.dataset.rwphUnifiedLayoutReady='1';
+    panel.dataset.rwphDragReady='1';
+    panel.dataset.rwphResizeReady='1';
+    panel.classList.add('rwph-unified-layout-v1593');
     rwphInstallWidthDrivenPanelStylesV1596();
-    rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector);
-    const initialRect = panel.getBoundingClientRect();
-    if (initialRect.width > 40) panel.dataset.rwphBaseWidth = String(Math.round(initialRect.width));
-    if (initialRect.height > 40) panel.dataset.rwphBaseHeight = String(Math.round(initialRect.height));
-    const handles = [
-      ["nw", "Resize from top-left"],
-      ["sw", "Resize from bottom-left"],
-      ["se", "Resize from bottom-right"],
-    ];
-    // Exactly three active corners. Top-right belongs to Close.
-    panel.querySelectorAll(":scope > .rw-resize-handle-ne, :scope > .resize-handle-ne").forEach(el => el.remove());
-    for (const [dir, title] of handles) {
-      let h = panel.querySelector(`:scope > .rw-resize-handle-${dir}`);
-      if (!h) {
-        h = document.createElement("div");
-        h.className = `rw-resize-handle rw-resize-handle-${dir}`;
-        panel.appendChild(h);
-      }
-      h.dataset.rwphResizeDir = dir;
-      h.title = title;
-      h.style.touchAction = "none";
-    }
-    const head = panel.querySelector(handleSelector);
-    if (head) head.style.touchAction = "none";
+    rwphMarkWidthDrivenPanelPartsV1596(panel,handleSelector);
 
-    let gesture = null;
-    const clamp = (v, low, high) => Math.min(Math.max(v, low), Math.max(low, high));
-    const setGeometry = (left, top, width, height) => {
-      const b = rwphUnifiedPanelBoundsV1593(panel);
-      const w = clamp(width, b.minWidth, b.maxWidth);
-      const h = clamp(height, b.minHeight, b.maxHeight);
-      const x = clamp(left, 8, Math.max(8, b.vw - w - 8));
-      const y = clamp(top, 8, Math.max(8, b.vh - h - 8));
-      for (const [k, v] of Object.entries({ position: "fixed", left: `${Math.round(x)}px`,
-        top: `${Math.round(y)}px`, right: "auto", bottom: "auto",
-        width: `${Math.round(w)}px`, height: `${Math.round(h)}px`, transform: "none" })) {
-        panel.style.setProperty(k, v, "important");
+    panel.querySelectorAll(':scope > .rw-resize-handle-ne,:scope > .resize-handle-ne')
+      .forEach(el=>el.remove());
+    for (const dir of ['nw','sw','se']) {
+      let grip=panel.querySelector(`:scope > .rw-resize-handle-${dir}`);
+      if (!grip) {
+        grip=document.createElement('div');
+        grip.className=`rw-resize-handle rw-resize-handle-${dir}`;
+        panel.appendChild(grip);
       }
-      rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector);
-      rwphUnifiedPanelLayoutEventV1593(panel);
-    };
-    const begin = e => {
-      if (e.button !== undefined && e.button !== 0) return;
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      const handle = target.closest(":scope > .rw-resize-handle") ||
-        target.closest(".rw-resize-handle");
-      const resizing = !!handle && handle.parentElement === panel;
-      if (!resizing) {
-        const header = target.closest(handleSelector);
-        if (!header || !panel.contains(header)) return;
-        if (target.closest("button, a, input, select, textarea, summary, label, [role=button], [contenteditable]")) return;
-      }
-      const rect = panel.getBoundingClientRect();
-      gesture = { id: e.pointerId, resizing, dir: handle?.dataset.rwphResizeDir || "se",
-        x: e.clientX, y: e.clientY, left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-      if (panel.dataset?.rwphDefaultSetupPreview !== '1') panel.dataset.rwphUserAdjustedGeometryV1597 = '1';
-      // Freeze geometry once at gesture start, even if the panel was anchored
-      // with right/bottom. This prevents movement from modifying content size.
-      setGeometry(rect.left, rect.top, rect.width, rect.height);
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    const move = e => {
-      if (!gesture || (gesture.id !== undefined && e.pointerId !== gesture.id)) return;
-      const g = gesture, dx = e.clientX - g.x, dy = e.clientY - g.y;
-      if (!g.resizing) setGeometry(g.left + dx, g.top + dy, g.width, g.height);
-      else {
-        let w = g.width + (g.dir.includes("w") ? -dx : dx);
-        let h = g.height + (g.dir.includes("n") ? -dy : dy);
-        const b = rwphUnifiedPanelBoundsV1593(panel);
-        w = clamp(w, b.minWidth, b.maxWidth);
-        h = clamp(h, b.minHeight, b.maxHeight);
-        const left = g.dir.includes("w") ? g.left + g.width - w : g.left;
-        const top = g.dir.includes("n") ? g.top + g.height - h : g.top;
-        setGeometry(left, top, w, h);
-      }
-      e.preventDefault();
-    };
-    const end = e => {
-      if (!gesture || (e.pointerId !== undefined && gesture.id !== undefined && e.pointerId !== gesture.id)) return;
-      gesture = null;
-      rwphUnifiedPanelLayoutEventV1593(panel);
-    };
-    const listeners = new AbortController();
-    rwphRegisterUnifiedEngineV1593(panel, listeners);
-    panel.addEventListener("pointerdown", begin, { signal: listeners.signal });
-    window.addEventListener("pointermove", move, { passive: false, signal: listeners.signal });
-    window.addEventListener("pointerup", end, { signal: listeners.signal });
-    window.addEventListener("pointercancel", end, { signal: listeners.signal });
-    // One responsive viewport policy, including rotation/resizing on phone/PDA.
-    const viewportChanged = () => {
-      if (!panel.isConnected) return;
-      const r = panel.getBoundingClientRect();
-      setGeometry(r.left, r.top, r.width, r.height);
-    };
-    window.addEventListener("resize", viewportChanged, { passive: true, signal: listeners.signal });
-    // Re-mark content on panel rerenders without requiring a drag or resize.
-    if (typeof MutationObserver === 'function') {
-      const contentObserver = new MutationObserver(() => {
-        if (panel.isConnected) rwphMarkWidthDrivenPanelPartsV1596(panel, handleSelector);
-      });
-      contentObserver.observe(panel, { childList: true });
-      listeners.signal.addEventListener('abort', () => contentObserver.disconnect(), { once: true });
+      grip.dataset.rwphResizeDir=dir;
+      grip.title=`Resize ${dir==='nw'?'top-left':dir==='sw'?'bottom-left':'bottom-right'}`;
+      grip.style.touchAction='none';
     }
-    panel.style.setProperty("box-sizing", "border-box", "important");
-    // Normalize geometry immediately, then apply the independent user content size.
-    viewportChanged();
+    const clamp=(v,lo,hi)=>Math.min(Math.max(v,lo),Math.max(lo,hi));
+    const panelRect=()=>panel.getBoundingClientRect();
+    let pending=null;
+    let frame=0;
+    let gesture=null;
+    let lastSize='';
+    const apply=(geometry,notify=true)=>{
+      if (!panel.isConnected) return;
+      const b=rwphUnifiedPanelBoundsV1593(panel);
+      const width=clamp(geometry.width,b.minWidth,b.maxWidth);
+      const height=clamp(geometry.height,b.minHeight,b.maxHeight);
+      const left=clamp(geometry.left,8,Math.max(8,b.vw-width-8));
+      const top=clamp(geometry.top,8,Math.max(8,b.vh-height-8));
+      // Geometry only. No DOM measurements / font scaling in pointermove.
+      for (const [name,value] of Object.entries({
+        position:'fixed',left:`${Math.round(left)}px`,top:`${Math.round(top)}px`,
+        right:'auto',bottom:'auto',width:`${Math.round(width)}px`,
+        height:`${Math.round(height)}px`,transform:'none',
+      })) panel.style.setProperty(name,value,'important');
+      if (notify) {
+        const size=`${Math.round(width)}:${Math.round(height)}`;
+        if (size!==lastSize) {
+          lastSize=size;
+          rwphUnifiedPanelLayoutEventV1593(panel);
+        }
+      }
+    };
+    const schedule=geometry=>{
+      pending=geometry;
+      if (frame) return;
+      frame=requestAnimationFrame(()=>{
+        frame=0;
+        if (!pending) return;
+        const next=pending;pending=null;
+        apply(next);
+      });
+    };
+    const finish=()=>{
+      if (frame) cancelAnimationFrame(frame);
+      frame=0;
+      if (pending) { const next=pending;pending=null;apply(next); }
+      if (!gesture) return;
+      gesture=null;
+      panel.classList.remove('rwph-layout-gesturing-v1598');
+      rwphUnifiedPanelLayoutEventV1593(panel);
+    };
+    const blocked='button,a,input,select,textarea,summary,label,[role="button"],[contenteditable],.rwph-fit-control-v1491';
+    const down=e=>{
+      if (e.button!==undefined && e.button!==0) return;
+      if (!(e.target instanceof Element)) return;
+      const hit=e.target.closest('.rw-resize-handle');
+      const resizing=!!hit && hit.parentElement===panel;
+      if (!resizing) {
+        const head=e.target.closest(handleSelector);
+        if (!head || !panel.contains(head) || e.target.closest(blocked)) return;
+      }
+      const rect=panelRect();
+      gesture={pointerId:e.pointerId,fromX:e.clientX,fromY:e.clientY,
+        left:rect.left,top:rect.top,width:rect.width,height:rect.height,
+        resize:resizing,dir:hit?.dataset.rwphResizeDir||'se'};
+      if (panel.dataset?.rwphDefaultSetupPreview!=='1') panel.dataset.rwphUserAdjustedGeometryV1597='1';
+      panel.classList.add('rwph-layout-gesturing-v1598');
+      e.preventDefault(); e.stopPropagation();
+    };
+    const move=e=>{
+      const g=gesture;
+      if (!g || (g.pointerId!==undefined && e.pointerId!==g.pointerId)) return;
+      const dx=e.clientX-g.fromX,dy=e.clientY-g.fromY;
+      if (!g.resize) schedule({left:g.left+dx,top:g.top+dy,width:g.width,height:g.height});
+      else {
+        const b=rwphUnifiedPanelBoundsV1593(panel);
+        const width=clamp(g.width+(g.dir.includes('w')?-dx:dx),b.minWidth,b.maxWidth);
+        const height=clamp(g.height+(g.dir.includes('n')?-dy:dy),b.minHeight,b.maxHeight);
+        schedule({left:g.dir.includes('w')?g.left+g.width-width:g.left,
+          top:g.dir.includes('n')?g.top+g.height-height:g.top,width,height});
+      }
+      e.preventDefault();
+    };
+    const up=e=>{
+      if (!gesture || (e.pointerId!==undefined && e.pointerId!==gesture.pointerId)) return;
+      finish();
+    };
+    const abort=new AbortController();
+    rwphRegisterUnifiedEngineV1593(panel,abort);
+    panel.addEventListener('pointerdown',down,{signal:abort.signal});
+    window.addEventListener('pointermove',move,{passive:false,signal:abort.signal});
+    window.addEventListener('pointerup',up,{signal:abort.signal});
+    window.addEventListener('pointercancel',up,{signal:abort.signal});
+    window.addEventListener('blur',finish,{signal:abort.signal});
+    const keepInView=()=>{
+      if (!panel.isConnected) return;
+      const r=panelRect();
+      schedule({left:r.left,top:r.top,width:r.width,height:r.height});
+    };
+    window.addEventListener('resize',keepInView,{passive:true,signal:abort.signal});
+    // A narrow panel can be rerendered by the host. Reapply flow classes on
+    // root-level child replacements without replacing or moving any controls.
+    if (typeof MutationObserver==='function') {
+      const observer=new MutationObserver(()=>rwphMarkWidthDrivenPanelPartsV1596(panel,handleSelector));
+      observer.observe(panel,{childList:true});
+      abort.signal.addEventListener('abort',()=>observer.disconnect(),{once:true});
+    }
+    if (typeof ResizeObserver==='function') {
+      const observer=new ResizeObserver(()=>{
+        if (!panel.isConnected || gesture) return;
+        // Native/fullscreen/admin geometry changes share this same controller.
+        rwphMarkWidthDrivenPanelPartsV1596(panel,handleSelector);
+      });
+      observer.observe(panel);
+      abort.signal.addEventListener('abort',()=>observer.disconnect(),{once:true});
+    }
+    abort.signal.addEventListener('abort',()=>{finish();if(frame)cancelAnimationFrame(frame);},{once:true});
+    panel.style.setProperty('box-sizing','border-box','important');
     rwphApplyUnifiedPanelContentScaleV1594(panel);
     rwphEnsurePanelTextScale(panel);
+    keepInView();
   }
 
   // Kept as compatibility shims for older panel setup calls. The engine is
@@ -14974,50 +15028,12 @@
 
 
   function rwphFitPanelToViewportV1491(panel) {
-    if (!panel || !panel.isConnected) return;
-    const viewportW = Math.max(280, window.innerWidth || 0);
-    const viewportH = Math.max(320, window.innerHeight || 0);
-    const isResultsPanel = panel.id === "rw-results-panel" || panel.classList?.contains("rw-results-panel");
-    if (isResultsPanel) {
-      rwphSetPanelStyle(panel, "position", "fixed");
-      rwphSetPanelStyle(panel, "left", "6px");
-      rwphSetPanelStyle(panel, "top", "6px");
-      rwphSetPanelStyle(panel, "right", "auto");
-      rwphSetPanelStyle(panel, "bottom", "auto");
-      rwphSetPanelStyle(panel, "width", "calc(100vw - 12px)");
-      rwphSetPanelStyle(panel, "height", "calc(100vh - 12px)");
-      rwphSetPanelStyle(panel, "min-width", "0");
-      rwphSetPanelStyle(panel, "min-height", "0");
-      rwphSetPanelStyle(panel, "max-width", "none");
-      rwphSetPanelStyle(panel, "max-height", "none");
-      rwphSetPanelStyle(panel, "transform", "none");
-      rwphSetPanelStyle(panel, "overflow", "hidden");
-      rwphEnsurePanelTextScale(panel);
-      return;
-    }
-    const margin = viewportW <= 760 ? 7 : 12;
-    const rect = panel.getBoundingClientRect();
-    const mobile = viewportW <= 760 || window.matchMedia?.("(pointer: coarse)")?.matches;
-    const minW = panel.id === "rw-results-panel" ? 300 : (mobile ? 270 : 300);
-    const minH = panel.id === "rwph-xanax-send-status" ? (mobile ? 300 : 340) : 220;
-    const maxW = Math.max(minW, viewportW - margin * 2);
-    const maxH = Math.max(minH, viewportH - margin * 2);
-    const width = Math.min(maxW, Math.max(minW, Math.min(Number(rect.width) || 420, maxW)));
-    const height = Math.min(maxH, Math.max(minH, Math.min(Number(rect.height) || Math.min(680, maxH), maxH)));
-    const left = Math.max(margin, Math.round((viewportW - width) / 2));
-    const top = Math.max(margin, Math.round((viewportH - height) / 2));
-    rwphSetPanelStyle(panel, "position", "fixed");
-    rwphSetPanelStyle(panel, "left", `${left}px`);
-    rwphSetPanelStyle(panel, "top", `${top}px`);
-    rwphSetPanelStyle(panel, "right", "auto");
-    rwphSetPanelStyle(panel, "bottom", "auto");
-    rwphSetPanelStyle(panel, "width", `${width}px`);
-    rwphSetPanelStyle(panel, "height", `${height}px`);
-    rwphSetPanelStyle(panel, "max-width", `${maxW}px`);
-    rwphSetPanelStyle(panel, "max-height", `${maxH}px`);
-    rwphSetPanelStyle(panel, "transform", "none");
-    rwphSetPanelStyle(panel, "overflow", "hidden");
-    rwphEnsurePanelTextScale(panel);
+    if (!panel?.isConnected) return;
+    // Explicit Fit-to-Screen is a geometry action, not another resize engine.
+    rwphApplyPanelGeometry(panel,{
+      left:8,top:8,width:Math.max(100,window.innerWidth-16),
+      height:Math.max(100,window.innerHeight-16),
+    });
   }
 
   function rwphFreezeCloseControlsV1506(panel) {
