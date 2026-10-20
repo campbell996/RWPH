@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.601
+// @version      1.1.602
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -10561,7 +10561,7 @@
             <button type="button" class="rw-pay-all-copy ${amountDone ? "rw-pay-all-copy-done" : ""} ${expectedAction === "amount" ? "rwph-next-action" : ""}" data-pay-copy-amount="${safeIndex}" >${amountDone ? "Prefill Amount ✓" : "Prefill Amount"}</button>
           </div>
         </div>
-        <div class="rw-pay-all-member-hint">Use the Prefill buttons, verify the member and amount in Torn, manually submit the payment, then continue to the next member.</div>
+        <div class="rw-pay-all-member-hint">Prefill only works in Torn's <b>Money → Add To Balance</b> section. RWPH never fills Points or another control. Verify the member and amount, manually submit the payment, then continue.</div>
         <div class="rw-pay-all-wizard-nav">
           <button type="button" class="secondary rw-pay-all-back" data-pay-all-back="1">Back</button>
           <button type="button" class="primary rw-pay-all-next ${expectedAction === "next" ? "rwph-next-action" : ""}" data-pay-all-next="1" >${last ? "Finish Payments" : "Next Payment"}</button>
@@ -10661,63 +10661,118 @@
     if (existing) existing.remove();
   }
 
-  function rwphPayAllFieldMeta(el) {
+  // v1.1.602: Money-only safety boundary. Torn can show "Money" and "Points"
+  // controls simultaneously, often with identical Name and Amount field names.
+  // Read ONLY a uniquely identified Money section, never a generic field elsewhere.
+  function rwphPayAllOwnFieldMeta(el) {
     if (!el) return "";
-    const attrs = ["id", "class", "name", "placeholder", "aria-label", "title", "data-name", "data-id", "type", "role"];
-    const attrText = attrs.map((a) => String(el.getAttribute?.(a) || "")).join(" ");
-    const wrap = rwphSendHelperText(el.closest?.("label, div, li, tr, td, section, form") || el.parentElement || el);
-    return `${attrText} ${wrap}`.replace(/\s+/g, " ").toLowerCase();
-  }
-
-  function rwphPayAllAncestorAttrText(el, maxDepth = 10) {
-    const bits = [];
-    let node = el;
-    for (let depth = 0; node && node !== document.documentElement && depth < maxDepth; depth += 1, node = node.parentElement) {
-      try {
-        ["id", "class", "name", "role", "aria-label", "title", "placeholder", "data-testid", "data-test", "data-name", "data-id"].forEach((attr) => {
-          const value = node.getAttribute?.(attr);
-          if (value) bits.push(value);
-        });
-      } catch (_) {}
+    const attrs = ["id", "class", "name", "placeholder", "aria-label", "title", "data-testid", "data-test", "type", "inputmode"];
+    const parts = attrs.map(key => el.getAttribute?.(key) || "");
+    try { Array.from(el.labels || []).forEach(label => parts.push(label.textContent || "")); } catch (_) {}
+    const localLabel = el.closest?.("label");
+    if (localLabel) parts.push(localLabel.textContent || "");
+    const labelledBy = String(el.getAttribute?.("aria-labelledby") || "").split(/\s+/).filter(Boolean);
+    for (const id of labelledBy) {
+      const label = document.getElementById(id);
+      if (label) parts.push(label.textContent || "");
     }
-    return bits.join(" ").replace(/\s+/g, " ").toLowerCase();
+    return parts.join(" ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").toLowerCase();
   }
 
-  function rwphPayAllNearbyText(el) {
-    const scope = el?.closest?.("form,[role='dialog'],[aria-modal='true'],[class*='modal'],[class*='popup'],[class*='dialog'],[class*='money'],[class*='bank'],[class*='payment'],[class*='pay'],[class*='send'],[class*='give'],[class*='transfer'],section,article,main") || el?.parentElement || el;
-    return rwphSendHelperText(scope).slice(0, 1800);
+  function rwphPayAllFieldIsUsable(el) {
+    if (!el || !el.isConnected || !rwphSendHelperVisible(el) || el.disabled || el.readOnly || el.getAttribute?.("aria-disabled") === "true") return false;
+    if (el.closest?.("#rw-pay-all-panel,#rw-payout-helper,#rwph-xanax-send-status,.rw-pay-all-panel,.rwph-floating-panel")) return false;
+    // Exclude Torn's unrelated overlays, even if their text mentions Money.
+    for (let n = el.parentElement, d = 0; n && d < 12 && n !== document.body; n = n.parentElement, d += 1) {
+      const tags = ["id","class","role","aria-label","data-testid"].map(k => n.getAttribute?.(k) || "").join(" ")
+        .replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").toLowerCase();
+      if (/\b(chat|chatbox|settings|preferences|messages?|notifications?|notepad|sidebar|search panel|points form|points panel)\b/.test(tags)) return false;
+    }
+    const type = String(el.type || "").toLowerCase();
+    return !["hidden","button","submit","reset","checkbox","radio","file","image","password","email","url"].includes(type);
   }
 
-  function rwphPayAllHasMoneyContext(el) {
-    const scope = el?.closest?.("form,[role='dialog'],[aria-modal='true'],[class*='modal'],[class*='popup'],[class*='dialog'],[class*='money'],[class*='bank'],[class*='payment'],[class*='pay'],[class*='give'],[class*='transfer'],[id*='money'],[id*='bank'],[id*='payment'],[id*='pay'],[id*='give'],[id*='transfer']") || el?.closest?.("label,div,li,tr,td") || el?.parentElement || el;
-    const text = `${rwphPayAllAncestorAttrText(el)} ${rwphSendHelperText(scope).slice(0, 1400)}`;
-    return /\b(add\s*to\s*balance|add\s*money|give\s*money|give\s*cash|send\s*money|money|cash|balance|bank|banking|vault|transfer|deposit|payment|payout|pay\s*member|member\s*balance|faction\s*controls)\b/i.test(text);
+  function rwphPayAllOnFactionControls() {
+    if (!/^\/factions\.php$/i.test(window.location.pathname)) return false;
+    const hash = String(window.location.hash || "").toLowerCase();
+    if (!/(?:^|[\/&])tab=controls(?:&|$)/.test(hash)) return false;
+    const option = hash.match(/(?:^|[\/&])option=([^&]+)/);
+    return !option || option[1] === "give-to-user";
+  }
+
+  function rwphPayAllMoneyRegionForField(el) {
+    if (!rwphPayAllFieldIsUsable(el)) return null;
+    const own = rwphPayAllOwnFieldMeta(el);
+    if (/\b(points?|chat|settings|message|notes?|comments?|filters?|search settings)\b/i.test(own)) return null;
+    let node = el.parentElement;
+    // Locate the closest local *Money-only* form/section. A common ancestor
+    // containing both Money and Points is never accepted as a payout section.
+    for (let depth = 0; node && depth < 12 && node !== document.body; depth += 1, node = node.parentElement) {
+      if (node.closest?.("#rw-pay-all-panel,#rw-payout-helper,#rwph-xanax-send-status")) return null;
+      const a = ["id","class","aria-label","data-testid","data-test","title"].map(k=>node.getAttribute?.(k)||"").join(" ");
+      const text = String(node.textContent || "").slice(0,5000);
+      const ctx = `${a} ${text}`.replace(/([a-z])([A-Z])/g,"$1 $2").replace(/[_-]+/g," ").toLowerCase();
+      const mentionsPoints = /\bpoints?\b/.test(ctx);
+      const mentionsMoney = /\b(money|cash|dollars?|balance)\b/.test(ctx);
+      if (mentionsPoints && !mentionsMoney) return null; // Inside Points, not Money.
+      if (mentionsMoney && !mentionsPoints) {
+        const fields = Array.from(node.querySelectorAll("input,textarea,[contenteditable='true'],[role='textbox'],[role='spinbutton']"))
+          .filter(rwphPayAllFieldIsUsable);
+        if (fields.length >= 2 && fields.length <= 6 && fields.includes(el)) return node;
+      }
+    }
+    return null; // Never fall back to the first editable field on the page.
+  }
+
+  function rwphPayAllVerifiedMoneyFields() {
+    if (!rwphPayAllOnFactionControls()) return null;
+    const all = Array.from(document.querySelectorAll("input,textarea,[contenteditable='true'],[role='textbox'],[role='spinbutton']"))
+      .filter(rwphPayAllFieldIsUsable);
+    const regions = new Set();
+    for (const el of all) {
+      const region = rwphPayAllMoneyRegionForField(el);
+      if (region) regions.add(region);
+    }
+    const matches = [];
+    for (const region of regions) {
+      const fields = Array.from(region.querySelectorAll("input,textarea,[contenteditable='true'],[role='textbox'],[role='spinbutton']"))
+        .filter(rwphPayAllFieldIsUsable);
+      // Torn's money/points sides must never be mixed in a single prefill scope.
+      if (fields.some(field => /\bpoints?\b/.test(rwphPayAllOwnFieldMeta(field)))) continue;
+      const nameRe = /\b(user|player|member|recipient|username|name|name \/ id|user id|player id|money to|add money to|give money to)\b/;
+      const amountRe = /\b(amount|dollars?|cash|money|balance|value|sum)\b/;
+      const nameCandidates = fields.filter(field => {
+        const meta = rwphPayAllOwnFieldMeta(field);
+        return nameRe.test(meta) && !/\b(amount|dollars?|cash value|money amount|balance amount)\b/.test(meta);
+      });
+      const amountCandidates = fields.filter(field => {
+        const meta = rwphPayAllOwnFieldMeta(field);
+        const type = String(field.type || "").toLowerCase();
+        return amountRe.test(meta) && !nameRe.test(meta) ||
+          (["number","tel"].includes(type) || /^(numeric|decimal)$/.test(field.getAttribute?.("inputmode")||"")) && !nameRe.test(meta);
+      });
+      let member = nameCandidates.length === 1 ? nameCandidates[0] : null;
+      let amount = amountCandidates.length === 1 ? amountCandidates[0] : null;
+      // A strictly two-field Money-only form may use generic names. Distinguish
+      // its recipient text box from its numeric amount field, or refuse to fill.
+      if (fields.length === 2 && (!member || !amount)) {
+        const numeric = fields.filter(field => ["number","tel"].includes(String(field.type||"").toLowerCase()) ||
+          /^(numeric|decimal)$/.test(field.getAttribute?.("inputmode")||""));
+        if (numeric.length === 1) {
+          amount = amount || numeric[0];
+          member = member || fields.find(field => field !== amount);
+        }
+      }
+      if (member && amount && member !== amount && rwphPayAllMoneyRegionForField(member) === region &&
+          rwphPayAllMoneyRegionForField(amount) === region) matches.push({ member, amount, scope: region });
+    }
+    // Two possible Money forms (or none) is ambiguous. Fail closed.
+    return matches.length === 1 ? matches[0] : null;
   }
 
   function rwphIsPayAllWrongTornPanelField(el) {
-    if (!el || !el.closest) return true;
-    if (el.closest("#rw-pay-all-panel, #rw-payout-helper, #rwph-xanax-send-status, .rw-pay-all-panel")) return true;
-
-    const attrText = rwphPayAllAncestorAttrText(el);
-    const fieldText = `${rwphPayAllFieldMeta(el)} ${rwphPayAllNearbyText(el)}`;
-    const hasMoneyContext = rwphPayAllHasMoneyContext(el);
-
-    // Torn chat/settings panels live in the bottom-right and often expose generic textboxes first.
-    // Never let those fields become the Payments Copy Panel target, even when they are open over faction controls.
-    const chatSettingsRe = /\b(chat|chatbox|chat-window|chat_box|chatroom|chat-list|chatlist|message-box|messagebox|emoji|emoticon|smiley|settings|preferences|preference|options|option-panel|quicklink|quick-link|sidebar|side-bar|notification|notepad|notes|profile-quick|footer)\b/i;
-    const fieldDenyRe = /\b(chat|message|comment|reason|note|emoji|settings|preferences|filter|api\s*key|password|search\s*settings)\b/i;
-
-    if (!hasMoneyContext && (chatSettingsRe.test(attrText) || fieldDenyRe.test(fieldText))) return true;
-
-    try {
-      const r = el.getBoundingClientRect();
-      const w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-      const h = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const bottomRightOverlay = r.width > 0 && r.height > 0 && r.right > w * 0.52 && r.bottom > h * 0.52 && r.width <= Math.min(560, w * 0.58);
-      if (!hasMoneyContext && bottomRightOverlay) return true;
-    } catch (_) {}
-
-    return false;
+    const safe = rwphPayAllVerifiedMoneyFields();
+    return !safe || (el !== safe.member && el !== safe.amount);
   }
 
   function rwphForcePayAllCloseButton(panel) {
@@ -10763,94 +10818,16 @@
     return btn;
   }
 
-  function rwphPayAllEditableFields(scope = null) {
-    return rwphPayAllFieldsInScope(scope || document);
-  }
-
   function rwphFindPayAllMemberField() {
-    const fields = rwphPayAllEditableFields();
-    const scored = fields.map((el) => {
-      const meta = rwphPayAllFieldMeta(el);
-      let score = 0;
-      if (/\b(user|player|member|recipient|name|id|torn)\b/.test(meta)) score += 8;
-      if (/\b(to|add|target|search)\b/.test(meta)) score += 2;
-      if ((el.tagName || "").toLowerCase() === "input" && ["text", "search", ""].includes(String(el.type || "").toLowerCase())) score += 2;
-      if (/\b(amount|money|cash|balance|dollar|qty|quantity|message|comment|reason|note)\b/.test(meta)) score -= 12;
-      return { el, score };
-    }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
-
-    return scored[0]?.el || fields.find((el) => {
-      const meta = rwphPayAllFieldMeta(el);
-      return !/\b(amount|money|cash|balance|dollar|qty|quantity|message|comment|reason|note)\b/.test(meta) && String(el.type || "").toLowerCase() !== "number";
-    }) || null;
+    return rwphPayAllVerifiedMoneyFields()?.member || null;
   }
 
   function rwphFindPayAllAmountField(scope = null) {
-    const scopedFields = scope ? rwphPayAllEditableFields(scope) : [];
-    const fields = scopedFields.length ? scopedFields : rwphPayAllEditableFields();
-    const amountRe = /\b(amount|money|cash|balance|dollar|payout|payment|pay|value|funds|give|transfer|deposit|send|add\s*money|add\s*to\s*balance)\b/;
-    const hardNoRe = /\b(message|comment|reason|note|search|filter|api|key|code)\b/;
-    const memberRe = /\b(user|player|member|recipient|username|profile|name|id|torn)\b/;
-
-    const fieldTypeScore = (el) => {
-      const type = String(el.type || "").toLowerCase();
-      const inputMode = String(el.getAttribute?.("inputmode") || "").toLowerCase();
-      let score = 0;
-      if (["number", "tel"].includes(type)) score += 10;
-      if (/\b(numeric|decimal)\b/.test(inputMode)) score += 8;
-      if (el.getAttribute?.("role") === "spinbutton") score += 6;
-      if ((el.tagName || "").toLowerCase() === "input" && ["text", "", "tel", "number"].includes(type)) score += 2;
-      return score;
-    };
-
-    // Best case: Torn exposes useful field text, name, id, placeholder, type, role, or inputmode.
-    // When Name + ID was clicked first, prefer amount-like fields after that current member field.
-    const memberIndex = rwphPayAllLastMemberField ? fields.indexOf(rwphPayAllLastMemberField) : -1;
-    const scored = fields.map((el, index) => {
-      const meta = rwphPayAllFieldMeta(el);
-      const hasAmountWords = amountRe.test(meta) || /[$]/.test(meta);
-      let score = fieldTypeScore(el);
-      if (hasAmountWords) score += 18;
-      if (/\b(add\s*money|add\s*to\s*balance|give|transfer|deposit|send|payment|payout)\b/.test(meta)) score += 8;
-      if (/[$]/.test(meta)) score += 5;
-      // Do not reject an amount field just because the surrounding Torn form also contains member text.
-      // Only penalize member/search words when the field has no money/amount clues.
-      if (memberRe.test(meta) && !hasAmountWords) score -= 18;
-      if (hardNoRe.test(meta) && !hasAmountWords) score -= 20;
-      if (memberIndex >= 0) {
-        if (index > memberIndex) score += 6;
-        else score -= 10;
-        score -= Math.min(Math.abs(index - memberIndex), 20) * 0.02;
-      } else {
-        score += Math.min(index, 8) * 0.05;
-      }
-      return { el, score, meta, hasAmountWords };
-    }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
-
-    if (scored[0]?.el) return scored[0].el;
-
-    const numeric = fields.find((el) => {
-      const meta = rwphPayAllFieldMeta(el);
-      const typeScore = fieldTypeScore(el);
-      if (!typeScore) return false;
-      return !hardNoRe.test(meta) && !/\b(search|filter|message|comment|reason|note)\b/.test(meta);
-    });
-    if (numeric) return numeric;
-
-    // Last-resort Torn fallback: after the current member field is visible, use the next editable field in the same active payment form.
-    const memberField = rwphPayAllLastMemberField && rwphSendHelperVisible(rwphPayAllLastMemberField)
-      ? rwphPayAllLastMemberField
-      : rwphFindPayAllMemberField();
-    const startIndex = memberField ? fields.indexOf(memberField) + 1 : 0;
-    const afterMember = fields.slice(Math.max(0, startIndex)).find((el) => {
-      const meta = rwphPayAllFieldMeta(el);
-      const type = String(el.type || "").toLowerCase();
-      if (["search", "email", "url"].includes(type)) return false;
-      if (hardNoRe.test(meta)) return false;
-      if (amountRe.test(meta) || fieldTypeScore(el) > 0) return true;
-      return !memberRe.test(meta);
-    });
-    return afterMember || null;
+    const money = rwphPayAllVerifiedMoneyFields();
+    if (!money) return null;
+    // A previously stored member field is not trusted if Torn has rerendered.
+    if (scope && scope !== money.scope && !scope.contains?.(money.amount)) return null;
+    return money.amount;
   }
 
   function rwphIsTouchPhoneOrPda() {
@@ -10899,6 +10876,9 @@
     } else {
       el.focus?.({ preventScroll: true });
       el.click?.();
+      // Torn may rerender fields when focused. Confirm this is STILL Money
+      // before writing; a Points field is never an acceptable fallback.
+      if (rwphIsPayAllWrongTornPanelField(el)) return false;
     }
 
     try {
@@ -10936,43 +10916,35 @@
     return true;
   }
 
+  const rwphPayAllMoneyOnlyWarning = "RWPH could not safely identify the Money fields. Open Faction Controls → Give to User → Money → Add To Balance, then try again. The value was copied to your clipboard; nothing was pasted into Torn.";
+
   async function rwphPrefillPayAllMember(row) {
     const id = String(row?.id || "unknown");
     const name = row?.name || `Unknown ${id}`;
     const value = `${name} [${id}]`;
-    const field = rwphFindPayAllMemberField();
-    rwphPayAllLastMemberField = field || null;
-    rwphPayAllActiveScope = rwphPayAllFieldScope(field) || null;
-    const filled = rwphSetPayAllFieldValue(field, value);
-    // Some Torn faction-control forms rebuild the amount input after a member is selected.
-    // Keep the active form context tied to the latest selected member before the Amount button runs.
-    await new Promise((resolve) => setTimeout(resolve, 120));
-    if (field && rwphSendHelperVisible(field)) {
-      rwphPayAllLastMemberField = field;
-      rwphPayAllActiveScope = rwphPayAllFieldScope(field) || rwphPayAllActiveScope;
+    const verified = rwphPayAllVerifiedMoneyFields();
+    rwphPayAllLastMemberField = null;
+    rwphPayAllActiveScope = null;
+    const filled = !!verified && rwphSetPayAllFieldValue(verified.member, value);
+    if (filled) {
+      rwphPayAllLastMemberField = verified.member;
+      rwphPayAllActiveScope = verified.scope;
     }
     await copyText(value).catch(() => false);
-    return { filled, value };
+    return { filled, value, error: filled ? "" : rwphPayAllMoneyOnlyWarning };
   }
 
   async function rwphPrefillPayAllAmount(row) {
     const value = String(rwphPayAllRowAmount(row));
-    const scope = rwphPayAllActiveScope && rwphSendHelperVisible(rwphPayAllActiveScope) ? rwphPayAllActiveScope : null;
-    let field = rwphFindPayAllAmountField(scope);
-    let filled = rwphSetPayAllFieldValue(field, value);
-    // Torn can render/re-render the amount field shortly after the member field/search selection changes.
-    // Prefer the current member's active form/scope so the next payout does not land in an old amount box.
-    for (let attempt = 0; !filled && attempt < 6; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      const retryScope = rwphPayAllActiveScope && rwphSendHelperVisible(rwphPayAllActiveScope) ? rwphPayAllActiveScope : null;
-      field = rwphFindPayAllAmountField(retryScope);
-      filled = rwphSetPayAllFieldValue(field, value);
-    }
-    if (filled && field) {
-      try { field.dataset.rwphLastPayAllAmountAt = String(Date.now()); } catch (_) {}
+    let filled = false;
+    for (let attempt = 0; attempt < 4 && !filled; attempt++) {
+      if (attempt) await new Promise(resolve => setTimeout(resolve, 150));
+      const verified = rwphPayAllVerifiedMoneyFields();
+      if (!verified) break; // Never broaden search to another Torn field.
+      filled = rwphSetPayAllFieldValue(verified.amount, value);
     }
     await copyText(value).catch(() => false);
-    return { filled, value };
+    return { filled, value, error: filled ? "" : rwphPayAllMoneyOnlyWarning };
   }
 
   function rwphDismissPayAllCopyPopupsSilently() {
@@ -11171,8 +11143,9 @@
         rwphDismissPayAllCopyPopupsSilently();
         const index = Number(nameBtn.dataset.payCopyName);
         const row = safeRows[index] || {};
-        await rwphPrefillPayAllMember(row);
-        if (wizardState.copied[index]) wizardState.copied[index].name = true;
+        const outcome = await rwphPrefillPayAllMember(row);
+        if (wizardState.copied[index] && outcome.filled) wizardState.copied[index].name = true;
+        if (!outcome.filled) rwphShowToast(outcome.error, "warn", "RWPH Money-only Prefill");
         renderWizard();
         return;
       }
@@ -11182,8 +11155,9 @@
         rwphDismissPayAllCopyPopupsSilently();
         const index = Number(amountBtn.dataset.payCopyAmount);
         const row = safeRows[index] || {};
-        await rwphPrefillPayAllAmount(row);
-        if (wizardState.copied[index]) wizardState.copied[index].amount = true;
+        const outcome = await rwphPrefillPayAllAmount(row);
+        if (wizardState.copied[index] && outcome.filled) wizardState.copied[index].amount = true;
+        if (!outcome.filled) rwphShowToast(outcome.error, "warn", "RWPH Money-only Prefill");
         renderWizard();
       }
     });
@@ -14193,9 +14167,9 @@
         // Accept Warning remains guidance, never a control lock.
         rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
-        await rwphPrefillPayAllMember(row);
-        // Prefill buttons on the Payments Copy Panel are intentionally silent.
-        rwphHidePayAllActionButton(payNameBtn, "Prefill Name / ID", rwphPayAllInlineUndoStack);
+        const outcome = await rwphPrefillPayAllMember(row);
+        if (!outcome.filled) rwphShowToast(outcome.error, "warn", "RWPH Money-only Prefill");
+        else rwphHidePayAllActionButton(payNameBtn, "Prefill Name / ID", rwphPayAllInlineUndoStack);
         return;
       }
 
@@ -14205,9 +14179,9 @@
         // Accept Warning remains guidance, never a control lock.
         rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
-        await rwphPrefillPayAllAmount(row);
-        // Prefill buttons on the Payments Copy Panel are intentionally silent.
-        rwphHidePayAllActionButton(payAmountBtn, "Prefill Amount", rwphPayAllInlineUndoStack);
+        const outcome = await rwphPrefillPayAllAmount(row);
+        if (!outcome.filled) rwphShowToast(outcome.error, "warn", "RWPH Money-only Prefill");
+        else rwphHidePayAllActionButton(payAmountBtn, "Prefill Amount", rwphPayAllInlineUndoStack);
         return;
       }
 
