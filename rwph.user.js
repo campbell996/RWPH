@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.590
+// @version      1.1.592
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1008,20 +1008,26 @@
     return true;
   }
 
+  // Torn City Time (TCT) is UTC year-round, independent of the player's device
+  // timezone and daylight-saving time. datetime-local has no timezone of its own;
+  // its text is deliberately treated as UTC here (not by new Date(value)).
   function toDateTimeLocalValue(unixSeconds) {
-    const d = new Date(unixSeconds * 1000);
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 16);
+    const ms = Number(unixSeconds) * 1000;
+    return Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 19) : "";
   }
 
   function dateTimeLocalToUnix(value) {
-    if (!value) return 0;
-    const ms = new Date(value).getTime();
-    return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
+    const text = String(value || "").trim();
+    if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d)?$/.test(text)) return 0;
+    const full = text.length === 16 ? `${text}:00` : text;
+    const ms = Date.parse(`${full}Z`);
+    // Reject rolled-over dates such as February 30 rather than silently shifting days.
+    return Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 19) === full
+      ? Math.floor(ms / 1000) : 0;
   }
 
   function readableTime(unixSeconds) {
-    return new Date(unixSeconds * 1000).toLocaleString();
+    return `${toDateTimeLocalValue(unixSeconds).replace("T", " ")} TCT (UTC)`;
   }
 
   function savePendingPayment(result) {
@@ -2367,7 +2373,7 @@
     const minWidth = mobilePanel
       ? (isResults ? 170 : (isXanaxHelper ? 240 : (isPayAll ? 240 : 150)))
       : (isResults ? 280 : (isXanaxHelper ? 300 : (isPayAll ? 260 : 150)));
-    const minHeight = isXanaxHelper ? (mobilePanel ? 180 : 260) : 110;
+    const minHeight = isPayAll ? (mobilePanel ? 260 : 310) : (isXanaxHelper ? (mobilePanel ? 180 : 260) : 110);
     return { minWidth, minHeight };
   }
 
@@ -2547,8 +2553,8 @@
     { id: "rwph-results-panel", label: "Results", width: 860, height: 680, className: "rwph-floating-panel rw-results-panel rwph-results-shell-v1534" },
     { id: "rwph-newsletter-panel", label: "Newsletter", width: 900, height: 720, className: "rwph-floating-panel rwph-newsletter-panel-v1537" },
     { id: "rwph-newsletter-member-stats-panel", label: "Newsletter Member Card Stats", width: 470, height: 620, className: "rwph-floating-panel rwph-newsletter-member-stats-panel-v1553" },
-    { id: "rwph-basic-calculations-panel", label: "Basic Calculations", width: 540, height: 560, className: "rwph-floating-panel rwph-calculation-settings-panel" },
-    { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 650, height: 650, className: "rwph-floating-panel rwph-calculation-settings-panel" },
+    { id: "rwph-basic-calculations-panel", label: "Basic Calculations", width: 560, height: 610, className: "rwph-floating-panel rwph-calculation-settings-panel" },
+    { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 720, height: 700, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
     { id: "rwph-member-management-panel", label: "Member Management", width: 420, height: 390, className: "rwph-floating-panel rwph-member-management-panel" },
     { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 460, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
@@ -2557,6 +2563,7 @@
     { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 500, className: "rwph-floating-panel rwph-layout-theme-panel" },
     { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
     { id: "rw-wrong-payment-panel", label: "Payment Warning", width: 390, height: 250, className: "rwph-floating-panel" },
+    { id: "rwph-default-setup-panel", label: "Admin Default Setup Panel", width: 480, height: 500, className: "rwph-floating-panel rwph-default-setup-panel" },
   ]);
 
   let rwphDefaultSetupState = null;
@@ -3019,6 +3026,22 @@
         showWrongPaymentPanel("Default Setup preview. This is the real Payment Warning panel; no payment has been sent.");
         panel = document.getElementById("rw-wrong-payment-panel");
         break;
+      case "rwph-default-setup-panel":
+        // The actual admin setup *settings* panel is a valid user-positioned panel.
+        // The separate setup controller is intentionally not a target; it must
+        // remain available to advance/save each preview.
+        rwphOpenDefaultSetupPanel(rwphDefaultSetupState?.adminKey || "");
+        panel = document.getElementById("rwph-default-setup-panel");
+        if (panel) {
+          const start = panel.querySelector("#rwph-default-setup-start");
+          if (start) {
+            start.disabled = true;
+            start.title = "Admin Default Setup is currently running. Finish from the controller.";
+          }
+          const status = panel.querySelector("#rwph-default-setup-status");
+          if (status) status.textContent = "Layout preview: move and resize this panel, then use Next Panel on the setup controller.";
+        }
+        break;
       default:
         break;
     }
@@ -3301,6 +3324,17 @@
     if (state["rw-total"] && !state["rw-points-total"]) state["rw-points-total"] = state["rw-total"];
     if (state["rw-total"] && !state["rw-total-overall"]) state["rw-total-overall"] = state["rw-total"];
     if (state["rw-points-total"] && !state["rw-points-total-overall"]) state["rw-points-total-overall"] = state["rw-points-total"];
+    // Previously saved date/time values were interpreted in the browser's local
+    // timezone. Convert once into UTC clock values, preserving the old instants.
+    if (!GM_getValue("rwph-war-times-tct-migrated-v1592", false)) {
+      for (const id of ["rw-from", "rw-to", "rw-points-from", "rw-points-to"]) {
+        if (!state[id]) continue;
+        const oldMs = new Date(String(state[id])).getTime();
+        if (Number.isFinite(oldMs)) state[id] = toDateTimeLocalValue(oldMs / 1000);
+      }
+      rwphSafeJsonSet(PAYOUT_FORM_STATE_STORAGE_KEY, state);
+      GM_setValue("rwph-war-times-tct-migrated-v1592", true);
+    }
     if (state["rw-from"] && !state["rw-points-from"]) state["rw-points-from"] = state["rw-from"];
     if (state["rw-to"] && !state["rw-points-to"]) state["rw-points-to"] = state["rw-to"];
     if (GM_getValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "") !== "shared-advanced-presets-v2") {
@@ -4121,6 +4155,29 @@
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions>button{max-width:100%!important;min-width:0!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-code{display:inline-block!important;max-width:100%!important;padding:2px 5px!important;border-radius:6px!important;background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-outline)!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;overflow-wrap:anywhere!important;word-break:break-word!important;box-sizing:border-box!important;}
 
+      /* v1.1.592 — legible Torn City Time war fields with visible calendar action. */
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry{
+        display:flex!important;align-items:stretch!important;gap:6px!important;width:100%!important;max-width:100%!important;min-width:0!important;
+      }
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-date-entry input[type="datetime-local"]{
+        min-width:0!important;flex:1 1 auto!important;width:100%!important;min-height:40px!important;
+        color:var(--rwph-theme-text)!important;color-scheme:dark;
+        font-variant-numeric:tabular-nums!important;
+      }
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-calendar-open{
+        flex:0 0 43px!important;width:43px!important;min-width:43px!important;min-height:40px!important;
+        border:2px solid var(--rwph-theme-outline)!important;border-radius:9px!important;
+        color:var(--rwph-theme-text)!important;background:var(--rwph-theme-panel2)!important;
+        font-size:23px!important;line-height:1!important;cursor:pointer!important;
+        display:inline-flex!important;align-items:center!important;justify-content:center!important;
+      }
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-calendar-open:focus-visible{
+        outline:3px solid var(--rwph-theme-outline)!important;outline-offset:2px!important;
+      }
+      body :is(#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,#rw-payout-helper) .rwph-tct-caption{
+        display:block!important;margin-top:3px!important;color:var(--rwph-theme-soft)!important;
+        font-size:11px!important;font-weight:700!important;letter-spacing:.03em!important;
+      }
       /* v1.1.532 — one main-panel scrollbar/close/resize language across every live RWPH panel. */
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel),
       body :is(#rw-payout-helper,#rw-results-panel,#rwph-results-loading-panel,#rw-pay-all-panel,.rw-pay-all-panel,#rwph-xanax-send-status,#rwph-member-management-panel,.rwph-member-management-panel,#rwph-saved-reports-panel,#rwph-layout-theme-panel,#rwph-logo-picker-panel,#rwph-licence-info-panel,#rw-wrong-payment-panel,#rwph-default-setup-panel,#rwph-default-setup-controller,#rwph-basic-calculations-panel,#rwph-advanced-calculations-panel,.rwph-floating-panel,.rwph-calculation-settings-panel,.rwph-info-popup-panel) *{scrollbar-width:thin!important;scrollbar-color:var(--rwph-theme-outline) var(--rwph-theme-bg2)!important;}
@@ -4619,7 +4676,7 @@
     if (!panel) return;
 
     Object.entries(RWPH_ADVANCED_SETTING_HELP).forEach(([id, help]) => {
-      const control = panel.querySelector(`#${id}`);
+      const control = document.getElementById(id);
       if (!control) return;
       const label = control.closest("label");
       if (!label || label.querySelector(`[data-rwph-help-for="${id}"]`)) return;
@@ -10253,6 +10310,33 @@
       #rw-pay-all-panel .rw-pay-all-wizard-stage *,
       #rw-pay-all-panel .rw-pay-all-wizard-stage *::before,
       #rw-pay-all-panel .rw-pay-all-wizard-stage *::after { box-sizing:border-box !important; }
+      /* v1.1.592: measured stage must be allowed to grow wider BEFORE scaling.
+         Older 100% !important max-width/height rules had blocked the fit and clipped the page. */
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 > .rw-pay-all-scroll,
+      body #rw-pay-all-panel > .rw-pay-all-scroll {
+        flex:1 1 0!important;height:auto!important;min-height:0!important;
+        overflow:hidden!important;overflow-x:hidden!important;overflow-y:hidden!important;
+        padding:0!important;scrollbar-width:none!important;
+      }
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-stage,
+      body #rw-pay-all-panel .rw-pay-all-wizard-stage {
+        display:block!important;flex:none!important;height:auto!important;min-height:0!important;
+        width:var(--rwph-paycopy-layout-width,100%)!important;
+        max-width:none!important;overflow:visible!important;
+        transform-origin:0 0!important;
+      }
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-page,
+      body #rw-pay-all-panel .rw-pay-all-wizard-page {
+        display:flex!important;flex-direction:column!important;flex:none!important;
+        height:auto!important;min-height:0!important;width:100%!important;max-width:none!important;
+        overflow:visible!important;justify-content:flex-start!important;
+      }
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-page[data-pay-all-page="complete"],
+      body #rw-pay-all-panel .rw-pay-all-wizard-page[data-pay-all-page="complete"] {
+        display:flex!important;flex-direction:column!important;height:auto!important;min-height:0!important;
+      }
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-start-warning,
+      body #rw-pay-all-panel .rw-pay-all-start-warning { min-height:0!important;height:auto!important;flex:none!important; }
     `;
     document.head.appendChild(style);
   }
@@ -10837,31 +10921,35 @@
       target.style.transform = "none";
       target.style.height = "auto";
       target.style.maxHeight = "none";
-      target.style.width = `${availableW}px`;
-      const fits = (factor) => {
-        target.style.width = `${availableW / factor}px`;
-        // Content wraps at the unscaled width. Checking natural scroll height
-        // makes the fit robust for member names, amounts, and small devices.
-        return target.scrollHeight * factor <= availableH - 1 &&
-          target.scrollWidth * factor <= availableW + 1;
+      const measure = (factor) => {
+        const layoutWidth = availableW / factor;
+        // Override the legacy width:100%!important with the dedicated CSS variable.
+        target.style.setProperty("--rwph-paycopy-layout-width", `${layoutWidth}px`);
+        const page = target.firstElementChild;
+        const naturalH = Math.max(target.scrollHeight, page?.scrollHeight || 0, page?.getBoundingClientRect().height || 0);
+        const naturalW = Math.max(target.scrollWidth, page?.scrollWidth || 0);
+        return naturalH * factor <= availableH - 2 && naturalW * factor <= availableW + 2;
       };
-      let low = 0.20;
-      let high = 1;
       let factor = 1;
-      if (!fits(1)) {
-        if (!fits(low)) factor = low;
+      if (!measure(1)) {
+        let low = 0.10, high = 1;
+        if (!measure(low)) factor = low;
         else {
-          for (let i = 0; i < 14; i += 1) {
+          for (let i = 0; i < 16; i += 1) {
             const mid = (low + high) / 2;
-            if (fits(mid)) low = mid;
+            if (measure(mid)) low = mid;
             else high = mid;
           }
-          factor = Math.max(0.20, low - 0.002);
+          factor = Math.max(0.10, low - 0.003);
         }
       }
-      target.style.width = `${availableW / factor}px`;
+      target.style.setProperty("--rwph-paycopy-layout-width", `${availableW / factor}px`);
       target.style.transform = `scale(${factor})`;
       target.dataset.fitScale = factor.toFixed(3);
+      // Emergency fallback for impossibly short browser viewports: never clip
+      // controls even when no usable scale can fit the page.
+      const finalRect = target.getBoundingClientRect();
+      viewport.style.setProperty("overflow-y", finalRect.height > availableH + 2 ? "auto" : "hidden", "important");
     };
     const requestWizardFit = () => {
       if (fitQueued) return;
@@ -12155,7 +12243,7 @@
   function rwphEnsurePanelTextScale(panel, requestedScale = null) {
     if (!panel) return 1;
     // Payment Helper uses stable pixel typography; moving/resizing must never alter font metrics.
-    if (panel.id === "rwph-xanax-send-status") return 1;
+    if (panel.id === "rwph-xanax-send-status" || panel.id === "rw-pay-all-panel") return 1;
     const state = rwphGetPanelTextScaleState(panel);
     if (!state) return 1;
 
@@ -12181,6 +12269,7 @@
 
   function rwphApplyPanelResizeTextScale(panel, metrics, startScale, desiredScale) {
     if (!panel) return 1;
+    if (panel.id === "rw-pay-all-panel") return 1; // Wizard has its own measured fit.
     const state = rwphGetPanelTextScaleState(panel);
     if (!state) return 1;
     const safeStartScale = rwphClampPanelTextScale(startScale || 1);
@@ -12333,7 +12422,7 @@
       const minWidth = mobilePanel
         ? (isResultsPanel ? 170 : (isXanaxHelper ? 240 : (isPayAll ? 240 : 170)))
         : (isResultsPanel ? 280 : (isXanaxHelper ? 300 : (isPayAll ? 260 : 240)));
-      const minHeight = mobilePanel ? (isXanaxHelper ? 180 : 120) : 180;
+      const minHeight = isPayAll ? (mobilePanel ? 260 : 310) : (mobilePanel ? (isXanaxHelper ? 180 : 120) : 180);
       return { minWidth, minHeight };
     }
 
@@ -12351,7 +12440,7 @@
       startWidth = rect.width || panel.offsetWidth || 300;
       startHeight = rect.height || panel.offsetHeight || 240;
       startTextScale = rwphEnsurePanelTextScale(panel);
-      resizeTextMetrics = panel.id === "rwph-xanax-send-status" ? [] : rwphCollectPanelTextMetrics(panel);
+      resizeTextMetrics = (panel.id === "rwph-xanax-send-status" || panel.id === "rw-pay-all-panel") ? [] : rwphCollectPanelTextMetrics(panel);
       rwphSetPanelStyle(panel, "left", `${rect.left}px`);
       rwphSetPanelStyle(panel, "top", `${rect.top}px`);
       rwphSetPanelStyle(panel, "right", "auto");
@@ -12397,7 +12486,7 @@
       const heightRatio = startHeight > 0 ? (newHeight / startHeight) : 1;
       const sizeRatio = Math.sqrt(Math.max(0.01, widthRatio * heightRatio));
       const desiredTextScale = rwphClampPanelTextScale(startTextScale * sizeRatio);
-      if (panel.id !== "rwph-xanax-send-status") rwphApplyPanelResizeTextScale(panel, resizeTextMetrics, startTextScale, desiredTextScale);
+      if (panel.id !== "rwph-xanax-send-status" && panel.id !== "rw-pay-all-panel") rwphApplyPanelResizeTextScale(panel, resizeTextMetrics, startTextScale, desiredTextScale);
 
       rwphSetPanelStyle(panel, "left", `${newLeft}px`);
       rwphSetPanelStyle(panel, "top", `${newTop}px`);
@@ -13039,8 +13128,8 @@
       launcherId: "rw-open-basic-calculations-panel",
       selector: "details.rw-per-hit-settings",
       title: "Basic Calculations",
-      width: 540,
-      height: 560,
+      width: 560,
+      height: 610,
     }),
     points: Object.freeze({
       mode: "points",
@@ -13049,8 +13138,8 @@
       launcherId: "rw-open-advanced-calculations-panel",
       selector: "details.rw-points-settings",
       title: "Advanced Calculations",
-      width: 650,
-      height: 650,
+      width: 720,
+      height: 700,
     }),
   });
 
@@ -13167,6 +13256,202 @@
     }
   }
 
+  // v1.1.591: Only regroup DOM nodes; never re-create original inputs. Their IDs,
+  // values, listeners, preset logic, member overrides, and save keys stay intact.
+  function rwphEnsureCalculationUXStylesV1591() {
+    if (document.getElementById("rwph-calculation-ux-v1591")) return;
+    const style = document.createElement("style");
+    style.id = "rwph-calculation-ux-v1591";
+    style.textContent = `
+      body .rwph-calculation-settings-panel details.rw-settings-dropdown > .rw-api-tos-content.rwph-calc-ux{
+        display:flex!important;flex-direction:column!important;gap:11px!important;
+        padding:12px!important;min-width:0!important;box-sizing:border-box!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-intro{
+        padding:11px 12px!important;border:1px solid var(--rwph-theme-line,rgba(233,189,78,.24))!important;
+        border-radius:10px!important;background:var(--rwph-theme-panel2,#20252a)!important;
+        font-size:12px!important;line-height:1.5!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-card,
+      .rwph-calculation-settings-panel .rw-advanced-section.rwph-calc-ux-section{
+        display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;
+        padding:12px!important;margin:0!important;box-sizing:border-box!important;
+        border:1px solid var(--rwph-theme-line,rgba(233,189,78,.24))!important;
+        border-radius:10px!important;background:var(--rwph-theme-panel2,#20252a)!important;
+        overflow:visible!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-card > .rwph-calc-ux-heading,
+      .rwph-calculation-settings-panel .rw-advanced-section.rwph-calc-ux-section > .rwph-calc-ux-heading{
+        display:block!important;font-size:13px!important;font-weight:900!important;line-height:1.35!important;
+        margin:0 0 7px!important;color:var(--rwph-theme-text,#fff)!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-hint{
+        font-size:11px!important;line-height:1.5!important;margin:0 0 10px!important;
+        color:var(--rwph-theme-soft,#d7c1aa)!important;overflow-wrap:anywhere!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-card > .rw-row,
+      .rwph-calculation-settings-panel .rw-advanced-section.rwph-calc-ux-section > .rw-row{
+        margin:8px 0!important;gap:10px!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-card > .rw-actions,
+      .rwph-calculation-settings-panel .rw-advanced-section.rwph-calc-ux-section > .rw-actions{
+        margin:8px 0 0!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-option{
+        display:block!important;padding:0!important;min-height:0!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-option > summary{
+        display:flex!important;align-items:center!important;justify-content:space-between!important;
+        gap:7px!important;min-height:42px!important;cursor:pointer!important;
+        padding:10px 12px!important;margin:0!important;border-radius:9px!important;
+        background:var(--rwph-theme-panel2,#20252a)!important;
+        color:var(--rwph-theme-text,#fff)!important;font-size:12px!important;font-weight:900!important;
+        overflow-wrap:anywhere!important;list-style:none!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-option > summary::-webkit-details-marker{display:none!important;}
+      .rwph-calculation-settings-panel .rwph-calc-ux-option > summary::after{content:'+';font-size:17px;font-weight:900;}
+      .rwph-calculation-settings-panel .rwph-calc-ux-option[open] > summary::after{content:'−';}
+      .rwph-calculation-settings-panel .rwph-calc-ux-option > .rw-advanced-section.rwph-calc-ux-section{
+        display:block!important;border-top:1px solid var(--rwph-theme-line,rgba(233,189,78,.24))!important;
+        border-radius:0 0 9px 9px!important;
+      }
+      .rwph-calculation-settings-panel .rw-advanced-system-picker{
+        display:grid!important;gap:8px!important;width:100%!important;min-width:0!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-tools{
+        display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-tools > button{
+        min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;font-size:11px!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-footer{
+        position:sticky!important;bottom:0!important;z-index:3!important;
+        border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.5))!important;
+        border-radius:10px!important;background:var(--rwph-theme-panel,#20252a)!important;
+        padding:8px!important;margin:0!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-footer > .rw-actions{margin:0!important;}
+      .rwph-calculation-settings-panel .rwph-calc-ux-footer button{width:100%!important;min-height:44px!important;}
+      .rwph-calculation-settings-panel .rwph-calc-ux-card label,
+      .rwph-calculation-settings-panel .rwph-calc-ux-option label{
+        font-size:12px!important;line-height:1.45!important;
+      }
+      .rwph-calculation-settings-panel .rwph-calc-ux-card :is(input,select),
+      .rwph-calculation-settings-panel .rwph-calc-ux-option :is(input,select){min-height:35px!important;}
+      .rwph-calculation-settings-panel .rwph-calc-ux-card .rw-compact-check-grid,
+      .rwph-calculation-settings-panel .rwph-calc-ux-option .rw-compact-check-grid{margin:9px 0!important;}
+      @media(max-width:560px){
+        .rwph-calculation-settings-panel .rwph-calc-ux-tools{grid-template-columns:1fr!important;}
+        body .rwph-calculation-settings-panel details.rw-settings-dropdown > .rw-api-tos-content.rwph-calc-ux{padding:8px!important;gap:8px!important;}
+        .rwph-calculation-settings-panel .rwph-calc-ux-card,
+        .rwph-calculation-settings-panel .rw-advanced-section.rwph-calc-ux-section{padding:10px!important;}
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function rwphEnhanceCalculationPanelUXV1591(panel, mode) {
+    if (!panel) return;
+    rwphEnsureCalculationUXStylesV1591();
+    const content = panel.querySelector("details.rw-settings-dropdown > .rw-api-tos-content");
+    if (!content || content.dataset.rwphUx1591 === "1") return;
+    content.dataset.rwphUx1591 = "1";
+    content.classList.add("rwph-calc-ux");
+
+    const makeCard = (heading, hint, nodes) => {
+      const card = document.createElement("section");
+      card.className = "rwph-calc-ux-card";
+      const h = document.createElement("strong");
+      h.className = "rwph-calc-ux-heading";
+      h.textContent = heading;
+      card.appendChild(h);
+      if (hint) {
+        const d = document.createElement("div");
+        d.className = "rwph-calc-ux-hint";
+        d.textContent = hint;
+        card.appendChild(d);
+      }
+      nodes.filter(Boolean).forEach(node => card.appendChild(node));
+      return card;
+    };
+    const intro = document.createElement("div");
+    intro.className = "rwph-calc-ux-intro";
+    intro.textContent = mode === "points"
+      ? "1. Choose a payout system. 2. Set your war and payout amounts. 3. Expand only the scoring options you want to adjust. 4. Calculate and review."
+      : "Quick payout setup: choose the finished war, enter the payout amounts, optionally adjust members, then calculate. Every war hit counts equally.";
+    const original = Array.from(content.children);
+    content.prepend(intro);
+    const findId = (id) => content.querySelector(`#${id}`);
+    const parentOf = (id, cls) => findId(id)?.closest(cls) || null;
+    const footer = document.createElement("div");
+    footer.className = "rwph-calc-ux-footer";
+
+    if (mode === "standard") {
+      const startRow = parentOf("rw-from", ".rw-row");
+      const auto = parentOf("rw-autofill", ".rw-actions");
+      const payoutRow = parentOf("rw-total", ".rw-row");
+      const mm = parentOf("rw-member-management", ".rw-actions");
+      const hidden = findId("rw-excluded-members");
+      const notes = original.filter(node => node.classList?.contains("rw-calc-brief"));
+      content.appendChild(makeCard("1 · Select the finished war", "Auto-fill the last completed ranked war, or choose its start and end times.", [startRow, auto]));
+      content.appendChild(makeCard("2 · Enter payout amounts", "Member Payout is the amount to distribute. Total Payout is the overall amount for reference.", [payoutRow]));
+      content.appendChild(makeCard("3 · Adjust members (optional)", "Exclude members or reduce war hits through Member Management. Respect is report-only in Basic mode.", [mm, hidden, ...notes]));
+      footer.appendChild(parentOf("rw-run", ".rw-actions"));
+    } else {
+      const picker = content.querySelector(":scope > .rw-advanced-system-picker");
+      const firstNote = original.find(node => node.classList?.contains("rw-calc-brief"));
+      content.appendChild(makeCard("1 · Choose your calculation system", "Each preset fills recommended settings. You can still edit any scoring value below.", [picker, firstNote]));
+      const timeStep = content.querySelector('[data-rwph-advanced-step="1"]');
+      const memberStep = content.querySelector('[data-rwph-advanced-step="2"]');
+      if (timeStep) {
+        const card = makeCard("2 · Set war and payout amounts", "Use Auto-fill Last Finished War or enter the completed war period, then set the member payout pool.", [timeStep]);
+        content.appendChild(card);
+      }
+      if (memberStep) {
+        const card = makeCard("3 · Member Management (optional)", "Adjust exclusions, hits and respect before you calculate.", [memberStep]);
+        content.appendChild(card);
+      }
+      const tools = document.createElement("div");
+      tools.className = "rwph-calc-ux-tools";
+      tools.innerHTML = '<button type="button" class="secondary" data-rwph-scoring-expand="all">Show all scoring options</button><button type="button" class="secondary" data-rwph-scoring-expand="none">Collapse scoring options</button>';
+      content.appendChild(tools);
+      const sections = [
+        ["3", "4 · Hit and attack weights", "War hits, assists, outside hits, retals and overseas modifiers."],
+        ["4", "Hospital bonuses", "Choose bonuses or penalties for qualifying hospitalizations."],
+        ["5", "Respect scoring", "Add points based on earned respect when your calculation requires it."],
+        ["6", "Fair Fight settings", "Choose exact, tiered, linear or average-step Fair Fight scoring."],
+        ["7", "Hybrid allocation", "Adjust the participation, performance, war and support percentages for Hybrid payouts."],
+      ];
+      for (const [step, heading, hint] of sections) {
+        const section = content.querySelector(`[data-rwph-advanced-step="${step}"]`);
+        if (!section) continue;
+        section.classList.add("rwph-calc-ux-section");
+        const disclosure = document.createElement("details");
+        disclosure.className = "rwph-calc-ux-option";
+        disclosure.dataset.rwphScoringSection = step;
+        if (step === "3") disclosure.open = true;
+        const summary = document.createElement("summary");
+        summary.textContent = heading;
+        disclosure.appendChild(summary);
+        const description = document.createElement("div");
+        description.className = "rwph-calc-ux-hint";
+        description.style.cssText = "padding:9px 12px 0;margin:0!important";
+        description.textContent = hint;
+        disclosure.appendChild(description);
+        disclosure.appendChild(section);
+        content.appendChild(disclosure);
+      }
+      tools.addEventListener("click", event => {
+        const button = event.target.closest("[data-rwph-scoring-expand]");
+        if (!button) return;
+        const showAll = button.dataset.rwphScoringExpand === "all";
+        content.querySelectorAll("details.rwph-calc-ux-option").forEach(group => { group.open = showAll; });
+      });
+      footer.appendChild(parentOf("rw-points-run", ".rw-actions"));
+    }
+    content.appendChild(footer);
+  }
+
   function rwphCloseCalculationSettingsPanel(mode) {
     const cfg = rwphCalculationPanelConfigV1509(mode);
     const panel = document.getElementById(cfg.panelId);
@@ -13226,6 +13511,7 @@
     details.hidden = false;
     details.style.display = "block";
     details.open = true;
+    rwphEnhanceCalculationPanelUXV1591(panel, cfg.mode);
 
     panel.querySelector(".rwph-calculation-panel-close")?.addEventListener("click", () => rwphCloseCalculationSettingsPanel(mode));
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
@@ -13403,10 +13689,10 @@
             <div class="rw-api-tos-content">
               <div class="rw-row">
                 <label>War start date/time
-                  <input id="rw-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}">
+                  <span class="rwph-tct-date-entry"><input id="rw-from" type="datetime-local" step="1" value="${toDateTimeLocalValue(twoDaysAgo)}" aria-label="War start date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-from" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
                 </label>
                 <label>War end date/time
-                  <input id="rw-to" type="datetime-local" value="${toDateTimeLocalValue(current)}">
+                  <span class="rwph-tct-date-entry"><input id="rw-to" type="datetime-local" step="1" value="${toDateTimeLocalValue(current)}" aria-label="War end date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-to" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
                 </label>
               </div>
               <div class="rw-actions rw-settings-time-actions">
@@ -13464,10 +13750,10 @@
 
 <div class="rw-row">
 <label>War start date/time
-                    <input id="rw-points-from" type="datetime-local" value="${toDateTimeLocalValue(twoDaysAgo)}"/>
+                    <span class="rwph-tct-date-entry"><input id="rw-points-from" type="datetime-local" step="1" value="${toDateTimeLocalValue(twoDaysAgo)}" aria-label="War start date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-points-from" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
 </label>
 <label>War end date/time
-                    <input id="rw-points-to" type="datetime-local" value="${toDateTimeLocalValue(current)}"/>
+                    <span class="rwph-tct-date-entry"><input id="rw-points-to" type="datetime-local" step="1" value="${toDateTimeLocalValue(current)}" aria-label="War end date/time in Torn City Time, including seconds"><button type="button" class="rwph-tct-calendar-open" data-rwph-tct-picker="rw-points-to" title="Open calendar / time picker (TCT)" aria-label="Open TCT calendar and time picker">📅</button></span><span class="rwph-tct-caption">TCT / UTC · HH:MM:SS</span>
 </label>
 </div>
 <div class="rw-actions rw-settings-time-actions">
@@ -13914,6 +14200,21 @@
       } catch (e) {
         rwphToastPanelError(status, "Auto-fill error: " + e.message, "RWPH War Times");
       }
+    }
+
+    // Show a real, high-contrast calendar button alongside the native
+    // datetime-local input. showPicker() requires a direct user gesture.
+    if (!document.documentElement.dataset.rwphTctPickerReady) {
+      document.documentElement.dataset.rwphTctPickerReady = "1";
+      document.addEventListener("click", (event) => {
+        const trigger = event.target.closest?.("[data-rwph-tct-picker]");
+        if (!trigger) return;
+        const field = document.getElementById(trigger.dataset.rwphTctPicker);
+        if (!field) return;
+        event.preventDefault();
+        try { field.showPicker(); }
+        catch (_) { field.focus(); try { field.click(); } catch (_) {} }
+      });
     }
 
     document.getElementById("rw-autofill")?.addEventListener("click", () => rwphAutoFillWarTimesForMode("standard"));
