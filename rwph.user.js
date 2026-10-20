@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.592
+// @version      1.1.593
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2410,7 +2410,8 @@
     panel.style.setProperty("height", `${Math.round(height)}px`, "important");
     panel.style.setProperty("max-height", "none", "important");
     panel.style.setProperty("transform", "none", "important");
-    rwphEnsurePanelTextScale(panel, rwphStoredPanelTextScaleToEffective(saved.textScale));
+    rwphEnsurePanelTextScale(panel);
+    rwphUnifiedPanelLayoutEventV1593(panel);
     return true;
   }
 
@@ -2425,7 +2426,7 @@
       top: Math.round(rect.top),
       width: Math.round(rect.width),
       height: Math.round(rect.height),
-      textScale: rwphEffectivePanelTextScaleToStored(rwphGetPanelTextScale(panel)),
+      textScale: 1,
     };
     rwphSafeJsonSet(PANEL_LAYOUT_STORAGE_KEY, layouts);
   }
@@ -2743,7 +2744,7 @@
       top: Math.round(rect.top),
       width: Math.round(rect.width),
       height: Math.round(rect.height),
-      textScale: rwphEffectivePanelTextScaleToStored(rwphGetPanelTextScale(panel)),
+      textScale: 1,
     };
   }
 
@@ -4707,11 +4708,17 @@
       });
 
       const isCheckbox = String(control.type || "").toLowerCase() === "checkbox";
+      // The v1.1.592 TCT picker wraps date/time inputs in a nested element.
+      // insertBefore(reference=control) fails if that input isn't a direct
+      // child of label. Always use the direct child wrapping the control.
+      const labelChild = control.parentElement === label
+        ? control : Array.from(label.children).find(child => child.contains(control));
+      if (!labelChild) return;
       const titleLine = document.createElement("span");
       titleLine.className = "rwph-setting-label-line";
       titleLine.dataset.rwphHelpLineFor = id;
 
-      if (isCheckbox) {
+      if (isCheckbox && labelChild === control) {
         const titleNodes = [];
         let node = control.nextSibling;
         while (node) {
@@ -4720,18 +4727,18 @@
           node = next;
         }
         label.insertBefore(titleLine, control.nextSibling);
-        titleNodes.forEach((item) => titleLine.appendChild(item));
+        titleNodes.forEach(item => titleLine.appendChild(item));
         titleLine.appendChild(btn);
       } else {
         const titleNodes = [];
         let node = label.firstChild;
-        while (node && node !== control) {
+        while (node && node !== labelChild) {
           const next = node.nextSibling;
           titleNodes.push(node);
           node = next;
         }
-        label.insertBefore(titleLine, control);
-        titleNodes.forEach((item) => titleLine.appendChild(item));
+        label.insertBefore(titleLine, labelChild);
+        titleNodes.forEach(item => titleLine.appendChild(item));
         titleLine.appendChild(btn);
       }
     });
@@ -12110,410 +12117,163 @@
     panel.style.setProperty(prop, String(value), "important");
   }
 
-  const RWPH_PANEL_TEXT_SCALE_MIN = 0.55;
-  const RWPH_PANEL_TEXT_SCALE_MAX = 2.25;
-  // v1.1.518: Small global readability bump for every panel that uses the shared
-  // move/resize/layout system. Stored/admin textScale values stay relative to 1.0,
-  // so existing layouts do not grow again each time they are saved and reopened.
-  const RWPH_PANEL_BASE_TEXT_SCALE = 1.08;
-
-  function rwphClampPanelTextScale(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0) return 1;
-    return Math.min(RWPH_PANEL_TEXT_SCALE_MAX, Math.max(RWPH_PANEL_TEXT_SCALE_MIN, n));
-  }
-
-  function rwphStoredPanelTextScaleToEffective(value) {
-    const stored = rwphClampPanelTextScale(value ?? 1);
-    return rwphClampPanelTextScale(stored * RWPH_PANEL_BASE_TEXT_SCALE);
-  }
-
-  function rwphEffectivePanelTextScaleToStored(value) {
-    const effective = rwphClampPanelTextScale(value ?? RWPH_PANEL_BASE_TEXT_SCALE);
-    return rwphClampPanelTextScale(effective / RWPH_PANEL_BASE_TEXT_SCALE);
-  }
-
-  function rwphGetPanelTextScaleState(panel) {
-    if (!panel) return null;
-    if (!panel.__rwphPanelTextScaleState) {
-      try {
-        Object.defineProperty(panel, "__rwphPanelTextScaleState", {
-          configurable: true,
-          value: {
-            scale: RWPH_PANEL_BASE_TEXT_SCALE,
-            initialized: false,
-            contentRoot: null,
-            appliedNodes: new WeakSet(),
-          },
-        });
-      } catch (_) {
-        panel.__rwphPanelTextScaleState = {
-          scale: RWPH_PANEL_BASE_TEXT_SCALE,
-          initialized: false,
-          contentRoot: null,
-          appliedNodes: new WeakSet(),
-        };
-      }
-    }
-    return panel.__rwphPanelTextScaleState;
-  }
-
-  function rwphGetPanelTextScale(panel) {
-    const state = rwphGetPanelTextScaleState(panel);
-    return rwphClampPanelTextScale(state?.scale || 1);
-  }
-
-  function rwphPanelScaleContentRoot(panel) {
-    if (!panel) return null;
-    return Array.from(panel.children || []).find((child) => !child.classList?.contains("rw-resize-handle")) || null;
-  }
-
-  function rwphCollectPanelTextMetrics(panel) {
-    if (!panel) return [];
-    const seen = new Set();
-    const metrics = [];
-
-    const addElement = (el) => {
-      if (!el || el === panel || seen.has(el) || !panel.contains(el)) return;
-      if (el.matches?.("style, script, noscript, template, svg, path, defs")) return;
-      if (el.closest?.(".rw-resize-handle")) return;
-
-      let styles;
-      try { styles = getComputedStyle(el); } catch (_) { return; }
-      if (!styles || styles.display === "none") return;
-
-      const fontSize = parseFloat(styles.fontSize);
-      if (!Number.isFinite(fontSize) || fontSize <= 0) return;
-      const lineHeightRaw = parseFloat(styles.lineHeight);
-      const lineHeight = Number.isFinite(lineHeightRaw) && lineHeightRaw > 0 ? lineHeightRaw : null;
-
-      seen.add(el);
-      metrics.push({ el, fontSize, lineHeight });
-    };
-
-    try {
-      const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT, {
-        acceptNode(node) {
-          if (!String(node?.nodeValue || "").trim()) return NodeFilter.FILTER_REJECT;
-          const parent = node.parentElement;
-          if (!parent || parent.closest?.(".rw-resize-handle") || parent.matches?.("style, script, noscript, template")) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        },
-      });
-      let node;
-      while ((node = walker.nextNode())) addElement(node.parentElement);
-    } catch (_) {}
-
-    panel.querySelectorAll?.("button, input, textarea, select, option, summary").forEach(addElement);
-    return metrics;
-  }
-
-  function rwphApplyPanelTextMetricFactor(metrics, factor, appliedScale = null) {
-    const safeFactor = Number.isFinite(Number(factor)) && Number(factor) > 0 ? Number(factor) : 1;
-    const stampedScale = Number.isFinite(Number(appliedScale)) && Number(appliedScale) > 0
-      ? rwphClampPanelTextScale(appliedScale)
-      : null;
-    for (const metric of metrics || []) {
-      const el = metric?.el;
-      if (!el?.isConnected) continue;
-      const nextFont = Math.max(6, metric.fontSize * safeFactor);
-      el.style.setProperty("font-size", `${nextFont.toFixed(2)}px`, "important");
-      if (Number.isFinite(metric.lineHeight) && metric.lineHeight > 0) {
-        const nextLineHeight = Math.max(7, metric.lineHeight * safeFactor);
-        el.style.setProperty("line-height", `${nextLineHeight.toFixed(2)}px`, "important");
-      }
-      if (stampedScale !== null) el.dataset.rwphAppliedTextScale = stampedScale.toFixed(4);
-    }
-  }
-
-  function rwphApplyPanelTextMetricsToScale(metrics, desiredScale) {
-    const desired = rwphClampPanelTextScale(desiredScale);
-    for (const metric of metrics || []) {
-      const el = metric?.el;
-      if (!el?.isConnected) continue;
-      const alreadyApplied = rwphClampPanelTextScale(el.dataset?.rwphAppliedTextScale || 1);
-      const factor = desired / alreadyApplied;
-      if (Math.abs(factor - 1) > 0.0001) rwphApplyPanelTextMetricFactor([metric], factor, desired);
-      else el.dataset.rwphAppliedTextScale = desired.toFixed(4);
-    }
-  }
-
+  // v1.1.593: The only typography policy is the RWPH theme CSS. Panel
+  // movement/resizing does not mutate computed font sizes or scale DOM nodes.
+  // Keep compatibility functions because saved/admin layouts still contain
+  // legacy textScale metadata. The value is no longer applied to descendants.
+  function rwphGetPanelTextScale(panel) { return 1; }
   function rwphEnsurePanelTextScale(panel, requestedScale = null) {
-    if (!panel) return 1;
-    // Payment Helper uses stable pixel typography; moving/resizing must never alter font metrics.
-    if (panel.id === "rwph-xanax-send-status" || panel.id === "rw-pay-all-panel") return 1;
-    const state = rwphGetPanelTextScaleState(panel);
-    if (!state) return 1;
-
-    // v1.1.521: Text controls can be moved live between the main panel and a
-    // floating panel (especially Basic/Advanced). Each element now remembers the
-    // RWPH scale already applied to it. Reopening/re-parenting therefore targets
-    // the desired absolute scale instead of multiplying the current font again.
-    state.contentRoot = rwphPanelScaleContentRoot(panel);
-
-    let nextScale = rwphClampPanelTextScale(state.scale || RWPH_PANEL_BASE_TEXT_SCALE);
-    if (!state.initialized) {
-      nextScale = rwphClampPanelTextScale(requestedScale ?? RWPH_PANEL_BASE_TEXT_SCALE);
-      state.initialized = true;
-    } else if (requestedScale !== null && requestedScale !== undefined && !Number.isNaN(Number(requestedScale))) {
-      nextScale = rwphClampPanelTextScale(requestedScale);
-    }
-
-    rwphApplyPanelTextMetricsToScale(rwphCollectPanelTextMetrics(panel), nextScale);
-    state.scale = nextScale;
-    panel.dataset.rwphTextScale = nextScale.toFixed(4);
-    return nextScale;
+    if (panel?.dataset) panel.dataset.rwphTextScale = "1";
+    return 1;
   }
 
-  function rwphApplyPanelResizeTextScale(panel, metrics, startScale, desiredScale) {
-    if (!panel) return 1;
-    if (panel.id === "rw-pay-all-panel") return 1; // Wizard has its own measured fit.
-    const state = rwphGetPanelTextScaleState(panel);
-    if (!state) return 1;
-    const safeStartScale = rwphClampPanelTextScale(startScale || 1);
-    const safeDesiredScale = rwphClampPanelTextScale(desiredScale || safeStartScale);
-    const factor = safeDesiredScale / safeStartScale;
-    rwphApplyPanelTextMetricFactor(metrics, factor, safeDesiredScale);
-    for (const metric of metrics || []) state.appliedNodes.add(metric.el);
-    state.scale = safeDesiredScale;
-    state.initialized = true;
-    panel.dataset.rwphTextScale = safeDesiredScale.toFixed(4);
-    return safeDesiredScale;
+  function rwphUnifiedPanelBoundsV1593(panel) {
+    const sizes = rwphPanelMinimumLayoutSize(panel);
+    const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1024);
+    const vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 768);
+    return { minWidth: Math.min(sizes.minWidth, Math.max(100, vw - 16)),
+      minHeight: Math.min(sizes.minHeight, Math.max(100, vh - 16)),
+      maxWidth: Math.max(100, vw - 16), maxHeight: Math.max(100, vh - 16), vw, vh };
   }
 
-  function makeDraggable(panel, handleSelector = ".rw-head") {
-    if (!panel || panel.dataset.rwphDragReady === "1") return;
+  function rwphUnifiedPanelLayoutEventV1593(panel) {
+    if (!panel?.isConnected) return;
+    try { panel.dispatchEvent(new CustomEvent("rwph:panel-layout", { bubbles: false })); } catch (_) {}
+  }
+
+  const rwphUnifiedPanelEnginesV1593 = new Map();
+  let rwphUnifiedEngineCleanupObserverV1593 = null;
+  function rwphRegisterUnifiedEngineV1593(panel, controller) {
+    rwphUnifiedPanelEnginesV1593.set(panel, controller);
+    if (rwphUnifiedEngineCleanupObserverV1593 || typeof MutationObserver !== "function") return;
+    let checkQueued = false;
+    rwphUnifiedEngineCleanupObserverV1593 = new MutationObserver(() => {
+      if (checkQueued) return;
+      checkQueued = true;
+      queueMicrotask(() => {
+        checkQueued = false;
+        for (const [el, abort] of rwphUnifiedPanelEnginesV1593) {
+          if (!el.isConnected) {
+            abort.abort();
+            rwphUnifiedPanelEnginesV1593.delete(el);
+          }
+        }
+      });
+    });
+    rwphUnifiedEngineCleanupObserverV1593.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function rwphAttachUnifiedPanelEngineV1593(panel, handleSelector = ".rw-head") {
+    if (!panel || panel.dataset.rwphUnifiedLayoutReady === "1") return;
+    panel.dataset.rwphUnifiedLayoutReady = "1";
     panel.dataset.rwphDragReady = "1";
+    panel.dataset.rwphResizeReady = "1";
+    panel.classList.add("rwph-unified-layout-v1593");
+    const handles = [
+      ["nw", "Resize from top-left"],
+      ["sw", "Resize from bottom-left"],
+      ["se", "Resize from bottom-right"],
+    ];
+    // Exactly three active corners. Top-right belongs to Close.
+    panel.querySelectorAll(":scope > .rw-resize-handle-ne, :scope > .resize-handle-ne").forEach(el => el.remove());
+    for (const [dir, title] of handles) {
+      let h = panel.querySelector(`:scope > .rw-resize-handle-${dir}`);
+      if (!h) {
+        h = document.createElement("div");
+        h.className = `rw-resize-handle rw-resize-handle-${dir}`;
+        panel.appendChild(h);
+      }
+      h.dataset.rwphResizeDir = dir;
+      h.title = title;
+      h.style.touchAction = "none";
+    }
+    const head = panel.querySelector(handleSelector);
+    if (head) head.style.touchAction = "none";
 
-    let dragging = false;
-    let startX = 0;
-    let startY = 0;
-    let startLeft = 0;
-    let startTop = 0;
-
-    function beginDrag(e) {
+    let gesture = null;
+    const clamp = (v, low, high) => Math.min(Math.max(v, low), Math.max(low, high));
+    const setGeometry = (left, top, width, height) => {
+      const b = rwphUnifiedPanelBoundsV1593(panel);
+      const w = clamp(width, b.minWidth, b.maxWidth);
+      const h = clamp(height, b.minHeight, b.maxHeight);
+      const x = clamp(left, 8, Math.max(8, b.vw - w - 8));
+      const y = clamp(top, 8, Math.max(8, b.vh - h - 8));
+      for (const [k, v] of Object.entries({ position: "fixed", left: `${Math.round(x)}px`,
+        top: `${Math.round(y)}px`, right: "auto", bottom: "auto",
+        width: `${Math.round(w)}px`, height: `${Math.round(h)}px`, transform: "none" })) {
+        panel.style.setProperty(k, v, "important");
+      }
+      rwphUnifiedPanelLayoutEventV1593(panel);
+    };
+    const begin = e => {
+      if (e.button !== undefined && e.button !== 0) return;
       const target = e.target;
-      const handle = target.closest?.(handleSelector);
-      if (!handle || !panel.contains(handle)) return;
-      if (target.closest?.("button, input, textarea, select, a, .rw-resize-handle")) return;
-
-      const point = rwphGetPoint(e);
+      if (!(target instanceof Element)) return;
+      const handle = target.closest(":scope > .rw-resize-handle") ||
+        target.closest(".rw-resize-handle");
+      const resizing = !!handle && handle.parentElement === panel;
+      if (!resizing) {
+        const header = target.closest(handleSelector);
+        if (!header || !panel.contains(header)) return;
+        if (target.closest("button, a, input, select, textarea, summary, label, [role=button], [contenteditable]")) return;
+      }
       const rect = panel.getBoundingClientRect();
-      dragging = true;
-      startX = point.x;
-      startY = point.y;
-      startLeft = rect.left;
-      startTop = rect.top;
-
-      // Payment Helper: moving the panel must not reflow its cards or rescale text.
-      // Capture the computed box before swapping right/bottom positioning for left/top.
-      if (panel.id === "rwph-xanax-send-status") {
-        rwphSetPanelStyle(panel, "width", `${rect.width}px`);
-        rwphSetPanelStyle(panel, "height", `${rect.height}px`);
+      gesture = { id: e.pointerId, resizing, dir: handle?.dataset.rwphResizeDir || "se",
+        x: e.clientX, y: e.clientY, left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+      // Freeze geometry once at gesture start, even if the panel was anchored
+      // with right/bottom. This prevents movement from modifying content size.
+      setGeometry(rect.left, rect.top, rect.width, rect.height);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const move = e => {
+      if (!gesture || (gesture.id !== undefined && e.pointerId !== gesture.id)) return;
+      const g = gesture, dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.resizing) setGeometry(g.left + dx, g.top + dy, g.width, g.height);
+      else {
+        let w = g.width + (g.dir.includes("w") ? -dx : dx);
+        let h = g.height + (g.dir.includes("n") ? -dy : dy);
+        const b = rwphUnifiedPanelBoundsV1593(panel);
+        w = clamp(w, b.minWidth, b.maxWidth);
+        h = clamp(h, b.minHeight, b.maxHeight);
+        const left = g.dir.includes("w") ? g.left + g.width - w : g.left;
+        const top = g.dir.includes("n") ? g.top + g.height - h : g.top;
+        setGeometry(left, top, w, h);
       }
-      rwphSetPanelStyle(panel, "left", `${rect.left}px`);
-      rwphSetPanelStyle(panel, "top", `${rect.top}px`);
-      rwphSetPanelStyle(panel, "right", "auto");
-      rwphSetPanelStyle(panel, "bottom", "auto");
-      rwphSetPanelStyle(panel, "position", "fixed");
-      rwphSetPanelStyle(panel, "transform", "none");
-      if (panel.id === "rwph-xanax-send-status") {
-        rwphSetPanelStyle(panel, "max-width", "none");
-        rwphSetPanelStyle(panel, "max-height", "none");
-      } else {
-        rwphSetPanelStyle(panel, "max-width", "calc(100vw - 16px)");
-        rwphSetPanelStyle(panel, "max-height", "calc(100vh - 16px)");
-      }
-
-      rwphBlockTouchDefaults(handle);
-      e.preventDefault?.();
-      e.stopPropagation?.();
-    }
-
-    function moveDrag(e) {
-      if (!dragging) return;
-      const point = rwphGetPoint(e);
-      const dx = point.x - startX;
-      const dy = point.y - startY;
-      const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-      const maxTop = Math.max(8, window.innerHeight - panel.offsetHeight - 8);
-      rwphSetPanelStyle(panel, "left", `${Math.min(Math.max(8, startLeft + dx), maxLeft)}px`);
-      rwphSetPanelStyle(panel, "top", `${Math.min(Math.max(8, startTop + dy), maxTop)}px`);
-      e.preventDefault?.();
-    }
-
-    function endDrag() {
-      if (dragging) rwphSavePanelLayout(panel);
-      dragging = false;
-    }
-
-    panel.addEventListener("mousedown", beginDrag);
-    panel.addEventListener("touchstart", beginDrag, { passive: false });
-
-    document.addEventListener("mousemove", moveDrag);
-    document.addEventListener("touchmove", moveDrag, { passive: false });
-
-    document.addEventListener("mouseup", endDrag);
-    document.addEventListener("touchend", endDrag);
-    document.addEventListener("touchcancel", endDrag);
+      e.preventDefault();
+    };
+    const end = e => {
+      if (!gesture || (e.pointerId !== undefined && gesture.id !== undefined && e.pointerId !== gesture.id)) return;
+      gesture = null;
+      rwphSavePanelLayout(panel);
+      rwphUnifiedPanelLayoutEventV1593(panel);
+    };
+    const listeners = new AbortController();
+    rwphRegisterUnifiedEngineV1593(panel, listeners);
+    panel.addEventListener("pointerdown", begin, { signal: listeners.signal });
+    window.addEventListener("pointermove", move, { passive: false, signal: listeners.signal });
+    window.addEventListener("pointerup", end, { signal: listeners.signal });
+    window.addEventListener("pointercancel", end, { signal: listeners.signal });
+    // One responsive viewport policy, including rotation/resizing on phone/PDA.
+    const viewportChanged = () => {
+      if (!panel.isConnected) return;
+      const r = panel.getBoundingClientRect();
+      setGeometry(r.left, r.top, r.width, r.height);
+    };
+    window.addEventListener("resize", viewportChanged, { passive: true, signal: listeners.signal });
+    panel.style.setProperty("box-sizing", "border-box", "important");
+    // Normalize geometry immediately rather than on the user's first drag.
+    viewportChanged();
+    rwphEnsurePanelTextScale(panel);
   }
 
+  // Kept as compatibility shims for older panel setup calls. The engine is
+  // attached only once, regardless of which entry point a panel uses.
+  function makeDraggable(panel, handleSelector = ".rw-head") {
+    rwphAttachUnifiedPanelEngineV1593(panel, handleSelector);
+  }
   function makeResizable(panel) {
-    if (!panel) return;
-
-    if (!panel.style.position) rwphSetPanelStyle(panel, "position", "fixed");
-    rwphSetPanelStyle(panel, "overflow", "hidden");
-
-    // Top-right resize is intentionally removed so it does not clash with panel close buttons.
-    const handleDefs = [
-      { dir: "nw", title: "Resize from top-left" },
-      { dir: "sw", title: "Resize from bottom-left" },
-      { dir: "se", title: "Resize from bottom-right" },
-    ];
-
-    panel.querySelectorAll(":scope > .rw-resize-handle-ne, :scope > .resize-handle-ne").forEach((handle) => handle.remove());
-
-    handleDefs.forEach(({ dir, title }) => {
-      let handle = panel.querySelector(`:scope > .rw-resize-handle-${dir}`);
-      if (!handle) {
-        handle = document.createElement("div");
-        handle.className = `rw-resize-handle rw-resize-handle-${dir}`;
-        handle.dataset.rwphResizeDir = dir;
-        handle.title = title;
-        panel.appendChild(handle);
-      }
-      rwphBlockTouchDefaults(handle);
-    });
-
-    // Remove top-right handles and normalize legacy single-corner handles if an older panel left one behind.
-    Array.from(panel.children || []).forEach((child) => {
-      if (child.classList?.contains("rw-resize-handle-ne") || child.dataset?.rwphResizeDir === "ne") {
-        child.remove();
-        return;
-      }
-      if (child.classList?.contains("rw-resize-handle") && !child.dataset.rwphResizeDir) {
-        child.dataset.rwphResizeDir = "se";
-        child.classList.add("rw-resize-handle-se");
-        child.title = "Resize from bottom-right";
-      }
-    });
-
-    if (panel.dataset.rwphResizeReady === "1") return;
-    panel.dataset.rwphResizeReady = "1";
-
-    let resizing = false;
-    let activeDir = "se";
-    let startX = 0;
-    let startY = 0;
-    let startLeft = 0;
-    let startTop = 0;
-    let startWidth = 0;
-    let startHeight = 0;
-    let startTextScale = 1;
-    let resizeTextMetrics = [];
-
-    function panelMinimums() {
-      const mobilePanel = window.matchMedia?.("(max-width: 760px), (pointer: coarse)")?.matches;
-      const isResultsPanel = panel.classList?.contains("rw-results-panel");
-      const isXanaxHelper = panel.id === "rwph-xanax-send-status";
-      const isPayAll = panel.id === "rw-pay-all-panel" || panel.classList?.contains("rw-pay-all-panel");
-      const minWidth = mobilePanel
-        ? (isResultsPanel ? 170 : (isXanaxHelper ? 240 : (isPayAll ? 240 : 170)))
-        : (isResultsPanel ? 280 : (isXanaxHelper ? 300 : (isPayAll ? 260 : 240)));
-      const minHeight = isPayAll ? (mobilePanel ? 260 : 310) : (mobilePanel ? (isXanaxHelper ? 180 : 120) : 180);
-      return { minWidth, minHeight };
-    }
-
-    function beginResize(e) {
-      const resizeHandle = e.target.closest?.(".rw-resize-handle");
-      if (!resizeHandle || !panel.contains(resizeHandle)) return;
-      const point = rwphGetPoint(e);
-      const rect = panel.getBoundingClientRect();
-      resizing = true;
-      activeDir = resizeHandle.dataset.rwphResizeDir || (resizeHandle.className.match(/rw-resize-handle-(nw|sw|se)/)?.[1]) || "se";
-      startX = point.x;
-      startY = point.y;
-      startLeft = rect.left;
-      startTop = rect.top;
-      startWidth = rect.width || panel.offsetWidth || 300;
-      startHeight = rect.height || panel.offsetHeight || 240;
-      startTextScale = rwphEnsurePanelTextScale(panel);
-      resizeTextMetrics = (panel.id === "rwph-xanax-send-status" || panel.id === "rw-pay-all-panel") ? [] : rwphCollectPanelTextMetrics(panel);
-      rwphSetPanelStyle(panel, "left", `${rect.left}px`);
-      rwphSetPanelStyle(panel, "top", `${rect.top}px`);
-      rwphSetPanelStyle(panel, "right", "auto");
-      rwphSetPanelStyle(panel, "bottom", "auto");
-      rwphSetPanelStyle(panel, "position", "fixed");
-      rwphSetPanelStyle(panel, "transform", "none");
-      rwphSetPanelStyle(panel, "max-width", "none");
-      rwphSetPanelStyle(panel, "max-height", "none");
-      rwphSetPanelStyle(panel, "overflow", "hidden");
-      e.preventDefault?.();
-      e.stopPropagation?.();
-    }
-
-    function moveResize(e) {
-      if (!resizing) return;
-      const point = rwphGetPoint(e);
-      const dx = point.x - startX;
-      const dy = point.y - startY;
-      const { minWidth, minHeight } = panelMinimums();
-      const maxWidth = Math.max(minWidth, window.innerWidth - 16);
-      const maxHeight = Math.max(minHeight, window.innerHeight - 16);
-
-      let newWidth = startWidth;
-      let newHeight = startHeight;
-      let newLeft = startLeft;
-      let newTop = startTop;
-
-      if (activeDir.includes("e")) newWidth = startWidth + dx;
-      if (activeDir.includes("s")) newHeight = startHeight + dy;
-      if (activeDir.includes("w")) newWidth = startWidth - dx;
-      if (activeDir.includes("n")) newHeight = startHeight - dy;
-
-      newWidth = Math.min(Math.max(minWidth, newWidth), maxWidth);
-      newHeight = Math.min(Math.max(minHeight, newHeight), maxHeight);
-
-      if (activeDir.includes("w")) newLeft = startLeft + (startWidth - newWidth);
-      if (activeDir.includes("n")) newTop = startTop + (startHeight - newHeight);
-
-      newLeft = Math.min(Math.max(8, newLeft), Math.max(8, window.innerWidth - newWidth - 8));
-      newTop = Math.min(Math.max(8, newTop), Math.max(8, window.innerHeight - newHeight - 8));
-
-      const widthRatio = startWidth > 0 ? (newWidth / startWidth) : 1;
-      const heightRatio = startHeight > 0 ? (newHeight / startHeight) : 1;
-      const sizeRatio = Math.sqrt(Math.max(0.01, widthRatio * heightRatio));
-      const desiredTextScale = rwphClampPanelTextScale(startTextScale * sizeRatio);
-      if (panel.id !== "rwph-xanax-send-status" && panel.id !== "rw-pay-all-panel") rwphApplyPanelResizeTextScale(panel, resizeTextMetrics, startTextScale, desiredTextScale);
-
-      rwphSetPanelStyle(panel, "left", `${newLeft}px`);
-      rwphSetPanelStyle(panel, "top", `${newTop}px`);
-      rwphSetPanelStyle(panel, "width", `${newWidth}px`);
-      rwphSetPanelStyle(panel, "height", `${newHeight}px`);
-      rwphSetPanelStyle(panel, "overflow", "hidden");
-      e.preventDefault?.();
-    }
-
-    function endResize() {
-      if (resizing) {
-        rwphEnsurePanelTextScale(panel);
-        rwphSavePanelLayout(panel);
-      }
-      resizing = false;
-      resizeTextMetrics = [];
-    }
-
-    panel.addEventListener("mousedown", beginResize);
-    panel.addEventListener("touchstart", beginResize, { passive: false });
-
-    document.addEventListener("mousemove", moveResize);
-    document.addEventListener("touchmove", moveResize, { passive: false });
-
-    document.addEventListener("mouseup", endResize);
-    document.addEventListener("touchend", endResize);
-    document.addEventListener("touchcancel", endResize);
+    rwphAttachUnifiedPanelEngineV1593(panel);
   }
 
   function rwphEnablePanelMoveResize(panel, handleSelector = ".rw-head") {
@@ -13979,7 +13739,9 @@
       </div>`;
 
     rwphApplyPanelThemeChoice();
-    rwphMakeHelpPanelCardsDropdowns(panel);
+    // v1.1.593: Close and key user controls must not depend on later optional UI setup.
+    panel.querySelector("#rw-close")?.addEventListener("click", closePanel);
+    try { rwphMakeHelpPanelCardsDropdowns(panel); } catch (e) { console.warn("RWPH Help layout:", e); }
     rwphEnablePanelMoveResize(panel);
     const mainResultsPanel = document.getElementById("rw-results-panel");
     rwphEnablePanelMoveResize(mainResultsPanel);
@@ -13987,7 +13749,7 @@
     attachPanelThemeButton();
     attachLogoPickerButton();
     attachPanelLayoutControlButtons();
-    rwphAttachAdvancedSettingHelpButtons();
+    try { rwphAttachAdvancedSettingHelpButtons(); } catch (e) { console.warn("RWPH optional help controls:", e); }
 
     const payoutTabBtn = document.getElementById("rw-tab-payout");
     const adminTabBtn = document.getElementById("rw-tab-admin");
@@ -14044,7 +13806,7 @@
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
 
-    document.getElementById("rw-close").addEventListener("click", closePanel);
+    // Close is already bound before any optional panel setup above.
 
     document.getElementById("rw-save").addEventListener("click", () => {
       const key = document.getElementById("rw-key").value.trim();
@@ -14585,7 +14347,8 @@
 
     // v1.1.509: replace the in-panel Basic/Advanced dropdowns with launch buttons
     // that move the live forms into their own themed floating panels.
-    rwphPrepareCalculationSettingsPanels(panel);
+    try { rwphPrepareCalculationSettingsPanels(panel); }
+    catch (e) { console.error("RWPH standalone calculation panels:", e); }
   }
 
   async function createPanel(options = {}) {
@@ -15125,11 +14888,11 @@
     }
   }
 
-  rwphInjectPopupLogoLeftGuardV1441();
+  // Removed obsolete rwphInjectPopupLogoLeftGuardV1441() call; function no longer exists.
   rwphInjectPaymentHelperTitleLayoutV1447();
-  rwphInjectPdaLauncherHeaderLockGuardV1445();
-  rwphInjectBiggerPanelLogoGuardV1446();
-  rwphInjectSafePanelSpacingV1449();
+  // Removed obsolete rwphInjectPdaLauncherHeaderLockGuardV1445() call; function no longer exists.
+  // Removed obsolete rwphInjectBiggerPanelLogoGuardV1446() call; function no longer exists.
+  // Removed obsolete rwphInjectSafePanelSpacingV1449() call; function no longer exists.
 
   function rwphInjectMainPanelLogoOnlyGuardV1451() {
     try {
@@ -15309,10 +15072,10 @@
         #rwph-default-setup-controller :where(div,span,b),
         #rwph-default-setup-panel :where(div,span,b,li,label) { overflow-wrap:anywhere; }
         @media (max-width:480px),(pointer:coarse){
-          #rwph-default-setup-controller { right:6px!important; top:6px!important; width:min(310px,calc(100vw - 12px))!important; max-height:calc(100vh - 12px)!important; }
+          #rwph-default-setup-controller { max-width:calc(100vw - 12px)!important; max-height:calc(100vh - 12px)!important; }
           #rwph-default-setup-controller .rwph-panel-head { padding:8px 10px!important; }
           #rwph-default-setup-controller .rwph-floating-panel-body { padding:9px!important; gap:7px!important; }
-          #rwph-default-setup-panel { right:6px!important; top:58px!important; width:calc(100vw - 12px)!important; max-width:calc(100vw - 12px)!important; }
+          #rwph-default-setup-panel { max-width:calc(100vw - 12px)!important; max-height:calc(100vh - 12px)!important; }
           #rwph-default-setup-panel .rwph-floating-panel-body { padding:10px!important; }
         }
       `;
