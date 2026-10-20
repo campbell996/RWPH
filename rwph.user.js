@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.598
+// @version      1.1.599
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -27,6 +27,7 @@
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
   const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
   const RWPH_CONTENT_SIZE_KEY_V1597 = "rwph_user_content_size_percent_v1597";
+  const RWPH_PERSONAL_PANEL_LAYOUTS_KEY_V1599 = "rwph_personal_panel_layouts_v1599";
   const RWPH_CONTENT_SIZE_MIN_V1597 = 75;
   const RWPH_CONTENT_SIZE_MAX_V1597 = 135;
   const DEFAULT_SETUP_WIZARD_STORAGE_KEY = "rw_payout_helper_default_setup_wizard_v1";
@@ -2418,14 +2419,75 @@
     return true;
   }
 
-  // Admin Default Setup is the sole saved geometry source. Moving/resizing a
-  // regular panel stays local to its currently open instance; it is not saved.
-  // Saved user layouts from older versions are intentionally ignored.
+  // v1.1.599 — Personal geometry is device-local and saved only after a user
+  // finishes moving/resizing a real panel. Admin previews never write here.
+  // The backend's published PC / Phone-PDA layouts remain the default source.
+  function rwphReadPersonalPanelLayoutsV1599() {
+    try {
+      const raw = GM_getValue(RWPH_PERSONAL_PANEL_LAYOUTS_KEY_V1599, "");
+      const data = typeof raw === "string" ? (raw ? JSON.parse(raw) : {}) : raw;
+      if (!data || typeof data !== "object" || Array.isArray(data)) return { pc: {}, mobile: {} };
+      return {
+        pc: data.pc && typeof data.pc === "object" && !Array.isArray(data.pc) ? data.pc : {},
+        mobile: data.mobile && typeof data.mobile === "object" && !Array.isArray(data.mobile) ? data.mobile : {},
+      };
+    } catch (error) {
+      console.warn("RWPH could not read saved personal panel positions:", error);
+      return { pc: {}, mobile: {} };
+    }
+  }
+
+  function rwphSavePersonalPanelGeometryV1599(panel) {
+    if (!panel?.isConnected || !panel.id || panel.dataset?.rwphDefaultSetupPreview === "1") return false;
+    if (panel.id === "rwph-default-setup-controller") return false;
+    if (!RWPH_DEFAULT_SETUP_PANEL_TARGETS.some(target => target.id === panel.id)) return false;
+    const bounds = panel.getBoundingClientRect();
+    const vw = Math.max(1, Number(window.innerWidth || document.documentElement.clientWidth || 1024));
+    const vh = Math.max(1, Number(window.innerHeight || document.documentElement.clientHeight || 768));
+    if (![bounds.left, bounds.top, bounds.width, bounds.height].every(Number.isFinite) || bounds.width < 40 || bounds.height < 40) return false;
+    const device = rwphGlobalLayoutDevice();
+    const layouts = rwphReadPersonalPanelLayoutsV1599();
+    layouts[device][panel.id] = {
+      left: Math.round(bounds.left), top: Math.round(bounds.top),
+      width: Math.round(bounds.width), height: Math.round(bounds.height),
+      leftRatio: bounds.left / vw, topRatio: bounds.top / vh,
+      widthRatio: bounds.width / vw, heightRatio: bounds.height / vh,
+      viewportWidth: vw, viewportHeight: vh, updatedAt: Date.now(),
+    };
+    try {
+      GM_setValue(RWPH_PERSONAL_PANEL_LAYOUTS_KEY_V1599, JSON.stringify(layouts));
+      panel.dataset.rwphUserAdjustedGeometryV1597 = "1";
+      return true;
+    } catch (error) {
+      console.warn("RWPH could not save personal panel position:", error);
+      return false;
+    }
+  }
+
+  function rwphApplyPersonalPanelLayoutV1599(panel) {
+    if (!panel?.isConnected || !panel.id || panel.dataset?.rwphDefaultSetupPreview === "1") return false;
+    const saved = rwphReadPersonalPanelLayoutsV1599()[rwphGlobalLayoutDevice()]?.[panel.id];
+    if (!saved || typeof saved !== "object") return false;
+    const values = [saved.left, saved.top, saved.width, saved.height].map(Number);
+    if (!values.every(Number.isFinite) || values[2] < 40 || values[3] < 40) return false;
+    const vw = Number(window.innerWidth || document.documentElement.clientWidth || 1024);
+    const vh = Number(window.innerHeight || document.documentElement.clientHeight || 768);
+    const exactViewport = Math.abs(vw - Number(saved.viewportWidth || vw)) <= 4
+      && Math.abs(vh - Number(saved.viewportHeight || vh)) <= 4;
+    rwphApplyPanelGeometry(panel, saved, { normalized: !exactViewport });
+    panel.dataset.rwphUserAdjustedGeometryV1597 = "1";
+    return true;
+  }
+
   function rwphApplyPanelLayout(panel) {
     if (!panel || !panel.id || panel.dataset?.rwphDefaultSetupPreview === "1") return;
+    // Always restore the user's latest move/resize first, even if the backend is slow.
+    if (rwphApplyPersonalPanelLayoutV1599(panel)) return;
     const applyPublished = (layouts) => {
       if (!panel.isConnected || panel.dataset?.rwphDefaultSetupPreview === "1") return;
+      // Never let a late network response replace a move made in this session.
       if (panel.dataset.rwphUserAdjustedGeometryV1597 === "1") return;
+      if (rwphApplyPersonalPanelLayoutV1599(panel)) return;
       const saved = layouts?.[rwphGlobalLayoutDevice()]?.panels?.[panel.id];
       if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
     };
@@ -2471,8 +2533,12 @@
   }
 
   async function rwphRestorePublishedPanelPositionsV1597() {
+    // Clear BOTH devices so panels reopened later cannot resurrect prior user overrides.
+    // This deliberately leaves Theme / Colours and Content Size settings untouched.
+    GM_setValue(RWPH_PERSONAL_PANEL_LAYOUTS_KEY_V1599, JSON.stringify({ pc: {}, mobile: {} }));
     const layouts = await rwphFetchGlobalPanelLayouts(true);
-    const defaults = layouts?.[rwphGlobalLayoutDevice()]?.panels || {};
+    const device = rwphGlobalLayoutDevice();
+    const defaults = layouts?.[device]?.panels || {};
     let updated = 0;
     for (const target of RWPH_DEFAULT_SETUP_PANEL_TARGETS) {
       const panel = document.getElementById(target.id);
@@ -2480,10 +2546,10 @@
       panel.dataset.rwphUserAdjustedGeometryV1597 = '0';
       const saved = defaults[target.id];
       if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
-      else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, rwphGlobalLayoutDevice()));
+      else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, device));
       updated += 1;
     }
-    rwphShowToast(`Restored ${updated} open panel${updated === 1 ? '' : 's'} to the ${rwphGlobalLayoutDevice() === 'mobile' ? 'Phone / PDA' : 'PC'} admin default layout.`, 'info', 'RWPH Panel Layouts');
+    rwphShowToast(`Restored all saved panel positions. ${updated} open panel${updated === 1 ? '' : 's'} updated to ${device === 'mobile' ? 'Phone / PDA' : 'PC'} admin defaults; panels opened later will use their defaults too.`, 'info', 'RWPH Panel Layouts');
   }
 
   function rwphAttachLayoutPreferencesV1597() {
@@ -3044,7 +3110,9 @@
       return;
     }
 
-    const saved = rwphGlobalPanelLayoutsCache.layouts?.[state.device]?.panels?.[target.id];
+    const inProgress = state.panels?.[target.id];
+    const published = rwphGlobalPanelLayoutsCache.layouts?.[state.device]?.panels?.[target.id];
+    const saved = inProgress || published;
     if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
     else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, state.device), { normalized: false });
 
@@ -3063,7 +3131,7 @@
     const next = controller?.querySelector("#rwph-default-setup-next");
     if (counter) counter.textContent = `Panel ${state.index + 1} of ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length}`;
     if (name) name.textContent = target.label;
-    if (status) status.textContent = "Move/resize the actual RWPH panel underneath this controller, then press Next Panel to save its position and size.";
+    if (status) status.textContent = "Move/resize this actual panel, then press Next Panel to save its admin default. Your own saved panel layouts will not affect these previews.";
     if (next) next.textContent = state.index === RWPH_DEFAULT_SETUP_PANEL_TARGETS.length - 1 ? "Save Setup" : "Next Panel";
     rwphRaiseDefaultSetupController();
   }
@@ -3206,7 +3274,7 @@
       <div class="rwph-floating-panel-body rwph-default-setup-panel-body" style="padding:14px;overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;box-sizing:border-box;">
         <div class="rw-card" style="padding:12px;margin-bottom:12px;">
           <b>Choose which default layout to edit.</b>
-          <div class="rw-muted" style="margin-top:6px;line-height:1.45;">PC and Phone/PDA use completely separate saved defaults. For the most accurate result, run the PC setup on a PC and the Phone/PDA setup on a phone or Torn PDA. Users who have already moved/resized a panel keep their personal saved layout; these admin settings are the defaults when no personal layout exists.</div>
+          <div class="rw-muted" style="margin-top:6px;line-height:1.45;">PC and Phone/PDA use completely separate saved defaults. For the most accurate result, run the PC setup on a PC and the Phone/PDA setup on a phone or Torn PDA. RWPH saves each user's panel positions and sizes separately on their own browser/device. These admin settings are the starting layout when no personal adjustment is saved. Users can select Restore Default Panel Positions on the main panel to return all panels to these published defaults.</div>
         </div>
         <label style="display:grid;gap:6px;margin-bottom:12px;">Setup type
           <select id="rwph-default-setup-device">
@@ -3219,7 +3287,7 @@
           <b>How it works</b>
           <ol style="margin:8px 0 0 20px;padding:0;line-height:1.55;">
             <li>Click Start Setup.</li>
-            <li>RWPH opens the real script panels one at a time.</li>
+            <li>RWPH opens all ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length} real script panels one at a time, including the calculation panels, both payment wizards, and this Default Setup panel.</li>
             <li>Move and resize the actual panel to the default you want.</li>
             <li>Press Next Panel to save it and continue.</li>
             <li>After the last panel, the complete layout is saved to MySQL for everyone.</li>
@@ -12297,8 +12365,15 @@
       frame=0;
       if (pending) { const next=pending;pending=null;apply(next); }
       if (!gesture) return;
+      const began=gesture;
       gesture=null;
       panel.classList.remove('rwph-layout-gesturing-v1598');
+      const current=panelRect();
+      const changed=Math.abs(current.left-began.left)>1 || Math.abs(current.top-began.top)>1
+        || Math.abs(current.width-began.width)>1 || Math.abs(current.height-began.height)>1;
+      if (changed && panel.dataset?.rwphDefaultSetupPreview !== '1') {
+        rwphSavePersonalPanelGeometryV1599(panel);
+      }
       rwphUnifiedPanelLayoutEventV1593(panel);
     };
     const blocked='button,a,input,select,textarea,summary,label,[role="button"],[contenteditable],.rwph-fit-control-v1491';
@@ -12370,7 +12445,11 @@
     panel.style.setProperty('box-sizing','border-box','important');
     rwphApplyUnifiedPanelContentScaleV1594(panel);
     rwphEnsurePanelTextScale(panel);
-    keepInView();
+    // Apply initial bounds synchronously. Scheduling an old initial rectangle
+    // could run AFTER rwphApplyPanelLayout restores a saved user/admin layout,
+    // unexpectedly jumping the panel back to the built-in position.
+    const initial=panelRect();
+    apply({left:initial.left,top:initial.top,width:initial.width,height:initial.height});
   }
 
   // Kept as compatibility shims for older panel setup calls. The engine is
