@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.588
+// @version      1.1.589
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1403,7 +1403,8 @@
     stopAutoPaymentCheck();
     window.__rwphPaymentAutoCheckState = stateKey;
 
-    autoCheckPaymentOnce(key, mode);
+    // A newly opened payment code cannot have been sent yet. Defer automatic
+    // verification and avoid repeated owner-log fetches while the wizard is in use.
     window.__rwphPaymentAutoCheckTimer = setInterval(() => {
       const activePending = getPendingPayment();
       if (!activePending) {
@@ -1412,7 +1413,7 @@
         return;
       }
       autoCheckPaymentOnce(key, mode);
-    }, 15000);
+    }, 60000);
   }
 
   function rwphIsTornFactionPage() {
@@ -5089,6 +5090,18 @@
   }
 
   let rwphRecentVerifiedLicence = null;
+  const RWPH_LAST_VERIFIED_KEY = "rwph_server_verified_licence_v1";
+  const RWPH_TRANSIENT_GRACE_MS = 5 * 60 * 1000;
+  function rwphLastRecentlyVerifiedLicence(token, userKey) {
+    let saved = rwphRecentVerifiedLicence;
+    if (!saved) {
+      try { saved = GM_getValue(RWPH_LAST_VERIFIED_KEY, null); } catch (_) { saved = null; }
+    }
+    if (!saved || !token || saved.token !== token || saved.userKey !== userKey ||
+      Date.now() - Number(saved.verifiedAtMs || 0) > RWPH_TRANSIENT_GRACE_MS ||
+      Number(saved.info?.expiresAt || 0) <= Math.floor(Date.now() / 1000)) return null;
+    return { ...saved.info, valid: true, transient: true, recentlyVerified: true };
+  }
   async function getSavedLicenseInfo(forceFresh = false) {
     const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     const userKey =
@@ -5120,10 +5133,15 @@
       if (result.valid && result.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
       rwphRecentVerifiedLicence = result.valid && result.token && Number(result.expiresAt || 0) > Math.floor(Date.now() / 1000)
         ? { token: result.token, userKey, verifiedAtMs: Date.now(), info: { ...result } } : null;
+      if (rwphRecentVerifiedLicence) GM_setValue(RWPH_LAST_VERIFIED_KEY, rwphRecentVerifiedLicence);
+      else GM_setValue(RWPH_LAST_VERIFIED_KEY, null);
       return result;
     } catch (e) {
-      // A transport/HTTP failure is not evidence that an existing licence expired or was revoked.
-      // Only explicit successful server verification may invalidate a licence.
+      // Brief network/Hyperdrive failures do not prove an existing licence was revoked.
+      // The five-minute grace opens the UI only; all protected backend actions still
+      // validate their licence server-side and cannot be performed while offline.
+      const recent = !forceFresh ? rwphLastRecentlyVerifiedLicence(token, userKey) : null;
+      if (recent) return { ...recent, warning: e.message || "Licence server temporarily unavailable." };
       return { valid: false, transient: true, error: e.message || "Licence verification temporarily unavailable." };
     }
   }
@@ -5231,6 +5249,7 @@
 
   function returnToLockedPanel(message = "Your licence has expired or was revoked. Buy Licence to unlock RWPH again.") {
     rwphRecentVerifiedLicence = null;
+    GM_setValue(RWPH_LAST_VERIFIED_KEY, null);
     GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     if (window.__rwphLicenseMonitor) {
       clearInterval(window.__rwphLicenseMonitor);
@@ -9554,12 +9573,23 @@
 
   let rwphSavedReportsFactionId = String(GM_getValue("rwph_saved_reports_faction_id", "") || "").trim();
   let rwphSavedReportsListRequestSerial = 0;
+  let rwphSavedReportsLastVerifiedList = null;
   const rwphCalculationInFlightSignatures = new Set();
+  const RWPH_REPORT_SLOT_SNAPSHOT_KEY = "rwph_last_verified_report_slots_v1";
+  function rwphSavedReportsSnapshotScope(userKey) {
+    // Scope display-only metadata to the saved faction AND local API key.
+    // The hash is not used for security; live backend validates every operation.
+    let hash = 2166136261;
+    for (const char of String(userKey || "")) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+    return `${rwphSavedReportsFactionId}:${(hash >>> 0).toString(16)}`;
+  }
 
   function rwphRememberSavedReportsFactionId(value) {
     const id = String(value || "").trim();
     if (!/^\d+$/.test(id) || id === "0") return rwphSavedReportsFactionId;
-    rwphSavedReportsFactionId = id.replace(/^0+(?=\d)/, "");
+    const nextFactionId = id.replace(/^0+(?=\d)/, "");
+    if (nextFactionId !== rwphSavedReportsFactionId) rwphSavedReportsLastVerifiedList = null;
+    rwphSavedReportsFactionId = nextFactionId;
     GM_setValue("rwph_saved_reports_faction_id", rwphSavedReportsFactionId);
     return rwphSavedReportsFactionId;
   }
@@ -9743,9 +9773,25 @@
       if (status) status.textContent = "API key required.";
       return;
     }
+    // Display the latest *server-verified* list without waiting for another MySQL
+    // round trip. Loads/deletes still go through the authenticated backend.
+    const scope = rwphSavedReportsSnapshotScope(userKey);
+    if (!rwphSavedReportsLastVerifiedList) {
+      const saved = GM_getValue(RWPH_REPORT_SLOT_SNAPSHOT_KEY, null);
+      if (saved?.scope === scope) rwphSavedReportsLastVerifiedList = saved;
+    }
+    const last = rwphSavedReportsLastVerifiedList;
+    if (last && last.scope === scope && last.factionId === rwphSavedReportsFactionId && Date.now() - last.checkedAt < 10 * 60 * 1000) {
+      if (list) list.innerHTML = last.cards;
+      const factionLabel = panel.querySelector("#rwph-saved-reports-faction");
+      if (factionLabel) factionLabel.textContent = last.title;
+      rwphApplySavedReportsAutoDeleteUi(last.autoDelete);
+      rwphUpdateSavedReportsOverview(last.savedCount, last.maxReports, last.autoDelete);
+      if (status) status.textContent = "Showing last verified report slots; checking MySQL for updates...";
+    }
     try {
       const startedAt = performance.now();
-      if (status && !quiet) status.textContent = "Refreshing your faction’s five cached report slots...";
+      if (status && !quiet && !last) status.textContent = "Refreshing your faction’s five cached report slots...";
       const result = await apiPost("/api/calc/cached-reports/list", rwphSavedReportsRequestBody(userKey, token, { databaseCheckNonce: `${Date.now()}-${++rwphSavedReportsListRequestSerial}` }));
       const loadMs = Math.max(0, Math.round(performance.now() - startedAt));
       rwphRememberSavedReportsFactionId(result.factionId);
@@ -9757,6 +9803,15 @@
       const safeHighlightId = Math.max(0, Math.floor(Number(highlightReportId || 0)));
       const cards = [0,1,2,3,4].map((index) => rwphSavedReportSlotHtml(reports[index] || { empty: true }, index + 1, Number(reports[index]?.cacheId || reports[index]?.id || 0) === safeHighlightId));
       if (list) list.innerHTML = cards.join("");
+      rwphSavedReportsLastVerifiedList = {
+        scope: rwphSavedReportsSnapshotScope(userKey),
+        factionId: String(result.factionId || rwphSavedReportsFactionId),
+        cards: cards.join(""), title: factionTitle?.textContent || "",
+        autoDelete: result.autoDelete || { enabled: false, hours: 24 },
+        savedCount: reports.length, maxReports: Number(result.maxReports || 5),
+        checkedAt: Date.now(),
+      };
+      GM_setValue(RWPH_REPORT_SLOT_SNAPSHOT_KEY, rwphSavedReportsLastVerifiedList);
       if (status) status.textContent = safeHighlightId
         ? `Ready in ${loadMs} ms. The highlighted report exactly matches the calculation settings you selected.`
         : (reports.length >= Number(result.maxReports || 5)
@@ -9769,8 +9824,11 @@
         });
       }
     } catch (e) {
-      if (list) list.innerHTML = `<div class="rwph-saved-report-intro">${rwphHtmlEscape(e.message || e)}</div>`;
-      if (status) status.textContent = "Could not load cached reports.";
+      // Never replace a successfully loaded list with an error or fake empty slots.
+      if (!rwphSavedReportsLastVerifiedList || rwphSavedReportsLastVerifiedList.scope !== scope) {
+        if (list) list.innerHTML = `<div class="rwph-saved-report-intro">${rwphHtmlEscape(e.message || e)}</div>`;
+      }
+      if (status) status.textContent = `MySQL refresh unavailable: ${e.message || e}. Previously verified slots remain visible; loading a report still requires the server.`;
     }
   }
 
@@ -9829,6 +9887,8 @@
       const result = await apiPost("/api/calc/cached-reports/delete", rwphSavedReportsRequestBody(userKey, token, { cacheId: safeCacheId }));
       rwphRememberSavedReportsFactionId(result.factionId);
       rwphToastPanelInfo(mainStatus, result.message || `Saved report ${label} deleted.`, result.deleted ? "info" : "warn", "RWPH Cached Reports");
+      rwphSavedReportsLastVerifiedList = null;
+      GM_setValue(RWPH_REPORT_SLOT_SNAPSHOT_KEY, null);
       await rwphRefreshSavedReportsPanel({ quiet: true });
     } catch (e) {
       if (panelStatus) panelStatus.textContent = `Delete failed: ${e.message}`;
@@ -14178,6 +14238,10 @@
     }
 
     showMainScreen(panel);
+    if (licenseState.info?.recentlyVerified) {
+      const mainStatus = panel.querySelector("#rw-status");
+      if (mainStatus) mainStatus.textContent = "Using a recently verified licence while the server reconnects. Online actions still require the backend.";
+    }
     if (options && options.openTutorial) setTimeout(() => rwphOpenTutorialInPanel(panel), 140);
   }
 
