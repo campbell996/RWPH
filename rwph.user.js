@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.599
+// @version      1.1.600
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2440,14 +2440,16 @@
   function rwphSavePersonalPanelGeometryV1599(panel) {
     if (!panel?.isConnected || !panel.id || panel.dataset?.rwphDefaultSetupPreview === "1") return false;
     if (panel.id === "rwph-default-setup-controller") return false;
-    if (!RWPH_DEFAULT_SETUP_PANEL_TARGETS.some(target => target.id === panel.id)) return false;
+    const templateKey = rwphWizardPageLayoutKeyV1600(panel);
+    if (!RWPH_DEFAULT_SETUP_PANEL_TARGETS.some(target => target.id === templateKey)) return false;
+    const layoutKey = rwphPersonalWizardPageLayoutKeyV1600(panel);
     const bounds = panel.getBoundingClientRect();
     const vw = Math.max(1, Number(window.innerWidth || document.documentElement.clientWidth || 1024));
     const vh = Math.max(1, Number(window.innerHeight || document.documentElement.clientHeight || 768));
     if (![bounds.left, bounds.top, bounds.width, bounds.height].every(Number.isFinite) || bounds.width < 40 || bounds.height < 40) return false;
     const device = rwphGlobalLayoutDevice();
     const layouts = rwphReadPersonalPanelLayoutsV1599();
-    layouts[device][panel.id] = {
+    layouts[device][layoutKey] = {
       left: Math.round(bounds.left), top: Math.round(bounds.top),
       width: Math.round(bounds.width), height: Math.round(bounds.height),
       leftRatio: bounds.left / vw, topRatio: bounds.top / vh,
@@ -2466,7 +2468,9 @@
 
   function rwphApplyPersonalPanelLayoutV1599(panel) {
     if (!panel?.isConnected || !panel.id || panel.dataset?.rwphDefaultSetupPreview === "1") return false;
-    const saved = rwphReadPersonalPanelLayoutsV1599()[rwphGlobalLayoutDevice()]?.[panel.id];
+    const savedLayouts = rwphReadPersonalPanelLayoutsV1599()[rwphGlobalLayoutDevice()] || {};
+    const saved = savedLayouts[rwphPersonalWizardPageLayoutKeyV1600(panel)]
+      || savedLayouts[rwphWizardPageLayoutKeyV1600(panel)] || savedLayouts[panel.id];
     if (!saved || typeof saved !== "object") return false;
     const values = [saved.left, saved.top, saved.width, saved.height].map(Number);
     if (!values.every(Number.isFinite) || values[2] < 40 || values[3] < 40) return false;
@@ -2488,7 +2492,8 @@
       // Never let a late network response replace a move made in this session.
       if (panel.dataset.rwphUserAdjustedGeometryV1597 === "1") return;
       if (rwphApplyPersonalPanelLayoutV1599(panel)) return;
-      const saved = layouts?.[rwphGlobalLayoutDevice()]?.panels?.[panel.id];
+      const published = layouts?.[rwphGlobalLayoutDevice()]?.panels || {};
+      const saved = published[rwphWizardPageLayoutKeyV1600(panel)] || published[panel.id];
       if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
     };
     applyPublished(rwphGlobalPanelLayoutsCache.layouts);
@@ -2541,10 +2546,11 @@
     const defaults = layouts?.[device]?.panels || {};
     let updated = 0;
     for (const target of RWPH_DEFAULT_SETUP_PANEL_TARGETS) {
-      const panel = document.getElementById(target.id);
+      const panel = document.getElementById(rwphPhysicalPanelIdV1600(target));
       if (!panel || panel.dataset?.rwphDefaultSetupPreview === '1') continue;
+      if (target.page && rwphWizardPageLayoutKeyV1600(panel) !== target.id) continue;
       panel.dataset.rwphUserAdjustedGeometryV1597 = '0';
-      const saved = defaults[target.id];
+      const saved = defaults[target.id] || (target.page ? defaults[panel.id] : null);
       if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
       else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, device));
       updated += 1;
@@ -2579,6 +2585,66 @@
     }
   }
 
+  // Every real wizard DOM panel retains its original ID. Each page has its own
+  // storage/default key, avoiding cloned DOM IDs or extra payment backends.
+  function rwphPhysicalPanelIdV1600(target) {
+    return String(target?.panelId || target?.id || '');
+  }
+  function rwphWizardPageLayoutKeyV1600(panel, page = '') {
+    if (!panel?.id) return '';
+    const actualPage = String(page || panel.dataset?.rwphWizardPage || '').toLowerCase();
+    if (panel.id === 'rw-pay-all-panel' && ['warning','member','complete'].includes(actualPage)) {
+      return `rw-pay-all-panel-${actualPage}`;
+    }
+    if (panel.id === 'rwph-xanax-send-status' && ['start','licence','amount','receiver','code','send-amount','review'].includes(actualPage)) {
+      return `rwph-xanax-send-status-${actualPage}`;
+    }
+    return panel.id;
+  }
+  function rwphWizardPageTargetV1600(panel, page = '') {
+    const key = rwphWizardPageLayoutKeyV1600(panel, page);
+    return RWPH_DEFAULT_SETUP_PANEL_TARGETS.find(target => target.id === key) || null;
+  }
+  function rwphPersonalWizardPageLayoutKeyV1600(panel) {
+    const templateKey = rwphWizardPageLayoutKeyV1600(panel);
+    if (templateKey === 'rw-pay-all-panel-member' && panel.dataset.rwphDefaultSetupPreview !== '1') {
+      // One remembered position/size for each actual payee, while Admin Setup
+      // publishes one common Member Payment default for everyone in the faction.
+      const memberId = String(panel.dataset.rwphWizardMemberId || '').replace(/[^0-9]/g, '');
+      if (memberId) return `${templateKey}-${memberId}`;
+    }
+    return templateKey;
+  }
+  function rwphSetWizardLayoutPageV1600(panel, page, { setupPreview = false } = {}) {
+    if (!panel?.isConnected) return false;
+    const key = rwphWizardPageLayoutKeyV1600(panel, page);
+    if (!key || key === panel.id) return false;
+    const personalKey = page === 'member' ? rwphPersonalWizardPageLayoutKeyV1600(panel) : key;
+    const pageChanged = panel.dataset.rwphLastPageStorageKey !== personalKey;
+    panel.dataset.rwphWizardPage = page;
+    panel.dataset.rwphLastPageStorageKey = personalKey;
+    if (pageChanged) panel.dataset.rwphUserAdjustedGeometryV1597 = '0';
+    if (setupPreview || panel.dataset.rwphDefaultSetupPreview === '1') return true;
+    // Restore *this page* only; a move/resize on another page is independent.
+    if (rwphApplyPersonalPanelLayoutV1599(panel)) return true;
+    const published = rwphGlobalPanelLayoutsCache.layouts?.[rwphGlobalLayoutDevice()]?.panels || {};
+    const chosen = published[key] || published[panel.id]; // older 1-panel admin layouts remain valid
+    if (chosen) rwphApplyPanelGeometry(panel, chosen, { normalized: true });
+    else {
+      const target = rwphWizardPageTargetV1600(panel, page);
+      if (target) rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, rwphGlobalLayoutDevice()));
+    }
+    // If global defaults are still loading, apply this page when they arrive.
+    if (!rwphGlobalPanelLayoutsCache.loaded) {
+      rwphFetchGlobalPanelLayouts(false).then(() => {
+        if (panel.isConnected && panel.dataset.rwphWizardPage === page && panel.dataset.rwphDefaultSetupPreview !== '1') {
+          if (panel.dataset.rwphUserAdjustedGeometryV1597 !== '1') rwphApplyPanelLayout(panel);
+        }
+      }).catch(() => {});
+    }
+    return true;
+  }
+
   // Every normal movable/resizable RWPH panel belongs here. The setup controller itself
   // is intentionally excluded because it is the wizard used to position these targets.
   const RWPH_DEFAULT_SETUP_PANEL_TARGETS = Object.freeze([
@@ -2591,8 +2657,16 @@
     { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 720, height: 700, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
     { id: "rwph-member-management-panel", label: "Member Management", width: 420, height: 390, className: "rwph-floating-panel rwph-member-management-panel" },
-    { id: "rw-pay-all-panel", label: "Payments Copy Panel", width: 460, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
-    { id: "rwph-xanax-send-status", label: "Xanax Payment Helper Wizard", width: 420, height: 560, className: "rwph-floating-panel" },
+    { id: "rw-pay-all-panel-warning", panelId: "rw-pay-all-panel", page: "warning", label: "Payment Copy — Warning", width: 470, height: 425, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rw-pay-all-panel-member", panelId: "rw-pay-all-panel", page: "member", label: "Payment Copy — Member Payment", width: 470, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rw-pay-all-panel-complete", panelId: "rw-pay-all-panel", page: "complete", label: "Payment Copy — Complete", width: 490, height: 540, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rwph-xanax-send-status-start", panelId: "rwph-xanax-send-status", page: "start", label: "Payment Helper — Start", width: 440, height: 470, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-licence", panelId: "rwph-xanax-send-status", page: "licence", label: "Payment Helper — Licence Type", width: 460, height: 610, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-amount", panelId: "rwph-xanax-send-status", page: "amount", label: "Payment Helper — Xanax Amount", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-receiver", panelId: "rwph-xanax-send-status", page: "receiver", label: "Payment Helper — Receiver", width: 440, height: 480, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-code", panelId: "rwph-xanax-send-status", page: "code", label: "Payment Helper — Message Code", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-send-amount", panelId: "rwph-xanax-send-status", page: "send-amount", label: "Payment Helper — Prefill Xanax", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-review", panelId: "rwph-xanax-send-status", page: "review", label: "Payment Helper — Review", width: 460, height: 560, className: "rwph-floating-panel" },
     { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 390, height: 300, className: "rwph-floating-panel" },
     { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 500, className: "rwph-floating-panel rwph-layout-theme-panel" },
     { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
@@ -2692,16 +2766,16 @@
       const path = String(url.pathname || "").toLowerCase();
       const marker = String(url.searchParams.get("rwphDefaultSetup") || "");
       const hash = String(url.hash || "").toLowerCase();
-      if (target.id === "rw-pay-all-panel") {
+      if (rwphPhysicalPanelIdV1600(target) === "rw-pay-all-panel") {
         return path.endsWith("/factions.php") && marker === "payments" && hash.includes("tab=controls") && hash.includes("rwphpayall=1");
       }
-      if (target.id === "rwph-xanax-send-status") {
+      if (rwphPhysicalPanelIdV1600(target) === "rwph-xanax-send-status") {
         return path.endsWith("/item.php") && marker === "payment-helper";
       }
       // All other panels are configured on the page where the admin started the wizard.
       return marker !== "payments" && marker !== "payment-helper" && !path.endsWith("/item.php");
     } catch (_) {
-      return target.id !== "rw-pay-all-panel" && target.id !== "rwph-xanax-send-status";
+      return rwphPhysicalPanelIdV1600(target) !== "rw-pay-all-panel" && rwphPhysicalPanelIdV1600(target) !== "rwph-xanax-send-status";
     }
   }
 
@@ -2709,8 +2783,8 @@
     const state = rwphDefaultSetupState;
     if (!state || !target || rwphDefaultSetupRouteMatchesTarget(target)) return false;
     let destination = "";
-    if (target.id === "rw-pay-all-panel") destination = rwphDefaultSetupPaymentsRoute();
-    else if (target.id === "rwph-xanax-send-status") destination = rwphDefaultSetupPaymentHelperRoute();
+    if (rwphPhysicalPanelIdV1600(target) === "rw-pay-all-panel") destination = rwphDefaultSetupPaymentsRoute();
+    else if (rwphPhysicalPanelIdV1600(target) === "rwph-xanax-send-status") destination = rwphDefaultSetupPaymentHelperRoute();
     else destination = state.homeUrl || "https://www.torn.com/factions.php?step=your";
     if (!destination) return false;
 
@@ -2718,9 +2792,9 @@
     const controller = document.getElementById("rwph-default-setup-controller");
     const status = controller?.querySelector("#rwph-default-setup-controller-status");
     if (status) {
-      status.textContent = target.id === "rw-pay-all-panel"
+      status.textContent = rwphPhysicalPanelIdV1600(target) === "rw-pay-all-panel"
         ? "Opening Torn faction controls for the real Payments Copy Panel..."
-        : target.id === "rwph-xanax-send-status"
+        : rwphPhysicalPanelIdV1600(target) === "rwph-xanax-send-status"
           ? "Opening Torn Items for the real Xanax Payment Helper Wizard..."
           : "Returning to the Torn page where Default Setup started...";
     }
@@ -2783,7 +2857,7 @@
 
   function rwphRemoveDefaultSetupPreview() {
     const state = rwphDefaultSetupState;
-    const currentId = state?.currentTarget?.id;
+    const currentId = rwphPhysicalPanelIdV1600(state?.currentTarget);
     if (currentId) {
       const current = document.getElementById(currentId);
       if (current?.dataset?.rwphDefaultSetupPreview === "1") current.remove();
@@ -2868,7 +2942,9 @@
       ? Math.min(Math.max(270, Math.round(vw * 0.90)), vw - 16)
       : Math.min(Math.max(320, Number(target.width || 520)), vw - 16);
     const height = mobile
-      ? Math.min(Math.max(260, Math.round(vh * 0.66)), vh - 16)
+      ? (target.page
+          ? Math.min(Math.max(260, Math.round(Number(target.height || 500) * 0.90)), vh - 16)
+          : Math.min(Math.max(260, Math.round(vh * 0.66)), vh - 16))
       : Math.min(Math.max(220, Number(target.height || 520)), vh - 16);
     return {
       left: Math.max(8, Math.round((vw - width) / 2)),
@@ -3003,7 +3079,7 @@
   async function rwphOpenDefaultSetupActualPanel(target) {
     if (!target) return null;
     let panel = null;
-    switch (target.id) {
+    switch (rwphPhysicalPanelIdV1600(target)) {
       case "rw-payout-helper":
         panel = rwphCreateDefaultSetupActualMainPanel();
         break;
@@ -3083,6 +3159,25 @@
     panel.dataset.rwphDefaultSetupPreview = "1"; // setup-managed real panel: do not overwrite this admin's personal layout.
     panel.dataset.rwphDefaultSetupActual = "1";
     panel.dataset.rwphDefaultSetupDevice = rwphDefaultSetupState?.device || "pc";
+    if (target.page && panel.id === 'rw-pay-all-panel') {
+      const state = panel.__rwphPayAllWizardStateV1600;
+      if (state) {
+        state.page = target.page;
+        state.index = 0;
+        panel.__rwphRenderPayAllWizardV1600?.();
+      }
+      rwphSetWizardLayoutPageV1600(panel, target.page, { setupPreview: true });
+    } else if (target.page && panel.id === 'rwph-xanax-send-status') {
+      const state = panel.__rwphPaymentWizardState;
+      if (state) {
+        state.page = target.page;
+        if (target.page === 'licence') { state.mode = 'faction'; state.ownTornId = '1000001'; state.selected = ['1000001','1000002']; state.members = [
+          { id: '1000001', name: 'Example Leader' }, { id: '1000002', name: 'Example Member' }
+        ]; }
+        rwphRenderPaymentHelperWizardV1568(panel);
+      }
+      rwphSetWizardLayoutPageV1600(panel, target.page, { setupPreview: true });
+    }
     panel.style.setProperty("z-index", "2147483638", "important");
     panel.style.setProperty("pointer-events", "auto", "important");
     return panel;
@@ -3111,16 +3206,16 @@
     }
 
     const inProgress = state.panels?.[target.id];
-    const published = rwphGlobalPanelLayoutsCache.layouts?.[state.device]?.panels?.[target.id];
-    const saved = inProgress || published;
+    const publishedLayouts = rwphGlobalPanelLayoutsCache.layouts?.[state.device]?.panels || {};
+    const saved = inProgress || publishedLayouts[target.id] || (target.page ? publishedLayouts[rwphPhysicalPanelIdV1600(target)] : null);
     if (saved) rwphApplyPanelGeometry(panel, saved, { normalized: true });
     else rwphApplyPanelGeometry(panel, rwphDefaultSetupFallbackGeometry(target, state.device), { normalized: false });
 
     // Some real builders install their own drag/resize. Calling again is safe and guarantees setup-created results hosts have it.
-    const handle = target.id === "rw-pay-all-panel" ? ".rw-pay-all-head"
+    const handle = rwphPhysicalPanelIdV1600(target) === "rw-pay-all-panel" ? ".rw-pay-all-head"
       : target.id === "rwph-saved-reports-panel" ? ".rwph-panel-head, .rwph-floating-panel-head"
       : (target.id === "rwph-results-loading-panel" || target.id === "rwph-results-panel") ? ".rwph-panel-head, .rwph-results-panel-head"
-      : target.id === "rwph-xanax-send-status" ? "#rwph-payment-helper-title"
+      : rwphPhysicalPanelIdV1600(target) === "rwph-xanax-send-status" ? "#rwph-payment-helper-title"
       : ".rwph-panel-head, .rwph-floating-panel-head, .rw-head";
     rwphEnablePanelMoveResize(panel, handle);
 
@@ -3140,7 +3235,7 @@
     const state = rwphDefaultSetupState;
     if (!state) return;
     const target = state.currentTarget || RWPH_DEFAULT_SETUP_PANEL_TARGETS[state.index];
-    const panel = target ? document.getElementById(target.id) : null;
+    const panel = target ? document.getElementById(rwphPhysicalPanelIdV1600(target)) : null;
     if (panel) {
       const geometry = rwphCaptureNormalizedPanelGeometry(panel);
       if (geometry) state.panels[target.id] = geometry;
@@ -3287,7 +3382,7 @@
           <b>How it works</b>
           <ol style="margin:8px 0 0 20px;padding:0;line-height:1.55;">
             <li>Click Start Setup.</li>
-            <li>RWPH opens all ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length} real script panels one at a time, including the calculation panels, both payment wizards, and this Default Setup panel.</li>
+            <li>RWPH opens all ${RWPH_DEFAULT_SETUP_PANEL_TARGETS.length} real script panels one at a time, including the calculation panels, every page of both payment wizards, and this Default Setup panel.</li>
             <li>Move and resize the actual panel to the default you want.</li>
             <li>Press Next Panel to save it and continue.</li>
             <li>After the last panel, the complete layout is saved to MySQL for everyone.</li>
@@ -10935,6 +11030,7 @@
     document.body.appendChild(panel);
     panel.hidden = false;
     panel.dataset.payAllTotal = String(safeRows.length);
+    panel.dataset.rwphWizardPage = 'warning';
     rwphSetPayAllWarningAccepted(panel, false);
     rwphForcePayAllCloseButton(panel);
     rwphEnablePanelMoveResize(panel, ".rw-pay-all-head");
@@ -10949,6 +11045,7 @@
       advanced: safeRows.map(() => false),
     };
 
+    panel.__rwphPayAllWizardStateV1600 = wizardState;
     const stage = () => panel.querySelector("[data-pay-all-stage]");
     // The unified panel body now owns vertical scrolling; there is no
     // independent Payment Copy fit, height-scaled transform or resize listener.
@@ -10972,7 +11069,12 @@
       rwphSetPayAllWarningAccepted(panel, rwphIsPayAllWarningAccepted(panel));
       rwphForcePayAllCloseButton(panel);
       requestWizardFit();
+      panel.dataset.rwphWizardMemberId = wizardState.page === 'member'
+        ? String(safeRows[wizardState.index]?.id || '') : '';
+      rwphSetWizardLayoutPageV1600(panel, wizardState.page);
     };
+    panel.__rwphRenderPayAllWizardV1600 = renderWizard;
+    rwphSetWizardLayoutPageV1600(panel, 'warning');
 
     const cleanupWizardFit = () => {}; // Controller cleans up with panel removal.
     panel.addEventListener("click", async (e) => {
@@ -11628,6 +11730,7 @@
     state.amount = rwphClampXanaxAmountV1568(state.amount);
     if (state.mode === 'faction') state.amount = Math.max(state.amount, Math.max(1, state.selected.length - Math.floor(state.selected.length / 3)));
     stage.innerHTML = rwphPaymentHelperWizardPageHtmlV1568(state);
+    rwphSetWizardLayoutPageV1600(box, state.page);
     try { box.querySelector(".rwph-xanax-scroll")?.scrollTo?.({ top: 0, behavior: "auto" }); } catch (_) {}
   }
 
