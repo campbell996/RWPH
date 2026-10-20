@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.602
+// @version      1.1.603
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -2675,6 +2675,7 @@
     { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 500, className: "rwph-floating-panel rwph-layout-theme-panel" },
     { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
     { id: "rw-wrong-payment-panel", label: "Payment Warning", width: 390, height: 250, className: "rwph-floating-panel" },
+    { id: "rwph-payment-recovery-panel", label: "Admin — Missing Payment Recovery", width: 710, height: 610, className: "rwph-floating-panel rwph-payment-recovery-panel" },
     { id: "rwph-default-setup-panel", label: "Admin Default Setup Panel", width: 480, height: 500, className: "rwph-floating-panel rwph-default-setup-panel" },
   ]);
 
@@ -3140,6 +3141,9 @@
         showWrongPaymentPanel("Default Setup preview. This is the real Payment Warning panel; no payment has been sent.");
         panel = document.getElementById("rw-wrong-payment-panel");
         break;
+      case "rwph-payment-recovery-panel":
+        panel = await rwphOpenPaymentRecoveryPanelV1603(rwphDefaultSetupState?.adminKey || "", { setupPreview: true });
+        break;
       case "rwph-default-setup-panel":
         // The actual admin setup *settings* panel is a valid user-positioned panel.
         // The separate setup controller is intentionally not a target; it must
@@ -3344,6 +3348,104 @@
     rwphPersistDefaultSetupWizard();
     rwphCreateDefaultSetupController();
     await rwphOpenDefaultSetupPreview();
+  }
+
+  // v1.1.603: administrator-only payment recovery, with the same theme and
+  // one shared move/resize/persistence system as every other RWPH panel.
+  function rwphPaymentRecoveryEscV1603(value) { return esc(String(value ?? "")); }
+  let rwphPaymentRecoveryBusyV1603 = false;
+  function rwphRenderPaymentRecoveryEntriesV1603(panel, response) {
+    if (!panel?.isConnected) return;
+    const holder = panel.querySelector('[data-rwph-recovery-rows]');
+    const status = panel.querySelector('[data-rwph-recovery-status]');
+    if (!holder) return;
+    const records = Array.isArray(response?.rows) ? response.rows : [];
+    const eligible = records.filter(r => r.status === 'pending' && r.eligible).length;
+    if (status) status.textContent = response?.notice || `${records.length} potential unmatched payment(s), ${eligible} ready for administrator approval. Only confirmed payments are eligible for Add All.`;
+    holder.innerHTML = records.length ? records.map(row => {
+      const safeId = rwphPaymentRecoveryEscV1603(row.tornId || 'Unknown');
+      const safeName = rwphPaymentRecoveryEscV1603(row.name || 'Unknown sender');
+      const code = rwphPaymentRecoveryEscV1603(row.code || '(no code)');
+      const logHref = typeof row.logUrl === 'string' && /^https:\/\/www\.torn\.com\/page\.php\?sid=log(?:&log=\d+)?$/.test(row.logUrl) ? row.logUrl : 'https://www.torn.com/page.php?sid=log';
+      const eligible = row.status === 'pending' && row.eligible;
+      return `<div class="rwph-recovery-entry" style="border:1px solid var(--rwph-theme-line);border-radius:10px;background:var(--rwph-theme-panel);padding:9px;display:grid;gap:6px;min-width:0;overflow-wrap:anywhere;">
+        <div><b>${safeName}</b> <span class="rw-muted">[${safeId}]</span> · <b>${rwphPaymentRecoveryEscV1603(row.qty || '?')} Xanax</b> · <b>${rwphPaymentRecoveryEscV1603(row.days || '?')} days</b></div>
+        <div class="rw-muted">${rwphPaymentRecoveryEscV1603(row.reason || 'Payment needing review')} · Code: ${code} · ${rwphPaymentRecoveryEscV1603(row.paidAt ? formatUnixDate(row.paidAt) : 'Time unavailable')}${row.logId ? ' · Log ref: '+rwphPaymentRecoveryEscV1603(row.logId) : ''}</div>
+        <div class="rw-muted">${rwphPaymentRecoveryEscV1603(row.status === 'applied' ? 'Recovered / credited' : (row.status === 'needs_review' ? 'Manual evidence review required' : 'Ready for admin approval'))}</div>
+        <div class="rw-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <a href="${logHref}" target="_blank" rel="noopener noreferrer" style="color:var(--rwph-theme-outline);font-weight:850;">Open Owner Torn Logs</a>
+          ${eligible ? `<button type="button" class="secondary" data-rwph-recovery-grant="${rwphPaymentRecoveryEscV1603(row.fingerprint)}">Add ${rwphPaymentRecoveryEscV1603(row.days)} Days</button>` : ''}
+        </div>
+      </div>`;
+    }).join('') : '<div class="rw-muted">No unmatched payments are recorded from the currently available Torn logs. This scan is not a guarantee that older payments do not exist.</div>';
+    const all = panel.querySelector('[data-rwph-recovery-all]');
+    if (all) { all.disabled = !eligible; all.textContent = `Add All Eligible (${eligible})`; }
+  }
+
+  async function rwphOpenPaymentRecoveryPanelV1603(adminKey, options = {}) {
+    let panel = document.getElementById('rwph-payment-recovery-panel');
+    if (panel) { panel.remove(); panel = null; }
+    panel = document.createElement('div');
+    panel.id = 'rwph-payment-recovery-panel';
+    panel.className = 'rwph-floating-panel rwph-payment-recovery-panel';
+    panel.dataset.layoutKey = 'rwph-payment-recovery-panel';
+    panel.style.cssText = 'position:fixed;z-index:2147483646;left:calc(50% - 355px);top:70px;width:min(710px,calc(100vw - 16px));height:min(610px,calc(100vh - 16px));display:flex;flex-direction:column;min-width:0;overflow:hidden;background:var(--rwph-theme-bg);color:var(--rwph-theme-text);border:1px solid var(--rwph-theme-outline);border-radius:12px;box-sizing:border-box;';
+    panel.innerHTML = `<div class="rwph-panel-head rw-head" style="position:relative;display:flex;align-items:center;justify-content:space-between;min-height:45px;flex:none;padding:9px 45px 9px 12px;cursor:move;border-bottom:1px solid var(--rwph-theme-outline);background:var(--rwph-theme-panel2);">
+      <b>Missing Payment Recovery — Admin</b><button type="button" class="rwph-mini-close" data-rwph-recovery-close aria-label="Close">×</button></div>
+      <div class="rwph-floating-panel-body" style="flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;display:grid;align-content:start;gap:9px;padding:10px;min-width:0;box-sizing:border-box;">
+        <div class="rw-muted">Checks recent Torn owner payment logs against the licence payment ledger. Wrong or absent payment codes can be reviewed. Never automatically submits Torn transactions. A log link opens the owner’s log page and may need the owner to be logged in.</div>
+        <div class="rw-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="button" class="secondary" data-rwph-recovery-scan>Check Recent Payments</button>
+          <button type="button" class="secondary" data-rwph-recovery-all disabled>Add All Eligible (0)</button>
+        </div>
+        <div data-rwph-recovery-status class="rw-muted" role="status">${options.setupPreview ? 'Admin Setup preview: example entries only; no payment scan or licence changes.' : 'Checking saved recovery records...'}</div>
+        <div data-rwph-recovery-rows style="display:grid;gap:8px;min-width:0;"></div>
+      </div>`;
+    document.body.appendChild(panel);
+    if (options.setupPreview) {
+      panel.dataset.rwphDefaultSetupPreview = '1';
+      rwphRenderPaymentRecoveryEntriesV1603(panel, {rows:[{tornId:'1000001',name:'Example Member',code:'(missing code)',qty:2,days:20,reason:'Missing code — sample',paidAt:Math.floor(Date.now()/1000),status:'needs_review',eligible:false}]});
+    }
+    rwphEnablePanelMoveResize(panel,'.rwph-panel-head');
+    if (!options.setupPreview) rwphApplyPanelLayout(panel);
+    panel.addEventListener('click', async (event) => {
+      if (event.target.closest('[data-rwph-recovery-close]')) { panel.remove(); return; }
+      if (options.setupPreview) return;
+      if (rwphPaymentRecoveryBusyV1603) return;
+      const scan = event.target.closest('[data-rwph-recovery-scan]');
+      const grant = event.target.closest('[data-rwph-recovery-grant]');
+      const all = event.target.closest('[data-rwph-recovery-all]');
+      if (!scan && !grant && !all) return;
+      if ((grant || all) && !confirm(all ? 'Credit ALL eligible unpaid records? Every payment can only be credited once. Continue?' : 'Credit this verified payment? Check the sender, Xanax quantity, amount of days and Torn logs first.')) return;
+      const status = panel.querySelector('[data-rwph-recovery-status]');
+      rwphPaymentRecoveryBusyV1603 = true;
+      try {
+        if (status) status.textContent = 'Checking payment evidence and processing request...';
+        const path = scan ? '/api/admin/payment-recovery/scan' : all ? '/api/admin/payment-recovery/apply-all' : '/api/admin/payment-recovery/apply';
+        const result = await adminRequest('POST',path,adminKey,grant ? {fingerprint:grant.dataset.rwphRecoveryGrant} : {});
+        if (result?.errors?.length) rwphShowToast(`${result.applied || 0} credited. ${result.errors.length} could not be processed; see server logs.`, 'warn','RWPH Admin');
+        const rows = await adminRequest('POST','/api/admin/payment-recovery/list',adminKey,{});
+        rwphRenderPaymentRecoveryEntriesV1603(panel, {rows: rows.rows, notice: result.notice || result.message || rows.notice});
+      } catch (e) {
+        if (status) status.textContent = 'Payment recovery error: ' + e.message;
+      } finally { rwphPaymentRecoveryBusyV1603 = false; }
+    });
+    if (!options.setupPreview) {
+      try {
+        const result = await adminRequest('POST','/api/admin/payment-recovery/scan',adminKey,{});
+        rwphRenderPaymentRecoveryEntriesV1603(panel,result);
+      } catch (e) {
+        const status=panel.querySelector('[data-rwph-recovery-status]');
+        if(status)status.textContent='Recent Torn payment scan unavailable: '+e.message+' You can retry from Check Recent Payments.';
+        try {
+          const saved=await adminRequest('POST','/api/admin/payment-recovery/list',adminKey,{});
+          const holder=panel.querySelector('[data-rwph-recovery-rows]');
+          rwphRenderPaymentRecoveryEntriesV1603(panel,saved);
+          if(status)status.textContent='Recent scan failed: '+e.message+' — showing previously saved recovery entries instead.';
+        } catch (_) {}
+      }
+    }
+    return panel;
   }
 
   function rwphOpenDefaultSetupPanel(adminKey) {
@@ -5887,7 +5989,7 @@
     panelRoot.__rwphAdminDelegatedBound = true;
     panelRoot.addEventListener("click", async (event) => {
       const target = event.target;
-      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-payment-recovery, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
       if (!adminAction || !panelRoot.contains?.(adminAction)) return;
       const rootScope = rwphFindAdminRoot(adminAction);
       const status = rwphAdminQuery(rootScope, "#rw-admin-status");
@@ -5918,6 +6020,14 @@
           const adminKey = rwphGetAdminKeyFromPanel(rootScope);
           GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
           rwphOpenDefaultSetupPanel(adminKey);
+          return;
+        }
+
+        if (adminAction.id === "rw-admin-payment-recovery") {
+          const adminKey = rwphGetAdminKeyFromPanel(rootScope);
+          if (!adminKey) throw new Error("Enter your Admin Key first.");
+          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+          await rwphOpenPaymentRecoveryPanelV1603(adminKey);
           return;
         }
 
@@ -10916,7 +11026,36 @@
     return true;
   }
 
-  const rwphPayAllMoneyOnlyWarning = "RWPH could not safely identify the Money fields. Open Faction Controls → Give to User → Money → Add To Balance, then try again. The value was copied to your clipboard; nothing was pasted into Torn.";
+  // Torn's supported faction-controls URL prefill is Money-specific: addMoneyTo + money.
+  // Unlike generic DOM input guessing, it never contains givePointsTo, addPointsTo or points.
+  function rwphPayAllTornMoneyUrlPrefill(kind, value, row = null) {
+    if (!rwphPayAllOnFactionControls()) return false;
+    if (!/^(member|amount)$/.test(kind)) return false;
+    const memberId = String(row?.id ?? "").trim();
+    if (!/^\d{1,12}$/.test(memberId)) return false;
+    const hash = String(window.location.hash || "");
+    if (!/(?:^|[\/&])tab=controls(?:&|$)/i.test(hash)) return false;
+    const option = hash.match(/(?:^|[\/&])option=([^&]+)/i);
+    if (option && option[1] !== "give-to-user") return false;
+    const money = String(rwphPayAllRowAmount(row));
+    if (!/^\d+$/.test(money) || !Number.isSafeInteger(Number(money)) || Number(money) < 0) return false;
+    try {
+      const prior = hash.startsWith('#/') ? hash.slice(2) : hash.replace(/^#/, "");
+      const parts = prior.split('&').filter(Boolean);
+      // Do not carry Points-prefill values forward from a previously opened link.
+      const clean = parts.filter(part => !/^(?:addPointsTo|givePointsTo|points|givePointsAmount|giveMoneyTo|addMoneyTo|money|giveMoneyAmount)=/i.test(part));
+      if (!clean.some(part => /^option=/.test(part))) clean.push('option=give-to-user');
+      clean.push(`addMoneyTo=${encodeURIComponent(memberId)}`);
+      if (kind === 'amount') clean.push(`money=${encodeURIComponent(money)}`);
+      const next = '#/' + clean.join('&');
+      if (next === window.location.hash) return true;
+      // Trigger Torn's official route-aware prefill. Never submit a payout.
+      window.location.hash = next;
+      return true;
+    } catch (_) { return false; }
+  }
+
+  const rwphPayAllMoneyOnlyWarning = "RWPH could not verify a safe Money-only target. Open Faction Controls → Give to User → Money → Add To Balance, then try again. The value was copied to your clipboard; Points were not changed.";
 
   async function rwphPrefillPayAllMember(row) {
     const id = String(row?.id || "unknown");
@@ -10925,8 +11064,9 @@
     const verified = rwphPayAllVerifiedMoneyFields();
     rwphPayAllLastMemberField = null;
     rwphPayAllActiveScope = null;
-    const filled = !!verified && rwphSetPayAllFieldValue(verified.member, value);
-    if (filled) {
+    const filled = (!!verified && rwphSetPayAllFieldValue(verified.member, value)) ||
+      rwphPayAllTornMoneyUrlPrefill('member', value, row);
+    if (filled && verified?.member?.isConnected) {
       rwphPayAllLastMemberField = verified.member;
       rwphPayAllActiveScope = verified.scope;
     }
@@ -10943,6 +11083,7 @@
       if (!verified) break; // Never broaden search to another Torn field.
       filled = rwphSetPayAllFieldValue(verified.amount, value);
     }
+    if (!filled) filled = rwphPayAllTornMoneyUrlPrefill('amount', value, row);
     await copyText(value).catch(() => false);
     return { filled, value, error: filled ? "" : rwphPayAllMoneyOnlyWarning };
   }
@@ -12865,6 +13006,7 @@
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
+              <button id="rw-admin-payment-recovery" class="secondary" type="button">Check Missing Payments</button>
             </div>
 
             <label>Player Torn ID
@@ -13984,6 +14126,7 @@
               <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-status-load" class="secondary" type="button">Server Status</button>
               <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
+              <button id="rw-admin-payment-recovery" class="secondary" type="button">Check Missing Payments</button>
             </div>
             <div class="rw-admin-advanced-box">
               <div id="rw-admin-status-summary" class="rw-small">Server status will appear here.</div>
