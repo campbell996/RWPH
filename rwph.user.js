@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.586
+// @version      1.1.588
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -17,87 +17,6 @@
 
 (function () {
   "use strict";
-
-  // v1.1.568: Adds expected-next-action highlighting to Payments Copy, rebuilds Xanax Payment Helper as a guided amount-aware prefill wizard, restores Newsletter Preview/Raw HTML on phone/PDA, and updates Admin Default Setup for the new wizard.
-  // v1.1.567: Rebuilds sent newsletters without HTML tables so Torn cannot inject table overflow/sideways scrollbars; keeps full-width responsive div/card layouts for PC, phone and PDA while preserving explicit theme colours.
-  // v1.1.565: Restores Torn-safe full 760px newsletter width plus explicit background and exact outline colours on the actual rendered tables/cells while preserving the v1.1.564 single-table stack and compact HTML output.
-  // v1.1.564: Forces every Newsletter section to stack inside one outer Torn-safe table and structurally compacts/minifies the generated HTML without changing its visible layout, colours, member data, or 760px Preview proportions.
-  // v1.1.563: Rebuilds Newsletter output into explicit full-width Torn-safe section tables so all content fills the 760px canvas, removes horizontal overflow, uses direct FONT colours so sent newsletters preserve selected text colours, and gives Newsletter the same themed outer scrollbar as Main while Preview remains the exact scaled Raw HTML.
-  // v1.1.562: Keeps the three Torn-safe Newsletter layouts but fixes the sent canvas at Torn's full 760px newsletter/message width, applies theme text/background/outline colours explicitly inline, and scales the exact sent HTML down inside Preview without reflowing it.
-  // v1.1.561: Rebuilds all three Newsletter layouts onto one full-width six-column Torn-safe table grid, removes nested width/shrink behavior, fills incomplete final rows, makes Preview responsive up to Torn width, and explicitly applies the selected newsletter text colour.
-  // v1.1.560: Removes the old 15-layout Newsletter library and rebuilds three Torn-safe layouts from scratch: 2-column panel cards, 1-column leaderboard, and 3-column compact cards.
-  // v1.1.559: Rebuilds sent-newsletter HTML for Torn-safe fixed-table rendering and makes Preview render the exact same HTML in an isolated 760px Torn-style message viewport.
-  // v1.1.558: Makes Newsletter Member Card Stats follow the exact metrics used by the report calculation and adds a compact Hide / Show toggle to the Custom Newsletter Theme colour controls.
-  // v1.1.557: Makes Newsletter Member Card Stats report-aware so only optional stats with meaningful data in the current report are offered.
-  // v1.1.556: Places Newsletter Preview and Raw HTML side by side in one responsive output row, collapsing cleanly only when the panel becomes too narrow.
-  // v1.1.555: Adds a removable admin-only 100-member test calculation that reads Cached Report 1 and builds 100 in-memory duplicate test members without saving or mutating cached reports.
-  // v1.1.554: Adds Newsletter and Member Card Stats to Admin Default Setup and makes both panels apply saved/admin default geometry when opened.
-  // v1.1.553: Adds a separate Newsletter Member Card Stats panel with optional live member stats, and converts all 42 Newsletter presets to the same three-master-colour derivation system as Custom.
-  // v1.1.552: Adds a Custom Newsletter three-colour theme builder using Panels/Cards/Rows/Inputs, All Text, and All Outlines/Borders/Accents master colours with live derived styling across all 15 layouts.
-  // v1.1.551: Expands the newsletter colour/theme library from 17 to 42 independent palettes while keeping all 15 compact layouts and Torn character-limit safeguards.
-  // v1.1.550: Rebuilds newsletter HTML to mirror RWPH panel hierarchy and expands the independent Newsletter Layout library to 15 compact 120-member-safe styles while retaining all colour themes.
-  // v1.1.549: Compacts the Main locked/unlocked API disclosure while keeping full terms in Help, restores Cached Reports to a single vertical report stack, and simplifies the Saved count display.
-  // v1.1.547: Rebuilds the user Help and Torn API disclosure, improves user-facing panel guidance, reorganises Cached Reports within the existing RWPH UI, and renames payment prefill controls.
-  // v1.1.546: Makes Member Management use the same theme-aware three-corner resize styling as the other RWPH panels, removes the browser-native resize corner, and makes newsletters use only the full faction image from Faction Info (never the faction tag image).
-  // v1.1.545: Adds a separate Newsletter Layout dropdown with four new compact 120-card layouts, keeps theme/colour selection independent, and enforces Torn's 65,535-character newsletter HTML limit.
-  // v1.1.544: Simplifies Basic Calculations to War Hits only: War Hits are forced on, Basic always uses the ranked-war-report-only fast path, all Basic Assist/Outside/Retal/Fast Mode controls and fallbacks are removed, and Basic outputs focus on War Hits + Respect.
-  // v1.1.542: Fixes Payment Helper resize reflow: Required payment details no longer clip/disappear, and How to use steps wrap onto extra lines instead of forcing a horizontal scrollbar.
-  // v1.1.540: Renames the Advanced Own Faction Hospitalize bonus and restricts it to verified own-faction defenders, while leaving the enemy-war hospitalization bonus separate.
-  // v1.1.538: Makes Payment Checklist Complete fit without forced scrolling, adds the same Newsletter/HTML/CSV result actions there, and makes Cached Reports temporarily replace/reopen Main unless a report is loaded.
-  // v1.1.537: Swaps Results/Loading header controls so Close is far-right; replaces the Results newsletter dropdown/embedded panels with one Torn-page Newsletter panel containing a selector, live preview, raw HTML, and Copy Raw HTML; removes legacy Results/newsletter/payment fallback paths.
-  // v1.1.536: Rebuilds Results Loading/Results as true Torn-page floating panels with no embedded browser/iframe; Start Payments closes Results then navigates the main Torn tab to faction vault controls, and HTML/CSV downloads are owned by the main Torn document.
-  // v1.1.535: Restores visible NW/SW/SE resize corners on Results Loading/Results, places Fullscreen to the right of Close, and hardens Start Payments so faction controls/Payments Copy can never load inside the Results iframe.
-  // v1.1.534: Rebuilds Results Loading/Results as normal movable RWPH panels, routes Start Payments through the parent into same-tab faction controls, and makes Default Setup target every current movable RWPH panel.
-  // v1.1.533: Rebuilds Results HTML/CSV downloads using the Faction Helper direct Blob-anchor method, restores Payments Copy payout/paste controls, and removes the Xanax How-to inner scroll/card.
-  // v1.1.532: Unifies every RWPH panel scrollbar/close/resize control with the main panel, moves Payments Copy to same-tab faction controls with Results auto-close, and auto-closes Cached Reports after a saved report opens.
-  // v1.1.531: Keeps every Xanax Payment Helper numbered instruction on a single line by replacing the old grid-split instructions with proper numbered rows.
-  // v1.1.529: Rebuilds every secondary/floating RWPH panel on one theme-first component shell; merges Body+Surface into one base colour (3 controls total), restores Xanax Payment Helper layout/3-corner resize, and fixes Newsletter panels so Rose is not forced open.
-  // v1.1.528: Corrects the Theme / Colours Body and Surface field labels so they match the UI areas each colour actually controls.
-  // v1.1.527: Rebuilds Locked/Unlocked/Admin/Help/Results Loading/Results around the four-colour theme from first render; removes their legacy per-panel visual CSS and applies saved theme state before any panel/restore path.
-  // v1.1.526: Removes duplicate/legacy Theme/Colour UI paths and makes one Body/Surface/Text/Outline theme engine authoritative across every RWPH panel.
-  // v1.1.525: Rebuilds every RWPH panel around one shared four-colour UI theme, retires the old Unified/Clean/Compact visual layers, and applies the same theme system to Results Loading and Results.
-  // v1.1.524: Main locked/unlocked panel buttons now fully follow the four-colour theme, and the Theme / Colours preset library is massively expanded.
-  // v1.1.523: Completely rebuilds Theme / Colours around the Faction Helper four-colour system; old RWPH theme/custom-colour state is intentionally reset to the new RWPH Gold default.
-  // v1.1.522: Newsletter faction image now comes strictly from the user faction's Faction Info tab/panel (with own-faction cache/API fallback), never from the current war target area.
-  // v1.1.521: Rebuilds Results CSV/HTML exports as parent-userscript-owned downloads so generated iframe/CSP/WebView code cannot block the buttons; mobile attachment downloads no longer use hidden iframes.
-  // v1.1.520: Keeps panel text scaling idempotent across repeated opens and makes the Advanced Calculation System description/reload action follow the live selected system in the separate Advanced panel.
-  // v1.1.519: Rebuilds Results CSV/HTML downloads with direct local desktop + stateless server attachment mobile/PDA paths; groups Basic/Advanced/Cached controls into one compact main-panel action row.
-  // v1.1.518: Slightly increases text size across all movable RWPH panels while preserving saved/admin panel geometry and resize scaling.
-  // v1.1.517: CSV/HTML exports now use a verified parent bridge + persistent backend export URL instead of false-success iframe form downloads; PC/Phone/PDA share the same real-file flow.
-  // v1.1.516: Results hide $0 payout members; CSV/HTML exports use the backend attachment endpoint as the primary PC/Phone/PDA path; newsletters include the current faction image at the top when available.
-  // v1.1.515: Results exports now use native save/share + userscript bridge fallbacks for PC/Phone/PDA; newsletter controls follow the active theme; Payments action renamed/styled as Start Payments.
-  // v1.1.514: Deep dead-code cleanup removes compiler-confirmed unused locals/parameters and obsolete no-op compatibility plumbing while preserving active behavior.
-  // v1.1.513: Conservative userscript cleanup removes provably unused helpers, no-op loading callbacks, stale generated-results code, and the obsolete hidden results-page Payments panel without changing active calculation/payment flows.
-  // v1.1.512: Lock/unlock now rebuilds the standalone Basic/Advanced calculation panels correctly; starting a calculation auto-closes the calculation and main panels once Results Loading opens.
-  // v1.1.511: Logo Selector and Admin Default Setup panels use the shared 3-corner resize system; added reset-to-admin-default, save-current-layout, and restore-saved-layout controls.
-  // v1.1.510: Global compact UI pass; locked main no longer renders Payment Code Ready; Default Setup includes compact Payments wizard plus Basic/Advanced calculation panels.
-  // v1.1.501: Payment Copy and Default Setup wizard content now reflows/fits cleanly inside resized desktop and Phone/PDA panels.
-  // v1.1.509: Basic and Advanced calculations open in their own themed floating panels with shared Close/drag/3-corner resize controls; Licence Info now uses the same 3-corner resize setup.
-  // v1.1.508: Main Payout/Admin/Help tabs no longer use sticky/fixed behavior and scroll naturally from the top of the panel; Cached Reports increases to five reports per faction.
-  // v1.1.507: Cached Reports now uses the exact shared 3-corner resize handles; main Payout/Admin/Help tabs are anchored above the scrolling body.
-  // v1.1.506: Cached Reports now uses the same shared RWPH panel header/move/resize controls, and all close buttons are frozen to a fixed size/position on hover.
-  // v1.1.505: Cached Reports now uses the standard RWPH header/close/drag/resize system; close buttons no longer shift or resize on hover.
-  // v1.1.504: All Advanced calculations use detailed Torn attack modifiers; Payments Copy wizard now follows the active RWPH theme/layout.
-  // v1.1.503: Fair Fight scoring now forces Torn's detailed faction/attacks feed when FF is enabled, uses real hit-level modifiers.fair_fight samples, and no longer displays missing FF data as a fake 1.00 sample.
-  // v1.1.502: Payments Copy warning gate restored; wizard pages now fill the available panel body edge-to-edge at any resized panel size.
-  // v1.1.500: Payments Copy Panel rebuilt as a warning-first, one-member-at-a-time payment wizard with Back/Next navigation and persistent copy progress.
-  // v1.1.499: Phone/PDA Payout/Admin/Help tabs scroll naturally with the main panel body; v1.1.498 Payments Copy touch scrolling is retained.
-  // v1.1.497: Advanced Fair Fight mode selection now applies/normalizes every FF setting required by that mode and disables irrelevant FF inputs.
-  // v1.1.496 legacy note: Results Loading / Results previously opened fullscreen; v1.1.534 restores them as normal configurable panels.
-  // v1.1.495: Default Setup now opens the real RWPH panels, follows their real Torn-page navigation (including faction controls and item.php), persists the wizard across those page changes, and keeps the setup controller layered above the panel being positioned.
-  // v1.1.493: Main-panel UI refinement: Save Key sits beside the API input, Theme/Colours + Logo Selector controls live at the bottom of the Payout panel, and Fit/Fullscreen is removed from normal panels while Close/resize remain.
-  // v1.1.492: Results reports now render war-summary and member-card metrics from the exact scoring settings used by that report (including Fair Fight, Hybrid, Respect, hospital, retal, overseas, and Basic War Hits-only scoring).
-  // v1.1.491: Full clean-panel UI refresh across RWPH. All movable panels keep Close, Fit-to-screen, drag, and resize controls while calculations/licensing/cache/backend behavior remains unchanged.
-  // v1.1.490: Payment Helper opens instantly from a successful Buy/Extend handoff and uses a direct indexed payment-code lookup when browser state is missing; no Torn identity lookup blocks helper rendering.
-  // v1.1.489: Removed payment-code expiry/timer UI. Pending codes live only in MySQL for 30 minutes; Buy/Extend reuses the same code and restarts its 30-minute database lifetime.
-  // v1.1.488: Buy/Extend payment helpers start a visible 5:00 timer immediately; backend payment checks then replace it with the authoritative live expiry. Removed the Syncing timer state.
-  // v1.1.487: Payment-helper expiry immediately showed Syncing while backend state refreshed, live expiry replaced stale timers as soon as it arrived, and Buy/Extend no longer auto-open Your Expiration.
-  // v1.1.486: Expired/stale Buy/Extend payment-helper handoffs self-heal by restoring the current database code or creating a fresh payment code for the original Buy/Extend intent.
-  // v1.1.485: Cached Reports button moved between the Basic Calculations and Advanced Calculations dropdowns; no calculation, cache, licence, or backend logic changed.
-  // v1.1.484: Fast-path licence/payment backend calls now use targeted indexed SQL instead of full-state loads; Buy/Extend are click-locked and successful extension display reuses the confirmation response.
-  // v1.1.483: Admin Key save is now a single fast verify + owner-licence grant request; admin access and the local owner token unlock immediately after confirmation.
-  // v1.1.482: Cached Reports hot path now reads the faction's newest 3 rows directly from MySQL with no Torn lookup on normal opens; calculation saves remain database-backed.
-  // v1.1.471: Advanced setting names and ? help controls form one larger wrapping label block; narrow cards may use two lines.
 
   // Change this after hosting your backend online.
   // If you change this domain, update the @connect backend domain in the userscript header too.
@@ -4798,7 +4717,9 @@
 
     const promise = new Promise((resolve, reject) => {
       const safePath = String(path || "");
-      const requestTimeout = safePath === "/api/paywall/verify-token" ? 20000 : (safePath.includes("/api/calc/") ? 300000 : 120000);
+      const requestTimeout = safePath === "/api/paywall/verify-token" ? 20000
+        : safePath === "/api/paywall/start" ? 30000
+        : (safePath.includes("/api/calc/") ? 300000 : 120000);
       GM_xmlhttpRequest({
         method: "POST",
         url: `${PAYWALL_API_BASE}${path}`,
@@ -5167,12 +5088,23 @@
     return true;
   }
 
-  async function getSavedLicenseInfo() {
+  let rwphRecentVerifiedLicence = null;
+  async function getSavedLicenseInfo(forceFresh = false) {
     const token = GM_getValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     const userKey =
       document.getElementById("rw-key")?.value.trim() ||
       document.getElementById("rw-paywall-key")?.value.trim() ||
       GM_getValue(STORAGE_KEY, "");
+
+    // Only reuse a successful server verification for 20 seconds in the same tab.
+    // Never cache failures, unsigned states, or an expired token. Explicit checks bypass this.
+    if (!forceFresh && token && rwphRecentVerifiedLicence &&
+        rwphRecentVerifiedLicence.token === token &&
+        rwphRecentVerifiedLicence.userKey === userKey &&
+        Date.now() - rwphRecentVerifiedLicence.verifiedAtMs < 20000 &&
+        Number(rwphRecentVerifiedLicence.info.expiresAt || 0) > Math.floor(Date.now() / 1000)) {
+      return { ...rwphRecentVerifiedLicence.info };
+    }
 
     if (!token && !userKey) {
       return { valid: false, error: "No saved license token or Torn API key found. Buy Licence or paste your Torn API key first." };
@@ -5186,6 +5118,8 @@
       }
       if (result.valid && result.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
       if (result.valid && result.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
+      rwphRecentVerifiedLicence = result.valid && result.token && Number(result.expiresAt || 0) > Math.floor(Date.now() / 1000)
+        ? { token: result.token, userKey, verifiedAtMs: Date.now(), info: { ...result } } : null;
       return result;
     } catch (e) {
       // A transport/HTTP failure is not evidence that an existing licence expired or was revoked.
@@ -5276,7 +5210,7 @@
   }
 
   async function showLicenseDays(statusEl) {
-    const info = await getSavedLicenseInfo();
+    const info = await getSavedLicenseInfo(true);
 
     if (!info.valid) {
       rwphOpenLicenceInfoPanel(info || {});
@@ -5296,6 +5230,7 @@
   }
 
   function returnToLockedPanel(message = "Your licence has expired or was revoked. Buy Licence to unlock RWPH again.") {
+    rwphRecentVerifiedLicence = null;
     GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, "");
     if (window.__rwphLicenseMonitor) {
       clearInterval(window.__rwphLicenseMonitor);
@@ -10205,6 +10140,40 @@
         .rw-resize-handle-sw { left:3px !important; bottom:3px !important; border-width:3px !important; }
         .rw-resize-handle-nw { left:3px !important; top:3px !important; border-width:3px !important; }
       }
+      /* v1.1.587: One measured viewport, without independent or nested wizard scrollbars. */
+      #rw-pay-all-panel { box-sizing:border-box !important; min-width:0 !important; }
+      #rw-pay-all-panel .rw-pay-all-scroll {
+        min-width:0 !important; min-height:0 !important; flex:1 1 0 !important;
+        overflow:hidden !important; overscroll-behavior:none !important;
+        touch-action:auto !important; scrollbar-width:none !important;
+      }
+      #rw-pay-all-panel .rw-pay-all-wizard-stage {
+        display:block !important; min-width:0 !important; min-height:0 !important;
+        max-width:none !important; flex:none !important;
+        overflow:visible !important; transform-origin:top left !important;
+        box-sizing:border-box !important;
+      }
+      #rw-pay-all-panel .rw-pay-all-wizard-page {
+        width:100% !important; height:auto !important; min-height:0 !important;
+        max-width:100% !important; overflow:visible !important;
+        flex:none !important; box-sizing:border-box !important;
+        justify-content:flex-start !important;
+      }
+      #rw-pay-all-panel .rw-pay-all-wizard-page[data-pay-all-page="complete"] {
+        display:flex !important; flex-direction:column !important;
+        height:auto !important; min-height:0 !important; gap:8px !important;
+      }
+      #rw-pay-all-panel .rw-pay-all-start-warning {
+        min-height:0 !important; height:auto !important; flex:none !important;
+      }
+      #rw-pay-all-panel .rw-pay-all-complete-card { flex:none !important; min-height:0 !important; }
+      #rw-pay-all-panel .rw-pay-all-wizard-nav { margin-top:0 !important; }
+      #rw-pay-all-panel .rw-pay-all-copy-grid,
+      #rw-pay-all-panel .rw-pay-all-complete-actions,
+      #rw-pay-all-panel .rw-pay-all-wizard-nav { min-width:0 !important; }
+      #rw-pay-all-panel .rw-pay-all-wizard-stage *,
+      #rw-pay-all-panel .rw-pay-all-wizard-stage *::before,
+      #rw-pay-all-panel .rw-pay-all-wizard-stage *::after { box-sizing:border-box !important; }
     `;
     document.head.appendChild(style);
   }
@@ -10773,6 +10742,62 @@
     };
 
     const stage = () => panel.querySelector("[data-pay-all-stage]");
+    // Fit each complete wizard page inside its own available body area. Never
+    // scroll inner containers or let a hidden overflow region eat controls.
+    // A fitted scale is necessary when the user shrinks a resizable panel.
+    let fitQueued = false;
+    const fitWizardPage = () => {
+      fitQueued = false;
+      if (!panel.isConnected || panel.hidden) return;
+      const viewport = panel.querySelector(".rw-pay-all-scroll");
+      const target = stage();
+      if (!viewport || !target) return;
+      const bounds = viewport.getBoundingClientRect();
+      const availableW = Math.max(1, bounds.width);
+      const availableH = Math.max(1, bounds.height);
+      target.style.transform = "none";
+      target.style.height = "auto";
+      target.style.maxHeight = "none";
+      target.style.width = `${availableW}px`;
+      const fits = (factor) => {
+        target.style.width = `${availableW / factor}px`;
+        // Content wraps at the unscaled width. Checking natural scroll height
+        // makes the fit robust for member names, amounts, and small devices.
+        return target.scrollHeight * factor <= availableH - 1 &&
+          target.scrollWidth * factor <= availableW + 1;
+      };
+      let low = 0.20;
+      let high = 1;
+      let factor = 1;
+      if (!fits(1)) {
+        if (!fits(low)) factor = low;
+        else {
+          for (let i = 0; i < 14; i += 1) {
+            const mid = (low + high) / 2;
+            if (fits(mid)) low = mid;
+            else high = mid;
+          }
+          factor = Math.max(0.20, low - 0.002);
+        }
+      }
+      target.style.width = `${availableW / factor}px`;
+      target.style.transform = `scale(${factor})`;
+      target.dataset.fitScale = factor.toFixed(3);
+    };
+    const requestWizardFit = () => {
+      if (fitQueued) return;
+      fitQueued = true;
+      requestAnimationFrame(fitWizardPage);
+    };
+    const wizardFitObserver = typeof ResizeObserver === "function"
+      ? new ResizeObserver(requestWizardFit) : null;
+    if (wizardFitObserver) {
+      wizardFitObserver.observe(panel);
+      const viewport = panel.querySelector(".rw-pay-all-scroll");
+      if (viewport) wizardFitObserver.observe(viewport);
+    }
+    window.addEventListener("resize", requestWizardFit, { passive: true });
+    requestWizardFit();
     const renderWizard = () => {
       const target = stage();
       if (!target) return;
@@ -10791,11 +10816,17 @@
       }
       rwphSetPayAllWarningAccepted(panel, rwphIsPayAllWarningAccepted(panel));
       rwphForcePayAllCloseButton(panel);
+      requestWizardFit();
     };
 
+    const cleanupWizardFit = () => {
+      wizardFitObserver?.disconnect();
+      window.removeEventListener("resize", requestWizardFit);
+    };
     panel.addEventListener("click", async (e) => {
       const closeBtn = e.target.closest?.("[data-pay-all-close]");
       if (closeBtn) {
+        cleanupWizardFit();
         closePayAllCopyPanel();
         return;
       }
@@ -10803,6 +10834,7 @@
       const acceptWarningBtn = e.target.closest?.("[data-pay-warning-accept]");
       if (acceptWarningBtn) {
         rwphSetPayAllWarningAccepted(panel, true);
+        requestWizardFit();
         return;
       }
 
@@ -10871,6 +10903,7 @@
 
       const finishCloseBtn = e.target.closest?.("[data-pay-all-finish-close]");
       if (finishCloseBtn) {
+        cleanupWizardFit();
         closePayAllCopyPanel();
         return;
       }
