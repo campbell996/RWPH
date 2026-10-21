@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.612
+// @version      1.1.613
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -354,8 +354,8 @@
         position:relative!important;inset:auto!important;transform:none!important;
         box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;
         justify-content:center!important;gap:0!important;
-        width:calc(100% - 4px)!important;max-width:174px!important;min-width:0!important;
-        height:44px!important;min-height:44px!important;
+        width:212px!important;max-width:212px!important;min-width:212px!important;
+        height:86px!important;min-height:86px!important;
         padding:2px 5px!important;margin:3px 2px!important;
         border:1px solid #333333!important;
         border-radius:5px!important;background:#333333!important;background-image:none!important;
@@ -373,9 +373,9 @@
         outline:0!important;border-color:#333333!important;
       }
       #rw-payout-launcher.rwph-sidebar-launcher>.rwph-sidebar-launcher-logo{
-        display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
-        height:40px!important;max-height:40px!important;object-fit:contain!important;
-        flex:1 1 auto!important;pointer-events:none!important;
+        display:block!important;width:200px!important;min-width:200px!important;max-width:200px!important;
+        height:80px!important;min-height:80px!important;max-height:80px!important;object-fit:contain!important;
+        flex:0 0 200px!important;pointer-events:none!important;
         background:transparent!important;border:0!important;box-shadow:none!important;
         filter:none!important;
       }
