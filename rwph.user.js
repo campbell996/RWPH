@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.618
+// @version      1.1.619
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1234,7 +1234,7 @@
     clearPendingPayment(); // Clear only the browser display. Existing MySQL payment records are untouched.
     GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
     GM_setValue("rwph_xanax_helper_open_request", JSON.stringify(request));
-    if (status) status.textContent = "Opening Torn Items. Choose a licence type in the Payment Helper to create your payment code.";
+    if (status) status.textContent = "Opening Torn Items. Choose a licence type in the Licence Payment Wizard to create your payment code.";
     try {
       window.location.assign("https://www.torn.com/item.php");
       return true;
@@ -1252,7 +1252,7 @@
     saveXanaxPaymentHelper(result.code);
 
     const existingText = result.existingPending
-      ? "Existing pending payment code found. Opening the Xanax Payment Helper in this tab instead of creating a new code."
+      ? "Existing pending payment code found. Opening the Licence Payment Wizard in this tab instead of creating a new code."
       : "Payment code ready. Opening the Xanax send page in this tab. RWPH will check automatically after you send the Xanax.";
     const helperMessage = result.instructions || existingText;
 
@@ -1262,7 +1262,7 @@
       rwphClearCrossTabPopup("xanax-payment");
       rwphToastPanelInfo(status, "Payment code is ready, but RWPH could not navigate to the Xanax send page. Click the helper button in the payment card.", "warn", "RWPH Payment");
     } else if (status) {
-      status.textContent = result.existingPending ? "Existing Xanax Payment Helper is opening in this tab." : "Xanax Payment Helper is opening in this tab.";
+      status.textContent = result.existingPending ? "Existing Licence Payment Wizard is opening in this tab." : "Licence Payment Wizard is opening in this tab.";
     }
 
     updatePendingPaymentUi();
@@ -2619,16 +2619,16 @@
     { id: "rwph-advanced-calculations-panel", label: "Advanced Calculations", width: 720, height: 700, className: "rwph-floating-panel rwph-calculation-settings-panel" },
     { id: "rwph-saved-reports-panel", label: "Cached Reports", width: 500, height: 520, className: "rwph-floating-panel" },
     { id: "rwph-member-management-panel", label: "Member Management", width: 420, height: 390, className: "rwph-floating-panel rwph-member-management-panel" },
-    { id: "rw-pay-all-panel-warning", panelId: "rw-pay-all-panel", page: "warning", label: "Payment Copy — Warning", width: 470, height: 425, className: "rwph-floating-panel rw-pay-all-panel" },
-    { id: "rw-pay-all-panel-member", panelId: "rw-pay-all-panel", page: "member", label: "Payment Copy — Member Payment", width: 470, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
-    { id: "rw-pay-all-panel-complete", panelId: "rw-pay-all-panel", page: "complete", label: "Payment Copy — Complete", width: 490, height: 540, className: "rwph-floating-panel rw-pay-all-panel" },
-    { id: "rwph-xanax-send-status-start", panelId: "rwph-xanax-send-status", page: "start", label: "Payment Helper — Start", width: 440, height: 470, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-licence", panelId: "rwph-xanax-send-status", page: "licence", label: "Payment Helper — Licence Type", width: 460, height: 610, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-amount", panelId: "rwph-xanax-send-status", page: "amount", label: "Payment Helper — Xanax Amount", width: 440, height: 485, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-receiver", panelId: "rwph-xanax-send-status", page: "receiver", label: "Payment Helper — Receiver", width: 440, height: 480, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-code", panelId: "rwph-xanax-send-status", page: "code", label: "Payment Helper — Message Code", width: 440, height: 485, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-send-amount", panelId: "rwph-xanax-send-status", page: "send-amount", label: "Payment Helper — Prefill Xanax", width: 440, height: 485, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-review", panelId: "rwph-xanax-send-status", page: "review", label: "Payment Helper — Review", width: 460, height: 560, className: "rwph-floating-panel" },
+    { id: "rw-pay-all-panel-warning", panelId: "rw-pay-all-panel", page: "warning", label: "Ranked War Payouts — Warning", width: 470, height: 425, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rw-pay-all-panel-member", panelId: "rw-pay-all-panel", page: "member", label: "Ranked War Payouts — Member Payment", width: 470, height: 500, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rw-pay-all-panel-complete", panelId: "rw-pay-all-panel", page: "complete", label: "Ranked War Payouts — Complete", width: 490, height: 540, className: "rwph-floating-panel rw-pay-all-panel" },
+    { id: "rwph-xanax-send-status-start", panelId: "rwph-xanax-send-status", page: "start", label: "Licence Payment Wizard — Start", width: 440, height: 470, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-licence", panelId: "rwph-xanax-send-status", page: "licence", label: "Licence Payment Wizard — Licence Type", width: 460, height: 610, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-amount", panelId: "rwph-xanax-send-status", page: "amount", label: "Licence Payment Wizard — Xanax Amount", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-receiver", panelId: "rwph-xanax-send-status", page: "receiver", label: "Licence Payment Wizard — Receiver", width: 440, height: 480, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-code", panelId: "rwph-xanax-send-status", page: "code", label: "Licence Payment Wizard — Message Code", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-send-amount", panelId: "rwph-xanax-send-status", page: "send-amount", label: "Licence Payment Wizard — Prefill Xanax", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-review", panelId: "rwph-xanax-send-status", page: "review", label: "Licence Payment Wizard — Review", width: 460, height: 560, className: "rwph-floating-panel" },
     { id: "rwph-licence-info-panel", label: "Your Expiration / Licence Info", width: 390, height: 300, className: "rwph-floating-panel" },
     { id: "rwph-layout-theme-panel", label: "Theme / Colours", width: 480, height: 500, className: "rwph-floating-panel rwph-layout-theme-panel" },
     { id: "rwph-logo-picker-panel", label: "Logo Selector", width: 620, height: 560, className: "rwph-floating-panel rwph-layout-theme-panel rwph-logo-picker-panel" },
@@ -2755,9 +2755,9 @@
     const status = controller?.querySelector("#rwph-default-setup-controller-status");
     if (status) {
       status.textContent = rwphPhysicalPanelIdV1600(target) === "rw-pay-all-panel"
-        ? "Opening Torn faction controls for the real Payments Copy Panel..."
+        ? "Opening Torn faction controls for the real Ranked War Payouts..."
         : rwphPhysicalPanelIdV1600(target) === "rwph-xanax-send-status"
-          ? "Opening Torn Items for the real Xanax Payment Helper Wizard..."
+          ? "Opening Torn Items for the real Licence Payment Wizard..."
           : "Returning to the Torn page where Default Setup started...";
     }
     setTimeout(() => {
@@ -4214,7 +4214,7 @@
       body #rwph-layout-theme-panel.rwph-secondary-panel-v1529 .rwph-theme-master-field{padding:8px!important;display:grid!important;gap:5px!important;}
       body #rwph-logo-picker-panel.rwph-secondary-panel-v1529 .rwph-logo-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))!important;gap:7px!important;}
 
-      /* Payments Copy wizard. */
+      /* Ranked War Payouts wizard. */
       body #rw-pay-all-panel.rwph-secondary-panel-v1529,body .rw-pay-all-panel.rwph-secondary-panel-v1529{padding:0!important;overflow:hidden!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-logo,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-logo{display:block!important;width:min(420px,100%)!important;max-width:100%!important;height:110px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
@@ -4227,7 +4227,7 @@
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 :is(.rw-pay-all-copy-grid,.rw-pay-all-complete-actions),body .rw-pay-all-panel.rwph-secondary-panel-v1529 :is(.rw-pay-all-copy-grid,.rw-pay-all-complete-actions){max-width:100%!important;min-width:0!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 :is(button,.rw-pay-all-copy),body .rw-pay-all-panel.rwph-secondary-panel-v1529 :is(button,.rw-pay-all-copy){max-width:100%!important;min-width:0!important;}
 
-      /* Xanax Payment Helper — restored/rebuilt layout + standard 3-corner resize. */
+      /* Licence Payment Wizard — restored/rebuilt layout + standard 3-corner resize. */
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:420px!important;overflow:hidden!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:150px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(420px,100%)!important;max-width:100%!important;height:110px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
@@ -4292,9 +4292,9 @@
       body :is(.rw-resize-handle,.rwph-results-resize-handle){width:20px!important;height:20px!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;border-color:var(--rwph-theme-outline)!important;}
 
       @media(max-width:760px),(pointer:coarse){
-        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{height:110px!important;min-height:110px!important;max-height:110px!important;padding:0 44px!important;gap:0!important;overflow:visible!important;}
+        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{height:104px!important;min-height:104px!important;max-height:104px!important;padding:0 44px!important;gap:0!important;overflow:visible!important;}
         body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head{overflow:visible!important;}
-        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{height:110px!important;min-height:110px!important;max-height:110px!important;padding:0 44px!important;gap:0!important;overflow:visible!important;}
+        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{height:104px!important;min-height:104px!important;max-height:104px!important;padding:0 44px!important;gap:0!important;overflow:visible!important;}
         body .rwph-secondary-panel-v1529>.rw-resize-handle,body .rwph-results-resize-handle{width:30px!important;height:30px!important;}
         body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-row{grid-template-columns:1fr!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529{width:calc(100vw - 12px)!important;min-width:240px!important;min-height:300px!important;}
@@ -4302,7 +4302,7 @@
         body .rwph-secondary-panel-v1529>.rwph-floating-panel-body,
         body .rwph-secondary-panel-v1529>.rwph-saved-reports-body,
         body .rwph-secondary-panel-v1529>.rw-pay-all-scroll,
-        body .rwph-secondary-panel-v1529>.rwph-xanax-scroll{padding-top:9px!important;}
+        body .rwph-secondary-panel-v1529>.rwph-xanax-scroll{padding-top:0!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions{grid-template-columns:1fr!important;}
       }
     `;
@@ -6491,7 +6491,7 @@
     rwphCloseResultsForPaymentsHandoff();
     const url = rwphFactionControlsPayAllUrl();
     try {
-      // v1.1.532: Payments Copy always stays in the current Torn tab. This keeps
+      // v1.1.532: Ranked War Payouts always stays in the current Torn tab. This keeps
       // PDA/phone navigation predictable and guarantees the Results panel is closed
       // before faction controls takes over the page.
       const targetWindow = (window.top && window.top !== window) ? window.top : window;
@@ -8557,7 +8557,7 @@
     if (payBtn) payBtn.addEventListener("click", (ev) => {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
       if (!rows.length) {
-        rwphShowToast("No payable members were found for Payments Copy.", "warning", "RWPH Payments");
+        rwphShowToast("No payable members were found for Ranked War Payouts.", "warning", "RWPH Payments");
         return;
       }
       rwphStorePayAllReportContext(actionContext);
@@ -10561,7 +10561,7 @@
         <button type="button" class="danger rw-pay-all-close" data-pay-all-close="1">×</button>
         <div class="rw-pay-all-head">
           <img class="rwph-dynamic-logo-icon rw-pay-all-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH">
-          <div class="rw-pay-all-title">Payments Copy Panel</div>
+          <div class="rw-pay-all-title">Ranked War Payouts</div>
         </div>
         <div class="rw-pay-all-scroll">
           <div class="rw-pay-all-wizard-stage" data-pay-all-stage="1">${rwphPayAllWarningPageHtml(safeRows.length)}</div>
@@ -10667,7 +10667,7 @@
     const hasMoneyContext = rwphPayAllHasMoneyContext(el);
 
     // Torn chat/settings panels live in the bottom-right and often expose generic textboxes first.
-    // Never let those fields become the Payments Copy Panel target, even when they are open over faction controls.
+    // Never let those fields become the Ranked War Payouts target, even when they are open over faction controls.
     const chatSettingsRe = /\b(chat|chatbox|chat-window|chat_box|chatroom|chat-list|chatlist|message-box|messagebox|emoji|emoticon|smiley|settings|preferences|preference|options|option-panel|quicklink|quick-link|sidebar|side-bar|notification|notepad|notes|profile-quick|footer)\b/i;
     const fieldDenyRe = /\b(chat|message|comment|reason|note|emoji|settings|preferences|filter|api\s*key|password|search\s*settings)\b/i;
 
@@ -10832,7 +10832,7 @@
     const touchMode = rwphIsTouchPhoneOrPda();
 
     // On Torn PDA/phones, focusing Torn's payment fields opens the software keypad.
-    // For the Payments Copy Panel we set values silently and blur afterwards, so Prefill buttons stay fast.
+    // For the Ranked War Payouts we set values silently and blur afterwards, so Prefill buttons stay fast.
     if (el.getAttribute?.("contenteditable") === "true" || el.getAttribute?.("role") === "textbox") {
       if (!touchMode) return rwphSetContentEditable(el, text);
       try {
@@ -11016,7 +11016,7 @@
     panel.__rwphPayAllWizardStateV1600 = wizardState;
     const stage = () => panel.querySelector("[data-pay-all-stage]");
     // The unified panel body now owns vertical scrolling; there is no
-    // independent Payment Copy fit, height-scaled transform or resize listener.
+    // independent Ranked War Payouts fit, height-scaled transform or resize listener.
     const requestWizardFit = () => rwphMarkWidthDrivenPanelPartsV1596(panel,'.rw-pay-all-head');
     const renderWizard = () => {
       const target = stage();
@@ -11777,8 +11777,8 @@
         @media(max-width:760px),(pointer:coarse){#rwph-xanax-send-status .rwph-xanax-review-grid>div{grid-template-columns:1fr!important;}#rwph-xanax-send-status .rwph-xanax-scroll{padding:7px!important;}#rwph-xanax-send-status .rwph-xanax-wizard-card{padding:9px!important;}}
         @media(prefers-reduced-motion:reduce){#rwph-xanax-send-status .rwph-helper-expected-action{animation:none!important;}}
       </style>
-      <button id="rwph-close-helper" class="danger" type="button" title="Close" aria-label="Close Xanax Payment Helper">×</button>
-      <div id="rwph-payment-helper-title"><img class="rwph-dynamic-logo-icon rwph-payment-helper-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span class="rwph-payment-helper-title-text">Payment Helper</span></div>
+      <button id="rwph-close-helper" class="danger" type="button" title="Close" aria-label="Close Licence Payment Wizard">×</button>
+      <div id="rwph-payment-helper-title"><img class="rwph-dynamic-logo-icon rwph-payment-helper-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span class="rwph-payment-helper-title-text">Licence Payment Wizard</span></div>
       <div class="rwph-xanax-scroll">
         <div class="rwph-xanax-wizard-stage" data-rwph-payment-helper-stage></div>
       </div>`;
@@ -11966,7 +11966,7 @@
         state.receiverDone = true;
         rwphRenderPaymentHelperWizardV1568(box);
         const res = state.setupPreview ? { ok: true } : await rwphPasteReceiverIntoOpenForm();
-        rwphShowToast(res.ok ? `Name / ID prefilled: ${PAYMENT_RECEIVER_TEXT}. Review the Torn field.` : res.error, res.ok ? "info" : "warn", "RWPH Payment Helper");
+        rwphShowToast(res.ok ? `Name / ID prefilled: ${PAYMENT_RECEIVER_TEXT}. Review the Torn field.` : res.error, res.ok ? "info" : "warn", "RWPH Licence Payment Wizard");
         return;
       }
 
@@ -11975,7 +11975,7 @@
         state.codeDone = true;
         rwphRenderPaymentHelperWizardV1568(box);
         const res = state.setupPreview ? { ok: true } : await rwphPastePaymentCodeIntoOpenForm(state.code || code);
-        rwphShowToast(res.ok ? "Message code prefilled into Torn's Add Message field. Review it before sending." : res.error, res.ok ? "info" : "warn", "RWPH Payment Helper");
+        rwphShowToast(res.ok ? "Message code prefilled into Torn's Add Message field. Review it before sending." : res.error, res.ok ? "info" : "warn", "RWPH Licence Payment Wizard");
         return;
       }
 
@@ -11984,7 +11984,7 @@
         state.amountDone = true;
         rwphRenderPaymentHelperWizardV1568(box);
         const res = state.setupPreview ? { ok: true, amount: state.amount } : await rwphPasteXanaxAmountIntoOpenForm(state.amount);
-        rwphShowToast(res.ok ? `Xanax amount prefilled: ${state.amount}. Review the Torn amount before sending.` : res.error, res.ok ? "info" : "warn", "RWPH Payment Helper");
+        rwphShowToast(res.ok ? `Xanax amount prefilled: ${state.amount}. Review the Torn amount before sending.` : res.error, res.ok ? "info" : "warn", "RWPH Licence Payment Wizard");
       }
     });
   }
@@ -12082,7 +12082,7 @@
     let recoveredPayment = false;
 
     // A successful Buy/Extend /start already created/refreshed this database row before
-    // Torn navigation began. Seed the browser copy from that handoff so the Payment Helper
+    // Torn navigation began. Seed the browser copy from that handoff so the Licence Payment Wizard
     // can render immediately instead of waiting on another network/database round trip.
     if (freshOpenRequest) {
       const pending = getPendingPayment();
@@ -12143,7 +12143,7 @@
     if (!helperConfirmed) {
       rwphRenderPaymentHelperPanel(
         code,
-        `RWPH could not confirm this payment code in the backend/database. Click <b>Buy Licence</b> or <b>Extend Licence</b> again so RWPH can reopen the current database-backed Xanax Payment Helper.`,
+        `RWPH could not confirm this payment code in the backend/database. Click <b>Buy Licence</b> or <b>Extend Licence</b> again so RWPH can reopen the current database-backed Licence Payment Wizard.`,
         true
       );
       rwphConsumeCrossTabPopup("xanax-payment", 650);
@@ -12154,7 +12154,7 @@
     rwphRenderPaymentHelperPanel(
       code,
       recoveredPayment
-        ? `The previous payment code was no longer active, so RWPH restored/created the current database-backed code automatically. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then follow the Payment Helper wizard one step at a time.`
+        ? `The previous payment code was no longer active, so RWPH restored/created the current database-backed code automatically. Open your <b>${esc(PAYMENT_ITEM_NAME)}</b>, manually open <b>Send this item</b> and <b>Add Message</b>, then follow the Licence Payment Wizard wizard one step at a time.`
         : ""
     );
     try {
@@ -12374,7 +12374,7 @@
         height:auto!important;min-height:0!important;overflow:visible!important;
         --rwph-paycopy-layout-width:100%;
       }
-      /* Override the older Payment Copy flex/height rules with higher specificity.
+      /* Override the older Ranked War Payouts flex/height rules with higher specificity.
          The STAGE grows to natural page height; only the outer BODY scrolls. */
       body #rw-pay-all-panel.rwph-secondary-panel-v1529.rwph-unified-layout-v1593 > .rw-pay-all-scroll{
         display:block!important;flex:1 1 0%!important;height:auto!important;min-height:0!important;
@@ -12720,13 +12720,13 @@
         <div class="rw-how-title">Quick Start — First Report</div>
         <ul class="rw-how-list">
           <li><b>1. Save your API key:</b> paste a Limited Access/custom Torn key and press <b>Save Key</b>.</li>
-          <li><b>2. Licence:</b> unlock an existing licence, start the free trial when eligible, or use Buy/Extend Licence and follow the Xanax Payment Helper.</li>
+          <li><b>2. Licence:</b> unlock an existing licence, start the free trial when eligible, or use Buy/Extend Licence and follow the Licence Payment Wizard.</li>
           <li><b>3. Choose a calculation:</b> <b>Basic</b> is War Hits only. <b>Advanced</b> supports configurable points and detailed hit modifiers.</li>
           <li><b>4. Select the completed war:</b> use <b>Auto-fill Last Finished War</b> where available, then verify the start/end times.</li>
           <li><b>5. Set the payout pool:</b> enter the member payout amount you want divided between eligible members.</li>
           <li><b>6. Optional Member Management:</b> exclude a member or remove selected hits/respect before calculation.</li>
           <li><b>7. Calculate:</b> the Loading Results panel shows progress. When ready, open Results and review the totals/member cards.</li>
-          <li><b>8. Finish:</b> download HTML/CSV, create a newsletter, or start the Payments Copy checklist.</li>
+          <li><b>8. Finish:</b> download HTML/CSV, create a newsletter, or start the Ranked War Payouts checklist.</li>
         </ul>
       </div>
 
@@ -12736,9 +12736,9 @@
       </div>
 
       <div class="rw-how-box rw-help-api-card rw-help-section-card">
-        <div class="rw-how-title">Licence &amp; Xanax Payment Helper</div>
+        <div class="rw-how-title">Licence &amp; Licence Payment Wizard</div>
         <ul class="rw-how-list">
-          <li><b>Licence time:</b> the Payment Helper shows the current days-per-Xanax rate and calculates the licence days from the Xanax amount you select before you send.</li>
+          <li><b>Licence time:</b> the Licence Payment Wizard shows the current days-per-Xanax rate and calculates the licence days from the Xanax amount you select before you send.</li>
           <li><b>Payment code:</b> use the exact generated RWPH message code with the Xanax send. RWPH checks the pending payment automatically.</li>
           <li><b>Wizard flow:</b> open Items → Xanax → Send this item → Add Message, choose the Xanax amount, then follow Prefill Name / ID → Prefill Message Code → Prefill Xanax Amount → final manual review/send.</li>
           <li><b>You confirm:</b> RWPH never presses Torn's final Send/Confirm button for you. Check the item, recipient, amount and message before manually submitting.</li>
@@ -12785,7 +12785,7 @@
           <li><b>Loading:</b> shows calculation stages/progress. Closing it can cancel an in-progress backend calculation where supported.</li>
           <li><b>Results:</b> review member payout cards, totals and calculation details before using payment/export tools.</li>
           <li><b>Download HTML / CSV:</b> downloads are created from the main Torn browser page.</li>
-          <li><b>Start Payments:</b> closes Results, keeps the payout rows, then moves the main Torn page to faction controls/vault for the Payments Copy workflow.</li>
+          <li><b>Start Payments:</b> closes Results, keeps the payout rows, then moves the main Torn page to faction controls/vault for the Ranked War Payouts workflow.</li>
         </ul>
       </div>
 
@@ -12802,7 +12802,7 @@
       </div>
 
       <div class="rw-how-box rw-help-api-card rw-help-section-card">
-        <div class="rw-how-title">Payments Copy Checklist</div>
+        <div class="rw-how-title">Ranked War Payouts Checklist</div>
         <ul class="rw-how-list">
           <li><b>Important:</b> set Torn faction controls to <b>Add To Balance</b> when that is your faction's payout method. Verify it before each payment.</li>
           <li><b>Prefill Name / ID:</b> fills/copies the selected member identity into the visible Torn control where possible.</li>
@@ -14256,7 +14256,7 @@
         rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payNameBtn.dataset.payCopyName)] || {};
         await rwphPrefillPayAllMember(row);
-        // Prefill buttons on the Payments Copy Panel are intentionally silent.
+        // Prefill buttons on the Ranked War Payouts are intentionally silent.
         rwphHidePayAllActionButton(payNameBtn, "Prefill Name / ID", rwphPayAllInlineUndoStack);
         return;
       }
@@ -14268,7 +14268,7 @@
         rwphDismissPayAllCopyPopupsSilently();
         const row = lastRows[Number(payAmountBtn.dataset.payCopyAmount)] || {};
         await rwphPrefillPayAllAmount(row);
-        // Prefill buttons on the Payments Copy Panel are intentionally silent.
+        // Prefill buttons on the Ranked War Payouts are intentionally silent.
         rwphHidePayAllActionButton(payAmountBtn, "Prefill Amount", rwphPayAllInlineUndoStack);
         return;
       }
@@ -15181,7 +15181,7 @@
         .rwph-api-key-inline>.rwph-api-key-save{padding-left:10px!important;padding-right:10px!important;}
       }
       @media (max-width:760px),(pointer:coarse){
-          /* v1.1.618: keep the full 90px logo and 15px title inside a 110px phone/PDA header; desktop unchanged. */
+          /* v1.1.619: no padding above the full-size 90px logo or between it and the 14px in-header title; desktop unchanged. */
           #rw-payout-helper .rw-head,
           #rw-results-panel .rw-head,
           .rw-results-panel .rw-head,
@@ -15198,14 +15198,14 @@
           .rwph-floating-panel .rwph-panel-head,
           .rwph-results-loading-panel .rwph-results-loading-head,
           .rwph-results-loading-panel .rwph-results-loading-panel-head{
-            position:relative!important;flex:0 0 110px!important;
-            height:110px!important;min-height:110px!important;max-height:110px!important;
+            position:relative!important;flex:0 0 104px!important;
+            height:104px!important;min-height:104px!important;max-height:104px!important;
             box-sizing:border-box!important;padding:0 44px!important;gap:0!important;
             overflow:visible!important;
           }
-          /* Logo and title now both fit inside the header: no extra 43px
-             gap is needed before the main panel content. */
-          #rw-payout-helper > .rw-body{padding-top:10px!important;}
+          /* Logo (0–90px) and its small title (90–104px) fill the mobile
+             header exactly, without top, inner, or bottom spacing. */
+          #rw-payout-helper > .rw-body{padding-top:0!important;}
           #rw-pay-all-panel .rw-pay-all-title,
           .rw-pay-all-panel .rw-pay-all-title,
           #rwph-xanax-send-status .rwph-payment-helper-title-text,
@@ -15218,13 +15218,13 @@
           .rwph-floating-panel .rwph-floating-panel-head > span,
           .rwph-floating-panel .rwph-panel-head > span,
           .rwph-calculation-settings-panel .rwph-panel-title > span:not(.rw-muted){
-            position:absolute!important;top:92px!important;left:50%!important;
+            position:absolute!important;top:90px!important;left:50%!important;
             transform:translateX(-50%)!important;
             display:block!important;visibility:visible!important;opacity:1!important;
             width:calc(100% - 92px)!important;max-width:calc(100% - 92px)!important;
-            height:15px!important;max-height:15px!important;
+            height:14px!important;max-height:14px!important;
             margin:0!important;padding:0!important;
-            font-size:11px!important;line-height:15px!important;
+            font-size:10px!important;line-height:14px!important;
             font-weight:850!important;letter-spacing:.035em!important;
             text-transform:uppercase!important;text-align:center!important;
             white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
@@ -15293,17 +15293,17 @@
         }
         @media (max-width:760px),(pointer:coarse){
           #rwph-xanax-send-status #rwph-payment-helper-title{
-            height:110px!important;min-height:110px!important;max-height:110px!important;
+            height:104px!important;min-height:104px!important;max-height:104px!important;
             padding:0 44px!important;gap:0!important;overflow:visible!important;
           }
           #rwph-xanax-send-status #rwph-payment-helper-title .rwph-payment-helper-title-text{
-            font-size:11px!important;line-height:15px!important;
+            font-size:10px!important;line-height:14px!important;
           }
         }
       `;
       (document.head || document.documentElement).appendChild(style);
     } catch (e) {
-      console.warn("RWPH Payment Helper title layout guard failed:", e);
+      console.warn("RWPH Licence Payment Wizard title layout guard failed:", e);
     }
   }
 
