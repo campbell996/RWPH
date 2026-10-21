@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.614
+// @version      1.1.615
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -328,24 +328,36 @@
         object-fit:contain!important;border-radius:0!important;
       }
       #rw-payout-helper .rw-head .rwph-header-logo{
-        width:min(360px, calc(100% - 58px))!important;height:106px!important;
+        width:min(420px, calc(100% - 8px))!important;height:114px!important;
         display:block!important;object-fit:contain!important;pointer-events:none!important;
       }
       #rwph-payment-helper-title .rwph-dynamic-logo-icon,
       #rwph-member-management-panel .rwph-panel-head-logo,
       .rwph-floating-panel-head .rwph-dynamic-logo-icon,
       .rwph-panel-title .rwph-dynamic-logo-icon{
-        width:min(320px, 72vw)!important;height:82px!important;
+        width:min(420px, 100%)!important;height:110px!important;
         object-fit:contain!important;flex:0 1 auto!important;
       }
       .results-hero-logo.rwph-dynamic-logo-icon{
-        width:min(420px,92vw)!important;height:138px!important;object-fit:contain!important;
+        width:min(520px,100%)!important;height:155px!important;object-fit:contain!important;
       }
       .rwph-logo-wrap{
-        width:min(420px,92vw)!important;height:138px!important;
+        width:min(520px,100%)!important;height:155px!important;
       }
       .rwph-logo-wrap .rwph-dynamic-logo-icon{
         width:100%!important;height:100%!important;object-fit:contain!important;
+      }
+      #rwph-saved-reports-panel .rwph-saved-reports-title > .rwph-dynamic-logo-icon,
+      #rwph-default-setup-panel .rwph-panel-title > .rwph-dynamic-logo-icon,
+      #rwph-default-setup-controller .rwph-panel-title > .rwph-dynamic-logo-icon{
+        display:block!important;width:min(420px,100%)!important;height:110px!important;
+        object-fit:contain!important;flex:0 0 auto!important;pointer-events:none!important;
+      }
+      .rwph-floating-panel .rwph-panel-head .rwph-panel-title,
+      .rwph-floating-panel .rwph-floating-panel-head .rwph-panel-title{
+        display:flex!important;flex-direction:column!important;align-items:center!important;
+        justify-content:center!important;gap:5px!important;min-width:0!important;
+        width:100%!important;text-align:center!important;
       }
 
       /* One launcher style, two placement policies. PC background and border
@@ -419,7 +431,11 @@
       #rwph-logo-picker-panel .rwph-logo-current-preview{padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:12px;}
       #rwph-logo-picker-panel .rwph-logo-current-preview img{display:block;width:100%;max-width:100%;height:auto;max-height:112px;object-fit:contain;margin-top:10px;border-radius:0;background:transparent!important;}
       @media (max-width:700px),(pointer:coarse){
-        #rw-payout-helper .rw-head .rwph-header-logo{width:min(185px, calc(100% - 48px))!important;height:46px!important;}
+        #rw-payout-helper .rw-head .rwph-header-logo{width:min(340px, 100%)!important;height:90px!important;}
+        #rwph-payment-helper-title .rwph-dynamic-logo-icon,
+        #rwph-member-management-panel .rwph-panel-head-logo,
+        .rwph-floating-panel-head .rwph-dynamic-logo-icon,
+        .rwph-panel-title .rwph-dynamic-logo-icon{height:82px!important;}
         #rwph-logo-picker-panel .rwph-logo-picker-options{grid-template-columns:minmax(0,1fr)!important;}
         #rw-payout-helper .rw-layout-theme-action-row > button{flex:1 1 100%!important;}
       }
@@ -1370,7 +1386,7 @@
     `;
     panel.innerHTML = `
       <div class="rwph-floating-panel-head" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-weight:950;font-size:16px;color:#fff;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">
-        <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:168px;height:54px;object-fit:contain;background:transparent;filter:none;box-shadow:none;pointer-events:none;" />
+        <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:min(420px,100%);height:110px;object-fit:contain;background:transparent;filter:none;box-shadow:none;pointer-events:none;" />
         <span>Payment Needs Manual Review</span>
       </div>
       <div class="rwph-floating-panel-body" style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;overflow-y:auto;overflow-x:hidden;min-height:0;">
@@ -1483,7 +1499,7 @@
     // Other Torn pages can contain faction-related copy without being faction pages.
     try {
       const path = String(window.location?.pathname || "").toLowerCase().replace(/\/+$/, "");
-      return /(?:^|\/)(?:factions|faction|item)\.php$/.test(path);
+      return /(?:^|\/)(?:factions|faction)\.php$/.test(path);
     } catch (_) { return false; }
   }
 
@@ -3201,7 +3217,7 @@
     `;
     controller.innerHTML = `
       <div class="rwph-panel-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;cursor:move;touch-action:none;user-select:none;">
-        <div><b>Default Setup</b><div class="rw-muted" style="font-size:11px;">${rwphDefaultSetupDeviceLabel(state.device)}</div></div>
+        <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><b>Default Setup</b><div class="rw-muted" style="font-size:11px;">${rwphDefaultSetupDeviceLabel(state.device)}</div></div>
         <button id="rwph-default-setup-controller-close" type="button" class="danger" title="Cancel setup" aria-label="Cancel setup">×</button>
       </div>
       <div class="rwph-floating-panel-body rwph-default-setup-controller-body" style="padding:12px;display:grid;gap:9px;min-height:0;overflow-y:auto;overflow-x:hidden;box-sizing:border-box;">
@@ -3290,7 +3306,7 @@
     `;
     panel.innerHTML = `
       <div class="rwph-panel-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;cursor:move;touch-action:none;user-select:none;">
-        <div><b>Default Setup</b><div class="rw-muted" style="font-size:11px;">Global panel positions and sizes</div></div>
+        <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><b>Default Setup</b><div class="rw-muted" style="font-size:11px;">Global panel positions and sizes</div></div>
         <button id="rwph-default-setup-close" class="danger" type="button" title="Close" aria-label="Close">×</button>
       </div>
       <div class="rwph-floating-panel-body rwph-default-setup-panel-body" style="padding:14px;overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;box-sizing:border-box;">
@@ -4090,7 +4106,7 @@
       body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,
       body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,
       body .rwph-secondary-panel-v1529 .rw-pay-all-head{
-        position:relative!important;flex:0 0 auto!important;min-height:82px!important;padding:8px 44px 7px!important;
+        position:relative!important;flex:0 0 auto!important;min-height:150px!important;padding:8px 44px 7px!important;
         display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;
         text-align:center!important;cursor:move!important;touch-action:none!important;user-select:none!important;
         background:var(--rwph-theme-panel2)!important;background-image:none!important;color:var(--rwph-theme-text)!important;
@@ -4182,7 +4198,7 @@
       /* Payments Copy wizard. */
       body #rw-pay-all-panel.rwph-secondary-panel-v1529,body .rw-pay-all-panel.rwph-secondary-panel-v1529{padding:0!important;overflow:hidden!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
-      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-logo,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-logo{display:block!important;width:min(220px,100%)!important;max-width:100%!important;height:44px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
+      body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-logo,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-logo{display:block!important;width:min(420px,100%)!important;max-width:100%!important;height:110px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-scroll,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-scroll{display:flex!important;flex-direction:column!important;gap:7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-stage,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-stage{width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-page,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-wizard-page{width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;overflow:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;}
@@ -4194,12 +4210,11 @@
 
       /* Xanax Payment Helper — restored/rebuilt layout + standard 3-corner resize. */
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:420px!important;overflow:hidden!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:86px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(220px,100%)!important;max-width:100%!important;height:44px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:150px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(420px,100%)!important;max-width:100%!important;height:110px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;text-align:center!important;font-size:16px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:8px!important;padding:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll>*{position:relative!important;inset:auto!important;transform:none!important;float:none!important;flex:0 0 auto!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;box-sizing:border-box!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-subtitle{padding:5px 7px!important;text-align:center!important;color:var(--rwph-theme-soft)!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-message{padding:7px 8px!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;background:var(--rwph-theme-panel)!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card,body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-safety-note{margin:0!important;padding:8px!important;display:grid!important;gap:4px!important;line-height:1.4!important;text-align:left!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;align-content:start!important;overflow:visible!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-detail-card>*{width:auto!important;max-width:100%!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;box-sizing:border-box!important;}
@@ -4258,7 +4273,7 @@
       body :is(.rw-resize-handle,.rwph-results-resize-handle){width:20px!important;height:20px!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;border-color:var(--rwph-theme-outline)!important;}
 
       @media(max-width:760px),(pointer:coarse){
-        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{min-height:74px!important;padding:7px 40px 6px!important;}
+        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{min-height:126px!important;padding:7px 40px 6px!important;}
         body .rwph-secondary-panel-v1529>.rw-resize-handle,body .rwph-results-resize-handle{width:30px!important;height:30px!important;}
         body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-row{grid-template-columns:1fr!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529{width:calc(100vw - 12px)!important;min-width:240px!important;min-height:300px!important;}
@@ -4383,7 +4398,7 @@
     panel.innerHTML = `
       <div class="rwph-panel-head rwph-layout-theme-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rwph-theme-line,rgba(255,255,255,.12));cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;flex:0 0 auto;">
         <div style="display:flex;align-items:center;gap:10px;font-weight:950;min-width:0;">
-          <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:148px;height:42px;object-fit:contain;pointer-events:none;flex:0 1 auto;background:transparent;">
+          <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:min(420px,100%);height:110px;object-fit:contain;pointer-events:none;flex:0 1 auto;background:transparent;">
           <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Theme / Colours</span>
         </div>
         <button id="rwph-layout-theme-close" class="danger" type="button" title="Close" aria-label="Close" style="margin:0;">×</button>
@@ -4567,7 +4582,7 @@
     `).join("");
     panel.innerHTML = `
       <div class="rwph-panel-head rwph-layout-theme-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;flex:0 0 auto;">
-        <div style="display:flex;align-items:center;gap:10px;font-weight:950;min-width:0;"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:148px;height:42px;object-fit:contain;pointer-events:none;flex:0 1 auto;background:transparent;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Logo Selector</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-weight:950;min-width:0;"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:min(420px,100%);height:110px;object-fit:contain;pointer-events:none;flex:0 1 auto;background:transparent;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Logo Selector</span></div>
         <button id="rwph-logo-picker-close" class="danger" type="button" title="Close" aria-label="Close" style="margin:0;">×</button>
       </div>
       <div class="rwph-floating-panel-body rwph-layout-theme-body" style="padding:14px;overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;">
@@ -9471,7 +9486,7 @@
   function rwphMemberManagementPanelCss() {
     return `
       #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(233,189,78,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#20252a), var(--rwph-theme-bg,#0d0f11))!important;color:var(--rwph-theme-text,#f4f5f6)!important;border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:none!important;backdrop-filter:none!important;min-width:300px!important;min-height:300px!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#2a3036), var(--rwph-theme-panel,#20252a))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;min-height:40px!important;flex:0 0 auto!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:relative!important;top:auto!important;z-index:120!important;box-sizing:border-box!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#2a3036), var(--rwph-theme-panel,#20252a))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;min-height:150px!important;flex:0 0 auto!important;padding:10px 44px 9px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:relative!important;top:auto!important;z-index:120!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:active{cursor:grabbing!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:before{content:none!important;display:none!important;}
       #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:0;line-height:1.04;min-width:0;}
@@ -9506,7 +9521,7 @@
       #rwph-member-management-panel .rw-resize-handle-sw{left:5px!important;bottom:5px!important;cursor:nesw-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-bottom:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-top:0!important;border-radius:0 0 0 8px!important;}
       #rwph-member-management-panel .rw-resize-handle-nw{left:5px!important;top:5px!important;cursor:nwse-resize!important;border-left:2px solid var(--rwph-theme-outline)!important;border-top:2px solid var(--rwph-theme-outline)!important;border-right:0!important;border-bottom:0!important;border-radius:8px 0 0 0!important;}
       #rwph-member-management-panel .rw-resize-handle:hover{opacity:1!important;filter:drop-shadow(0 0 6px var(--rwph-theme-outline))!important;}
-      @media (max-width:560px){#rwph-member-management-panel{min-width:270px!important;}#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr!important;}#rwph-member-management-panel .rwph-mm-stats{grid-template-columns:1fr 1fr!important;}#rwph-member-management-panel .rwph-mm-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))!important;}#rwph-member-management-panel .rwph-floating-panel-head{min-height:40px!important;cursor:grab!important;}#rwph-member-management-panel .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:transparent!important;}#rwph-member-management-panel .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px!important;}}
+      @media (max-width:560px){#rwph-member-management-panel{min-width:270px!important;}#rwph-member-management-panel .rwph-mm-grid{grid-template-columns:1fr!important;}#rwph-member-management-panel .rwph-mm-stats{grid-template-columns:1fr 1fr!important;}#rwph-member-management-panel .rwph-mm-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))!important;}#rwph-member-management-panel .rwph-floating-panel-head{min-height:126px!important;cursor:grab!important;}#rwph-member-management-panel .rw-resize-handle{width:30px!important;height:30px!important;z-index:145!important;background:transparent!important;}#rwph-member-management-panel .rw-resize-handle-se{right:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-sw{left:3px!important;bottom:3px!important;border-width:3px!important;}#rwph-member-management-panel .rw-resize-handle-nw{left:3px!important;top:3px!important;border-width:3px!important;}}
     `;
   }
 
@@ -10058,7 +10073,7 @@
     panel.className = "rwph-floating-panel";
     panel.innerHTML = `
       <div class="rwph-floating-panel-head rwph-panel-head" title="Drag to move Cached Reports">
-        <div class="rwph-saved-reports-title"><b>Cached Reports</b><span id="rwph-saved-reports-faction">Loading faction...</span></div>
+        <div class="rwph-saved-reports-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><b>Cached Reports</b><span id="rwph-saved-reports-faction">Loading faction...</span></div>
         <button type="button" id="rwph-saved-reports-close" class="rwph-mini-close danger" aria-label="Close Cached Reports" title="Close Cached Reports">×</button>
       </div>
       <div class="rwph-saved-reports-body">
@@ -11739,7 +11754,6 @@
       <button id="rwph-close-helper" class="danger" type="button" title="Close" aria-label="Close Xanax Payment Helper">×</button>
       <div id="rwph-payment-helper-title"><img class="rwph-dynamic-logo-icon rwph-payment-helper-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span class="rwph-payment-helper-title-text">Payment Helper</span></div>
       <div class="rwph-xanax-scroll">
-        <div class="rwph-xanax-helper-subtitle">Xanax licence payment wizard · Prefill only · Final Send/Confirm is always manual</div>
         <div class="rwph-xanax-wizard-stage" data-rwph-payment-helper-stage></div>
       </div>`;
   }
@@ -12941,7 +12955,7 @@
 
       <div id="rw-results-panel" class="rw-results-panel" hidden>
         <div class="rw-head">
-          <span>Per Hit Results</span>
+          <span class="rwph-main-logo-title-wrap"><img class="rwph-dynamic-logo-icon rwph-header-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>Per Hit Results</span></span>
           <button id="rw-results-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
         </div>
         <div class="rw-body">
@@ -13269,7 +13283,7 @@
           width:100%!important;min-width:0!important;text-align:center!important;font-weight:950!important;color:var(--rwph-theme-gold,#e9bd4e)!important;
         }
         .rwph-calculation-settings-panel .rwph-panel-title img{
-          width:min(250px,72vw)!important;height:56px!important;max-height:56px!important;object-fit:contain!important;pointer-events:none!important;background:transparent!important;
+          width:min(420px,100%)!important;height:110px!important;max-height:110px!important;object-fit:contain!important;pointer-events:none!important;background:transparent!important;
         }
         .rwph-calculation-settings-panel .rwph-panel-title span{display:block!important;width:100%!important;text-align:center!important;line-height:1.15!important;}
         .rwph-calculation-settings-panel .rwph-floating-panel-body{
@@ -14063,7 +14077,7 @@
 
       <div id="rw-results-panel" class="rw-results-panel" hidden>
         <div class="rw-head">
-          <span>Per Hit Results</span>
+          <span class="rwph-main-logo-title-wrap"><img class="rwph-dynamic-logo-icon rwph-header-logo" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>Per Hit Results</span></span>
           <button id="rw-results-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
         </div>
         <div class="rw-body">
@@ -14979,6 +14993,7 @@
       style.textContent = `
         /* v1.1.450: every main panel title sits under the selected main logo. */
         #rw-payout-helper .rw-head,
+        #rw-results-panel .rw-head,
         #rw-pay-all-panel .rw-pay-all-head,
         .rw-pay-all-panel .rw-pay-all-head,
         #rwph-xanax-send-status #rwph-payment-helper-title,
@@ -14996,7 +15011,7 @@
           justify-content:center!important;
           text-align:center!important;
           gap:6px!important;
-          min-height:126px!important;
+          min-height:150px!important;
           padding:14px 54px 12px 54px!important;
           box-sizing:border-box!important;
         }
@@ -15010,7 +15025,10 @@
         #rwph-member-management-panel .rwph-mm-heading,
         .rwph-member-management-panel .rwph-mm-heading,
         .rwph-layout-theme-panel .rwph-panel-head > div:first-child,
-        #rwph-logo-picker-panel .rwph-panel-head > div:first-child{
+        #rwph-logo-picker-panel .rwph-panel-head > div:first-child,
+        #rwph-default-setup-panel .rwph-panel-title,
+        #rwph-default-setup-controller .rwph-panel-title,
+        #rwph-saved-reports-panel .rwph-saved-reports-title{
           display:flex!important;
           flex-direction:column!important;
           align-items:center!important;
@@ -15031,7 +15049,10 @@
         .rwph-layout-theme-panel .rwph-panel-head img.rwph-dynamic-logo-icon,
         #rwph-logo-picker-panel .rwph-panel-head img.rwph-dynamic-logo-icon,
         .rwph-floating-panel .rwph-floating-panel-head > img.rwph-dynamic-logo-icon,
-        .rwph-floating-panel .rwph-panel-head > img.rwph-dynamic-logo-icon{
+        .rwph-floating-panel .rwph-panel-head > img.rwph-dynamic-logo-icon,
+        #rwph-saved-reports-panel .rwph-saved-reports-title > img.rwph-dynamic-logo-icon,
+        #rwph-default-setup-panel .rwph-panel-title > img.rwph-dynamic-logo-icon,
+        #rwph-default-setup-controller .rwph-panel-title > img.rwph-dynamic-logo-icon{
           display:block!important;
           margin:0 auto!important;
           flex:0 0 auto!important;
@@ -15145,7 +15166,7 @@
           .rwph-layout-theme-panel .rwph-panel-head,
           .rwph-floating-panel .rwph-floating-panel-head,
           .rwph-floating-panel .rwph-panel-head{
-            min-height:112px!important;
+            min-height:126px!important;
             padding:10px 44px 9px 44px!important;
             gap:4px!important;
           }
@@ -15183,7 +15204,7 @@
           justify-content:center!important;
           gap:5px!important;
           text-align:center!important;
-          min-height:128px!important;
+          min-height:150px!important;
           padding:12px 46px 10px 46px!important;
           box-sizing:border-box!important;
         }
@@ -15206,7 +15227,7 @@
         }
         @media (max-width:760px),(pointer:coarse){
           #rwph-xanax-send-status #rwph-payment-helper-title{
-            min-height:112px!important;
+            min-height:126px!important;
             padding:10px 38px 8px 38px!important;
             gap:4px!important;
           }
