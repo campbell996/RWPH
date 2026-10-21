@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.610
+// @version      1.1.611
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -338,8 +338,8 @@
         width:100%!important;height:100%!important;object-fit:contain!important;
       }
 
-      /* One launcher style, two placement policies. PC border is deliberately
-         fixed; mobile keeps the outline theme and v1.1.607 header dimensions. */
+      /* One launcher style, two placement policies. PC background and border
+         are #333333; mobile is transparent, borderless and logo-sized. */
       #rw-payout-launcher.rwph-sidebar-launcher{
         position:relative!important;inset:auto!important;transform:none!important;
         box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;
@@ -347,8 +347,8 @@
         width:calc(100% - 4px)!important;max-width:174px!important;min-width:0!important;
         height:44px!important;min-height:44px!important;
         padding:2px 5px!important;margin:3px 2px!important;
-        border:1px solid #344556!important;
-        border-radius:5px!important;background:transparent!important;background-image:none!important;
+        border:1px solid #333333!important;
+        border-radius:5px!important;background:#333333!important;background-image:none!important;
         box-shadow:none!important;filter:none!important;text-shadow:none!important;
         color:inherit!important;cursor:pointer!important;outline:0!important;
         font-size:0!important;line-height:0!important;overflow:hidden!important;z-index:1!important;
@@ -358,9 +358,9 @@
       #rw-payout-launcher.rwph-sidebar-launcher:active,
       #rw-payout-launcher.rwph-sidebar-launcher:focus,
       #rw-payout-launcher.rwph-sidebar-launcher:focus-visible{
-        background:transparent!important;background-image:none!important;
+        background:#333333!important;background-image:none!important;
         box-shadow:none!important;filter:none!important;transform:none!important;
-        outline:0!important;border-color:#344556!important;
+        outline:0!important;border-color:#333333!important;
       }
       #rw-payout-launcher.rwph-sidebar-launcher>.rwph-sidebar-launcher-logo{
         display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
@@ -373,19 +373,26 @@
          v1.1.607's compact Faction Warfare-header/page anchor. */
       #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked{
         position:relative!important;inset:auto!important;
-        width:110px!important;min-width:110px!important;max-width:110px!important;
-        height:34px!important;min-height:34px!important;max-height:34px!important;
-        flex:0 0 110px!important;margin:0 6px 0 0!important;padding:0!important;
-        border:1px solid var(--rwph-theme-outline,#e8b459)!important;
-        border-radius:7px!important;vertical-align:middle!important;
+        width:104px!important;min-width:104px!important;max-width:104px!important;
+        height:30px!important;min-height:30px!important;max-height:30px!important;
+        flex:0 0 104px!important;margin:0 4px 0 0!important;padding:0!important;
+        border:0!important;outline:0!important;
+        background:transparent!important;background-image:none!important;
+        border-radius:0!important;vertical-align:middle!important;
       }
       #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:hover,
       #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:active,
-      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:focus{
-        border-color:var(--rwph-theme-outline,#e8b459)!important;
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:focus,
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:focus-visible{
+        border:0!important;outline:0!important;
+        background:transparent!important;background-image:none!important;
+        box-shadow:none!important;filter:none!important;
       }
       #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked>.rwph-sidebar-launcher-logo{
-        width:104px!important;height:30px!important;max-height:30px!important;
+        width:104px!important;min-width:104px!important;max-width:104px!important;
+        height:30px!important;min-height:30px!important;max-height:30px!important;
+        flex:0 0 104px!important;padding:0!important;margin:0!important;
+        border:0!important;background:transparent!important;box-shadow:none!important;
       }
       #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-page-anchored-launcher{
         position:absolute!important;
@@ -1762,7 +1769,7 @@
         const scrollX = window.pageXOffset || document.documentElement?.scrollLeft || 0;
         const scrollY = window.pageYOffset || document.documentElement?.scrollTop || 0;
         const gap = Number.isFinite(options.gap) ? options.gap : 6;
-        const width = 110, height = 34;
+        const width = 104, height = 30;
         let left = Math.round(scrollX + rect.left - width - gap);
         if (left < scrollX + 6) left = Math.round(scrollX + rect.right + gap);
         left = Math.max(Math.round(scrollX + 6),Math.min(left,Math.round(scrollX + viewportWidth-width-6)));
@@ -2035,7 +2042,7 @@
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "RWPH launches from the Torn Information sidebar on PC and the original page-anchored faction header on phone/PDA. The PC outline is #344556.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "RWPH launches from the Torn Information sidebar on PC and the original page-anchored faction header on phone/PDA. PC uses a #333333 border/background; phone/PDA has no border.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
