@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.619
+// @version      1.1.620
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -356,7 +356,7 @@
       .rwph-floating-panel .rwph-panel-head .rwph-panel-title,
       .rwph-floating-panel .rwph-floating-panel-head .rwph-panel-title{
         display:flex!important;flex-direction:column!important;align-items:center!important;
-        justify-content:center!important;gap:5px!important;min-width:0!important;
+        justify-content:center!important;gap:1px!important;min-width:0!important;
         width:100%!important;text-align:center!important;
       }
 
@@ -4125,8 +4125,8 @@
       body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,
       body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,
       body .rwph-secondary-panel-v1529 .rw-pay-all-head{
-        position:relative!important;flex:0 0 auto!important;min-height:150px!important;padding:8px 44px 7px!important;
-        display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;
+        position:relative!important;flex:0 0 auto!important;height:auto!important;min-height:0!important;max-height:none!important;padding:2px 44px 3px!important;
+        display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:1px!important;
         text-align:center!important;cursor:move!important;touch-action:none!important;user-select:none!important;
         background:var(--rwph-theme-panel2)!important;background-image:none!important;color:var(--rwph-theme-text)!important;
         border:0!important;border-bottom:1px solid var(--rwph-theme-line)!important;box-shadow:none!important;
@@ -4229,9 +4229,9 @@
 
       /* Licence Payment Wizard — restored/rebuilt layout + standard 3-corner resize. */
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529{padding:0!important;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 16px));min-height:420px!important;overflow:hidden!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{min-height:150px!important;padding:8px 44px 7px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{height:auto!important;min-height:0!important;max-height:none!important;padding:2px 44px 3px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-logo{display:block!important;width:min(420px,100%)!important;max-width:100%!important;height:110px!important;object-fit:contain!important;margin:0 auto!important;flex:0 1 auto!important;}
-      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;text-align:center!important;font-size:16px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;overflow-wrap:anywhere!important;}
+      body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-payment-helper-title-text{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;text-align:center!important;font-size:14px!important;line-height:17px!important;font-weight:950!important;letter-spacing:.035em!important;text-transform:uppercase!important;overflow-wrap:anywhere!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:8px!important;padding:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-scroll>*{position:relative!important;inset:auto!important;transform:none!important;float:none!important;flex:0 0 auto!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;box-sizing:border-box!important;}
       body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-helper-message{padding:7px 8px!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px!important;background:var(--rwph-theme-panel)!important;overflow-wrap:anywhere!important;}
@@ -15023,6 +15023,11 @@
         #rw-pay-all-panel .rw-pay-all-head,
         .rw-pay-all-panel .rw-pay-all-head,
         #rwph-xanax-send-status #rwph-payment-helper-title,
+        #rwph-saved-reports-panel .rwph-saved-reports-head,
+        #rwph-default-setup-panel .rwph-panel-head,
+        #rwph-default-setup-controller .rwph-panel-head,
+        .rwph-results-loading-panel .rwph-results-loading-head,
+        .rwph-results-loading-panel .rwph-results-loading-panel-head,
         #rwph-member-management-panel .rwph-floating-panel-head,
         .rwph-member-management-panel .rwph-floating-panel-head,
         #rwph-licence-info-panel .rwph-panel-head,
@@ -15036,9 +15041,10 @@
           align-items:center!important;
           justify-content:center!important;
           text-align:center!important;
-          gap:6px!important;
-          min-height:150px!important;
-          padding:14px 54px 12px 54px!important;
+          gap:1px!important;
+          flex:0 0 auto!important;
+          height:auto!important;min-height:0!important;max-height:none!important;
+          padding:2px 44px 3px!important;
           box-sizing:border-box!important;
         }
 
@@ -15060,7 +15066,7 @@
           align-items:center!important;
           justify-content:center!important;
           text-align:center!important;
-          gap:5px!important;
+          gap:1px!important;
           width:100%!important;
           min-width:0!important;
         }
@@ -15101,8 +15107,8 @@
           margin:0!important;
           padding:0!important;
           text-align:center!important;
-          font-size:18px!important;
-          line-height:1.15!important;
+          font-size:14px!important;
+          line-height:17px!important;
           font-weight:950!important;
           letter-spacing:.04em!important;
           text-transform:uppercase!important;
@@ -15145,7 +15151,7 @@
           grid-template-columns:minmax(0,1fr)!important;
           justify-items:center!important;
           text-align:center!important;
-          gap:8px!important;
+          gap:2px!important;
         }
         .results-hero-logo{
           margin:0 auto!important;
@@ -15162,7 +15168,7 @@
           grid-template-columns:minmax(0,1fr)!important;
           justify-items:center!important;
           text-align:center!important;
-          gap:10px!important;
+          gap:2px!important;
         }
         .rwph-loading-head .rwph-brand{
           display:flex!important;
@@ -15170,18 +15176,29 @@
           align-items:center!important;
           justify-content:center!important;
           text-align:center!important;
-          gap:8px!important;
+          gap:2px!important;
         }
         .rwph-loading-head .loading-time{
           justify-self:center!important;
         }
+
+        /* Keep headers to the selected logo and one panel name on PC and phone/PDA.
+           Existing descriptive text remains in the DOM for accessibility. */
+          #rwph-member-management-panel .rwph-mm-heading .rwph-mm-sub,
+          .rwph-member-management-panel .rwph-mm-heading .rwph-mm-sub,
+          #rwph-saved-reports-panel .rwph-saved-reports-title > span,
+          .rwph-floating-panel .rwph-panel-title > .rw-muted{
+            position:absolute!important;width:1px!important;height:1px!important;
+            padding:0!important;margin:-1px!important;overflow:hidden!important;
+            clip-path:inset(50%)!important;white-space:nowrap!important;
+          }
 
         @media (max-width:420px){
         .rwph-api-key-inline{grid-template-columns:minmax(0,1fr) auto!important;gap:6px!important;}
         .rwph-api-key-inline>.rwph-api-key-save{padding-left:10px!important;padding-right:10px!important;}
       }
       @media (max-width:760px),(pointer:coarse){
-          /* v1.1.619: no padding above the full-size 90px logo or between it and the 14px in-header title; desktop unchanged. */
+          /* v1.1.620: 90px logo and 14px title precisely fill a 104px mobile header, with zero surrounding vertical padding. */
           #rw-payout-helper .rw-head,
           #rw-results-panel .rw-head,
           .rw-results-panel .rw-head,
@@ -15191,6 +15208,8 @@
           #rwph-member-management-panel .rwph-floating-panel-head,
           .rwph-member-management-panel .rwph-floating-panel-head,
           #rwph-saved-reports-panel .rwph-saved-reports-head,
+          #rwph-default-setup-panel .rwph-panel-head,
+          #rwph-default-setup-controller .rwph-panel-head,
           #rwph-licence-info-panel .rwph-panel-head,
           #rwph-logo-picker-panel .rwph-panel-head,
           .rwph-layout-theme-panel .rwph-panel-head,
@@ -15221,7 +15240,7 @@
             position:absolute!important;top:90px!important;left:50%!important;
             transform:translateX(-50%)!important;
             display:block!important;visibility:visible!important;opacity:1!important;
-            width:calc(100% - 92px)!important;max-width:calc(100% - 92px)!important;
+            width:calc(100% - 12px)!important;max-width:calc(100% - 12px)!important;
             height:14px!important;max-height:14px!important;
             margin:0!important;padding:0!important;
             font-size:10px!important;line-height:14px!important;
@@ -15229,16 +15248,6 @@
             text-transform:uppercase!important;text-align:center!important;
             white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
             clip-path:none!important;z-index:3!important;pointer-events:none!important;
-          }
-          /* Secondary descriptions and the faction name are details for the
-             panel body, not a second header line on small screens. */
-          #rwph-member-management-panel .rwph-mm-heading .rwph-mm-sub,
-          .rwph-member-management-panel .rwph-mm-heading .rwph-mm-sub,
-          #rwph-saved-reports-panel .rwph-saved-reports-title > span,
-          .rwph-floating-panel .rwph-panel-title > .rw-muted{
-            position:absolute!important;width:1px!important;height:1px!important;
-            padding:0!important;margin:-1px!important;overflow:hidden!important;
-            clip-path:inset(50%)!important;white-space:nowrap!important;
           }
           /* Keep close/fit controls within the new mobile drag handle. */
           #rw-payout-helper .rw-head #rw-close,
@@ -15268,10 +15277,10 @@
           flex-direction:column!important;
           align-items:center!important;
           justify-content:center!important;
-          gap:5px!important;
+          gap:1px!important;
           text-align:center!important;
-          min-height:150px!important;
-          padding:12px 46px 10px 46px!important;
+          height:auto!important;min-height:0!important;max-height:none!important;
+          padding:2px 44px 3px!important;
           box-sizing:border-box!important;
         }
         #rwph-xanax-send-status #rwph-payment-helper-title .rwph-payment-helper-logo{
@@ -15285,8 +15294,8 @@
           margin:0!important;
           padding:0!important;
           text-align:center!important;
-          font-size:18px!important;
-          line-height:1.15!important;
+          font-size:14px!important;
+          line-height:17px!important;
           font-weight:950!important;
           letter-spacing:.04em!important;
           text-transform:uppercase!important;
@@ -15319,24 +15328,16 @@
       const style = document.createElement("style");
       style.id = "rwph-main-panel-logo-only-guard-v1451";
       style.textContent = `
-        /* Desktop retains logo-only header; phone/PDA shows the existing name. */
+        /* Keep the existing main panel title visible on PC, just below the logo. */
         @media (min-width:761px) and (pointer:fine){
-        #rw-payout-helper .rw-head .rwph-panel-main-title{
-          display:none!important;
-          visibility:hidden!important;
-          width:0!important;
-          height:0!important;
-          max-width:0!important;
-          max-height:0!important;
-          margin:0!important;
-          padding:0!important;
-          overflow:hidden!important;
-          opacity:0!important;
+          #rw-payout-helper .rw-head .rwph-panel-main-title{
+            display:block!important;visibility:visible!important;opacity:1!important;
+            width:100%!important;height:auto!important;max-width:100%!important;max-height:none!important;
+            padding:0!important;margin:0!important;overflow:visible!important;
+            font-size:14px!important;line-height:17px!important;text-align:center!important;
+          }
         }
-        }
-        #rw-payout-helper .rw-head .rwph-main-logo-title-wrap{
-          gap:0!important;
-        }
+        #rw-payout-helper .rw-head .rwph-main-logo-title-wrap{gap:1px!important;}
       `;
       (document.head || document.documentElement).appendChild(style);
     } catch (e) {
