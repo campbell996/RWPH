@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.609
+// @version      1.1.610
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -338,16 +338,16 @@
         width:100%!important;height:100%!important;object-fit:contain!important;
       }
 
-      /* Single canonical launcher style. The row and the logo are transparent;
-         only the narrow outline follows the user's existing theme colour. */
+      /* One launcher style, two placement policies. PC border is deliberately
+         fixed; mobile keeps the outline theme and v1.1.607 header dimensions. */
       #rw-payout-launcher.rwph-sidebar-launcher{
         position:relative!important;inset:auto!important;transform:none!important;
-        box-sizing:border-box!important;display:flex!important;align-items:center!important;
+        box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;
         justify-content:center!important;gap:0!important;
         width:calc(100% - 4px)!important;max-width:174px!important;min-width:0!important;
         height:44px!important;min-height:44px!important;
         padding:2px 5px!important;margin:3px 2px!important;
-        border:1px solid var(--rwph-theme-outline,#e8b459)!important;
+        border:1px solid #344556!important;
         border-radius:5px!important;background:transparent!important;background-image:none!important;
         box-shadow:none!important;filter:none!important;text-shadow:none!important;
         color:inherit!important;cursor:pointer!important;outline:0!important;
@@ -360,7 +360,7 @@
       #rw-payout-launcher.rwph-sidebar-launcher:focus-visible{
         background:transparent!important;background-image:none!important;
         box-shadow:none!important;filter:none!important;transform:none!important;
-        outline:0!important;border-color:var(--rwph-theme-outline,#e8b459)!important;
+        outline:0!important;border-color:#344556!important;
       }
       #rw-payout-launcher.rwph-sidebar-launcher>.rwph-sidebar-launcher-logo{
         display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
@@ -369,27 +369,29 @@
         background:transparent!important;border:0!important;box-shadow:none!important;
         filter:none!important;
       }
-      #rw-payout-launcher.rwph-sidebar-launcher.rwph-pda-strip-launcher{
-        width:60px!important;max-width:60px!important;min-width:0!important;
-        height:42px!important;min-height:42px!important;margin:2px!important;padding:2px!important;
-        flex:0 0 60px!important;
+      /* In place of v1.1.609's mobile navigation / page-host CSS, restore
+         v1.1.607's compact Faction Warfare-header/page anchor. */
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked{
+        position:relative!important;inset:auto!important;
+        width:110px!important;min-width:110px!important;max-width:110px!important;
+        height:34px!important;min-height:34px!important;max-height:34px!important;
+        flex:0 0 110px!important;margin:0 6px 0 0!important;padding:0!important;
+        border:1px solid var(--rwph-theme-outline,#e8b459)!important;
+        border-radius:7px!important;vertical-align:middle!important;
       }
-      #rw-payout-launcher.rwph-sidebar-launcher.rwph-pda-strip-launcher>.rwph-sidebar-launcher-logo{
-        width:54px!important;height:36px!important;max-height:36px!important;
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:hover,
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:active,
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked:focus{
+        border-color:var(--rwph-theme-outline,#e8b459)!important;
       }
-      #rwph-launcher-page-host-v1608{
-        position:relative!important;display:flex!important;align-items:flex-start!important;
-        width:100%!important;max-width:100%!important;padding:4px!important;
-        box-sizing:border-box!important;min-height:0!important;
-        background:transparent!important;box-shadow:none!important;
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-faction-war-header-locked>.rwph-sidebar-launcher-logo{
+        width:104px!important;height:30px!important;max-height:30px!important;
       }
-      @media(max-width:480px){
-        #rw-payout-launcher.rwph-sidebar-launcher{
-          max-width:170px!important;height:44px!important;min-height:44px!important;
-        }
-        #rw-payout-launcher.rwph-sidebar-launcher>.rwph-sidebar-launcher-logo{
-          height:40px!important;max-height:40px!important;
-        }
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-mobile-page-anchored-launcher{
+        position:absolute!important;
+        left:var(--rwph-pda-anchor-left,8px)!important;
+        top:var(--rwph-pda-anchor-top,72px)!important;
+        right:auto!important;bottom:auto!important;margin:0!important;
       }
       #rwph-logo-picker-panel .rwph-logo-picker-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
       #rwph-logo-picker-panel .rwph-logo-picker-option{display:flex;flex-direction:column;gap:8px;text-align:left;padding:10px 10px 12px;min-height:0;}
@@ -1633,95 +1635,326 @@
     return {parent:root,after:null};
   }
 
-  function rwphFindPdaNavigationV1608() {
-    // Different PDA configurations expose a bottom bar, drawer, or expanded
-    // navigation. Only mount into visible navigation that contains Torn links.
-    const selectors = [
-      '#pda-menu','#pda-nav','#mobile-menu','#mobile-nav',
-      '[class*="mobile-menu" i]','[class*="mobile-nav" i]',
-      '[class*="bottom-nav" i]','[class*="drawer-menu" i]',
-      '[role="navigation"]','nav'
-    ];
-    const seen = new Set(), roots = [];
-    for (const selector of selectors) {
-      for (const root of document.querySelectorAll(selector)) {
-        if (seen.has(root) || !rwphSidebarLauncherElementVisibleV1608(root)) continue;
-        if (root.closest?.('#rw-payout-helper,.rwph-floating-panel,#rw-payout-launcher')) continue;
-        seen.add(root);
-        const rect = root.getBoundingClientRect();
-        if (rect.width < 95 || rect.height < 20) continue;
-        const links = Array.from(root.querySelectorAll('a[href],button'));
-        const matches = links.filter(el => /(?:factions?|item)\.php|\b(?:faction|items|inventory)\b/i.test(
-          (el.getAttribute('href') || '') + ' ' + (el.textContent || '')));
-        if (!matches.length) continue;
-        let score = matches.length * 6;
-        if (/mobile|pda|bottom|drawer/i.test(`${root.id} ${root.className}`)) score += 10;
-        if (root.tagName.toLowerCase() === 'nav') score += 3;
-        if (rect.width > 800) score -= 4;
-        roots.push({root,score,matches});
-      }
+  function rwphIsElementVisible(el) {
+    try {
+      if (!el || el.nodeType !== 1) return false;
+      if (el.closest && (el.closest("#rw-payout-helper") || el.closest("#rw-pay-all-panel") || el.closest("#rw-payout-launcher"))) return false;
+      const rect = el.getBoundingClientRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) return false;
+      return true;
+    } catch (_) {
+      return false;
     }
-    roots.sort((a,b) => b.score-a.score);
-    const best = roots[0];
-    if (!best) return null;
-    const anchor = best.matches.find(el => /(?:factions?|item)\.php/i.test(el.getAttribute('href') || '')) || best.matches[0];
-    const item = anchor.closest('li,[class*="nav-item" i],[class*="menu-item" i]') || anchor;
-    return item.parentElement && best.root.contains(item.parentElement)
-      ? {parent:item.parentElement,after:item} : {parent:best.root,after:null};
   }
 
-  function rwphFindLauncherFallbackHostV1608() {
-    // PDA sometimes hides the whole desktop sidebar. Attach an in-flow row
-    // near the page content instead of a scrolling/floating fixed overlay.
-    const existing = document.getElementById('rwph-launcher-page-host-v1608');
-    if (existing?.isConnected) return existing;
-    const candidates = [
-      '#mainContainer', '#main-content', '#main-content-wrapper',
-      '#content-wrapper', '#content', 'main', '[role="main"]'
-    ];
-    let container = null;
-    for (const selector of candidates) {
-      const el = document.querySelector(selector);
-      if (el && rwphSidebarLauncherElementVisibleV1608(el)) { container = el; break; }
+  function rwphNormalizeNavText(text) {
+    return String(text || "").replace(/\s+/g, " ").trim();
+  }
+
+  function rwphTextLooksExactlyLikeFactionWarfare(text) {
+    return /^faction\s+warfare$/i.test(rwphNormalizeNavText(text));
+  }
+
+  function rwphCompactLauncherHaystack(el) {
+    try {
+      if (!el || el.nodeType !== 1) return "";
+      const parts = [
+        el.textContent || "",
+        el.getAttribute?.("href") || "",
+        el.href || "",
+        el.getAttribute?.("aria-label") || "",
+        el.getAttribute?.("title") || "",
+        el.getAttribute?.("data-title") || "",
+        el.getAttribute?.("data-tab") || "",
+        el.getAttribute?.("data-page") || "",
+        el.getAttribute?.("data-action") || "",
+        el.id || "",
+        typeof el.className === "string" ? el.className : "",
+      ];
+      try {
+        const ds = el.dataset || {};
+        Object.keys(ds).forEach((key) => parts.push(`${key}:${ds[key]}`));
+      } catch (_) {}
+      return parts.join(" ").toLowerCase();
+    } catch (_) {
+      return "";
     }
-    if (!container) return null;
-    const host = document.createElement('div');
-    host.id = 'rwph-launcher-page-host-v1608';
-    host.className = 'rwph-launcher-page-host-v1608';
-    container.insertBefore(host, container.firstChild);
-    return host;
+  }
+
+  function rwphElementLooksLikeFactionWarfareIcon(el) {
+    try {
+      if (!el || !rwphIsElementVisible(el)) return false;
+      const rect = el.getBoundingClientRect?.();
+      if (!rwphRectLooksLikeTopFactionButton(rect)) return false;
+      const hay = rwphCompactLauncherHaystack(el);
+      if (!hay) return false;
+      if (/(^|[\s_\-])faction[\s_\-]*warfare($|[\s_\-])|factionwarfare/.test(hay)) return true;
+      if (/(ranked[\s_\-]*war|rankedwar|rankedwars|ranked[\s_\-]*wars)/.test(hay) && /(faction|war|report|rank)/.test(hay)) return true;
+      if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay) && /(warfare|ranked|rankedwar|rank|war)/.test(hay)) return true;
+      if (/(war\.php|\/war)/.test(hay) && /(faction|ranked|report|war|rank)/.test(hay)) return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphFindPdaFactionHeaderIconTarget() {
+    try {
+      if (!rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return null;
+      const els = Array.from(document.querySelectorAll("a[href], button, [role='button'], [onclick], [data-title], [aria-label], [title]"));
+      const candidates = [];
+      els.forEach((el) => {
+        try {
+          if (!rwphIsElementVisible(el)) return;
+          const rect = el.getBoundingClientRect?.();
+          if (!rect || rect.width < 18 || rect.height < 18) return;
+          if (rect.top < -10 || rect.top > 320) return;
+          if (rect.left < -10 || rect.left > Math.max(window.innerWidth || 360, 360) - 5) return;
+          const hay = rwphCompactLauncherHaystack(el);
+          let score = 100;
+          if (rwphElementLooksLikeFactionWarfareIcon(el)) score = 0;
+          else if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay) && /(war|rank|ranked)/.test(hay)) score = 2;
+          else if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay)) score = 7;
+          else if (/\bfaction\b/.test(hay) && /(button|tab|menu|nav|icon|link)/.test(hay)) score = 9;
+          else return;
+
+          // Prefer compact header icons/buttons, but still allow a visible faction toolbar link.
+          if (rect.width > 190 || rect.height > 78) score += 10;
+          candidates.push({ el, rect, score, source: "pda-icon" });
+        } catch (_) {}
+      });
+      candidates.sort((a, b) => {
+        return (a.score - b.score)
+          || (a.rect.top - b.rect.top)
+          || (a.rect.left - b.rect.left)
+          || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
+      });
+      return candidates[0] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphMountPdaLauncherPageAnchored(btn, anchorTarget, options = {}) {
+    // Original v1.1.607 behaviour: use the Faction Warfare header row where
+    // it exists. Otherwise fix the position once in *page* coordinates. Never
+    // mount in PDA's drawer, top navigation or sticky page header clone.
+    if (!btn || !rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return false;
+    try {
+      const pageKey = rwphCurrentPageKey();
+      const cached = window.__rwphPdaFactionWarfareAnchorV1445;
+      let targetEl = cached?.pageKey === pageKey && cached.el?.isConnected ? cached.el : anchorTarget?.el;
+      const rect = targetEl?.getBoundingClientRect?.() || anchorTarget?.rect;
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      if (targetEl && targetEl !== document.body && targetEl.isConnected) {
+        window.__rwphPdaFactionWarfareAnchorV1445 = { pageKey, el: targetEl };
+      }
+      btn.className = 'rwph-sidebar-launcher rwph-mobile-faction-war-header-locked';
+      const parent = targetEl && targetEl !== document.body ? targetEl.parentNode : null;
+      if (parent) {
+        if (btn.parentNode !== parent || btn.nextSibling !== targetEl) parent.insertBefore(btn,targetEl);
+        btn.style.removeProperty('--rwph-pda-anchor-left');
+        btn.style.removeProperty('--rwph-pda-anchor-top');
+      } else {
+        const viewportWidth = Math.max(window.innerWidth || 360,320);
+        const scrollX = window.pageXOffset || document.documentElement?.scrollLeft || 0;
+        const scrollY = window.pageYOffset || document.documentElement?.scrollTop || 0;
+        const gap = Number.isFinite(options.gap) ? options.gap : 6;
+        const width = 110, height = 34;
+        let left = Math.round(scrollX + rect.left - width - gap);
+        if (left < scrollX + 6) left = Math.round(scrollX + rect.right + gap);
+        left = Math.max(Math.round(scrollX + 6),Math.min(left,Math.round(scrollX + viewportWidth-width-6)));
+        const top = Math.max(Math.round(scrollY+6),Math.round(scrollY+rect.top+(rect.height-height)/2));
+        if (btn.parentNode !== document.body) document.body.appendChild(btn);
+        btn.classList.add('rwph-mobile-page-anchored-launcher');
+        btn.style.setProperty('--rwph-pda-anchor-left',`${left}px`);
+        btn.style.setProperty('--rwph-pda-anchor-top',`${top}px`);
+      }
+      btn.dataset.rwphAnchorPageKey = pageKey;
+      btn.dataset.rwphLockedFactionHeader = '1';
+      btn.title = 'Open Ranked War Payout Helper';
+      btn.setAttribute('aria-label', btn.title);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function rwphTextNodeRect(node) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rect = range.getBoundingClientRect();
+      range.detach?.();
+      return rect;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphRectLooksLikeTopFactionButton(rect) {
+    try {
+      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+      const compact = rwphIsMobileOrPdaView();
+      const viewportWidth = Math.max(window.innerWidth || 1000, 320);
+      // The real Faction Warfare button is near the top faction header, not down in page content.
+      // PDA can render this as a compact icon only, so allow smaller widths there.
+      if (rect.left < -20 || rect.left > viewportWidth - 20) return false;
+      if (rect.top < -10 || rect.top > (compact ? 320 : 260)) return false;
+      if (rect.width < (compact ? 18 : 40) || rect.width > 360) return false;
+      if (rect.height < 18 || rect.height > (compact ? 82 : 72)) return false;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rwphClosestFactionWarfareButton(el) {
+    try {
+      if (!el || el.nodeType !== 1) return null;
+      return el.closest("a,button,[role='button'],[class*='button' i],[class*='btn' i]") || el;
+    } catch (_) {
+      return el || null;
+    }
+  }
+
+  function rwphFindFactionWarfareTarget() {
+    try {
+      const matches = [];
+      const addMatch = (el, rect, score, source) => {
+        const targetEl = rwphClosestFactionWarfareButton(el);
+        if (!targetEl || !rwphIsElementVisible(targetEl)) return;
+        const targetRect = targetEl.getBoundingClientRect?.() || rect;
+        const usableRect = rwphRectLooksLikeTopFactionButton(targetRect) ? targetRect : rect;
+        if (!rwphRectLooksLikeTopFactionButton(usableRect)) return;
+        matches.push({ el: targetEl, rect: usableRect, score, source });
+      };
+
+      // Best case: find the actual text node reading exactly "Faction Warfare".
+      try {
+        const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (!rwphTextLooksExactlyLikeFactionWarfare(node.nodeValue)) continue;
+          const parent = node.parentElement;
+          if (!parent) continue;
+          const rect = rwphTextNodeRect(node) || parent.getBoundingClientRect();
+          addMatch(parent, rect, 0, "text-node");
+        }
+      } catch (_) {}
+
+      // Fallback: exact visible element text or exact accessibility label.
+      const selectors = [
+        "a",
+        "button",
+        "[role='button']",
+        "[aria-label]",
+        "[title]",
+        "[data-title]",
+        "span",
+        "div",
+        "li"
+      ];
+      const seen = new Set();
+      selectors.forEach((selector) => {
+        try {
+          document.querySelectorAll(selector).forEach((el) => {
+            if (seen.has(el)) return;
+            seen.add(el);
+            if (!rwphIsElementVisible(el)) return;
+            const text = rwphNormalizeNavText(el.textContent || "");
+            const label = rwphNormalizeNavText(`${el.getAttribute?.("aria-label") || ""} ${el.getAttribute?.("title") || ""} ${el.getAttribute?.("data-title") || ""}`);
+            if (!rwphTextLooksExactlyLikeFactionWarfare(text) && !rwphTextLooksExactlyLikeFactionWarfare(label)) return;
+            addMatch(el, el.getBoundingClientRect(), rwphTextLooksExactlyLikeFactionWarfare(text) ? 1 : 2, "element");
+          });
+        } catch (_) {}
+      });
+
+      // Torn PDA / mobile can render the Faction Warfare action as an icon-only
+      // link with no visible text. Use href/title/class/data attributes as an
+      // extra target source so the launcher can still sit in the same header row.
+      if (rwphIsMobileOrPdaView()) {
+        try {
+          document.querySelectorAll("a[href], button, [role='button'], [onclick], [data-title], [aria-label], [title]").forEach((el) => {
+            if (!rwphElementLooksLikeFactionWarfareIcon(el)) return;
+            addMatch(el, el.getBoundingClientRect(), 3, "pda-icon-link");
+          });
+        } catch (_) {}
+      }
+
+      matches.sort((a, b) => {
+        return (a.score - b.score)
+          || (a.rect.top - b.rect.top)
+          || (a.rect.left - b.rect.left)
+          || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
+      });
+      return matches[0] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rwphMountLauncherMobileFallback(btn) {
+    try {
+      if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
+      if (btn.classList.contains("rwph-mobile-page-anchored-launcher") && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()) return true;
+
+      // First try the PDA/mobile faction header icon row. PDA often hides the
+      // Faction Warfare text and shows only icons, so this keeps RWPH beside
+      // those top faction icons instead of dropping it somewhere else.
+      const headerTarget = rwphFindPdaFactionHeaderIconTarget();
+      if (headerTarget && headerTarget.el && headerTarget.el.parentNode) {
+        // PDA/Torn mobile headers can be sticky. Mount the logo to the page at
+        // the same visual header position instead of inside the sticky header,
+        // so it does not follow down the screen while scrolling.
+        if (rwphMountPdaLauncherPageAnchored(btn, headerTarget)) return true;
+      }
+
+      // Last-resort PDA fallback only. Keep it logo-only, but page-anchored
+      // instead of fixed so it does not float/follow while scrolling.
+      return rwphMountPdaLauncherPageAnchored(btn, {
+        el: document.body,
+        rect: {
+          left: Math.max(8, (window.innerWidth || 360) - 58),
+          right: Math.max(54, (window.innerWidth || 360) - 12),
+          top: 72,
+          bottom: 118,
+          width: 46,
+          height: 46
+        }
+      }, { size: 46, gap: 0 });
+    } catch (_) {
+      return false;
+    }
   }
 
   function rwphMountLauncherInSidebarV1608(btn) {
     if (!btn || !rwphShouldShowLauncherOnThisPage()) return false;
-    const isMobile = rwphIsMobileOrPdaView();
-    const mobile = isMobile ? rwphFindPdaNavigationV1608() : null;
-    const sidebar = !isMobile ? rwphFindTornSidebarV1608() : null;
-    const bsp = sidebar ? rwphFindBspSidebarAnchorV1608(sidebar) : null;
-    const point = mobile || bsp || rwphFindSidebarInsertionPointV1608(sidebar);
-    const host = isMobile && !point ? rwphFindLauncherFallbackHostV1608() : null;
-    if (!point && !host) { if (btn.isConnected) btn.remove(); return false; }
-    btn.className = 'rwph-sidebar-launcher';
-    if (point) {
-      const wantedNext = point.before || (point.after ? point.after.nextSibling : point.parent.firstChild);
-      if (btn.parentNode !== point.parent || (point.before ? point.before.previousSibling !== btn : point.after ? point.after.nextSibling !== btn : point.parent.firstChild !== btn)) {
-        point.parent.insertBefore(btn, wantedNext);
-      }
-      document.getElementById('rwph-launcher-page-host-v1608')?.remove();
-    } else if (btn.parentNode !== host) {
-      host.appendChild(btn);
+    if (rwphIsMobileOrPdaView()) {
+      // v1.1.607 original positioning, deliberately not the 1.1.609 menu mount.
+      if (btn.isConnected && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()
+          && btn.classList.contains('rwph-mobile-faction-war-header-locked')) return true;
+      const warfare = rwphFindFactionWarfareTarget();
+      if (warfare && rwphMountPdaLauncherPageAnchored(btn,warfare)) return true;
+      return rwphMountLauncherMobileFallback(btn);
     }
-    if (isMobile && mobile) {
-      const r=mobile.parent.getBoundingClientRect();
-      const horizontal=r.width > 260 && r.height < 110;
-      btn.classList.toggle('rwph-pda-strip-launcher',horizontal);
+    const sidebar = rwphFindTornSidebarV1608();
+    const bsp = sidebar ? rwphFindBspSidebarAnchorV1608(sidebar) : null;
+    const point = bsp || rwphFindSidebarInsertionPointV1608(sidebar);
+    if (!point) { if (btn.isConnected) btn.remove(); return false; }
+    btn.className = 'rwph-sidebar-launcher';
+    btn.removeAttribute('data-rwph-anchor-page-key');
+    btn.removeAttribute('data-rwph-locked-faction-header');
+    const wantedNext = point.before || (point.after ? point.after.nextSibling : point.parent.firstChild);
+    if (btn.parentNode !== point.parent || (point.before ? point.before.previousSibling !== btn
+        : point.after ? point.after.nextSibling !== btn : point.parent.firstChild !== btn)) {
+      point.parent.insertBefore(btn,wantedNext);
     }
     return true;
   }
 
   function removeLauncherButton() {
     document.getElementById("rw-payout-launcher")?.remove();
-    document.getElementById("rwph-launcher-page-host-v1608")?.remove();
   }
 
   function syncLauncherButtonVisibility() {
@@ -1757,8 +1990,8 @@
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = "Sidebar launcher (BSP-style)";
-      btn.title = "RWPH launches from the Torn sidebar on faction and Items pages.";
+      btn.textContent = "PC sidebar / original PDA header";
+      btn.title = "PC uses the Torn Information sidebar. Phone/PDA uses the original Faction Warfare header location.";
       btn.setAttribute("aria-label", btn.title);
       btn.disabled = true;
     });
@@ -1802,7 +2035,7 @@
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "The RWPH logo appears in Torn's sidebar, or in the visible navigation on phone/PDA. All launcher surfaces are transparent with your theme outline.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "RWPH launches from the Torn Information sidebar on PC and the original page-anchored faction header on phone/PDA. The PC outline is #344556.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
