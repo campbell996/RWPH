@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.607
+// @version      1.1.608
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -301,77 +301,87 @@
       #rw-payout-helper .rw-layout-theme-action-row #rw-open-theme-picker,
       #rw-payout-helper .rw-layout-theme-action-row #rw-open-logo-picker{width:auto!important;min-width:0!important;}
 
-      /* Use the selected full wide transparent logo. Hide old pseudo-logo boxes. */
+      /* One logo rule for every RWPH panel header, including the loading and
+         Results panels. Theme colours stay owned by the theme engine. */
       #rw-payout-helper .rw-head span::before,
       #rwph-payment-helper-title::before,
-      #rwph-member-management-panel .rwph-floating-panel-head:before{display:none!important;content:none!important;background:none!important;}
-      .rwph-dynamic-logo-icon,
-      .rwph-dynamic-logo-banner{background:transparent!important;object-fit:contain!important;border:0!important;border-radius:0!important;}
-
+      #rwph-member-management-panel .rwph-floating-panel-head::before{
+        display:none!important;content:none!important;background:none!important;
+      }
+      .rwph-dynamic-logo-icon,.rwph-dynamic-logo-banner,
+      .rwph-panel-head-logo,.rwph-logo-wrap{
+        background:transparent!important;background-image:none!important;
+        border:0!important;outline:0!important;box-shadow:none!important;
+        filter:none!important;text-shadow:none!important;
+      }
+      .rwph-dynamic-logo-icon,.rwph-dynamic-logo-banner{
+        object-fit:contain!important;border-radius:0!important;
+      }
       #rw-payout-helper .rw-head .rwph-header-logo{
-        width:min(360px, calc(100% - 58px))!important;
-        height:106px!important;
-        object-fit:contain!important;
-        display:block!important;
-        pointer-events:none!important;
-        background:transparent!important;
-        filter:drop-shadow(0 0 10px rgba(251,191,36,.35))!important;
+        width:min(360px, calc(100% - 58px))!important;height:106px!important;
+        display:block!important;object-fit:contain!important;pointer-events:none!important;
       }
       #rwph-payment-helper-title .rwph-dynamic-logo-icon,
       #rwph-member-management-panel .rwph-panel-head-logo,
       .rwph-floating-panel-head .rwph-dynamic-logo-icon,
       .rwph-panel-title .rwph-dynamic-logo-icon{
-        width:min(320px, 72vw)!important;
-        height:82px!important;
-        object-fit:contain!important;
-        background:transparent!important;
-        border:0!important;
-        border-radius:0!important;
-        flex:0 1 auto!important;
+        width:min(320px, 72vw)!important;height:82px!important;
+        object-fit:contain!important;flex:0 1 auto!important;
       }
       .results-hero-logo.rwph-dynamic-logo-icon{
-        width:min(420px, 92vw)!important;
-        height:138px!important;
-        object-fit:contain!important;
-        background:transparent!important;
+        width:min(420px,92vw)!important;height:138px!important;object-fit:contain!important;
       }
       .rwph-logo-wrap{
-        width:min(420px, 92vw)!important;
-        height:138px!important;
-        background:transparent!important;
-        border:0!important;
-        box-shadow:none!important;
+        width:min(420px,92vw)!important;height:138px!important;
       }
       .rwph-logo-wrap .rwph-dynamic-logo-icon{
-        width:100%!important;
-        height:100%!important;
-        object-fit:contain!important;
-        background:transparent!important;
+        width:100%!important;height:100%!important;object-fit:contain!important;
       }
-      #rw-launcher .rw-launcher-text,#rw-launcher .rwph-launcher-text,#rw-launcher > span:not(:first-child){display:none!important;}
 
-      #rw-payout-launcher .rwph-launcher-text,
-      #rw-payout-launcher .rw-launcher-text,
-      #rw-payout-launcher .rwph-launcher-label,
-      #rw-payout-launcher span:not(:has(img)){
-        display:none!important;
-        visibility:hidden!important;
-        width:0!important;
-        max-width:0!important;
-        overflow:hidden!important;
-        opacity:0!important;
+      /* Single canonical launcher style. The row and the logo are transparent;
+         only the narrow outline follows the user's existing theme colour. */
+      #rw-payout-launcher.rwph-sidebar-launcher{
+        position:relative!important;inset:auto!important;transform:none!important;
+        box-sizing:border-box!important;display:flex!important;align-items:center!important;
+        justify-content:center!important;gap:0!important;
+        width:calc(100% - 8px)!important;max-width:174px!important;min-width:0!important;
+        height:62px!important;min-height:62px!important;
+        padding:3px 5px!important;margin:4px!important;
+        border:1px solid var(--rwph-theme-outline,#e8b459)!important;
+        border-radius:5px!important;background:transparent!important;background-image:none!important;
+        box-shadow:none!important;filter:none!important;text-shadow:none!important;
+        color:inherit!important;cursor:pointer!important;outline:0!important;
+        font-size:0!important;line-height:0!important;overflow:hidden!important;z-index:1!important;
+        -webkit-tap-highlight-color:transparent!important;
       }
-      #rw-payout-launcher{
-        font-size:0!important;
-        gap:0!important;
+      #rw-payout-launcher.rwph-sidebar-launcher:hover,
+      #rw-payout-launcher.rwph-sidebar-launcher:active,
+      #rw-payout-launcher.rwph-sidebar-launcher:focus,
+      #rw-payout-launcher.rwph-sidebar-launcher:focus-visible{
+        background:transparent!important;background-image:none!important;
+        box-shadow:none!important;filter:none!important;transform:none!important;
+        outline:0!important;border-color:var(--rwph-theme-outline,#e8b459)!important;
       }
-      #rw-launcher.rwph-launcher-pda-logo img,
-      #rw-launcher img.rwph-dynamic-logo-icon{
-        width:112px!important;
-        max-width:32vw!important;
-        height:44px!important;
-        object-fit:contain!important;
-        background:transparent!important;
+      #rw-payout-launcher.rwph-sidebar-launcher>.rwph-sidebar-launcher-logo{
+        display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
+        height:54px!important;max-height:54px!important;object-fit:contain!important;
+        flex:1 1 auto!important;pointer-events:none!important;
+        background:transparent!important;border:0!important;box-shadow:none!important;
+        filter:none!important;
+      }
+      #rwph-launcher-page-host-v1608{
+        position:relative!important;display:flex!important;align-items:flex-start!important;
+        width:100%!important;max-width:100%!important;padding:4px!important;
+        box-sizing:border-box!important;min-height:0!important;
+        background:transparent!important;box-shadow:none!important;
+      }
+      @media(max-width:480px){
+        #rw-payout-launcher.rwph-sidebar-launcher{
+          max-width:170px!important;height:58px!important;min-height:58px!important;
+        }
+        #rw-payout-launcher.rwph-sidebar-launcher>.rwph-sidebar-launcher-logo{
+          height:50px!important;max-height:50px!important;
+        }
       }
       #rwph-logo-picker-panel .rwph-logo-picker-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
       #rwph-logo-picker-panel .rwph-logo-picker-option{display:flex;flex-direction:column;gap:8px;text-align:left;padding:10px 10px 12px;min-height:0;}
@@ -382,8 +392,6 @@
       #rwph-logo-picker-panel .rwph-logo-current-preview img{display:block;width:100%;max-width:100%;height:auto;max-height:112px;object-fit:contain;margin-top:10px;border-radius:0;background:transparent!important;}
       @media (max-width:700px),(pointer:coarse){
         #rw-payout-helper .rw-head .rwph-header-logo{width:min(185px, calc(100% - 48px))!important;height:46px!important;}
-        #rw-launcher.rwph-launcher-pda-logo img,
-        #rw-launcher img.rwph-dynamic-logo-icon{width:92px!important;max-width:34vw!important;height:38px!important;}
         #rwph-logo-picker-panel .rwph-logo-picker-options{grid-template-columns:minmax(0,1fr)!important;}
         #rw-payout-helper .rw-layout-theme-action-row > button{flex:1 1 100%!important;}
       }
@@ -772,7 +780,7 @@
       logoEl.style.setProperty("background", "transparent", "important");
       logoEl.style.setProperty("margin", "0", "important");
       logoEl.style.setProperty("align-self", "start", "important");
-      logoEl.style.setProperty("filter", `drop-shadow(0 0 8px ${accent}66)`, "important");
+      logoEl.style.setProperty("filter", "none", "important");
 
       const textWrap = document.createElement("div");
       textWrap.className = "rwph-info-popup-copy";
@@ -1334,7 +1342,7 @@
     `;
     panel.innerHTML = `
       <div class="rwph-floating-panel-head" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-weight:950;font-size:16px;color:#fff;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;">
-        <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:168px;height:54px;object-fit:contain;background:transparent;filter:drop-shadow(0 0 14px rgba(249,115,22,.70));pointer-events:none;" />
+        <img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH" style="width:168px;height:54px;object-fit:contain;background:transparent;filter:none;box-shadow:none;pointer-events:none;" />
         <span>Payment Needs Manual Review</span>
       </div>
       <div class="rwph-floating-panel-body" style="font-size:12px;line-height:1.55;color:#c7e8ff;margin:8px 0 14px;overflow-y:auto;overflow-x:hidden;min-height:0;">
@@ -1442,49 +1450,13 @@
     }, 60000);
   }
 
-  function rwphIsTornFactionPage() {
-    try {
-      const href = String(window.location?.href || "").toLowerCase();
-      const path = String(window.location?.pathname || "").toLowerCase();
-      const searchHash = `${String(window.location?.search || "")} ${String(window.location?.hash || "")}`.toLowerCase();
-      if (path === "/factions.php" || path.endsWith("/factions.php")) return true;
-      // Torn/PDA wrappers can preserve the Torn page inside query/hash routing instead of a clean pathname.
-      if (/(?:^|[/?#&])factions\.php(?:$|[?#&=\/])/.test(href)) return true;
-      if (/(?:sid|page|screen|route|name)=factions?\b/.test(searchHash)) return true;
-      if (/(?:faction|factions)(?:main|home|profile|members|chains|armory|news|controls)?/.test(searchHash) && /torn|faction/.test(href)) return true;
-      const titleText = String(document.title || "").toLowerCase();
-      if (/\bfaction\b/.test(titleText) && /torn/.test(href)) return true;
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rwphIsFactionWarReportPage() {
-    try {
-      const href = String(window.location?.href || "").toLowerCase();
-      const path = String(window.location?.pathname || "").toLowerCase();
-      const searchHash = `${String(window.location?.search || "")} ${String(window.location?.hash || "")}`.toLowerCase();
-
-      // Torn has used a few different ranked-war/report URL shapes in desktop,
-      // PDA, and hash-routed pages. Keep this broad enough for faction war
-      // reports, but do not treat every normal Torn page as valid.
-      if (/(ranked\s*war\s*report|faction\s*war\s*report)/.test(String(document.title || "").toLowerCase())) return true;
-      if (/(rankedwarreport|ranked-war-report|ranked_war_report|rankreport|rankedreport|warreport|war-report|war_report|rwreport)/.test(href)) return true;
-      if (/(rankedwarid|ranked_war_id|ranked-war-id|ranked_war|ranked-war|rankedwar|rankedwars|ranked_wars|ranked-wars)/.test(href) && /(report|war|faction|rank)/.test(href)) return true;
-      if ((path === "/war.php" || path.endsWith("/war.php")) && /(rank|ranked|report|warreport|faction)/.test(searchHash)) return true;
-      if ((path === "/factions.php" || path.endsWith("/factions.php")) && /(rank|ranked|war|report|rankreport|warreport)/.test(searchHash)) return true;
-
-      const pageText = String(document.querySelector("h1,h2,[class*='title' i],[class*='header' i]")?.textContent || "").toLowerCase();
-      return /(ranked\s*war\s*report|faction\s*war\s*report|war\s*report)/.test(pageText);
-    } catch (_) {
-      return false;
-    }
-  }
-
   function rwphShouldShowLauncherOnThisPage() {
-    // faction pages and faction/ranked-war report pages.
-    return rwphIsTornFactionPage() || rwphIsFactionWarReportPage();
+    // v1.1.608: Strict URL allowlist, not page-title or body-text detection.
+    // Other Torn pages can contain faction-related copy without being faction pages.
+    try {
+      const path = String(window.location?.pathname || "").toLowerCase().replace(/\/+$/, "");
+      return /(?:^|\/)(?:factions|faction|item)\.php$/.test(path);
+    } catch (_) { return false; }
   }
 
   function rwphIsMobileOrPdaView() {
@@ -1564,428 +1536,178 @@
     } catch (_) {}
   }
 
-  function rwphIsElementVisible(el) {
+  // v1.1.608 — One sidebar mount strategy replaces the former Faction Warfare
+  // header trackers (which jumped between cloned/sticky headers on Torn/PDA).
+  function rwphSidebarLauncherElementVisibleV1608(el) {
+    if (!el || !el.isConnected || el.closest?.("#rw-payout-helper,#rw-payout-launcher,.rwph-floating-panel")) return false;
     try {
-      if (!el || el.nodeType !== 1) return false;
-      if (el.closest && (el.closest("#rw-payout-helper") || el.closest("#rw-pay-all-panel") || el.closest("#rw-payout-launcher"))) return false;
       const rect = el.getBoundingClientRect();
-      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
-      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
-      if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) return false;
-      return true;
-    } catch (_) {
-      return false;
-    }
+      const style = getComputedStyle(el);
+      return rect.width > 12 && rect.height > 8 && style.display !== "none" && style.visibility !== "hidden";
+    } catch (_) { return false; }
   }
 
-  function rwphNormalizeNavText(text) {
-    return String(text || "").replace(/\s+/g, " ").trim();
-  }
-
-  function rwphTextLooksExactlyLikeFactionWarfare(text) {
-    return /^faction\s+warfare$/i.test(rwphNormalizeNavText(text));
-  }
-
-  function rwphCompactLauncherHaystack(el) {
+  function rwphFindBspSidebarAnchorV1608() {
+    // Desktop Torn: BSP Settings is an entry directly below the Information
+    // heading. Anchor to that actual entry, which may be an <a>, a <button>,
+    // or a <div> containing an icon and a text span depending on BSP version.
+    // Never mount inside the BSP clickable element itself.
     try {
-      if (!el || el.nodeType !== 1) return "";
-      const parts = [
-        el.textContent || "",
-        el.getAttribute?.("href") || "",
-        el.href || "",
-        el.getAttribute?.("aria-label") || "",
-        el.getAttribute?.("title") || "",
-        el.getAttribute?.("data-title") || "",
-        el.getAttribute?.("data-tab") || "",
-        el.getAttribute?.("data-page") || "",
-        el.getAttribute?.("data-action") || "",
-        el.id || "",
-        typeof el.className === "string" ? el.className : "",
-      ];
-      try {
-        const ds = el.dataset || {};
-        Object.keys(ds).forEach((key) => parts.push(`${key}:${ds[key]}`));
-      } catch (_) {}
-      return parts.join(" ").toLowerCase();
-    } catch (_) {
-      return "";
-    }
-  }
-
-  function rwphElementLooksLikeFactionWarfareIcon(el) {
-    try {
-      if (!el || !rwphIsElementVisible(el)) return false;
-      const rect = el.getBoundingClientRect?.();
-      if (!rwphRectLooksLikeTopFactionButton(rect)) return false;
-      const hay = rwphCompactLauncherHaystack(el);
-      if (!hay) return false;
-      if (/(^|[\s_\-])faction[\s_\-]*warfare($|[\s_\-])|factionwarfare/.test(hay)) return true;
-      if (/(ranked[\s_\-]*war|rankedwar|rankedwars|ranked[\s_\-]*wars)/.test(hay) && /(faction|war|report|rank)/.test(hay)) return true;
-      if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay) && /(warfare|ranked|rankedwar|rank|war)/.test(hay)) return true;
-      if (/(war\.php|\/war)/.test(hay) && /(faction|ranked|report|war|rank)/.test(hay)) return true;
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rwphFindPdaFactionHeaderIconTarget() {
-    try {
-      if (!rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return null;
-      const els = Array.from(document.querySelectorAll("a[href], button, [role='button'], [onclick], [data-title], [aria-label], [title]"));
-      const candidates = [];
-      els.forEach((el) => {
-        try {
-          if (!rwphIsElementVisible(el)) return;
-          const rect = el.getBoundingClientRect?.();
-          if (!rect || rect.width < 18 || rect.height < 18) return;
-          if (rect.top < -10 || rect.top > 320) return;
-          if (rect.left < -10 || rect.left > Math.max(window.innerWidth || 360, 360) - 5) return;
-          const hay = rwphCompactLauncherHaystack(el);
-          let score = 100;
-          if (rwphElementLooksLikeFactionWarfareIcon(el)) score = 0;
-          else if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay) && /(war|rank|ranked)/.test(hay)) score = 2;
-          else if (/(factions\.php|\/factions|sid=factions?|page=factions?)/.test(hay)) score = 7;
-          else if (/\bfaction\b/.test(hay) && /(button|tab|menu|nav|icon|link)/.test(hay)) score = 9;
-          else return;
-
-          // Prefer compact header icons/buttons, but still allow a visible faction toolbar link.
-          if (rect.width > 190 || rect.height > 78) score += 10;
-          candidates.push({ el, rect, score, source: "pda-icon" });
-        } catch (_) {}
-      });
-      candidates.sort((a, b) => {
-        return (a.score - b.score)
-          || (a.rect.top - b.rect.top)
-          || (a.rect.left - b.rect.left)
-          || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
-      });
-      return candidates[0] || null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function rwphMountPdaLauncherPageAnchored(btn, anchorTarget, options = {}) {
-    try {
-      if (!btn || !rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return false;
-      const pageKey = rwphCurrentPageKey();
-      const cached = window.__rwphPdaFactionWarfareAnchorV1445;
-      let targetEl = null;
-      let rect = null;
-
-      // Keep the first real Faction Warfare header anchor for this Torn page.
-      // PDA can render cloned/sticky headers while scrolling; without this lock
-      // the launcher can jump between those cloned headers. This makes RWPH stay
-      // in the exact header row where the Faction Warfare button was first found.
-      if (cached && cached.pageKey === pageKey && cached.el && cached.el.isConnected && cached.el !== btn) {
-        targetEl = cached.el;
-        try { rect = targetEl.getBoundingClientRect?.() || null; } catch (_) { rect = null; }
-      }
-
-      if (!targetEl) {
-        targetEl = anchorTarget && anchorTarget.el ? anchorTarget.el : null;
-        rect = anchorTarget && anchorTarget.rect ? anchorTarget.rect : null;
-        if (!rect && targetEl) {
-          try { rect = targetEl.getBoundingClientRect?.() || null; } catch (_) { rect = null; }
+      const sidebar = rwphFindTornSidebarV1608();
+      const scope = sidebar || document;
+      const controls = scope.querySelectorAll('a,button,[role="button"],[id*="bsp" i],[class*="bsp" i],span,strong,b');
+      for (const el of controls) {
+        if (!rwphSidebarLauncherElementVisibleV1608(el)) continue;
+        const value = String(el.textContent || el.getAttribute?.('aria-label') || el.getAttribute?.('title') || '')
+          .replace(/\s+/g, '').toLowerCase();
+        // Icons may contribute Unicode text before the BSP Settings label.
+        if (!value.includes('bspsettings') || value.length > 60) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.left < -8 || rect.left > 220 || rect.width > 280 || rect.height > 100) continue;
+        let item = el.closest('a,button,[role="button"],li,[class*="menu-item" i],[class*="nav-item" i],[id*="bsp" i],[class*="bsp" i]') || el;
+        // A bare BSP text span is not a sidebar row: select the nearest
+        // reasonably sized containing row so RWPH becomes its sibling.
+        if (item === el && /^(span|strong|b)$/i.test(el.tagName)) {
+          let parent = el.parentElement;
+          for (let steps = 0; steps < 3 && parent; steps++, parent = parent.parentElement) {
+            if (sidebar && !sidebar.contains(parent)) break;
+            const pr = parent.getBoundingClientRect();
+            if (pr.left >= -8 && pr.left < 220 && pr.width >= 90 && pr.width <= 280
+                && pr.height >= 24 && pr.height <= 100) { item = parent; break; }
+          }
         }
-        if (targetEl && targetEl !== document.body && targetEl.isConnected) {
-          window.__rwphPdaFactionWarfareAnchorV1445 = { pageKey, el: targetEl };
-        }
+        if (sidebar && !sidebar.contains(item)) continue;
+        if (!item.parentElement) continue;
+        return { parent: item.parentElement, after: item };
       }
-
-      if (!targetEl && !(rect && rect.width > 0 && rect.height > 0)) return false;
-      const usableRect = rect || targetEl.getBoundingClientRect?.();
-      if (!usableRect || usableRect.width <= 0 || usableRect.height <= 0) return false;
-
-      const height = Math.max(28, Math.min(34, Math.round(options.size || usableRect.height || 31)));
-      const logoWidth = Math.max(94, Math.min(112, Math.round(height * 3.25)));
-      const headerStyle = {
-        position: "relative",
-        zIndex: "1",
-        left: "",
-        top: "",
-        right: "",
-        bottom: "",
-        width: `${logoWidth}px`,
-        minWidth: `${logoWidth}px`,
-        maxWidth: `${logoWidth}px`,
-        height: `${height}px`,
-        minHeight: `${height}px`,
-        maxHeight: `${height}px`,
-        margin: "0 6px 0 0",
-        padding: "0",
-        borderRadius: "7px",
-        border: "1px solid rgba(255,255,255,.18)",
-        background: "transparent",
-        color: "#f2f2f2",
-        boxShadow: "none",
-        font: "800 12px Arial, Helvetica, sans-serif",
-        fontWeight: "800",
-        lineHeight: "1",
-        letterSpacing: "normal",
-        textShadow: "none",
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0",
-        verticalAlign: "middle",
-        textAlign: "center",
-        whiteSpace: "nowrap",
-        backdropFilter: "none",
-        overflow: "visible",
-        appearance: "none",
-        WebkitAppearance: "none",
-      };
-
-      const parent = targetEl && targetEl !== document.body ? targetEl.parentNode : null;
-      if (parent) {
-        if (btn.parentNode !== parent || btn.nextSibling !== targetEl) parent.insertBefore(btn, targetEl);
-        btn.dataset.rwphAnchorPageKey = pageKey;
-        btn.dataset.rwphLockedFactionHeader = "1";
-        btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher", "rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-page-anchored-launcher", "rwph-mobile-page-static-launcher");
-        btn.classList.add("rwph-mobile-header-launcher", "rwph-mobile-faction-war-header-locked");
-        applyStyle(btn, headerStyle);
-      } else {
-        // Last fallback only. If the real Faction Warfare header is not found,
-        // use page coordinates once, but still lock the button so it is not
-        // remounted to another header while scrolling.
-        const viewportWidth = Math.max(window.innerWidth || 360, 320);
-        const scrollX = window.pageXOffset || document.documentElement?.scrollLeft || 0;
-        const scrollY = window.pageYOffset || document.documentElement?.scrollTop || 0;
-        const gap = Number.isFinite(options.gap) ? options.gap : 6;
-        let left = Math.round(scrollX + usableRect.left - logoWidth - gap);
-        if (left < scrollX + 6) left = Math.round(scrollX + usableRect.right + gap);
-        left = Math.max(Math.round(scrollX + 6), Math.min(left, Math.round(scrollX + viewportWidth - logoWidth - 6)));
-        const top = Math.max(Math.round(scrollY + 6), Math.round(scrollY + usableRect.top + ((usableRect.height - height) / 2)));
-        if (btn.parentNode !== document.body) document.body.appendChild(btn);
-        btn.dataset.rwphAnchorPageKey = pageKey;
-        btn.dataset.rwphLockedFactionHeader = "1";
-        btn.classList.remove("rwph-faction-header-launcher", "rwph-nav-launcher", "rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-page-flow-launcher");
-        btn.classList.add("rwph-mobile-header-launcher", "rwph-mobile-page-anchored-launcher", "rwph-mobile-faction-war-header-locked");
-        applyStyle(btn, {
-          ...headerStyle,
-          position: "absolute",
-          left: `${left}px`,
-          top: `${top}px`,
-          right: "auto",
-          bottom: "auto",
-          margin: "0",
-        });
-      }
-
-      btn.title = "Open Ranked War Payout Helper";
-      btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
-      btn.innerHTML = rwphLauncherLogoHtml(true);
-      updateLauncherCornerButtonLabels();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rwphTextNodeRect(node) {
-    try {
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      const rect = range.getBoundingClientRect();
-      range.detach?.();
-      return rect;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function rwphRectLooksLikeTopFactionButton(rect) {
-    try {
-      if (!rect || rect.width <= 0 || rect.height <= 0) return false;
-      const compact = rwphIsMobileOrPdaView();
-      const viewportWidth = Math.max(window.innerWidth || 1000, 320);
-      // The real Faction Warfare button is near the top faction header, not down in page content.
-      // PDA can render this as a compact icon only, so allow smaller widths there.
-      if (rect.left < -20 || rect.left > viewportWidth - 20) return false;
-      if (rect.top < -10 || rect.top > (compact ? 320 : 260)) return false;
-      if (rect.width < (compact ? 18 : 40) || rect.width > 360) return false;
-      if (rect.height < 18 || rect.height > (compact ? 82 : 72)) return false;
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rwphClosestFactionWarfareButton(el) {
-    try {
-      if (!el || el.nodeType !== 1) return null;
-      return el.closest("a,button,[role='button'],[class*='button' i],[class*='btn' i]") || el;
-    } catch (_) {
-      return el || null;
-    }
-  }
-
-  function rwphFindFactionWarfareTarget() {
-    try {
-      const matches = [];
-      const addMatch = (el, rect, score, source) => {
-        const targetEl = rwphClosestFactionWarfareButton(el);
-        if (!targetEl || !rwphIsElementVisible(targetEl)) return;
-        const targetRect = targetEl.getBoundingClientRect?.() || rect;
-        const usableRect = rwphRectLooksLikeTopFactionButton(targetRect) ? targetRect : rect;
-        if (!rwphRectLooksLikeTopFactionButton(usableRect)) return;
-        matches.push({ el: targetEl, rect: usableRect, score, source });
-      };
-
-      // Best case: find the actual text node reading exactly "Faction Warfare".
-      try {
-        const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
-        let node;
-        while ((node = walker.nextNode())) {
-          if (!rwphTextLooksExactlyLikeFactionWarfare(node.nodeValue)) continue;
-          const parent = node.parentElement;
-          if (!parent) continue;
-          const rect = rwphTextNodeRect(node) || parent.getBoundingClientRect();
-          addMatch(parent, rect, 0, "text-node");
-        }
-      } catch (_) {}
-
-      // Fallback: exact visible element text or exact accessibility label.
-      const selectors = [
-        "a",
-        "button",
-        "[role='button']",
-        "[aria-label]",
-        "[title]",
-        "[data-title]",
-        "span",
-        "div",
-        "li"
-      ];
-      const seen = new Set();
-      selectors.forEach((selector) => {
-        try {
-          document.querySelectorAll(selector).forEach((el) => {
-            if (seen.has(el)) return;
-            seen.add(el);
-            if (!rwphIsElementVisible(el)) return;
-            const text = rwphNormalizeNavText(el.textContent || "");
-            const label = rwphNormalizeNavText(`${el.getAttribute?.("aria-label") || ""} ${el.getAttribute?.("title") || ""} ${el.getAttribute?.("data-title") || ""}`);
-            if (!rwphTextLooksExactlyLikeFactionWarfare(text) && !rwphTextLooksExactlyLikeFactionWarfare(label)) return;
-            addMatch(el, el.getBoundingClientRect(), rwphTextLooksExactlyLikeFactionWarfare(text) ? 1 : 2, "element");
-          });
-        } catch (_) {}
-      });
-
-      // Torn PDA / mobile can render the Faction Warfare action as an icon-only
-      // link with no visible text. Use href/title/class/data attributes as an
-      // extra target source so the launcher can still sit in the same header row.
-      if (rwphIsMobileOrPdaView()) {
-        try {
-          document.querySelectorAll("a[href], button, [role='button'], [onclick], [data-title], [aria-label], [title]").forEach((el) => {
-            if (!rwphElementLooksLikeFactionWarfareIcon(el)) return;
-            addMatch(el, el.getBoundingClientRect(), 3, "pda-icon-link");
-          });
-        } catch (_) {}
-      }
-
-      matches.sort((a, b) => {
-        return (a.score - b.score)
-          || (a.rect.top - b.rect.top)
-          || (a.rect.left - b.rect.left)
-          || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height));
-      });
-      return matches[0] || null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function rwphMountLauncherMobileFallback(btn) {
-    try {
-      if (!btn || !rwphShouldShowLauncherOnThisPage() || !rwphIsMobileOrPdaView()) return false;
-      if (btn.classList.contains("rwph-mobile-page-anchored-launcher") && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()) return true;
-
-      // First try the PDA/mobile faction header icon row. PDA often hides the
-      // Faction Warfare text and shows only icons, so this keeps RWPH beside
-      // those top faction icons instead of dropping it somewhere else.
-      const headerTarget = rwphFindPdaFactionHeaderIconTarget();
-      if (headerTarget && headerTarget.el && headerTarget.el.parentNode) {
-        // PDA/Torn mobile headers can be sticky. Mount the logo to the page at
-        // the same visual header position instead of inside the sticky header,
-        // so it does not follow down the screen while scrolling.
-        if (rwphMountPdaLauncherPageAnchored(btn, headerTarget)) return true;
-      }
-
-      // Last-resort PDA fallback only. Keep it logo-only, but page-anchored
-      // instead of fixed so it does not float/follow while scrolling.
-      return rwphMountPdaLauncherPageAnchored(btn, {
-        el: document.body,
-        rect: {
-          left: Math.max(8, (window.innerWidth || 360) - 58),
-          right: Math.max(54, (window.innerWidth || 360) - 12),
-          top: 72,
-          bottom: 118,
-          width: 46,
-          height: 46
-        }
-      }, { size: 46, gap: 0 });
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rwphMountLauncherFallback(btn) {
-    // Desktop keeps the strict Faction Warfare placement. Phone/Torn PDA pages
-    // often hide or rename that header button, so they get a small safe fallback
-    // launcher that still only appears on faction/report pages.
-    if (rwphMountLauncherMobileFallback(btn)) return true;
-    try {
-      if (btn) btn.remove();
     } catch (_) {}
-    return false;
+    return null;
   }
 
-  function rwphMountLauncherBesideFactionWarfare(btn) {
-    if (!btn || !rwphShouldShowLauncherOnThisPage()) return rwphMountLauncherFallback(btn);
-    if (rwphIsMobileOrPdaView() && btn.isConnected && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey() && (btn.classList.contains("rwph-mobile-faction-war-header-locked") || btn.classList.contains("rwph-mobile-page-anchored-launcher") || btn.classList.contains("rwph-mobile-page-flow-launcher") || btn.classList.contains("rwph-mobile-page-static-launcher"))) return true;
-    const target = rwphFindFactionWarfareTarget();
-    if (!target || !target.el || !target.rect) return rwphMountLauncherFallback(btn);
-
-    if (rwphIsMobileOrPdaView()) {
-      // On PDA/phone the Torn faction header can stick to the viewport while
-      // scrolling. Anchor the RWPH logo to the page coordinates beside the
-      // matching header icon/button, not to the sticky header itself.
-      if (rwphMountPdaLauncherPageAnchored(btn, target)) return true;
-      return rwphMountLauncherFallback(btn);
+  function rwphFindTornSidebarV1608() {
+    const selectors = [
+      '#sidebarroot', '#sidebar', '#sidebarWrapper', '#left-sidebar',
+      '#sidebar-container', '.sidebar', '[class*="sidebar" i]'
+    ];
+    const seen = new Set();
+    const candidates = [];
+    for (const selector of selectors) {
+      for (const el of document.querySelectorAll(selector)) {
+        if (seen.has(el) || !rwphSidebarLauncherElementVisibleV1608(el)) continue;
+        seen.add(el);
+        const r = el.getBoundingClientRect();
+        if (r.left < -15 || r.left > 180 || r.width < 100 || r.width > 275 || r.height < 65) continue;
+        const text = String(el.textContent || "").slice(0,2500);
+        let score = 0;
+        if (/(?:^|\W)Information(?:\W|$)/i.test(text)) score += 8;
+        if (/\b(?:Money|Energy|Life|Gym|Items|Faction)\b/i.test(text)) score += 3;
+        if (el.id === 'sidebarroot' || el.id === 'sidebar') score += 5;
+        if (el.querySelector('a[href*="item.php"],a[href*="factions.php"]')) score += 3;
+        score -= Math.max(0, r.left) / 70;
+        candidates.push({el,score});
+      }
     }
+    candidates.sort((a,b)=>b.score-a.score);
+    return candidates[0]?.el || null;
+  }
 
-    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher", "rwph-mobile-page-anchored-launcher");
-    btn.classList.add("rwph-faction-header-launcher");
-    btn.style.display = "inline-flex";
+  function rwphFindSidebarInsertionPointV1608(root) {
+    if (!root) return null;
+    // The Information heading is a stable structural landmark on Torn desktop.
+    // Place immediately below it; if no heading exists, add a first sidebar row.
+    const headers = root.querySelectorAll('h1,h2,h3,h4,header,[class*="title" i],[class*="header" i],span,div');
+    for (const el of headers) {
+      if (!rwphSidebarLauncherElementVisibleV1608(el)) continue;
+      if (String(el.textContent || '').trim().toLowerCase() !== 'information') continue;
+      const row = el.closest('li,[class*="section-title" i],[class*="area-title" i]') || el;
+      if (row.parentElement) return {parent:row.parentElement,after:row};
+    }
+    return {parent:root,after:null};
+  }
 
-    try {
-      const parent = target.el.parentNode;
-      if (parent && btn.parentNode !== parent) {
-        parent.insertBefore(btn, target.el);
-      } else if (parent && btn.nextSibling !== target.el) {
-        parent.insertBefore(btn, target.el);
-      } else if (!parent) {
-        document.body.appendChild(btn);
+  function rwphFindPdaNavigationV1608() {
+    // Different PDA configurations expose a bottom bar, drawer, or expanded
+    // navigation. Only mount into visible navigation that contains Torn links.
+    const selectors = [
+      '#pda-menu','#pda-nav','#mobile-menu','#mobile-nav',
+      '[class*="mobile-menu" i]','[class*="mobile-nav" i]',
+      '[class*="bottom-nav" i]','[class*="drawer-menu" i]',
+      '[role="navigation"]','nav'
+    ];
+    const seen = new Set(), roots = [];
+    for (const selector of selectors) {
+      for (const root of document.querySelectorAll(selector)) {
+        if (seen.has(root) || !rwphSidebarLauncherElementVisibleV1608(root)) continue;
+        if (root.closest?.('#rw-payout-helper,.rwph-floating-panel,#rw-payout-launcher')) continue;
+        seen.add(root);
+        const rect = root.getBoundingClientRect();
+        if (rect.width < 95 || rect.height < 20) continue;
+        const links = Array.from(root.querySelectorAll('a[href],button'));
+        const matches = links.filter(el => /(?:factions?|item)\.php|\b(?:faction|items|inventory)\b/i.test(
+          (el.getAttribute('href') || '') + ' ' + (el.textContent || '')));
+        if (!matches.length) continue;
+        let score = matches.length * 6;
+        if (/mobile|pda|bottom|drawer/i.test(`${root.id} ${root.className}`)) score += 10;
+        if (root.tagName.toLowerCase() === 'nav') score += 3;
+        if (rect.width > 800) score -= 4;
+        roots.push({root,score,matches});
       }
-      updateLauncherButtonPosition(false, target);
-    } catch (_) {
-      try {
-        if (btn.parentNode !== document.body) document.body.appendChild(btn);
-        updateLauncherButtonPosition(false, target);
-      } catch (_) {
-        return rwphMountLauncherFallback(btn);
+    }
+    roots.sort((a,b) => b.score-a.score);
+    const best = roots[0];
+    if (!best) return null;
+    const anchor = best.matches.find(el => /(?:factions?|item)\.php/i.test(el.getAttribute('href') || '')) || best.matches[0];
+    const item = anchor.closest('li,[class*="nav-item" i],[class*="menu-item" i]') || anchor;
+    return item.parentElement && best.root.contains(item.parentElement)
+      ? {parent:item.parentElement,after:item} : {parent:best.root,after:null};
+  }
+
+  function rwphFindLauncherFallbackHostV1608() {
+    // PDA sometimes hides the whole desktop sidebar. Attach an in-flow row
+    // near the page content instead of a scrolling/floating fixed overlay.
+    const existing = document.getElementById('rwph-launcher-page-host-v1608');
+    if (existing?.isConnected) return existing;
+    const candidates = [
+      '#mainContainer', '#main-content', '#main-content-wrapper',
+      '#content-wrapper', '#content', 'main', '[role="main"]'
+    ];
+    let container = null;
+    for (const selector of candidates) {
+      const el = document.querySelector(selector);
+      if (el && rwphSidebarLauncherElementVisibleV1608(el)) { container = el; break; }
+    }
+    if (!container) return null;
+    const host = document.createElement('div');
+    host.id = 'rwph-launcher-page-host-v1608';
+    host.className = 'rwph-launcher-page-host-v1608';
+    container.insertBefore(host, container.firstChild);
+    return host;
+  }
+
+  function rwphMountLauncherInSidebarV1608(btn) {
+    if (!btn || !rwphShouldShowLauncherOnThisPage()) return false;
+    const mobile = rwphIsMobileOrPdaView() ? rwphFindPdaNavigationV1608() : null;
+    const bsp = mobile ? null : rwphFindBspSidebarAnchorV1608();
+    const sidebar = mobile || bsp ? null : rwphFindTornSidebarV1608();
+    const point = mobile || bsp || rwphFindSidebarInsertionPointV1608(sidebar);
+    const host = point ? null : rwphFindLauncherFallbackHostV1608();
+    if (!point && !host) return false;
+    btn.className = 'rwph-sidebar-launcher';
+    if (point) {
+      const wantedNext = point.after ? point.after.nextSibling : point.parent.firstChild;
+      if (btn.parentNode !== point.parent || (point.after ? point.after.nextSibling !== btn : point.parent.firstChild !== btn)) {
+        point.parent.insertBefore(btn, wantedNext);
       }
+      document.getElementById('rwph-launcher-page-host-v1608')?.remove();
+    } else if (btn.parentNode !== host) {
+      host.appendChild(btn);
     }
     return true;
   }
 
   function removeLauncherButton() {
-    const btn = document.getElementById("rw-payout-launcher");
-    if (btn) btn.remove();
+    document.getElementById("rw-payout-launcher")?.remove();
+    document.getElementById("rwph-launcher-page-host-v1608")?.remove();
   }
 
   function syncLauncherButtonVisibility() {
@@ -2021,143 +1743,24 @@
     ["rw-move-launcher", "rw-move-launcher-admin"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.textContent = "Full logo launcher / PDA page-anchored";
-      btn.title = "Desktop and PDA show the selected full transparent logo only. PDA/phone stays page-anchored so it does not follow while scrolling.";
-      btn.setAttribute("aria-label", "Full logo launcher / PDA page-anchored");
+      btn.textContent = "Sidebar launcher (BSP-style)";
+      btn.title = "RWPH launches from the Torn sidebar on faction and Items pages.";
+      btn.setAttribute("aria-label", btn.title);
       btn.disabled = true;
     });
   }
 
-  function getLauncherPositionStyle(anchorTarget = null) {
-    const targetEl = anchorTarget && anchorTarget.el ? anchorTarget.el : null;
-    const anchorRect = anchorTarget && anchorTarget.rect ? anchorTarget.rect : null;
-    let computed = null;
-    try { computed = targetEl && window.getComputedStyle ? window.getComputedStyle(targetEl) : null; } catch (_) { computed = null; }
-
-    const isCompactLauncher = rwphIsMobileOrPdaView();
-    const height = anchorRect ? Math.max(isCompactLauncher ? 30 : 28, Math.min(isCompactLauncher ? 44 : 46, Math.round(anchorRect.height))) : (isCompactLauncher ? 36 : 34);
-    const fallbackFont = `${Math.max(12, Math.min(15, height - 18))}px Arial, Helvetica, sans-serif`;
-    const fallbackBackground = "linear-gradient(180deg,#2f2f2f,#181818)";
-
-    if (isCompactLauncher) {
-      return {
-        position: "static",
-        zIndex: "1",
-        width: `${Math.max(118, Math.min(170, Math.round(height * 3.45)))}px`,
-        height: `${height}px`,
-        minWidth: `${Math.max(118, Math.min(170, Math.round(height * 3.45)))}px`,
-        minHeight: `${height}px`,
-        maxWidth: `${Math.max(118, Math.min(170, Math.round(height * 3.45)))}px`,
-        maxHeight: `${height}px`,
-        margin: computed?.margin ? computed.margin : "0 6px 0 0",
-        padding: "0",
-        borderRadius: computed?.borderRadius && computed.borderRadius !== "0px" ? computed.borderRadius : "7px",
-        border: computed?.border && computed.border !== "0px none rgb(0, 0, 0)" ? computed.border : "1px solid rgba(255,255,255,.18)",
-        background: computed?.background && computed.background !== "rgba(0, 0, 0, 0)" ? computed.background : fallbackBackground,
-        color: computed?.color || "#f2f2f2",
-        boxShadow: computed?.boxShadow && computed.boxShadow !== "none" ? computed.boxShadow : "none",
-        font: computed?.font || fallbackFont,
-        fontWeight: computed?.fontWeight || "700",
-        lineHeight: "1",
-        letterSpacing: computed?.letterSpacing || "normal",
-        textShadow: computed?.textShadow && computed.textShadow !== "none" ? computed.textShadow : "none",
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0",
-        verticalAlign: "middle",
-        textAlign: "center",
-        whiteSpace: "nowrap",
-        backdropFilter: computed?.backdropFilter || "none",
-        overflow: "hidden",
-        appearance: "none",
-        WebkitAppearance: "none",
-        top: "",
-        right: "",
-        bottom: "",
-        left: "",
-      };
-    }
-
-    return {
-      position: "static",
-      zIndex: "1",
-      width: "auto",
-      height: `${height}px`,
-      minWidth: "0",
-      minHeight: `${height}px`,
-      maxWidth: "none",
-      maxHeight: "none",
-      margin: computed?.margin ? computed.margin : "0 6px 0 0",
-      padding: computed?.padding && computed.padding !== "0px" ? computed.padding : "0 11px",
-      borderRadius: computed?.borderRadius && computed.borderRadius !== "0px" ? computed.borderRadius : "6px",
-      border: computed?.border && computed.border !== "0px none rgb(0, 0, 0)" ? computed.border : "1px solid rgba(255,255,255,.18)",
-      background: computed?.background && computed.background !== "rgba(0, 0, 0, 0)" ? computed.background : fallbackBackground,
-      color: computed?.color || "#f2f2f2",
-      boxShadow: computed?.boxShadow && computed.boxShadow !== "none" ? computed.boxShadow : "none",
-      font: computed?.font || fallbackFont,
-      fontWeight: computed?.fontWeight || "700",
-      lineHeight: computed?.lineHeight || "1",
-      letterSpacing: computed?.letterSpacing || "normal",
-      textShadow: computed?.textShadow && computed.textShadow !== "none" ? computed.textShadow : "none",
-      cursor: "pointer",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "6px",
-      verticalAlign: "middle",
-      textAlign: "center",
-      whiteSpace: "nowrap",
-      backdropFilter: computed?.backdropFilter || "none",
-      overflow: "hidden",
-      appearance: "none",
-      WebkitAppearance: "none",
-      top: "",
-      right: "",
-      bottom: "",
-      left: "",
-    };
-  }
-
-  function applyStyle(el, styleObj) {
-    Object.assign(el.style, {
-      top: "",
-      right: "",
-      bottom: "",
-      left: "",
-    });
-    Object.assign(el.style, styleObj);
-  }
-
-  function updateLauncherButtonPosition(useFallback = false, anchorTarget = null) {
-    const btn = document.getElementById("rw-payout-launcher");
-    if (!btn) return;
-
-    if (useFallback || btn.classList.contains("rwph-nav-launcher-fallback")) {
-      btn.remove();
-      return;
-    }
-
-    btn.classList.remove("rwph-nav-launcher-fallback", "rwph-mobile-launcher-fallback", "rwph-mobile-header-launcher");
-    btn.classList.add(rwphIsMobileOrPdaView() ? "rwph-mobile-header-launcher" : "rwph-faction-header-launcher");
-    applyStyle(btn, getLauncherPositionStyle(anchorTarget));
-    btn.title = "Open Ranked War Payout Helper";
-    btn.innerHTML = rwphLauncherLogoHtml();
-    updateLauncherCornerButtonLabels();
-  }
-
-  function rwphLauncherLogoHtml(forceLogoOnly = false) {
-    const logoSize = rwphIsMobileOrPdaView() || forceLogoOnly ? 104 : 132;
-    const logoHeight = rwphIsMobileOrPdaView() || forceLogoOnly ? 30 : 36;
-    const imgHtml = `<img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="" aria-hidden="true" draggable="false" style="width:${logoSize}px;height:${logoHeight}px;max-width:38vw;object-fit:contain;display:block;pointer-events:none;background:transparent;filter:drop-shadow(0 0 5px rgba(249,115,22,.58));flex:0 1 auto;" />`;
-    return imgHtml;
+  function rwphSidebarLauncherHtmlV1608() {
+    return `<img class="rwph-dynamic-logo-icon rwph-sidebar-launcher-logo" src="${rwphCurrentLogoIconUri()}" alt="" aria-hidden="true" draggable="false" />`;
   }
 
   function setLauncherOpenState(isOpen) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
-    btn.innerHTML = rwphLauncherLogoHtml();
+    if (!btn.classList.contains("rwph-sidebar-launcher") || !btn.querySelector(".rwph-sidebar-launcher-logo")) {
+      btn.className = "rwph-sidebar-launcher";
+      btn.innerHTML = rwphSidebarLauncherHtmlV1608();
+    }
     btn.dataset.rwphOpen = isOpen ? "1" : "0";
     btn.title = isOpen ? "Close Ranked War Payout Helper" : "Open Ranked War Payout Helper";
     btn.setAttribute("aria-label", btn.title);
@@ -2174,17 +1777,18 @@
       btn = document.createElement("button");
       btn.id = "rw-payout-launcher";
       btn.type = "button";
-      btn.innerHTML = rwphLauncherLogoHtml();
+      btn.className = "rwph-sidebar-launcher";
+      btn.innerHTML = rwphSidebarLauncherHtmlV1608();
       btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
       btn.addEventListener("click", togglePanel);
     }
 
-    rwphMountLauncherBesideFactionWarfare(btn);
+    rwphMountLauncherInSidebarV1608(btn);
   }
 
   function cycleLauncherCorner() {
     const status = document.getElementById("rw-status") || document.getElementById("rw-paywall-status");
-    rwphToastPanelInfo(status, "Desktop and PDA launchers show the selected full transparent logo only. PDA/phone stays page-anchored so it does not follow while scrolling.", "info", "RWPH Panel");
+    rwphToastPanelInfo(status, "The RWPH logo appears in Torn's sidebar, or in the visible navigation on phone/PDA. All launcher surfaces are transparent with your theme outline.", "info", "RWPH Panel");
   }
 
   function rwphSafeJsonGet(key, fallback = {}) {
@@ -5468,7 +5072,7 @@
         #rwph-licence-info-panel * { box-sizing: border-box; }
         #rwph-licence-info-panel .rwph-panel-head { position:relative;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 56px 12px 56px;border-bottom:1px solid rgba(255,255,255,.10);cursor:move;touch-action:none;-webkit-user-select:none;user-select:none;min-height:142px; }
         #rwph-licence-info-panel .rwph-panel-title { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-weight:950;font-size:18px;color:#fff;text-align:center;min-width:0;width:100%; }
-        #rwph-licence-info-panel .rwph-panel-title img { width:min(360px,86vw);height:96px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(249,115,22,.70));pointer-events:none;background:transparent; }
+        #rwph-licence-info-panel .rwph-panel-title img { width:min(360px,86vw);height:96px;object-fit:contain;filter:none;pointer-events:none;background:transparent;box-shadow:none;border:0; }
         #rwph-licence-info-panel .rwph-panel-title span { display:block;width:100%;text-align:center;line-height:1.15;text-transform:uppercase;letter-spacing:.04em; }
         #rwph-licence-info-panel .rwph-floating-panel-body { padding:14px; overflow-y:auto; overflow-x:hidden; max-height:calc(100vh - 92px); }
         #rwph-licence-info-panel .rwph-licence-status-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px; }
@@ -6946,7 +6550,7 @@
     return `
       *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--rwph-theme-bg)!important;color:var(--rwph-theme-text)!important}
       body{padding:14px;overflow-x:hidden}.app{width:min(920px,100%);margin:0 auto}.rwph-loading-shell{overflow:hidden;background:var(--rwph-theme-panel)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:14px;box-shadow:var(--rwph-theme-shadow)!important}
-      .rwph-loading-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-brand{display:flex;align-items:center;gap:10px;min-width:0}.rwph-logo-wrap{width:58px;height:58px;display:grid;place-items:center;flex:0 0 auto;background:var(--rwph-theme-bg2)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:11px}.rwph-logo-wrap img{width:48px;height:48px;object-fit:contain}.eyebrow{color:var(--rwph-theme-outline)!important;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.rwph-brand h1{margin:2px 0 0;font-size:20px;color:var(--rwph-theme-text)!important}.sub{margin-top:3px;color:var(--rwph-theme-soft)!important;font-size:11px;line-height:1.4}
+      .rwph-loading-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;background:var(--rwph-theme-panel2)!important;border-bottom:1px solid var(--rwph-theme-line)!important}.rwph-brand{display:flex;align-items:center;gap:10px;min-width:0}.rwph-logo-wrap{width:58px;height:58px;display:grid;place-items:center;flex:0 0 auto;background:transparent!important;border:0!important;border-radius:0;box-shadow:none!important}.rwph-logo-wrap img{width:48px;height:48px;object-fit:contain}.eyebrow{color:var(--rwph-theme-outline)!important;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.05em}.rwph-brand h1{margin:2px 0 0;font-size:20px;color:var(--rwph-theme-text)!important}.sub{margin-top:3px;color:var(--rwph-theme-soft)!important;font-size:11px;line-height:1.4}
       .loading-time{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--rwph-theme-bg2)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:10px}.loading-dot{width:9px;height:9px;border-radius:999px;background:var(--rwph-theme-outline)!important;box-shadow:0 0 12px color-mix(in srgb,var(--rwph-theme-outline) 55%,transparent);animation:rwphLoadPulse 1.2s ease-in-out infinite}.time-label{display:block;color:var(--rwph-theme-soft)!important;font-size:9px;font-weight:900;text-transform:uppercase}.loading-time b{display:block;margin-top:2px;font-size:16px;color:var(--rwph-theme-text)!important}
       .rwph-loading-body{padding:10px;display:grid;gap:10px}.rwph-dashboard{display:grid;grid-template-columns:1.25fr .75fr;gap:10px}.rwph-status-card,.rwph-side-card,.wait-note,.loading-list li,.mini{background:var(--rwph-theme-bg2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:10px;box-shadow:none!important}.rwph-status-card,.rwph-side-card{padding:10px}.status-title{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:950}.status-pill{padding:4px 7px;border:1px solid var(--rwph-theme-line2)!important;border-radius:999px;color:var(--rwph-theme-outline)!important;font-size:9px;font-weight:950;text-transform:uppercase}.rwph-live-status{margin-top:8px;padding:8px;background:var(--rwph-theme-panel)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;color:var(--rwph-theme-text)!important;font-weight:850;line-height:1.4}
       .rwph-progress-block{display:grid;gap:6px;margin-top:8px}.rwph-progress-top{display:flex;justify-content:space-between;gap:8px;color:var(--rwph-theme-soft)!important;font-size:10px;font-weight:900;text-transform:uppercase}.rwph-progress-wrap{height:12px;overflow:hidden;background:var(--rwph-theme-panel)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:999px}.rwph-progress-bar{height:100%;width:8%;background:var(--rwph-theme-outline)!important;border-radius:999px;transition:width .3s ease}.rwph-open-results-button{width:100%;min-height:42px;margin-top:9px;background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;border:1px solid var(--rwph-theme-line2)!important;border-radius:9px;font-weight:950;cursor:not-allowed}.rwph-open-results-button[data-state="ready"]{background:var(--rwph-theme-outline)!important;color:var(--rwph-theme-selected-text)!important;cursor:pointer}
@@ -9604,7 +9208,7 @@
       #rwph-member-management-panel{position:fixed!important;z-index:2147483647!important;opacity:1!important;background:radial-gradient(circle at 16% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 34%),radial-gradient(circle at 92% 10%, var(--rwph-theme-line,rgba(233,189,78,.18)), transparent 34%),linear-gradient(180deg, var(--rwph-theme-panel,#20252a), var(--rwph-theme-bg,#0d0f11))!important;color:var(--rwph-theme-text,#f4f5f6)!important;border:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;border-radius:var(--rwph-theme-radius,14px)!important;box-shadow:var(--rwph-theme-shadow,0 24px 70px rgba(0,0,0,.72))!important;overflow:hidden!important;resize:none!important;backdrop-filter:none!important;min-width:300px!important;min-height:300px!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-floating-panel-head{background:radial-gradient(circle at 14% 0%, var(--rwph-theme-line2,rgba(233,189,78,.20)), transparent 32%),linear-gradient(135deg, var(--rwph-theme-panel3,#2a3036), var(--rwph-theme-panel,#20252a))!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;min-height:40px!important;flex:0 0 auto!important;padding:5px 38px 5px 8px!important;display:flex!important;align-items:center!important;gap:6px!important;cursor:grab!important;touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;position:relative!important;top:auto!important;z-index:120!important;box-sizing:border-box!important;}
       #rwph-member-management-panel .rwph-floating-panel-head:active{cursor:grabbing!important;}
-      #rwph-member-management-panel .rwph-floating-panel-head:before{content:"";width:26px;height:26px;flex:0 0 26px;background:url("${rwphCurrentLogoIconUri()}") center/contain no-repeat!important;filter:drop-shadow(0 0 7px rgba(251,191,36,.35))!important;}
+      #rwph-member-management-panel .rwph-floating-panel-head:before{content:none!important;display:none!important;}
       #rwph-member-management-panel .rwph-mm-heading{display:flex;flex-direction:column;gap:0;line-height:1.04;min-width:0;}
       #rwph-member-management-panel .rwph-mm-heading b{font-size:12px;color:var(--rwph-theme-text,#f4f5f6)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       #rwph-member-management-panel .rwph-mm-body{height:auto!important;max-height:none!important;flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0 6px 34px!important;display:flex!important;flex-direction:column!important;gap:6px!important;background:linear-gradient(180deg, rgba(33,23,20,1), rgba(11,7,5,1))!important;scrollbar-gutter:stable;box-sizing:border-box!important;position:relative!important;}
