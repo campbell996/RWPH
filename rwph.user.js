@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.615
+// @version      1.1.616
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -430,12 +430,31 @@
       #rwph-logo-picker-panel .rwph-logo-picker-option .rwph-logo-picker-note{display:block;font-size:11px;font-weight:700;line-height:1.35;opacity:.88;}
       #rwph-logo-picker-panel .rwph-logo-current-preview{padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:12px;}
       #rwph-logo-picker-panel .rwph-logo-current-preview img{display:block;width:100%;max-width:100%;height:auto;max-height:112px;object-fit:contain;margin-top:10px;border-radius:0;background:transparent!important;}
-      @media (max-width:700px),(pointer:coarse){
-        #rw-payout-helper .rw-head .rwph-header-logo{width:min(340px, 100%)!important;height:90px!important;}
-        #rwph-payment-helper-title .rwph-dynamic-logo-icon,
-        #rwph-member-management-panel .rwph-panel-head-logo,
-        .rwph-floating-panel-head .rwph-dynamic-logo-icon,
-        .rwph-panel-title .rwph-dynamic-logo-icon{height:82px!important;}
+      @media (max-width:760px),(pointer:coarse){
+        /* Keep the selected logo large in a 63px-high header. Position its
+           90px art without letting the image enlarge the header's flex row. */
+        #rw-payout-helper .rw-head .rwph-header-logo,
+        #rw-pay-all-panel .rw-pay-all-head .rw-pay-all-logo,
+        .rw-pay-all-panel .rw-pay-all-head .rw-pay-all-logo,
+        #rwph-xanax-send-status #rwph-payment-helper-title .rwph-payment-helper-logo,
+        #rwph-member-management-panel .rwph-floating-panel-head .rwph-mm-panel-logo,
+        .rwph-member-management-panel .rwph-floating-panel-head .rwph-mm-panel-logo,
+        #rwph-licence-info-panel .rwph-panel-head img.rwph-dynamic-logo-icon,
+        #rwph-default-setup-panel .rwph-panel-head .rwph-panel-title img.rwph-dynamic-logo-icon,
+        #rwph-default-setup-controller .rwph-panel-head .rwph-panel-title img.rwph-dynamic-logo-icon,
+        body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head img.rw-pay-all-logo,
+        body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head img.rw-pay-all-logo,
+        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title img.rwph-payment-helper-logo,
+        .rwph-floating-panel .rwph-floating-panel-head img.rwph-dynamic-logo-icon,
+        .rwph-floating-panel .rwph-panel-head img.rwph-dynamic-logo-icon,
+        #rwph-saved-reports-panel .rwph-saved-reports-head img.rwph-dynamic-logo-icon{
+          position:absolute!important;top:1px!important;left:50%!important;
+          transform:translateX(-50%)!important;
+          display:block!important;width:min(340px,calc(100% - 90px))!important;
+          max-width:calc(100% - 90px)!important;height:90px!important;
+          object-fit:contain!important;pointer-events:none!important;
+          flex:none!important;z-index:2!important;margin:0!important;
+        }
         #rwph-logo-picker-panel .rwph-logo-picker-options{grid-template-columns:minmax(0,1fr)!important;}
         #rw-payout-helper .rw-layout-theme-action-row > button{flex:1 1 100%!important;}
       }
@@ -4273,10 +4292,17 @@
       body :is(.rw-resize-handle,.rwph-results-resize-handle){width:20px!important;height:20px!important;background:transparent!important;box-shadow:none!important;opacity:.95!important;border-color:var(--rwph-theme-outline)!important;}
 
       @media(max-width:760px),(pointer:coarse){
-        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{min-height:126px!important;padding:7px 40px 6px!important;}
+        body .rwph-secondary-panel-v1529>.rwph-secondary-head-v1529,body .rwph-secondary-panel-v1529 #rwph-payment-helper-title,body .rwph-secondary-panel-v1529 .rw-pay-all-head{height:63px!important;min-height:63px!important;max-height:63px!important;padding:0 44px!important;gap:0!important;overflow:visible!important;}
+        body #rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head,body .rw-pay-all-panel.rwph-secondary-panel-v1529 .rw-pay-all-head{overflow:visible!important;}
+        body #rwph-xanax-send-status.rwph-secondary-panel-v1529 #rwph-payment-helper-title{height:63px!important;min-height:63px!important;max-height:63px!important;padding:0 44px!important;gap:0!important;overflow:visible!important;}
         body .rwph-secondary-panel-v1529>.rw-resize-handle,body .rwph-results-resize-handle{width:30px!important;height:30px!important;}
         body .rwph-calculation-settings-panel.rwph-secondary-panel-v1529 .rw-row{grid-template-columns:1fr!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529{width:calc(100vw - 12px)!important;min-width:240px!important;min-height:300px!important;}
+        body .rwph-secondary-panel-v1529>.rwph-secondary-body-v1529,
+        body .rwph-secondary-panel-v1529>.rwph-floating-panel-body,
+        body .rwph-secondary-panel-v1529>.rwph-saved-reports-body,
+        body .rwph-secondary-panel-v1529>.rw-pay-all-scroll,
+        body .rwph-secondary-panel-v1529>.rwph-xanax-scroll{padding-top:30px!important;}
         body #rwph-xanax-send-status.rwph-secondary-panel-v1529 .rwph-xanax-actions{grid-template-columns:1fr!important;}
       }
     `;
@@ -5362,7 +5388,7 @@
         #rwph-licence-info-panel .rwph-licence-note { font-size:12px;line-height:1.45;color:#c7e8ff;margin:4px 0 8px; }
         #rwph-licence-info-panel .rwph-licence-actions { display:flex;justify-content:flex-end;gap:8px;margin-top:12px; }
         #rwph-licence-info-panel #rwph-licence-info-close { position:absolute;right:10px;top:10px;min-width:42px;width:42px;height:42px;font-size:18px;padding:0;z-index:50;display:grid;place-items:center; }
-        @media (max-width:520px){ #rwph-licence-info-panel .rwph-licence-status-grid{grid-template-columns:1fr;} #rwph-licence-info-panel .rwph-panel-head{min-height:122px;padding:12px 48px 10px 48px;} #rwph-licence-info-panel .rwph-panel-title img{width:min(300px,82vw);height:78px;} }
+        @media (max-width:520px){ #rwph-licence-info-panel .rwph-licence-status-grid{grid-template-columns:1fr;} #rwph-licence-info-panel .rwph-panel-head{height:63px;min-height:63px;max-height:63px;padding:0 44px;} #rwph-licence-info-panel .rwph-panel-title img{width:min(300px,82vw);height:78px;} }
       </style>
       <div class="rwph-panel-head">
         <div class="rwph-panel-title"><img class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH"><span>Your Licence Info</span></div>
@@ -15155,33 +15181,53 @@
         .rwph-api-key-inline>.rwph-api-key-save{padding-left:10px!important;padding-right:10px!important;}
       }
       @media (max-width:760px),(pointer:coarse){
+          /* Previously 126px on phone/PDA. Do not change the desktop header. */
           #rw-payout-helper .rw-head,
+          #rw-results-panel .rw-head,
+          .rw-results-panel .rw-head,
           #rw-pay-all-panel .rw-pay-all-head,
           .rw-pay-all-panel .rw-pay-all-head,
           #rwph-xanax-send-status #rwph-payment-helper-title,
           #rwph-member-management-panel .rwph-floating-panel-head,
           .rwph-member-management-panel .rwph-floating-panel-head,
+          #rwph-saved-reports-panel .rwph-saved-reports-head,
           #rwph-licence-info-panel .rwph-panel-head,
           #rwph-logo-picker-panel .rwph-panel-head,
           .rwph-layout-theme-panel .rwph-panel-head,
           .rwph-floating-panel .rwph-floating-panel-head,
-          .rwph-floating-panel .rwph-panel-head{
-            min-height:126px!important;
-            padding:10px 44px 9px 44px!important;
-            gap:4px!important;
+          .rwph-floating-panel .rwph-panel-head,
+          .rwph-results-loading-panel .rwph-results-loading-head,
+          .rwph-results-loading-panel .rwph-results-loading-panel-head{
+            position:relative!important;flex:0 0 63px!important;
+            height:63px!important;min-height:63px!important;max-height:63px!important;
+            box-sizing:border-box!important;padding:0 44px!important;gap:0!important;
+            overflow:visible!important;
           }
-          #rw-payout-helper .rw-head .rwph-panel-main-title,
+          #rw-payout-helper > .rw-body{padding-top:30px!important;}
+          /* The original text remains in the DOM for accessibility, but a
+             logo-only mobile banner gives the large artwork its own space. */
           #rw-pay-all-panel .rw-pay-all-title,
           .rw-pay-all-panel .rw-pay-all-title,
           #rwph-xanax-send-status .rwph-payment-helper-title-text,
-          #rwph-licence-info-panel .rwph-panel-title span,
-          #rwph-member-management-panel .rwph-mm-heading b,
-          .rwph-member-management-panel .rwph-mm-heading b,
-          .rwph-layout-theme-panel .rwph-panel-head span,
+          #rwph-member-management-panel .rwph-mm-heading :is(b,.rwph-mm-sub),
+          .rwph-member-management-panel .rwph-mm-heading :is(b,.rwph-mm-sub),
+          #rwph-saved-reports-panel .rwph-saved-reports-title :is(b,span),
+          .rwph-floating-panel .rwph-panel-title > :is(b,span,.rw-muted),
+          .rwph-calculation-settings-panel .rwph-panel-title > span,
           .rwph-floating-panel .rwph-floating-panel-head > span,
           .rwph-floating-panel .rwph-panel-head > span{
-            font-size:15px!important;
-            line-height:1.12!important;
+            position:absolute!important;width:1px!important;height:1px!important;
+            padding:0!important;margin:-1px!important;overflow:hidden!important;
+            clip-path:inset(50%)!important;white-space:nowrap!important;
+          }
+          /* Keep close/fit controls within the new mobile drag handle. */
+          #rw-payout-helper .rw-head #rw-close,
+          #rw-pay-all-panel .rw-pay-all-close,
+          .rw-pay-all-panel .rw-pay-all-close,
+          #rwph-xanax-send-status #rwph-close-helper,
+          .rwph-floating-panel .rwph-panel-head > button,
+          .rwph-floating-panel .rwph-floating-panel-head > button{
+            top:14px!important;
           }
         }
       `;
@@ -15227,9 +15273,8 @@
         }
         @media (max-width:760px),(pointer:coarse){
           #rwph-xanax-send-status #rwph-payment-helper-title{
-            min-height:126px!important;
-            padding:10px 38px 8px 38px!important;
-            gap:4px!important;
+            height:63px!important;min-height:63px!important;max-height:63px!important;
+            padding:0 44px!important;gap:0!important;overflow:visible!important;
           }
           #rwph-xanax-send-status #rwph-payment-helper-title .rwph-payment-helper-title-text{
             font-size:16px!important;
@@ -15388,7 +15433,7 @@
         #rwph-default-setup-panel :where(div,span,b,li,label) { overflow-wrap:anywhere; }
         @media (max-width:480px),(pointer:coarse){
           #rwph-default-setup-controller { max-width:calc(100vw - 12px)!important; max-height:calc(100vh - 12px)!important; }
-          #rwph-default-setup-controller .rwph-panel-head { padding:8px 10px!important; }
+          #rwph-default-setup-controller .rwph-panel-head { padding:0 44px!important; }
           #rwph-default-setup-controller .rwph-floating-panel-body { padding:9px!important; gap:7px!important; }
           #rwph-default-setup-panel { max-width:calc(100vw - 12px)!important; max-height:calc(100vh - 12px)!important; }
           #rwph-default-setup-panel .rwph-floating-panel-body { padding:10px!important; }
