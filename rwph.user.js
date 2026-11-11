@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.624
+// @version      1.1.625
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1348,8 +1348,8 @@
       return null;
     }
 
-    const createIfMissing = options?.createIfMissing === true;
-    const extendIfCreated = options?.extend === true || mode === "extend";
+    // New codes require a verified Faction/Alliance quote from the wizard.
+    // A missing payment cannot be recreated from the old /start endpoint.
 
     try {
       const result = await apiPost("/api/paywall/pending", { userKey: key });
@@ -1365,25 +1365,8 @@
       GM_setValue(XANAX_PAYMENT_HELPER_STORAGE_KEY, "");
       updatePendingPaymentUi();
 
-      // v1.1.486: A just-opened payment helper may arrive after the previous challenge
-      // expired/was replaced. Repair that fresh handoff instead of making the user go
-      // back to the RWPH panel and click Buy/Extend again.
-      if (createIfMissing) {
-        const restarted = await apiPost("/api/paywall/start", { userKey: key, extend: extendIfCreated });
-        if (restarted?.code) {
-          savePendingPayment(restarted);
-          saveXanaxPaymentHelper(restarted.code);
-          updatePendingPaymentUi();
-          startAutoPaymentCheck(key, extendIfCreated ? "extend" : mode);
-          return { ...restarted, rwphRecoveredPayment: true };
-        }
-
-        if (restarted?.alreadyPaid && restarted?.token) {
-          GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, restarted.token);
-          return { ...restarted, rwphRecoveredPayment: true };
-        }
-      }
-
+      // Retired legacy /start auto-repair: let the buyer confirm the current
+      // licence type, faction list, duration and server quote in the wizard.
       return null;
     } catch (e) {
       // Do not trust a browser-only payment cache when the database lookup fails.
@@ -2641,7 +2624,8 @@
     { id: "rw-pay-all-panel-complete", panelId: "rw-pay-all-panel", page: "complete", label: "Ranked War Payouts — Complete", width: 490, height: 540, className: "rwph-floating-panel rw-pay-all-panel" },
     { id: "rwph-xanax-send-status-start", panelId: "rwph-xanax-send-status", page: "start", label: "Licence Payment Wizard — Start", width: 440, height: 470, className: "rwph-floating-panel" },
     { id: "rwph-xanax-send-status-licence", panelId: "rwph-xanax-send-status", page: "licence", label: "Licence Payment Wizard — Licence Type", width: 460, height: 610, className: "rwph-floating-panel" },
-    { id: "rwph-xanax-send-status-amount", panelId: "rwph-xanax-send-status", page: "amount", label: "Licence Payment Wizard — Xanax Amount", width: 440, height: 485, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-alliance", panelId: "rwph-xanax-send-status", page: "alliance", label: "Licence Payment Wizard — Alliance Factions", width: 480, height: 620, className: "rwph-floating-panel" },
+    { id: "rwph-xanax-send-status-amount", panelId: "rwph-xanax-send-status", page: "amount", label: "Licence Payment Wizard — Duration & Cost", width: 440, height: 485, className: "rwph-floating-panel" },
     { id: "rwph-xanax-send-status-receiver", panelId: "rwph-xanax-send-status", page: "receiver", label: "Licence Payment Wizard — Receiver", width: 440, height: 480, className: "rwph-floating-panel" },
     { id: "rwph-xanax-send-status-code", panelId: "rwph-xanax-send-status", page: "code", label: "Licence Payment Wizard — Message Code", width: 440, height: 485, className: "rwph-floating-panel" },
     { id: "rwph-xanax-send-status-send-amount", panelId: "rwph-xanax-send-status", page: "send-amount", label: "Licence Payment Wizard — Prefill Xanax", width: 440, height: 485, className: "rwph-floating-panel" },
@@ -3150,9 +3134,9 @@
       const state = panel.__rwphPaymentWizardState;
       if (state) {
         state.page = target.page;
-        if (target.page === 'licence') { state.mode = 'faction'; state.ownTornId = '1000001'; state.selected = ['1000001','1000002']; state.members = [
-          { id: '1000001', name: 'Example Leader' }, { id: '1000002', name: 'Example Member' }
-        ]; }
+        if (target.page === 'licence') { state.mode = 'faction'; state.ownFactionId = '123'; state.ownerFactionName = 'Example Faction'; state.selectedFactions = []; }
+        if (target.page === 'alliance') { state.mode = 'alliance'; state.ownFactionId = '123'; state.ownerFactionName = 'Example Faction'; state.selectedFactions = [{ id: '456', name: 'Example Ally' }]; state.factionResults = [{ id: '789', name: 'Example Search Result' }]; state.durationDays = 30; }
+        if (target.page === 'amount') { state.mode = 'alliance'; state.ownFactionId = '123'; state.ownerFactionName = 'Example Faction'; state.selectedFactions = [{ id: '456', name: 'Example Ally' }]; state.durationDays = 30; }
         rwphRenderPaymentHelperWizardV1568(panel);
       }
       rwphSetWizardLayoutPageV1600(panel, target.page, { setupPreview: true });
@@ -5264,16 +5248,27 @@
     return result;
   }
 
-  function renderAdminLicenses(licenses) {
-    if (!licenses || !licenses.length) {
+  function renderAdminLicenses(licenses, groupLicences = []) {
+    if ((!licenses || !licenses.length) && (!groupLicences || !groupLicences.length)) {
       return `<div class="rw-muted">No licences found.</div>`;
     }
 
-    const sorted = [...licenses].sort((a, b) => Number(b.expiresAt || 0) - Number(a.expiresAt || 0));
+    const sorted = [...(licenses || [])].sort((a, b) => Number(b.expiresAt || 0) - Number(a.expiresAt || 0));
 
     // One clearly separated member card per backend licence record; the existing
     // Fill action continues to populate the same Admin licence form.
     return `
+      ${groupLicences.length ? `<div class="rw-admin-list" role="list" aria-label="Faction and alliance licences">
+        <div class="rwph-xanax-wizard-heading">Faction / Alliance Licence Entitlements (${groupLicences.length})</div>
+        ${[...groupLicences].sort((a,b)=>String(a.ownerFactionId).localeCompare(String(b.ownerFactionId))).map(group=>`
+          <article class="rw-admin-license-card" role="listitem">
+            <div class="rw-admin-license-name">${esc(group.mode === 'alliance' ? 'Alliance Licence' : 'Faction Licence')} — Faction [${esc(group.factionId)}]</div>
+            <div class="rw-admin-license-id">Purchasing faction: ${esc(group.ownerFactionId)} · Buyer: ${esc(group.buyerTornId)}</div>
+            <div class="rw-admin-license-details">
+              <div class="rw-admin-license-detail"><div class="rw-admin-license-label">Remaining</div><div class="rw-admin-license-value">${esc(formatLicenseDaysLeft(group.expiresAt))}</div></div>
+              <div class="rw-admin-license-detail"><div class="rw-admin-license-label">Expires</div><div class="rw-admin-license-value">${esc(formatUnixDate(group.expiresAt))}</div></div>
+            </div>
+          </article>`).join('')}</div>` : ''}
       <div class="rw-admin-list" role="list" aria-label="Member licences">
         ${sorted.map((license) => {
           const tornId = String(license.tornId || "").trim();
@@ -5502,7 +5497,7 @@
           <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Base licence</div><div class="rwph-stat-value">10 days per Xanax</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 2 Xanax / 10 days; Alliance: 30-day blocks with added-faction discounts</div></div>
         </div>
       </div>
     `;
@@ -5624,7 +5619,7 @@
     if (status) status.textContent = "Loading licences from server...";
     if (results) results.innerHTML = "";
     const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
-    if (results) results.innerHTML = renderAdminLicenses(result.licenses || []);
+    if (results) results.innerHTML = renderAdminLicenses(result.licenses || [], result.groupLicences || []);
     rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
     return result;
   }
@@ -11738,24 +11733,27 @@
     return Math.min(9999, Math.max(1, parsed));
   }
 
-  function rwphIncludePurchaserInFactionSelectionV1570(state) {
-    const ownId = String(state?.ownTornId || '');
-    if (state?.mode === 'faction' && /^\d+$/.test(ownId) && !state.selected.includes(ownId)) state.selected = [ownId, ...state.selected];
+  // v1.1.625: server prices are authoritative; local quote is display-only.
+  function rwphGroupLicenceQuoteV1625(state) {
+    const mode = state.mode === 'alliance' ? 'alliance' : 'faction';
+    const step = mode === 'alliance' ? 30 : 10;
+    const days = Math.max(step, Math.min(3600, Math.ceil(Number(state.durationDays || step) / step) * step));
+    const added = mode === 'alliance' ? [...new Set((state.selectedFactions || []).map(f => String(f.id)))].length : 0;
+    const blocks = days / step;
+    const gross = mode === 'alliance' ? 6 * (1 + added) * blocks : 2 * blocks;
+    const discount = mode === 'alliance' ? Math.min(6, added) * blocks : 0;
+    return { days, step, added, totalFactions: 1 + added, gross, discount, amount: gross - discount };
   }
-
-  // The purchaser is always part of a faction licence; at least one more member is required.
-  function rwphFactionHasAdditionalMemberV1586(state) {
-    const ownId = String(state?.ownTornId || '');
-    return !!ownId && [...new Set((state?.selected || []).map(String))].some(id => id && id !== ownId);
-  }
+  function rwphIncludePurchaserInFactionSelectionV1570(_state) { /* Faction licences now follow faction IDs, not selected user IDs. */ }
 
   function rwphPaymentHelperWizardPageHtmlV1568(state) {
     rwphIncludePurchaserInFactionSelectionV1570(state);
     const page = String(state?.page || "start");
     const qty = rwphClampXanaxAmountV1568(state?.amount || 1);
     const daysPerItem = Math.max(1, Math.floor(Number(state?.daysPerItem || 10)));
-    const billable = state.mode === 'faction' ? Math.max(1, state.selected.length - Math.floor(state.selected.length / 3)) : 1;
-    const totalDays = Math.floor(qty / billable) * daysPerItem;
+    const quote = rwphGroupLicenceQuoteV1625(state);
+    const billable = quote.amount;
+    const totalDays = quote.days;
     const code = String(state?.code || "");
     const message = String(state?.message || "");
     const errorClass = state?.isError ? " rwph-xanax-helper-error" : "";
@@ -11766,32 +11764,41 @@
       </div>`;
 
     if (page === "licence") return `
-      <div class="rwph-xanax-wizard-page"><div class="rwph-xanax-wizard-progress">Select licence type</div>
-      <div class="rwph-xanax-wizard-card"><div class="rwph-xanax-wizard-heading">Who is this licence for?</div>
-        <label><input type="radio" name="rwph-licence-mode" value="solo" ${state.mode !== 'faction' ? 'checked' : ''}> Solo licence — 1 Xanax per 10 days</label>
-        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> Faction licence — every third member free</label>
-        ${state.mode === 'faction' ? `<div class="rwph-xanax-wizard-copy">Select other faction members below. Your own account is always included as one selected member and cannot be removed. Every third member is free.</div>
-        ${state.renewalCount ? `<div class="rwph-xanax-wizard-copy"><b>Renew existing licence:</b> ${state.renewalCount} previously selected members loaded. Leave these ticked to extend the same group, or add/remove members below. Removed members keep their existing paid time but receive no additional time.</div>` : ''}
-        <button type="button" id="rwph-load-faction-members">Load faction members with API access</button>
-        <button type="button" id="rwph-restore-faction-renewal" ${state.renewalCount ? '' : 'disabled'}>Restore existing licensed members</button>
-        <div style="max-height:190px;overflow-y:auto">${(state.members || []).map(m => `<label style="display:block"><input type="checkbox" class="rwph-faction-member-choice" value="${esc(m.id)}" ${state.selected.includes(String(m.id)) ? 'checked' : ''} ${String(m.id) === String(state.ownTornId) ? 'disabled' : ''}> ${esc(m.name)} [${esc(m.id)}]</label>`).join('') || 'Load members to choose a roster.'}</div>
-        <div>${state.selected.length} members · ${Math.max(1,state.selected.length-Math.floor(state.selected.length/3))} paid · ${Math.floor(state.selected.length/3)} free per 10-day block</div>` : ''}
-      </div>${state.mode === 'faction' && !rwphFactionHasAdditionalMemberV1586(state) ? '<div class="rwph-xanax-wizard-copy" role="status">Select at least one other faction member alongside yourself to continue.</div>' : ''}${nav('Confirm licence type', true, state.mode === 'faction' && !rwphFactionHasAdditionalMemberV1586(state) ? 'rwph-faction-confirm-unready' : 'rwph-helper-expected-action')}</div>`;
+      <div class="rwph-xanax-wizard-page"><div class="rwph-xanax-wizard-progress">Step 1 · Licence type</div>
+      <div class="rwph-xanax-wizard-card"><div class="rwph-xanax-wizard-heading">Choose who your licence covers</div>
+        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> <b>Faction Licence</b> — 2 Xanax every 10 days, all members of your faction with Faction API Access</label>
+        <label><input type="radio" name="rwph-licence-mode" value="alliance" ${state.mode === 'alliance' ? 'checked' : ''}> <b>Alliance Licence</b> — your faction plus chosen additional factions; minimum 30 days</label>
+        <div class="rwph-xanax-wizard-copy">Any member of a covered faction with Faction API Access can use RWPH. Members of the purchasing faction with that access can purchase or extend the licence. Your faction is included automatically.</div>
+        ${state.mode === 'alliance' ? '<div class="rwph-xanax-days-result">Alliance discount: 1 Xanax per added faction for each 30 days, up to 6 Xanax discounted per 30 days.</div>' : ''}
+      </div>${nav(state.mode === 'alliance' ? 'Manage Alliance Factions' : 'Choose Licence Duration')}</div>`;
+
+    if (page === "alliance") return `
+      <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="alliance">
+        <div class="rwph-xanax-wizard-progress">Alliance Factions Panel</div>
+        <div class="rwph-xanax-wizard-card">
+          <div class="rwph-xanax-wizard-heading">Find and add Torn factions</div>
+          <div class="rwph-xanax-wizard-copy">Search a faction name or ID. Your own faction is always included. The selected factions will receive the same licence duration.</div>
+          <div class="rwph-alliance-search-row"><input id="rwph-alliance-search-input" type="search" maxlength="70" placeholder="Faction name or ID" value="${esc(state.factionSearch || '')}"><button id="rwph-alliance-search-button" type="button">Search Torn</button></div>
+          ${state.searchMessage ? `<div class="rwph-xanax-wizard-copy" role="status">${esc(state.searchMessage)}</div>` : ''}
+          <div class="rwph-alliance-faction-results">${(state.factionResults || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name)} [${esc(f.id)}]</span><button type="button" data-rwph-alliance-add="${esc(f.id)}" ${state.selectedFactions?.some(x=>String(x.id)===String(f.id)) ? 'disabled' : ''}>Add</button></div>`).join('')}</div>
+          <div class="rwph-xanax-wizard-heading">Alliance licence list (${quote.totalFactions} factions)</div>
+          <div class="rwph-alliance-faction-row"><b>${esc(state.ownerFactionName || 'Your faction')} [${esc(state.ownFactionId || 'your faction')}]</b><span>Included</span></div>
+          ${(state.selectedFactions || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name || 'Faction')} [${esc(f.id)}]</span><button type="button" data-rwph-alliance-remove="${esc(f.id)}">Remove</button></div>`).join('')}
+          <div class="rwph-xanax-days-result">${quote.added} added factions · ${quote.totalFactions} factions total · Discount ${Math.min(6,quote.added)} Xanax per 30-day block</div>
+        </div>${nav('Choose Licence Duration')}</div>`;
 
     if (page === "amount") return `
       <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="amount">
-        <div class="rwph-xanax-wizard-progress">Step 2 of 6 · Choose payment amount</div>
+        <div class="rwph-xanax-wizard-progress">Step 2 · Choose licence duration and confirm price</div>
         <div class="rwph-xanax-wizard-card rwph-helper-expected-action">
-          <div class="rwph-xanax-wizard-heading">How many Xanax do you want to pay?</div>
-          <div class="rwph-xanax-wizard-copy">Current licence rate: <b>${billable} Xanax per ${daysPerItem} days</b> for ${state.mode === 'faction' ? state.selected.length + ' selected faction members' : 'a solo licence'}.</div>
-          <label class="rwph-xanax-amount-label">Xanax amount
-            <input id="rwph-payment-helper-xanax-count" type="number" min="${billable}" max="9999" step="1" inputmode="numeric" value="${qty}">
+          <div class="rwph-xanax-wizard-heading">How many days of licence?</div>
+          <div class="rwph-xanax-wizard-copy">${state.mode === 'alliance' ? 'Alliance Licence — minimum 30 days, 30-day increments' : 'Faction Licence — 10-day increments'}</div>
+          <label class="rwph-xanax-amount-label">Licence duration (days)
+            <input id="rwph-payment-helper-duration-days" type="number" min="${quote.step}" max="3600" step="${quote.step}" inputmode="numeric" value="${quote.days}">
           </label>
-          <div class="rwph-xanax-days-result"><b>${qty} Xanax</b> / ${billable} Xanax per 10-day block = <b>${totalDays} licence days</b></div>
-          <div class="rw-muted">RWPH uses this amount later when you reach the Prefill Xanax Amount step.</div>
-        </div>
-        ${nav("Prefill Name / ID")}
-      </div>`;
+          <div class="rwph-xanax-days-result">${state.mode === 'alliance' ? `${quote.totalFactions} factions × 6 Xanax × ${quote.days / 30} block(s) = <b>${quote.gross} Xanax</b><br>Discount: <b>-${quote.discount} Xanax</b><br>` : ''}<b>${quote.amount} Xanax</b> for <b>${quote.days} days</b></div>
+          <div class="rw-muted">The Cloudflare backend validates the licence type, faction list, duration and total price before issuing a payment code. You must send the exact quoted amount.</div>
+        </div>${nav('Confirm Price & Create Payment Code')}</div>`;
 
     if (page === "receiver") return `
       <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="receiver">
@@ -11839,7 +11846,7 @@
             <div><span>Receiver</span><b>${esc(PAYMENT_RECEIVER_TEXT)}</b></div>
             <div><span>Message code</span><b class="rwph-xanax-code">${esc(code)}</b></div>
             <div><span>Amount</span><b>${qty} Xanax</b></div>
-            <div><span>Licence type</span><b>${state.mode === 'faction' ? `Faction (${state.selected.length} members, ${billable} paid)` : 'Solo'}</b></div><div><span>Licence time</span><b>${totalDays} days</b></div>
+            <div><span>Licence type</span><b>${state.mode === 'alliance' ? `Alliance (${quote.totalFactions} factions)` : 'Faction (entire eligible faction)'}</b></div><div><span>Licence time</span><b>${totalDays} days</b></div>
           </div>
           <div class="rwph-xanax-final-warning"><b>Final action is manual:</b> review Torn's visible fields, then press Torn's Send/Confirm control yourself. RWPH is already checking automatically for the payment.</div>
         </div>
@@ -11907,6 +11914,13 @@
         #rwph-xanax-send-status .rwph-xanax-step-done{border-color:#22c55e!important;background:color-mix(in srgb,#22c55e 26%,var(--rwph-theme-panel2))!important;}
         #rwph-xanax-send-status .rwph-helper-expected-action{outline:3px solid var(--rwph-theme-outline,#23c4d8)!important;outline-offset:2px!important;box-shadow:0 0 0 2px var(--rwph-theme-bg,#06131a),0 0 20px color-mix(in srgb,var(--rwph-theme-outline,#23c4d8) 78%,transparent)!important;animation:rwphExpectedActionPulseV1568 1.15s ease-in-out infinite!important;}
         #rwph-xanax-send-status .rwph-faction-confirm-unready{opacity:.48!important;filter:grayscale(.45);cursor:not-allowed!important;box-shadow:none!important;animation:none!important;}
+        #rwph-xanax-send-status .rwph-alliance-search-row{display:flex;gap:6px;flex-wrap:wrap;}
+        #rwph-xanax-send-status .rwph-alliance-search-row>input{min-width:100px;flex:1 1 150px;}
+        #rwph-xanax-send-status .rwph-alliance-search-row>button{flex:0 1 auto;width:auto!important;}
+        #rwph-xanax-send-status .rwph-alliance-faction-results{display:grid;gap:5px;max-height:185px;overflow-y:auto;}
+        #rwph-xanax-send-status .rwph-alliance-faction-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px;border:1px solid var(--rwph-theme-line);border-radius:8px;overflow-wrap:anywhere;}
+        #rwph-xanax-send-status .rwph-alliance-faction-row>span,#rwph-xanax-send-status .rwph-alliance-faction-row>b{flex:1;min-width:0;}
+        #rwph-xanax-send-status .rwph-alliance-faction-row>button{width:auto!important;min-width:65px!important;min-height:32px!important;flex:0 0 auto;}
         #rwph-xanax-send-status .rwph-xanax-wizard-list{margin:0;padding-left:20px;display:grid;gap:6px;}
         @media(max-width:760px),(pointer:coarse){#rwph-xanax-send-status .rwph-xanax-review-grid>div{grid-template-columns:1fr!important;}#rwph-xanax-send-status .rwph-xanax-scroll{padding:7px!important;}#rwph-xanax-send-status .rwph-xanax-wizard-card{padding:9px!important;}}
         @media(prefers-reduced-motion:reduce){#rwph-xanax-send-status .rwph-helper-expected-action{animation:none!important;}}
@@ -11924,7 +11938,7 @@
     const stage = box.querySelector("[data-rwph-payment-helper-stage]");
     if (!state || !stage) return;
     state.amount = rwphClampXanaxAmountV1568(state.amount);
-    if (state.mode === 'faction') state.amount = Math.max(state.amount, Math.max(1, state.selected.length - Math.floor(state.selected.length / 3)));
+    if (!state.code) state.amount = rwphGroupLicenceQuoteV1625(state).amount;
     stage.innerHTML = rwphPaymentHelperWizardPageHtmlV1568(state);
     rwphSetWizardLayoutPageV1600(box, state.page);
     try { box.querySelector(".rwph-xanax-scroll")?.scrollTo?.({ top: 0, behavior: "auto" }); } catch (_) {}
@@ -11937,7 +11951,8 @@
     box.dataset.rwphPaymentCode = String(code || "");
     box.__rwphPaymentWizardState = {
       page: "start",
-      mode: "solo", members: [], selected: [], billable: 1,
+      mode: "faction", selectedFactions: [], factionResults: [], factionSearch: '',
+      ownerFactionName: '', ownFactionId: '', durationDays: 10, billable: 2,
       code: String(code || ""),
       message: String(message || ""),
       isError: !!isError,
@@ -11952,51 +11967,46 @@
     return box;
   }
 
-  function rwphPaymentHelperNextPageV1568(state) {
-    const order = ["start", "licence", "amount", "receiver", "code", "send-amount", "review"];
-    const idx = Math.max(0, order.indexOf(String(state?.page || "start")));
-    return order[Math.min(order.length - 1, idx + 1)];
+  function rwphPaymentHelperPageOrderV1625(state) {
+    return state.mode === 'alliance'
+      ? ['start','licence','alliance','amount','receiver','code','send-amount','review']
+      : ['start','licence','amount','receiver','code','send-amount','review'];
   }
-
+  function rwphPaymentHelperNextPageV1568(state) {
+    const order = rwphPaymentHelperPageOrderV1625(state);
+    return order[Math.min(order.length - 1, Math.max(0, order.indexOf(state.page)) + 1)];
+  }
   function rwphPaymentHelperPreviousPageV1568(state) {
-    const order = ["start", "licence", "amount", "receiver", "code", "send-amount", "review"];
-    const idx = Math.max(0, order.indexOf(String(state?.page || "start")));
-    return order[Math.max(0, idx - 1)];
+    const order = rwphPaymentHelperPageOrderV1625(state);
+    return order[Math.max(0, Math.max(0, order.indexOf(state.page)) - 1)];
   }
 
   function rwphSetupPaymentHelperPanelClicks(code) {
     if (window.__rwphPaymentHelperClicksInstalled) return;
     window.__rwphPaymentHelperClicksInstalled = true;
 
-    document.addEventListener("input", (e) => {
-      const input = e.target?.closest?.("#rwph-payment-helper-xanax-count");
-      if (!input) return;
-      const box = input.closest("#rwph-xanax-send-status");
+    document.addEventListener('input', e => {
+      const box = e.target?.closest?.('#rwph-xanax-send-status');
       const state = box?.__rwphPaymentWizardState;
       if (!state) return;
-      state.amount = rwphClampXanaxAmountV1568(input.value);
-      const result = box.querySelector(".rwph-xanax-days-result");
-      if (result) { const billed = state.mode === 'faction' ? Math.max(1, state.billable || 1) : 1; result.innerHTML = `<b>${state.amount} Xanax</b> / ${billed} per block = <b>${Math.floor(state.amount / billed) * state.daysPerItem} licence days</b>`; }
+      if (e.target.id === 'rwph-alliance-search-input') state.factionSearch = String(e.target.value || '');
     });
-
-    document.addEventListener("change", (e) => {
-      const input = e.target?.closest?.("#rwph-payment-helper-xanax-count");
-      if (!input) return;
-      const box = input.closest("#rwph-xanax-send-status");
-      const state = box?.__rwphPaymentWizardState;
-      if (!state) return;
-      state.amount = rwphClampXanaxAmountV1568(input.value);
-      input.value = String(state.amount);
-      rwphRenderPaymentHelperWizardV1568(box);
-    });
-
     document.addEventListener('change', e => {
-      const el = e.target;
-      const box = el?.closest?.('#rwph-xanax-send-status');
+      const box = e.target?.closest?.('#rwph-xanax-send-status');
       const state = box?.__rwphPaymentWizardState;
       if (!state) return;
-      if (el.name === 'rwph-licence-mode') { state.userTouchedLicenceChoice = true; state.mode = el.value; if (el.value === 'faction' && !state.selected.length) state.selected = [...(state.renewalMemberIds || [])]; rwphIncludePurchaserInFactionSelectionV1570(state); rwphRenderPaymentHelperWizardV1568(box); }
-      if (el.classList?.contains('rwph-faction-member-choice')) { state.userTouchedMembers = true; state.selected = [...box.querySelectorAll('.rwph-faction-member-choice:checked')].map(el => el.value); rwphIncludePurchaserInFactionSelectionV1570(state); rwphRenderPaymentHelperWizardV1568(box); }
+      if (e.target.name === 'rwph-licence-mode') {
+        state.mode = e.target.value === 'alliance' ? 'alliance' : 'faction';
+        state.durationDays = rwphGroupLicenceQuoteV1625(state).days;
+        state.code = ''; state.amount = rwphGroupLicenceQuoteV1625(state).amount;
+        rwphRenderPaymentHelperWizardV1568(box);
+      }
+      if (e.target.id === 'rwph-payment-helper-duration-days') {
+        state.durationDays = Math.max(0, Math.floor(Number(e.target.value || 0)));
+        state.durationDays = rwphGroupLicenceQuoteV1625(state).days;
+        state.code = ''; state.amount = rwphGroupLicenceQuoteV1625(state).amount;
+        rwphRenderPaymentHelperWizardV1568(box);
+      }
     });
     document.addEventListener("click", async (e) => {
       const target = e.target?.closest?.("#rwph-xanax-send-status button");
@@ -12013,17 +12023,44 @@
       }
       if (!state) return;
 
-      if (target.id === 'rwph-restore-faction-renewal') {
+      if (target.id === 'rwph-alliance-search-button') {
         e.preventDefault();
-        state.selected = [...(state.renewalMemberIds || [])];
-        rwphIncludePurchaserInFactionSelectionV1570(state);
+        const input = box.querySelector('#rwph-alliance-search-input');
+        state.factionSearch = String(input?.value || state.factionSearch || '').trim();
+        if (!state.factionSearch) { rwphShowToast('Enter a faction name or ID.', 'warning', 'Alliance Factions'); return; }
+        if (state.setupPreview) {
+          state.factionResults = [{ id: '1000003', name: 'Example Alliance Faction' }];
+          state.searchMessage = 'Admin Setup preview — example search results.';
+        } else {
+          target.disabled = true;
+          try {
+            const result = await apiPost('/api/paywall/alliance-search', { userKey: getPaymentUserKey(), query: state.factionSearch });
+            state.factionResults = result.factions || [];
+            state.ownFactionId = String(result.ownFactionId || state.ownFactionId || '');
+            state.searchMessage = state.factionResults.length ? `${state.factionResults.length} factions found.` : 'No matching factions found.';
+          } catch (err) { state.searchMessage = String(err?.message || err); rwphShowToast(state.searchMessage, 'error', 'Alliance Factions'); }
+          finally { target.disabled = false; }
+        }
         rwphRenderPaymentHelperWizardV1568(box);
         return;
       }
-      if (target.id === 'rwph-load-faction-members') {
+      if (target.hasAttribute?.('data-rwph-alliance-add')) {
         e.preventDefault();
-        try { const result = await apiPost('/api/paywall/faction-members', { userKey: getPaymentUserKey() }); state.members = result.members || []; state.selected = state.selected.filter(id => state.members.some(m => String(m.id) === String(id))); state.ownTornId = String(result.ownTornId || state.ownTornId || ''); rwphIncludePurchaserInFactionSelectionV1570(state); rwphRenderPaymentHelperWizardV1568(box); }
-        catch (err) { rwphShowToast(String(err?.message || err), 'error', 'Faction members'); }
+        const id = target.getAttribute('data-rwph-alliance-add');
+        const faction = (state.factionResults || []).find(f => String(f.id) === id);
+        if (faction && String(id) !== String(state.ownFactionId) && !(state.selectedFactions || []).some(f => String(f.id) === id)) {
+          state.selectedFactions.push({ id: String(faction.id), name: faction.name });
+          state.code = '';
+        }
+        rwphRenderPaymentHelperWizardV1568(box);
+        return;
+      }
+      if (target.hasAttribute?.('data-rwph-alliance-remove')) {
+        e.preventDefault();
+        const id = target.getAttribute('data-rwph-alliance-remove');
+        state.selectedFactions = (state.selectedFactions || []).filter(f => String(f.id) !== String(id));
+        state.code = '';
+        rwphRenderPaymentHelperWizardV1568(box);
         return;
       }
       if (target.id === "rwph-payment-helper-back") {
@@ -12035,59 +12072,47 @@
 
       if (target.id === "rwph-payment-helper-next") {
         e.preventDefault();
-        if (state.page === 'licence') {
-          // Do not allow two rapid confirms to create duplicate transactions or
-          // advance the wizard twice while /start and /configure are in flight.
+        if (state.page === 'amount') {
           if (state.confirming) return;
-          rwphIncludePurchaserInFactionSelectionV1570(state);
-          if (state.mode === 'faction' && !rwphFactionHasAdditionalMemberV1586(state)) { rwphShowToast('Select at least one other faction member alongside yourself before confirming a faction licence.', 'warning', 'Faction licence'); return; }
           if (!state.setupPreview) {
             state.confirming = true;
             const previousLabel = target.textContent;
             target.disabled = true;
-            target.textContent = 'Confirming licence...';
+            target.textContent = 'Verifying factions and price...';
             try {
-              // Atomic server confirmation: issue/reuse one database-backed code
-              // and save its Solo/Faction selection together. There is no window
-              // where /configure can reject a newly created payment as missing.
-              // This endpoint must be deployed with the matching RWPH Worker.
+              const quote = rwphGroupLicenceQuoteV1625(state);
               const result = await apiPost('/api/paywall/confirm-selection', {
-                userKey: getPaymentUserKey(),
-                extend: state.purchaseAction === 'extend',
-                mode: state.mode,
-                memberIds: state.mode === 'faction' ? state.selected : [],
+                userKey: getPaymentUserKey(), extend: state.purchaseAction === 'extend',
+                mode: state.mode, durationDays: quote.days,
+                factionIds: state.mode === 'alliance' ? state.selectedFactions.map(f=>String(f.id)) : [],
               });
-              if (result?.alreadyPaid) throw new Error('Your licence is already active. Choose Extend Licence to add time.');
-              if (!result?.code || !result?.pending) throw new Error('The server did not confirm a pending payment code. Please try again.');
+              if (!result?.code || !result?.pending || Number(result.expectedQty) !== quote.amount)
+                throw new Error('Backend did not confirm the quoted price. Please review the faction list and try again.');
               savePendingPayment(result);
-              if (!saveXanaxPaymentHelper(result.code)) throw new Error('Could not save the payment code on this device. Please try again.');
+              if (!saveXanaxPaymentHelper(result.code)) throw new Error('Could not save the payment code on this device.');
               state.code = String(result.code);
-              state.daysPerItem = Math.max(1, Math.floor(Number(result.daysPerItem || state.daysPerItem || 10)));
+              state.amount = Number(result.expectedQty);
+              state.durationDays = Number(result.durationDays);
+              state.billable = state.amount;
               box.dataset.rwphPaymentCode = state.code;
               updatePendingPaymentUi();
-              state.billable = result.billable;
               if (state.selectionFirst) {
                 state.selectionFirst = false;
-                GM_setValue('rwph_xanax_helper_open_request', JSON.stringify({
-                  code: state.code, mode: state.purchaseAction, createdAtMs: Date.now(),
-                  source: 'confirmed-licence-selection'
-                }));
+                GM_setValue('rwph_xanax_helper_open_request', JSON.stringify({ code: state.code,
+                  mode: state.purchaseAction, createdAtMs: Date.now(), source: 'confirmed-group-licence' }));
                 startAutoPaymentCheck(getPaymentUserKey(), state.purchaseAction);
-                rwphShowToast('Licence type confirmed. Your payment code is ready. Follow the prefill steps and send Xanax manually.', 'info', 'RWPH Payment');
               }
+              rwphShowToast(`Price confirmed: ${state.amount} Xanax for ${state.durationDays} days. Send the exact amount with your payment code.`, 'info', 'RWPH Payment');
             } catch (err) {
-              const detail = String(err?.message || err);
-              const msg = /404|not found|unknown route|confirm-selection/i.test(detail)
-                ? 'Your Cloudflare Worker needs the v1.1.601 update. Deploy the included backend, then confirm your licence again.'
-                : detail;
-              rwphShowToast(msg, 'error', 'Licence setup'); return;
-            }
-            finally {
+              rwphShowToast(String(err?.message || err), 'error', 'Licence setup'); return;
+            } finally {
               state.confirming = false;
               if (target.isConnected) { target.disabled = false; target.textContent = previousLabel; }
             }
+          } else {
+            state.amount = rwphGroupLicenceQuoteV1625(state).amount;
+            state.code = state.code || 'RWPH-SETUP-CODE';
           }
-          state.amount = Math.max(state.amount, state.mode === 'faction' ? state.billable : 1);
         }
         // Prefill is optional navigation guidance, not a gate. Keep the visual highlight. 
         state.page = rwphPaymentHelperNextPageV1568(state);
@@ -12172,24 +12197,16 @@
       const wizard = box.__rwphPaymentWizardState;
       wizard.selectionFirst = true;
       wizard.purchaseAction = selectionRequest.mode === "extend" ? "extend" : "unlock";
-      // Existing paid faction members can still be preselected for renewals.
+      // Restore an existing alliance list by purchaser faction, not individual member IDs.
       try {
-        const renewal = await apiPost('/api/paywall/faction-renewal-members', { userKey: getPaymentUserKey() });
+        const current = await apiPost('/api/paywall/alliance-current', { userKey: getPaymentUserKey() });
         if (box.__rwphPaymentWizardState !== wizard || !box.isConnected) return;
-        wizard.ownTornId = String(renewal?.ownTornId || '');
-        wizard.renewalMemberIds = renewal?.memberIds || [];
-        wizard.renewalCount = wizard.renewalMemberIds.length;
-        if (wizard.renewalCount) {
-          if (!wizard.userTouchedLicenceChoice) wizard.mode = 'faction';
-          if (!wizard.userTouchedMembers && !wizard.userTouchedLicenceChoice) wizard.selected = [...wizard.renewalMemberIds];
-          const roster = await apiPost('/api/paywall/faction-members', { userKey: getPaymentUserKey() });
-          if (box.__rwphPaymentWizardState !== wizard || !box.isConnected) return;
-          wizard.members = roster?.members || [];
-          wizard.ownTornId = String(roster?.ownTornId || wizard.ownTornId);
-        }
-        rwphIncludePurchaserInFactionSelectionV1570(wizard);
+        wizard.ownFactionId = String(current?.ownerFactionId || '');
+        wizard.ownerFactionName = String(current?.ownerFactionName || '');
+        wizard.selectedFactions = (current?.selectedFactions || []).map(f => ({ id: String(f.id), name: String(f.name || `Faction ${f.id}`) }));
+        if (wizard.selectedFactions.length) { wizard.mode = 'alliance'; wizard.durationDays = 30; }
         if (wizard.page === 'start' || wizard.page === 'licence') rwphRenderPaymentHelperWizardV1568(box);
-      } catch (error) { console.warn('RWPH could not preload faction renewal members:', error); }
+      } catch (error) { console.warn('RWPH could not preload current alliance factions:', error); }
       return;
     }
 
@@ -12247,9 +12264,8 @@
       // 30-minute pending-code window.
       if (!restored && freshOpenRequest) {
         try {
-          restored = await apiPost("/api/paywall/start", {
+          restored = await apiPost("/api/paywall/pending", {
             userKey: getPaymentUserKey(),
-            extend: freshOpenRequest.mode === "extend",
           });
           if (restored?.code) {
             savePendingPayment(restored);
@@ -12293,34 +12309,25 @@
     );
     try {
       const wizard = document.querySelector('#rwph-xanax-send-status');
-      const wizardState = wizard?.__rwphPaymentWizardState;
-      const renewal = await apiPost('/api/paywall/faction-renewal-members', { userKey: getPaymentUserKey() });
-      if (wizardState) {
-        wizardState.ownTornId = String(renewal?.ownTornId || wizardState.ownTornId || '');
-        wizardState.renewalMemberIds = renewal?.memberIds || [];
-        wizardState.renewalCount = wizardState.renewalMemberIds.length;
-        if (wizardState.renewalCount) {
-          wizardState.mode = 'faction';
-          wizardState.selected = [...wizardState.renewalMemberIds];
-          const roster = await apiPost('/api/paywall/faction-members', { userKey: getPaymentUserKey() });
-          wizardState.members = roster?.members || [];
-          wizardState.ownTornId = String(roster?.ownTornId || wizardState.ownTornId || '');
+      const state = wizard?.__rwphPaymentWizardState;
+      if (state) {
+        const current = await apiPost('/api/paywall/alliance-current', { userKey: getPaymentUserKey() });
+        state.ownFactionId = String(current.ownerFactionId || '');
+        state.ownerFactionName = String(current.ownerFactionName || '');
+        state.selectedFactions = (current.selectedFactions || []).map(f => ({ id: String(f.id), name: String(f.name || `Faction ${f.id}`) }));
+        if (state.selectedFactions.length) { state.mode = 'alliance'; state.durationDays = 30; }
+        const intent = await apiPost('/api/paywall/intent', { userKey: getPaymentUserKey() });
+        if (intent?.mode === 'faction' || intent?.mode === 'alliance') {
+          state.mode = intent.mode;
+          state.durationDays = Number(intent.durationDays || (intent.mode === 'alliance' ? 30 : 10));
+          if (intent.mode === 'alliance') state.selectedFactions = (intent.factionIds || []).filter(id => String(id) !== state.ownFactionId)
+            .map(id => ({ id: String(id), name: `Faction ${id}` }));
+          state.amount = Number(intent.expectedQty || rwphGroupLicenceQuoteV1625(state).amount);
+          state.code = String(intent.code || state.code || '');
         }
-        rwphIncludePurchaserInFactionSelectionV1570(wizardState);
         rwphRenderPaymentHelperWizardV1568(wizard);
       }
-    } catch (err) { console.warn('Could not load existing faction licence members', err); }
-    try {
-      const savedIntent = await apiPost('/api/paywall/intent', { userKey: getPaymentUserKey() });
-      const wizard = document.querySelector('#rwph-xanax-send-status');
-      if (wizard?.__rwphPaymentWizardState && savedIntent?.mode === 'faction') {
-        wizard.__rwphPaymentWizardState.mode = 'faction';
-        wizard.__rwphPaymentWizardState.selected = savedIntent.memberIds || [];
-        wizard.__rwphPaymentWizardState.ownTornId = String(savedIntent.ownTornId || wizard.__rwphPaymentWizardState.ownTornId || '');
-        rwphIncludePurchaserInFactionSelectionV1570(wizard.__rwphPaymentWizardState);
-        wizard.__rwphPaymentWizardState.billable = savedIntent.billable || 1;
-      }
-    } catch (err) { console.warn('Could not restore licence purchase choice', err); }
+    } catch (err) { console.warn('Could not load current faction/alliance licence state', err); }
     startAutoPaymentCheck(getPaymentUserKey(), helperMode);
     rwphConsumeCrossTabPopup("xanax-payment", 650);
   }
@@ -13041,7 +13048,7 @@
         <button id="rw-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
       </div>
       <div class="rw-body">
-        <div class="rw-lock-pay-heading">Each Xanax will extend your licence by 10 days</div>
+        <div class="rw-lock-pay-heading">Faction Licence: 2 Xanax / 10 days · Alliance Licence: 30-day blocks, with added-faction discounts</div>
         <div class="rw-small">
           RWPH calculates completed ranked-war payouts while keeping Torn transactions manual. Save your API key, then unlock an active licence or start a Xanax licence payment.
         </div>
@@ -13298,7 +13305,7 @@
       results.innerHTML = "";
 
       const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
-      results.innerHTML = renderAdminLicenses(result.licenses || []);
+      results.innerHTML = renderAdminLicenses(result.licenses || [], result.groupLicences || []);
       rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
 
       results.querySelectorAll(".rw-admin-fill-revoke").forEach((btn) => {
@@ -14765,7 +14772,7 @@
       results.innerHTML = "";
 
       const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
-      results.innerHTML = renderAdminLicenses(result.licenses || []);
+      results.innerHTML = renderAdminLicenses(result.licenses || [], result.groupLicences || []);
       rwphToastPanelInfo(status, `Loaded ${(result.licenses || []).length} licence(s).`, "info", "RWPH Admin");
 
       results.querySelectorAll(".rw-admin-fill-revoke").forEach((btn) => {
