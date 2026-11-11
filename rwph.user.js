@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.628
+// @version      1.1.631
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5424,7 +5424,7 @@
           <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 2 Xanax / 10 days; Alliance: 30-day blocks with added-faction discounts</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 1 Xanax / 6 days (-5 per 360 days); Alliance: 5 Xanax per faction / 30 days, discounts double at 360+ days</div></div>
         </div>
       </div>
     `;
@@ -11698,19 +11698,20 @@
   function rwphClampXanaxAmountV1568(value) {
     const parsed = Math.floor(Number(value || 1));
     if (!Number.isFinite(parsed)) return 1;
-    return Math.min(9999, Math.max(1, parsed));
+    return Math.max(1, parsed);
   }
 
-  // v1.1.625: server prices are authoritative; local quote is display-only.
+  // v1.1.630: display quote mirrors rwphQuoteGroupLicence in the Worker; Worker remains authoritative.
   function rwphGroupLicenceQuoteV1625(state) {
     const mode = state.mode === 'alliance' ? 'alliance' : 'faction';
-    const step = mode === 'alliance' ? 30 : 10;
+    const step = mode === 'alliance' ? 30 : 6;
     const days = Math.max(step, Math.min(3600, Math.ceil(Number(state.durationDays || step) / step) * step));
     const added = mode === 'alliance' ? [...new Set((state.selectedFactions || []).map(f => String(f.id)))].length : 0;
     const blocks = days / step;
-    const gross = mode === 'alliance' ? 6 * (1 + added) * blocks : 2 * blocks;
-    const discount = mode === 'alliance' ? Math.min(6, added) * blocks : 0;
-    return { days, step, added, totalFactions: 1 + added, gross, discount, amount: gross - discount };
+    const gross = mode === 'alliance' ? 5 * (1 + added) * blocks : blocks;
+    const discountPerBlock = mode === 'alliance' ? added * (days >= 360 ? 2 : 1) : 0;
+    const discount = mode === 'alliance' ? discountPerBlock * blocks : 5 * Math.floor(days / 360);
+    return { days, step, added, totalFactions: 1 + added, gross, discountPerBlock, discount, amount: gross - discount };
   }
   function rwphIncludePurchaserInFactionSelectionV1570(_state) { /* Faction licences now follow faction IDs, not selected user IDs. */ }
 
@@ -11734,26 +11735,29 @@
     if (page === "licence") return `
       <div class="rwph-xanax-wizard-page"><div class="rwph-xanax-wizard-progress">Step 1 · Licence type</div>
       <div class="rwph-xanax-wizard-card"><div class="rwph-xanax-wizard-heading">Choose who your licence covers</div>
-        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> <b>Faction Licence</b> — 2 Xanax every 10 days, members of your faction with BOTH Faction API Access and Money Giving</label>
-        <label><input type="radio" name="rwph-licence-mode" value="alliance" ${state.mode === 'alliance' ? 'checked' : ''}> <b>Alliance Licence</b> — your faction plus chosen additional factions; minimum 30 days</label>
-        <div class="rwph-xanax-wizard-copy">Only members of a covered faction with BOTH Faction API Access and Money Giving permission can use RWPH. Members of the purchasing faction with both permissions can purchase or extend the licence. Your faction is included automatically.</div>
-        ${state.mode === 'alliance' ? '<div class="rwph-xanax-days-result">Alliance discount: 1 Xanax per added faction for each 30 days, up to 6 Xanax discounted per 30 days.</div>' : ''}
+        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> <b>Faction Licence</b> — 1 Xanax every 6 days, with 5 Xanax off per complete 360 days; members of your faction with BOTH Faction API Access and Money Giving</label>
+        <label><input type="radio" name="rwph-licence-mode" value="alliance" ${state.mode === 'alliance' ? 'checked' : ''}> <b>Alliance Licence</b> — 5 Xanax per faction every 30 days; your faction plus chosen additional factions; minimum 30 days</label>
+        <div class="rwph-xanax-wizard-copy">Only members of a covered faction with BOTH Faction API Access and Money Giving permission can use RWPH. Members of ANY covered faction with both permissions can extend its existing alliance licence; the group owner manages additions.</div>
+        ${state.mode === 'alliance' ? '<div class="rwph-xanax-days-result">Alliance licence requires at least 1 added faction. Every added faction gives 1 Xanax discount per 30 days, with no discount cap. For purchases of 360+ days, the discount doubles on every block.</div>' : ''}
       </div>${nav(state.mode === 'alliance' ? 'Manage Alliance Factions' : 'Choose Licence Duration')}</div>`;
 
     if (page === "alliance") return `
       <div class="rwph-xanax-wizard-page" data-rwph-payment-helper-page="alliance">
         <div class="rwph-xanax-wizard-progress">Alliance Factions Panel</div>
         <div class="rwph-xanax-wizard-card">
-          <div class="rwph-xanax-wizard-heading">Find and add Torn factions</div>
-          <div class="rwph-xanax-wizard-copy">Search a faction name or ID. Your own faction is always included. The selected factions will receive the same licence duration.</div>
-          <div class="rwph-alliance-search-row"><input id="rwph-alliance-search-input" type="search" maxlength="70" placeholder="Faction name or ID" value="${esc(state.factionSearch || '')}"><button id="rwph-alliance-search-button" type="button">Search Torn</button></div>
+          <div class="rwph-xanax-wizard-heading">${state.allianceCode ? 'Extend existing Alliance Licence' : 'Find and add Torn factions'}</div>
+          <div class="rwph-xanax-wizard-copy">${state.allianceCode ? `Existing alliance for ${esc(state.ownerFactionName || 'Faction')} [${esc(state.ownerFactionId || '')}]. Any covered faction can extend these same factions. ${state.canEditFactions ? 'You can add new factions, but existing covered factions cannot be removed during renewal.' : 'Only the original owner faction can add factions.'}` : 'Search for at least one additional faction by name or ID. Your faction is included automatically.'}</div>
+          ${state.allianceLoading ? '<div class="rwph-xanax-days-result">Loading your existing alliance...</div>' : ''}
+          ${state.allianceLoadError ? `<div class="rwph-xanax-helper-message rwph-xanax-helper-error">${esc(state.allianceLoadError)}</div>` : ''}
+          ${state.canEditFactions !== false ? `<div class="rwph-alliance-search-row"><input id="rwph-alliance-search-input" type="search" maxlength="70" placeholder="Faction name or ID" value="${esc(state.factionSearch || '')}"><button id="rwph-alliance-search-button" type="button">Search Torn</button></div>` : ''}
           ${state.searchMessage ? `<div class="rwph-xanax-wizard-copy" role="status">${esc(state.searchMessage)}</div>` : ''}
-          <div class="rwph-alliance-faction-results">${(state.factionResults || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name)} [${esc(f.id)}]</span><button type="button" data-rwph-alliance-add="${esc(f.id)}" ${state.selectedFactions?.some(x=>String(x.id)===String(f.id)) ? 'disabled' : ''}>Add</button></div>`).join('')}</div>
+          <div class="rwph-alliance-faction-results">${(state.factionResults || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name)} [${esc(f.id)}]</span><button type="button" data-rwph-alliance-add="${esc(f.id)}" ${String(f.id) === String(state.ownerFactionId || state.ownFactionId) || state.selectedFactions?.some(x=>String(x.id)===String(f.id)) ? 'disabled' : ''}>Add</button></div>`).join('')}</div>
           ${state.allianceCode ? `<div class="rwph-xanax-days-result"><b>Current Alliance Licence Code:</b> ${esc(state.allianceCode)}</div>` : ''}
           <div class="rwph-xanax-wizard-heading">Alliance licence list (${quote.totalFactions} factions)</div>
-          <div class="rwph-alliance-faction-row"><b>${esc(state.ownerFactionName || 'Your faction')} [${esc(state.ownFactionId || 'your faction')}]</b><span>Included</span></div>
-          ${(state.selectedFactions || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name || 'Faction')} [${esc(f.id)}]</span><button type="button" data-rwph-alliance-remove="${esc(f.id)}">Remove</button></div>`).join('')}
-          <div class="rwph-xanax-days-result">${quote.added} added factions · ${quote.totalFactions} factions total · Discount ${Math.min(6,quote.added)} Xanax per 30-day block</div>
+          <div class="rwph-alliance-faction-row"><b>${esc(state.ownerFactionName || 'Owning faction')} [${esc(state.ownerFactionId || state.ownFactionId || 'your faction')}]</b><span>Included (Owner)</span></div>
+          ${(state.selectedFactions || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name || 'Faction')} [${esc(f.id)}]</span>${state.canEditFactions !== false && !(state.originalAllianceFactionIds || []).includes(String(f.id)) ? `<button type="button" data-rwph-alliance-remove="${esc(f.id)}">Remove</button>` : '<span>Included</span>'}</div>`).join('')}
+          ${!quote.added ? '<div class="rwph-xanax-helper-message rwph-xanax-helper-error">Add at least one other faction to buy an Alliance Licence.</div>' : ''}
+          <div class="rwph-xanax-days-result">${quote.added} added factions · ${quote.totalFactions} factions total · Discount ${quote.discountPerBlock} Xanax per 30-day block${quote.days >= 360 ? ' (doubled at 360+ days)' : ''}</div>
         </div>${nav('Choose Licence Duration')}</div>`;
 
     if (page === "amount") return `
@@ -11761,11 +11765,11 @@
         <div class="rwph-xanax-wizard-progress">Step 2 · Choose licence duration and confirm price</div>
         <div class="rwph-xanax-wizard-card rwph-helper-expected-action">
           <div class="rwph-xanax-wizard-heading">How many days of licence?</div>
-          <div class="rwph-xanax-wizard-copy">${state.mode === 'alliance' ? 'Alliance Licence — minimum 30 days, 30-day increments' : 'Faction Licence — 10-day increments'}</div>
+          <div class="rwph-xanax-wizard-copy">${state.mode === 'alliance' ? 'Alliance Licence — minimum 30 days, 30-day increments; double discount for 360+ days' : 'Faction Licence — 6-day increments; 5 Xanax off per complete 360 days'}</div>
           <label class="rwph-xanax-amount-label">Licence duration (days)
             <input id="rwph-payment-helper-duration-days" type="number" min="${quote.step}" max="3600" step="${quote.step}" inputmode="numeric" value="${quote.days}">
           </label>
-          <div class="rwph-xanax-days-result">${state.mode === 'alliance' ? `${quote.totalFactions} factions × 6 Xanax × ${quote.days / 30} block(s) = <b>${quote.gross} Xanax</b><br>Discount: <b>-${quote.discount} Xanax</b><br>` : ''}<b>${quote.amount} Xanax</b> for <b>${quote.days} days</b></div>
+          <div class="rwph-xanax-days-result">${state.mode === 'alliance' ? `${quote.totalFactions} factions × 5 Xanax × ${quote.days / 30} block(s) = <b>${quote.gross} Xanax</b><br>` : `Base price: <b>${quote.gross} Xanax</b><br>`}Discount: <b>-${quote.discount} Xanax</b><br><b>${quote.amount} Xanax</b> for <b>${quote.days} days</b></div>
           <div class="rw-muted">The Cloudflare backend validates the licence type, faction list, duration and total price before issuing a payment code. You must send the exact quoted amount.</div>
         </div>${nav('Confirm Price & Create Payment Code')}</div>`;
 
@@ -11913,6 +11917,41 @@
     try { box.querySelector(".rwph-xanax-scroll")?.scrollTo?.({ top: 0, behavior: "auto" }); } catch (_) {}
   }
 
+  async function rwphLoadExistingAllianceV1631(box, state) {
+    const token = (state.allianceLoadToken || 0) + 1;
+    state.allianceLoadToken = token;
+    state.allianceLoading = true; state.allianceLoadError = '';
+    rwphRenderPaymentHelperWizardV1568(box);
+    try {
+      const current = await apiPost('/api/paywall/alliance-current', { userKey: getPaymentUserKey() });
+      if (!box.isConnected || box.__rwphPaymentWizardState !== state || token !== state.allianceLoadToken) return;
+      state.ownFactionId = String(current?.currentFactionId || current?.ownerFactionId || '');
+      state.currentFactionName = String(current?.currentFactionName || '');
+      state.ownerFactionId = String(current?.ownerFactionId || state.ownFactionId);
+      state.ownerFactionName = String(current?.ownerFactionName || state.currentFactionName);
+      state.allianceCode = String(current?.allianceCode || '');
+      state.selectedFactions = (current?.selectedFactions || []).map(f => ({ id: String(f.id), name: String(f.name || `Faction ${f.id}`) }));
+      state.originalAllianceFactionIds = state.allianceCode ? state.selectedFactions.map(f => f.id) : [];
+      state.canEditFactions = current?.canEditFactions !== false;
+      state.existingAlliance = !!current?.hasExistingAlliance;
+      state.allianceLoaded = true;
+      if (state.mode === 'alliance') {
+        state.durationDays = Math.max(30, Math.ceil(Number(state.durationDays || 30) / 30) * 30);
+        state.amount = rwphGroupLicenceQuoteV1625(state).amount;
+        rwphRenderPaymentHelperWizardV1568(box);
+      }
+    } catch (error) {
+      if (!box.isConnected || box.__rwphPaymentWizardState !== state || token !== state.allianceLoadToken) return;
+      state.allianceLoadError = String(error?.message || error);
+      if (state.mode === 'alliance') rwphRenderPaymentHelperWizardV1568(box);
+    } finally {
+      if (box.__rwphPaymentWizardState === state && token === state.allianceLoadToken) {
+        state.allianceLoading = false;
+        if (state.mode === 'alliance') rwphRenderPaymentHelperWizardV1568(box);
+      }
+    }
+  }
+
   function rwphRenderPaymentHelperPanel(code, message, isError = false, options = {}) {
     rwphSendHelperPanelStatus(rwphPaymentHelperHtml(code, message, isError), isError);
     const box = document.getElementById("rwph-xanax-send-status");
@@ -11921,7 +11960,9 @@
     box.__rwphPaymentWizardState = {
       page: "start",
       mode: "faction", selectedFactions: [], factionResults: [], factionSearch: '',
-      ownerFactionName: '', ownFactionId: '', allianceCode: '', durationDays: 10, billable: 2,
+      ownerFactionName: '', ownFactionId: '', ownerFactionId: '', allianceCode: '',
+      originalAllianceFactionIds: [], canEditFactions: true, allianceLoaded: false,
+      allianceLoading: false, allianceLoadError: '', durationDays: 6, billable: 1,
       code: String(code || ""),
       message: String(message || ""),
       isError: !!isError,
@@ -11969,6 +12010,7 @@
         state.durationDays = rwphGroupLicenceQuoteV1625(state).days;
         state.code = ''; state.amount = rwphGroupLicenceQuoteV1625(state).amount;
         rwphRenderPaymentHelperWizardV1568(box);
+        if (state.mode === 'alliance' && !state.setupPreview) rwphLoadExistingAllianceV1631(box, state);
       }
       if (e.target.id === 'rwph-payment-helper-duration-days') {
         state.durationDays = Math.max(0, Math.floor(Number(e.target.value || 0)));
@@ -11994,6 +12036,7 @@
 
       if (target.id === 'rwph-alliance-search-button') {
         e.preventDefault();
+        if (state.canEditFactions === false || state.allianceLoading) return;
         const input = box.querySelector('#rwph-alliance-search-input');
         state.factionSearch = String(input?.value || state.factionSearch || '').trim();
         if (!state.factionSearch) { rwphShowToast('Enter a faction name or ID.', 'warning', 'Alliance Factions'); return; }
@@ -12018,9 +12061,10 @@
       }
       if (target.hasAttribute?.('data-rwph-alliance-add')) {
         e.preventDefault();
+        if (state.canEditFactions === false || state.allianceLoading) return;
         const id = target.getAttribute('data-rwph-alliance-add');
         const faction = (state.factionResults || []).find(f => String(f.id) === id);
-        if (faction && String(id) !== String(state.ownFactionId) && !(state.selectedFactions || []).some(f => String(f.id) === id)) {
+        if (faction && String(id) !== String(state.ownerFactionId || state.ownFactionId) && !(state.selectedFactions || []).some(f => String(f.id) === id)) {
           state.selectedFactions.push({ id: String(faction.id), name: faction.name });
           state.code = '';
         }
@@ -12030,6 +12074,7 @@
       if (target.hasAttribute?.('data-rwph-alliance-remove')) {
         e.preventDefault();
         const id = target.getAttribute('data-rwph-alliance-remove');
+        if (state.canEditFactions === false || (state.originalAllianceFactionIds || []).includes(String(id))) return;
         state.selectedFactions = (state.selectedFactions || []).filter(f => String(f.id) !== String(id));
         state.code = '';
         rwphRenderPaymentHelperWizardV1568(box);
@@ -12044,6 +12089,17 @@
 
       if (target.id === "rwph-payment-helper-next") {
         e.preventDefault();
+        if (state.mode === 'alliance' && (state.page === 'alliance' || state.page === 'amount')) {
+          if (state.allianceLoading || (!state.setupPreview && !state.allianceLoaded)) {
+            rwphShowToast('Load your existing Alliance Licence before continuing.', 'warning', 'Alliance Licence'); return;
+          }
+          if (state.allianceLoadError) {
+            rwphShowToast(state.allianceLoadError, 'error', 'Alliance Licence'); return;
+          }
+          if ((state.selectedFactions || []).length < 1) {
+            rwphShowToast('Add at least one other faction before buying an Alliance Licence.', 'warning', 'Alliance Licence'); return;
+          }
+        }
         if (state.page === 'amount') {
           if (state.confirming) return;
           if (!state.setupPreview) {
@@ -12057,6 +12113,7 @@
                 userKey: getPaymentUserKey(), extend: state.purchaseAction === 'extend',
                 mode: state.mode, durationDays: quote.days,
                 factionIds: state.mode === 'alliance' ? state.selectedFactions.map(f=>String(f.id)) : [],
+                allianceCode: state.mode === 'alliance' ? String(state.allianceCode || '') : '',
               });
               if (!result?.code || !result?.pending || Number(result.expectedQty) !== quote.amount)
                 throw new Error('Backend did not confirm the quoted price. Please review the faction list and try again.');
@@ -12164,22 +12221,16 @@
       const current = document.getElementById("rwph-xanax-send-status");
       if (current?.__rwphPaymentWizardState?.selectionFirst) return;
       rwphSetupPaymentHelperPanelClicks("");
-      const box = rwphRenderPaymentHelperPanel("", "", false, { daysPerItem: 10 });
+      const box = rwphRenderPaymentHelperPanel("", "", false, { daysPerItem: 6 });
       if (!box) return;
       const wizard = box.__rwphPaymentWizardState;
       wizard.selectionFirst = true;
       wizard.purchaseAction = selectionRequest.mode === "extend" ? "extend" : "unlock";
-      // Restore an existing alliance list by purchaser faction, not individual member IDs.
-      try {
-        const current = await apiPost('/api/paywall/alliance-current', { userKey: getPaymentUserKey() });
-        if (box.__rwphPaymentWizardState !== wizard || !box.isConnected) return;
-        wizard.ownFactionId = String(current?.ownerFactionId || '');
-        wizard.ownerFactionName = String(current?.ownerFactionName || '');
-        wizard.allianceCode = String(current?.allianceCode || '');
-        wizard.selectedFactions = (current?.selectedFactions || []).map(f => ({ id: String(f.id), name: String(f.name || `Faction ${f.id}`) }));
-        if (wizard.selectedFactions.length) { wizard.mode = 'alliance'; wizard.durationDays = 30; }
-        if (wizard.page === 'start' || wizard.page === 'licence') rwphRenderPaymentHelperWizardV1568(box);
-      } catch (error) { console.warn('RWPH could not preload current alliance factions:', error); }
+      // Preload existing coverage by the user's *current covered faction*,
+      // whether or not that faction originally bought the alliance.
+      await rwphLoadExistingAllianceV1631(box, wizard);
+      if (wizard.existingAlliance) { wizard.mode = 'alliance'; wizard.durationDays = 30; }
+      if (wizard.page === 'start' || wizard.page === 'licence') rwphRenderPaymentHelperWizardV1568(box);
       return;
     }
 
@@ -12284,18 +12335,18 @@
       const wizard = document.querySelector('#rwph-xanax-send-status');
       const state = wizard?.__rwphPaymentWizardState;
       if (state) {
-        const current = await apiPost('/api/paywall/alliance-current', { userKey: getPaymentUserKey() });
-        state.ownFactionId = String(current.ownerFactionId || '');
-        state.ownerFactionName = String(current.ownerFactionName || '');
-        state.allianceCode = String(current.allianceCode || '');
-        state.selectedFactions = (current.selectedFactions || []).map(f => ({ id: String(f.id), name: String(f.name || `Faction ${f.id}`) }));
-        if (state.selectedFactions.length) { state.mode = 'alliance'; state.durationDays = 30; }
+        await rwphLoadExistingAllianceV1631(wizard, state);
+        if (state.existingAlliance) { state.mode = 'alliance'; state.durationDays = 30; }
         const intent = await apiPost('/api/paywall/intent', { userKey: getPaymentUserKey() });
         if (intent?.mode === 'faction' || intent?.mode === 'alliance') {
           state.mode = intent.mode;
           state.durationDays = Number(intent.durationDays || (intent.mode === 'alliance' ? 30 : 10));
-          if (intent.mode === 'alliance') state.selectedFactions = (intent.factionIds || []).filter(id => String(id) !== state.ownFactionId)
-            .map(id => ({ id: String(id), name: `Faction ${id}` }));
+          if (intent.mode === 'alliance') {
+            state.ownerFactionId = String(intent.ownerFactionId || state.ownerFactionId);
+            const known = new Map((state.selectedFactions || []).map(f => [String(f.id), f.name]));
+            state.selectedFactions = (intent.factionIds || []).filter(id => String(id) !== state.ownerFactionId)
+              .map(id => ({ id: String(id), name: known.get(String(id)) || `Faction ${id}` }));
+          }
           state.amount = Number(intent.expectedQty || rwphGroupLicenceQuoteV1625(state).amount);
           state.code = String(intent.code || state.code || '');
         }
@@ -12853,7 +12904,7 @@
       <div class="rw-how-box rw-help-api-card rw-help-section-card">
         <div class="rw-how-title">Licence &amp; Licence Payment Wizard</div>
         <ul class="rw-how-list">
-          <li><b>Licence time:</b> the Licence Payment Wizard shows the current days-per-Xanax rate and calculates the licence days from the Xanax amount you select before you send.</li>
+          <li><b>Licence time:</b> the Licence Payment Wizard lets you select faction/alliance coverage and duration, then the Worker calculates the exact Xanax price including all applicable discounts.</li>
           <li><b>Payment code:</b> use the exact generated RWPH message code with the Xanax send. RWPH checks the pending payment automatically.</li>
           <li><b>Wizard flow:</b> open Items → Xanax → Send this item → Add Message, choose the Xanax amount, then follow Prefill Name / ID → Prefill Message Code → Prefill Xanax Amount → final manual review/send.</li>
           <li><b>You confirm:</b> RWPH never presses Torn's final Send/Confirm button for you. Check the item, recipient, amount and message before manually submitting.</li>
@@ -13022,7 +13073,7 @@
         <button id="rw-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
       </div>
       <div class="rw-body">
-        <div class="rw-lock-pay-heading">Faction Licence: 2 Xanax / 10 days · Alliance Licence: 30-day blocks, with added-faction discounts</div>
+        <div class="rw-lock-pay-heading">Faction Licence: 1 Xanax / 6 days, -5 Xanax per complete 360 days · Alliance: 5 Xanax / faction / 30 days, bigger discounts at 360+ days</div>
         <div class="rw-small">
           RWPH calculates completed ranked-war payouts while keeping Torn transactions manual. Save your API key, then unlock an active licence or start a Xanax licence payment.
         </div>
@@ -13047,7 +13098,7 @@
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock Panel</button>
             <button id="rw-start-payment">Buy Licence</button>
-            <button id="rw-free-trial" class="secondary">7 Day Faction Trial</button>
+            <button id="rw-free-trial" class="secondary">10 Day Faction Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
           </div>
           <div id="rw-paywall-status" class="rw-muted">Save your API key, then Unlock Panel for an active licence or Buy Licence to start the guided Xanax payment flow.</div>
@@ -13217,19 +13268,19 @@
       const userKey = document.getElementById("rw-paywall-key").value.trim();
       if (!userKey) return alert("Enter your Torn API key first.");
 
-      if (!confirm("Start your 7 day free trial? This can only be used once per Torn account.")) return;
+      if (!confirm("Start a 10-day free trial for your current faction? Each faction can claim this only once, regardless of which member claims it.")) return;
 
       try {
         GM_setValue(STORAGE_KEY, userKey);
         clearPendingPayment();
         updatePendingPaymentUi();
-        status.textContent = "Activating 7 day free trial...";
+        status.textContent = "Activating 10-day faction trial...";
 
         const result = await apiPost("/api/paywall/trial", { userKey });
         if (!result.token) throw new Error(result.message || "Trial did not return a license token.");
 
         GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-        rwphToastPanelInfo(status, `${result.message || "7 day free trial activated."} Loading tool...`, "info", "RWPH Trial");
+        rwphToastPanelInfo(status, `${result.message || "10-day faction trial activated."} Loading tool...`, "info", "RWPH Trial");
         closePanel();
         createPanel();
       } catch (e) {
