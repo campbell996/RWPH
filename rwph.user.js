@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.622
+// @version      1.1.623
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -23,6 +23,7 @@
   const STORAGE_KEY = "rw_payout_helper_api_key";
   const PAYWALL_TOKEN_STORAGE_KEY = "rw_payout_helper_license_token";
   const ADMIN_KEY_STORAGE_KEY = "rw_payout_helper_admin_key";
+  const OWNER_ADMIN_SESSION_STORAGE_KEY = "rw_payout_helper_owner_admin_session";
   const PENDING_PAYMENT_STORAGE_KEY = "rw_payout_helper_pending_payment";
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
   const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
@@ -5062,12 +5063,30 @@
     throw new Error(`Could not parse admin server response. Status ${res?.status || 0}. Response: ${preview || "No readable response text"}`);
   }
 
+  function rwphOwnerAdminSession() {
+    const session = GM_getValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
+    if (!session || typeof session !== "object" || !session.token ||
+        Number(session.expiresAt || 0) <= Date.now() / 1000 + 2) return null;
+    return session;
+  }
+
+  function rwphRememberAdminKey(adminKey) {
+    // Owner-session requests never erase an admin key the user previously saved.
+    if (adminKey) GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+  }
+
   function adminRequest(method, path, adminKey, body = {}) {
     return new Promise((resolve, reject) => {
+      const key = String(adminKey || "").trim();
+      const ownerToken = key ? "" : String(rwphOwnerAdminSession()?.token || "");
+      if (!key && !ownerToken && path !== "/api/admin/owner-login") {
+        reject(new Error("Log in using your admin key or Verify Owner Account first."));
+        return;
+      }
       const isGet = String(method).toUpperCase() === "GET";
       const sep = path.includes("?") ? "&" : "?";
       const url = isGet
-        ? `${PAYWALL_API_BASE}${path}${sep}adminKey=${encodeURIComponent(adminKey)}&_rwph=${Date.now()}`
+        ? `${PAYWALL_API_BASE}${path}${sep}_rwph=${Date.now()}${key ? `&adminKey=${encodeURIComponent(key)}` : ""}`
         : `${PAYWALL_API_BASE}${path}`;
 
       GM_xmlhttpRequest({
@@ -5077,16 +5096,18 @@
         headers: {
           "Accept": "application/json, text/plain, */*",
           "Content-Type": "application/json",
-          "x-admin-key": adminKey,
+          ...(key ? { "x-admin-key": key } : {}),
+          ...(ownerToken ? { "x-rwph-owner-admin-token": ownerToken } : {}),
           "ngrok-skip-browser-warning": "true",
           "Cache-Control": "no-cache",
         },
-        data: isGet ? undefined : JSON.stringify({ ...(body || {}), adminKey, _rwph: Date.now() }),
+        data: isGet ? undefined : JSON.stringify({ ...(body || {}), ...(key ? { adminKey: key } : {}), _rwph: Date.now() }),
         timeout: 120000,
         onload: (res) => {
           try {
             const json = rwphParseAdminJsonResponse(res);
             if (!json.ok) {
+              if (ownerToken && Number(res.status) === 403) GM_setValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
               const err = new Error(json.error || `Admin server error ${res.status}`);
               err.status = Number(res.status || 0);
               reject(err);
@@ -5101,6 +5122,48 @@
         ontimeout: () => reject(new Error("Admin server request timed out.")),
       });
     });
+  }
+
+  async function rwphLoginOwnerWithTornAccount(root) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const button = rwphAdminQuery(root, "#rw-admin-owner-login");
+    if (button?.disabled) return null;
+    const userKey = String(
+      document.getElementById("rw-key")?.value?.trim() ||
+      document.getElementById("rw-paywall-key")?.value?.trim() ||
+      GM_getValue(STORAGE_KEY, "") || ""
+    ).trim();
+    if (!userKey) throw new Error("Save your own Torn API key in RWPH first, then press Verify Owner Account.");
+
+    if (button) { button.disabled = true; button.textContent = "Verifying..."; }
+    if (status) status.textContent = "Verifying Torn account with the backend...";
+    try {
+      // The backend checks the real owner of this Torn API key; neither the
+      // current page URL nor a browser-controlled name or ID grants access.
+      const result = await adminRequest("POST", "/api/admin/owner-login", "", { userKey });
+      if (String(result.tornId) !== "3236276" ||
+          String(result.name || "").toLowerCase() !== "evil_panda_420" ||
+          !result.ownerAdminToken || Number(result.ownerAdminExpiresAt || 0) <= Date.now() / 1000) {
+        throw new Error("Owner verification did not return a valid admin session.");
+      }
+      GM_setValue(OWNER_ADMIN_SESSION_STORAGE_KEY, {
+        token: result.ownerAdminToken,
+        expiresAt: Number(result.ownerAdminExpiresAt),
+      });
+      // Prove the session works on a protected endpoint before revealing tools.
+      const confirmed = await adminRequest("POST", "/api/admin/status", "");
+      rwphSetAdminToolsVisible(root, true);
+      const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
+      if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(confirmed);
+      rwphToastPanelInfo(status, `Verified Torn owner ${result.name} [${result.tornId}]. Admin tools unlocked.`, "info", "RWPH Admin");
+      return result;
+    } catch (e) {
+      GM_setValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
+      rwphSetAdminToolsVisible(root, false, "Owner verification failed. Use your own Torn API key or the existing Admin Key login.");
+      throw e;
+    } finally {
+      if (button) { button.disabled = false; button.textContent = "Verify Owner Account"; }
+    }
   }
 
   function formatUnixDate(unixSeconds) {
@@ -5133,18 +5196,18 @@
   }
 
   async function extendAdminLicenseFromCurrentForm(statusEl, skipConfirm = false) {
-    const adminKey = document.getElementById("rw-admin-key")?.value.trim();
+    const adminKey = rwphGetAdminKeyFromPanel(document);
     const tornId = document.getElementById("rw-admin-torn-id")?.value.trim();
     const name = document.getElementById("rw-admin-name")?.value.trim() || `User ${tornId}`;
     const days = Number(document.getElementById("rw-admin-days")?.value || 30);
 
-    if (!adminKey) throw new Error("Enter your admin key first.");
+    if (!adminKey && !rwphOwnerAdminSession()) throw new Error("Log in with your admin key or Verify Owner Account.");
     if (!tornId) throw new Error("Enter a Torn ID first.");
     if (!days || days <= 0) throw new Error("Enter valid extension days.");
 
     if (!skipConfirm && !confirm(`Extend license for ${name} (${tornId}) by ${days} day(s)?`)) return null;
 
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    rwphRememberAdminKey(adminKey);
     if (statusEl) statusEl.textContent = `Extending ${name} (${tornId}) by ${days} day(s)...`;
 
     const result = await adminRequest("POST", "/api/admin/extend", adminKey, { tornId, name, days });
@@ -5163,18 +5226,18 @@
   }
 
   async function removeAdminLicenseDaysFromCurrentForm(statusEl, skipConfirm = false) {
-    const adminKey = document.getElementById("rw-admin-key")?.value.trim();
+    const adminKey = rwphGetAdminKeyFromPanel(document);
     const tornId = document.getElementById("rw-admin-torn-id")?.value.trim();
     const name = document.getElementById("rw-admin-name")?.value.trim() || `User ${tornId}`;
     const days = Number(document.getElementById("rw-admin-days")?.value || 30);
 
-    if (!adminKey) throw new Error("Enter your admin key first.");
+    if (!adminKey && !rwphOwnerAdminSession()) throw new Error("Log in with your admin key or Verify Owner Account.");
     if (!tornId) throw new Error("Enter a Torn ID first.");
     if (!days || days <= 0) throw new Error("Enter valid days to remove.");
 
     if (!skipConfirm && !confirm(`Remove ${days} licence day(s) from ${name} (${tornId})?`)) return null;
 
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    rwphRememberAdminKey(adminKey);
     if (statusEl) statusEl.textContent = `Removing ${days} licence day(s) from ${name} (${tornId})...`;
 
     const result = await adminRequest("POST", "/api/admin/remove", adminKey, { tornId, name, days });
@@ -5195,31 +5258,44 @@
 
   function renderAdminLicenses(licenses) {
     if (!licenses || !licenses.length) {
-      return `<div class="rw-muted">No active licenses found.</div>`;
+      return `<div class="rw-muted">No licences found.</div>`;
     }
 
     const sorted = [...licenses].sort((a, b) => Number(b.expiresAt || 0) - Number(a.expiresAt || 0));
 
+    // One clearly separated member card per backend licence record; the existing
+    // Fill action continues to populate the same Admin licence form.
     return `
-      <div class="rw-admin-list">
-        ${sorted.map((license) => `
-          <div class="rw-admin-license-card">
-            <div class="rw-admin-license-top">
-              <div>
-                <div class="rw-admin-license-name">${esc(license.name || `User ${license.tornId}`)}</div>
-                <div class="rw-result-id">Torn ID: ${esc(license.tornId || "unknown")}</div>
+      <div class="rw-admin-list" role="list" aria-label="Member licences">
+        ${sorted.map((license) => {
+          const tornId = String(license.tornId || "").trim();
+          const memberName = String(license.name || `User ${tornId || "unknown"}`);
+          return `
+            <article class="rw-admin-license-card" role="listitem">
+              <div class="rw-admin-license-top">
+                <div class="rw-admin-license-member">
+                  <div class="rw-admin-license-name">${esc(memberName)}</div>
+                  <div class="rw-admin-license-id">Torn ID: ${esc(tornId || "unknown")}</div>
+                </div>
+                <button type="button" class="secondary rw-admin-fill-revoke" data-torn-id="${esc(tornId)}" data-name="${esc(memberName)}">Fill</button>
               </div>
-              <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
-                <button class="secondary rw-admin-fill-revoke" data-torn-id="${esc(license.tornId || "")}" data-name="${esc(license.name || `User ${license.tornId}`)}" style="margin:0;padding:5px 8px;">Fill</button>
+              <div class="rw-admin-license-details">
+                <div class="rw-admin-license-detail">
+                  <div class="rw-admin-license-label">Days remaining</div>
+                  <div class="rw-admin-license-value">${esc(formatLicenseDaysLeft(license.expiresAt))}</div>
+                </div>
+                <div class="rw-admin-license-detail">
+                  <div class="rw-admin-license-label">Expires</div>
+                  <div class="rw-admin-license-value">${esc(formatUnixDate(license.expiresAt))}</div>
+                </div>
+                <div class="rw-admin-license-detail rw-admin-license-source">
+                  <div class="rw-admin-license-label">Licence source</div>
+                  <div class="rw-admin-license-value">${license.manualGrant ? "Manual grant" : "Payment/licence record"}</div>
+                </div>
               </div>
-            </div>
-            <div class="rw-muted" style="margin-top:6px;">
-              Days left: ${esc(formatLicenseDaysLeft(license.expiresAt))}<br>
-              Expires: ${esc(formatUnixDate(license.expiresAt))}<br>
-              ${license.manualGrant ? "Manual grant" : "Payment/license record"}
-            </div>
-          </div>
-        `).join("")}
+            </article>
+          `;
+        }).join("")}
       </div>
     `;
   }
@@ -5526,8 +5602,9 @@
   }
 
   function rwphGetAdminKeyFromPanel(root) {
+    if (rwphOwnerAdminSession()) return "";
     const adminKey = rwphAdminInputValue(root, "#rw-admin-key");
-    if (!adminKey) throw new Error("Enter your admin key first.");
+    if (!adminKey) throw new Error("Log in using your admin key or Verify Owner Account first.");
     return adminKey;
   }
 
@@ -5535,7 +5612,7 @@
     const status = rwphAdminQuery(root, "#rw-admin-status");
     const results = rwphAdminQuery(root, "#rw-admin-results");
     const adminKey = rwphGetAdminKeyFromPanel(root);
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    rwphRememberAdminKey(adminKey);
     if (status) status.textContent = "Loading licences from server...";
     if (results) results.innerHTML = "";
     const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
@@ -5548,7 +5625,7 @@
     const status = rwphAdminQuery(root, "#rw-admin-status");
     const box = rwphAdminQuery(root, "#rw-admin-status-summary");
     const adminKey = rwphGetAdminKeyFromPanel(root);
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    rwphRememberAdminKey(adminKey);
     if (status) status.textContent = "Loading server status...";
     const result = await adminRequest("POST", "/api/admin/status", adminKey);
     if (box) box.innerHTML = rwphRenderAdminStatusSummary(result);
@@ -5568,7 +5645,7 @@
     note = document.createElement("div");
     note.id = "rw-admin-gate-note";
     note.className = "rw-muted rw-admin-gate-note";
-    note.textContent = "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.";
+    note.textContent = "Save Admin Key or Verify Owner Account to show the admin tools.";
     const saveBtn = adminSection.querySelector("#rw-admin-save-key");
     const row = saveBtn?.closest?.(".rw-actions") || adminSection.querySelector("#rw-admin-key")?.closest?.("label");
     if (row?.parentNode) row.insertAdjacentElement("afterend", note);
@@ -5587,7 +5664,7 @@
       note.hidden = unlocked;
       note.textContent = message || (unlocked
         ? "Admin tools unlocked."
-        : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
+        : "Save Admin Key or Verify Owner Account to show the admin tools.");
     }
 
     adminSection.querySelectorAll([
@@ -5609,7 +5686,7 @@
 
     const status = adminSection.querySelector("#rw-admin-status");
     if (status && !unlocked && !String(status.textContent || "").trim()) {
-      status.textContent = "Admin tools are hidden until a valid admin key is saved.";
+      status.textContent = "Admin tools are hidden until a valid admin key or owner account is verified.";
     }
   }
 
@@ -5620,7 +5697,8 @@
   async function rwphSaveAdminKeyAndRevealTools(root, options = {}) {
     const status = rwphAdminQuery(root, "#rw-admin-status");
     const saveButton = rwphAdminQuery(root, "#rw-admin-save-key");
-    const adminKey = rwphGetAdminKeyFromPanel(root);
+    const adminKey = rwphAdminInputValue(root, "#rw-admin-key");
+    if (!adminKey) throw new Error("Enter your admin key first.");
 
     // Prevent impatient/double clicks from creating overlapping verification,
     // grant and licence-list requests.
@@ -5632,7 +5710,7 @@
       saveButton.textContent = "Checking...";
     }
 
-    GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+    rwphRememberAdminKey(adminKey);
     rwphSetAdminToolsVisible(root, false, "Checking admin key with the server...");
     if (status) status.textContent = "Checking admin key...";
 
@@ -5867,7 +5945,7 @@
     panelRoot.__rwphAdminDelegatedBound = true;
     panelRoot.addEventListener("click", async (event) => {
       const target = event.target;
-      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-list, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-owner-login, #rw-admin-list, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke");
       if (!adminAction || !panelRoot.contains?.(adminAction)) return;
       const rootScope = rwphFindAdminRoot(adminAction);
       const status = rwphAdminQuery(rootScope, "#rw-admin-status");
@@ -5875,8 +5953,12 @@
       event.stopPropagation();
       event.stopImmediatePropagation?.();
       try {
-        if (adminAction.id !== "rw-admin-save-key" && !rwphAdminToolsAreVisible(rootScope)) {
-          throw new Error("Save a valid admin key first. Admin tools are hidden until the server accepts the key.");
+        if (adminAction.id !== "rw-admin-save-key" && adminAction.id !== "rw-admin-owner-login" && !rwphAdminToolsAreVisible(rootScope)) {
+          throw new Error("Log in with your admin key or Verify Owner Account first.");
+        }
+        if (adminAction.id === "rw-admin-owner-login") {
+          await rwphLoginOwnerWithTornAccount(rootScope);
+          return;
         }
         if (adminAction.classList?.contains("rw-admin-fill-revoke")) {
           const filledId = adminAction.dataset.tornId || "";
@@ -5896,7 +5978,7 @@
 
         if (adminAction.id === "rw-admin-default-setup") {
           const adminKey = rwphGetAdminKeyFromPanel(rootScope);
-          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+          rwphRememberAdminKey(adminKey);
           rwphOpenDefaultSetupPanel(adminKey);
           return;
         }
@@ -5918,7 +6000,7 @@
           const days = Number(rwphAdminQuery(rootScope, "#rw-admin-days")?.value || 30);
           if (!tornId) return alert("Enter the player's Torn ID.");
           if (!days || days <= 0) return alert("Enter valid licence days.");
-          GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+          rwphRememberAdminKey(adminKey);
           if (status) status.textContent = `Granting ${days} day licence to ${name} (${tornId})...`;
           const result = await adminRequest("POST", "/api/admin/grant", adminKey, { tornId, name, days });
           rwphToastPanelInfo(status, `Granted licence to ${result.name || name} (${result.tornId || tornId}) until ${formatUnixDate(result.expiresAt)}.`, "info", "RWPH Admin");
@@ -5937,7 +6019,7 @@
           if (result) await rwphRefreshAdminLicensesFromPanel(rootScope);
         }
       } catch (e) {
-        const actionName = adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-default-setup" ? "Default setup" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
+        const actionName = adminAction.id === "rw-admin-owner-login" ? "Owner verification" : adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-default-setup" ? "Default setup" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
         rwphToastPanelError(status, `${actionName} error: ${e.message}`, "RWPH Admin");
       }
     }, true);
@@ -6147,6 +6229,29 @@
       #rw-payout-helper .rw-admin-status-card{padding:8px;background:var(--rwph-theme-bg2)!important;border:1px solid var(--rwph-theme-line)!important;border-radius:9px;}
       #rw-payout-helper .rw-admin-status-label{font-size:10px;color:var(--rwph-theme-soft)!important;text-transform:uppercase;letter-spacing:.04em;}
       #rw-payout-helper .rw-admin-status-value{margin-top:3px;font-weight:900;color:var(--rwph-theme-text)!important;}
+      /* Admin licence list: a visibly distinct card for every member. */
+      #rw-payout-helper .rw-admin-list{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:10px;min-width:0;}
+      #rw-payout-helper .rw-admin-license-card{
+        min-width:0;padding:11px;border:1px solid var(--rwph-theme-line2)!important;
+        border-radius:var(--rwph-theme-card-radius,11px)!important;
+        background:var(--rwph-theme-panel2)!important;color:var(--rwph-theme-text)!important;
+        box-shadow:none!important;
+      }
+      #rw-payout-helper .rw-admin-license-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0;}
+      #rw-payout-helper .rw-admin-license-member{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
+      #rw-payout-helper .rw-admin-license-name{font-size:13px;line-height:1.3;font-weight:900;color:var(--rwph-theme-text)!important;}
+      #rw-payout-helper .rw-admin-license-id{font-size:10.5px;line-height:1.3;margin-top:3px;color:var(--rwph-theme-soft)!important;}
+      #rw-payout-helper .rw-admin-license-card .rw-admin-fill-revoke{
+        flex:0 0 auto;width:auto;min-height:32px;padding:5px 10px;margin:0;
+      }
+      #rw-payout-helper .rw-admin-license-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;}
+      #rw-payout-helper .rw-admin-license-detail{
+        min-width:0;padding:8px;border:1px solid var(--rwph-theme-line)!important;
+        border-radius:8px;background:var(--rwph-theme-bg2)!important;
+      }
+      #rw-payout-helper .rw-admin-license-source{grid-column:1/-1;}
+      #rw-payout-helper .rw-admin-license-label{font-size:9.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:700;color:var(--rwph-theme-soft)!important;}
+      #rw-payout-helper .rw-admin-license-value{margin-top:3px;font-size:11.5px;line-height:1.4;font-weight:850;color:var(--rwph-theme-text)!important;overflow-wrap:anywhere;}
       #rw-payout-helper table{width:100%;border-collapse:collapse;color:var(--rwph-theme-text)!important;}
       #rw-payout-helper th,#rw-payout-helper td{padding:7px;border-bottom:1px solid var(--rwph-theme-line)!important;text-align:left;vertical-align:top;}
       #rw-payout-helper th{background:var(--rwph-theme-panel2)!important;font-weight:900;}
@@ -12957,7 +13062,7 @@
         <div id="rw-paywall-admin-section" class="rw-tab-section rw-unified-tab-panel" hidden>
           <div class="rw-admin-box rw-admin-unified-panel">
             <div class="rw-small">
-              Admin tools are available here even while the helper is locked. Keep your admin key private.
+              Admin tools are available even while locked. Use your admin key or Verify Owner Account with your saved Torn API key.
             </div>
 
             <label>Admin Key
@@ -12966,6 +13071,7 @@
 
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
+              <button id="rw-admin-owner-login" class="secondary" type="button" title="Verify Evil_Panda_420 [3236276] using the Torn API key saved in RWPH">Verify Owner Account</button>
               <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
             </div>
@@ -13015,7 +13121,7 @@
     rwphAttachLayoutPreferencesV1597();
     rwphAttachAdvancedSettingHelpButtons();
     rwphBindAdminControls(panel);
-    rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
+    rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Save Admin Key or Verify Owner Account to show the admin tools.");
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
@@ -13139,9 +13245,7 @@
     });
 
     function getAdminKeyFromInput() {
-      const adminKey = document.getElementById("rw-admin-key").value.trim();
-      if (!adminKey) throw new Error("Enter your admin key first.");
-      return adminKey;
+      return rwphGetAdminKeyFromPanel(document);
     }
 
     function renderAdminStatusSummary(result) {
@@ -13163,7 +13267,7 @@
       const status = document.getElementById("rw-admin-status");
       const box = document.getElementById("rw-admin-status-summary");
       const adminKey = getAdminKeyFromInput();
-      GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+      rwphRememberAdminKey(adminKey);
       status.textContent = "Loading server status...";
       const result = await adminRequest("POST", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
@@ -13175,7 +13279,7 @@
       const results = document.getElementById("rw-admin-results");
       const adminKey = getAdminKeyFromInput();
 
-      GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+      rwphRememberAdminKey(adminKey);
       status.textContent = "Loading licences from server...";
       results.innerHTML = "";
 
@@ -13238,7 +13342,7 @@
         if (!tornId) return alert("Enter the player's Torn ID.");
         if (!days || days <= 0) return alert("Enter valid license days.");
 
-        GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+        rwphRememberAdminKey(adminKey);
         status.textContent = `Granting ${days} day license to ${name} (${tornId})...`;
 
         const result = await adminRequest("POST", "/api/admin/grant", adminKey, { tornId, name, days });
@@ -14075,7 +14179,7 @@
         <div id="rw-admin-tab-section" class="rw-tab-section rw-unified-tab-panel" hidden>
           <div class="rw-admin-box rw-admin-unified-panel">
             <div class="rw-small">
-              Admin tools call your backend directly. Keep your admin key private.
+              Admin tools call your backend directly. Use your admin key or verify the Torn account of the RWPH owner. Keep your keys private.
             </div>
 
             <label>Admin Key
@@ -14084,6 +14188,7 @@
 
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
+              <button id="rw-admin-owner-login" class="secondary" type="button" title="Verify Evil_Panda_420 [3236276] using the Torn API key saved in RWPH">Verify Owner Account</button>
               <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-status-load" class="secondary" type="button">Server Status</button>
               <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
@@ -14192,7 +14297,7 @@
     switchTab(rwphGetActiveTab("main", "payout"));
 
     rwphBindAdminControls(panel);
-    rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Enter your ADMIN_KEY and click Save Admin Key to show the admin tools.");
+    rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Save Admin Key or Verify Owner Account to show the admin tools.");
 
     // Close is already bound before any optional panel setup above.
 
@@ -14602,9 +14707,7 @@
     document.getElementById("rw-points-run")?.addEventListener("click", () => rwphRunCalculation("points"));
 
     function getAdminKeyFromInput() {
-      const adminKey = document.getElementById("rw-admin-key").value.trim();
-      if (!adminKey) throw new Error("Enter your admin key first.");
-      return adminKey;
+      return rwphGetAdminKeyFromPanel(document);
     }
 
     function renderAdminStatusSummary(result) {
@@ -14626,7 +14729,7 @@
       const status = document.getElementById("rw-admin-status");
       const box = document.getElementById("rw-admin-status-summary");
       const adminKey = getAdminKeyFromInput();
-      GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+      rwphRememberAdminKey(adminKey);
       status.textContent = "Loading server status...";
       const result = await adminRequest("POST", "/api/admin/status", adminKey);
       if (box) box.innerHTML = renderAdminStatusSummary(result);
@@ -14638,7 +14741,7 @@
       const results = document.getElementById("rw-admin-results");
       const adminKey = getAdminKeyFromInput();
 
-      GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+      rwphRememberAdminKey(adminKey);
       status.textContent = "Loading licences from server...";
       results.innerHTML = "";
 
@@ -14701,7 +14804,7 @@
         if (!tornId) return alert("Enter the player's Torn ID.");
         if (!days || days <= 0) return alert("Enter valid license days.");
 
-        GM_setValue(ADMIN_KEY_STORAGE_KEY, adminKey);
+        rwphRememberAdminKey(adminKey);
         status.textContent = `Granting ${days} day license to ${name} (${tornId})...`;
 
         const result = await adminRequest("POST", "/api/admin/grant", adminKey, { tornId, name, days });
