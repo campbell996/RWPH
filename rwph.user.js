@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.627
+// @version      1.1.628
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5116,15 +5116,21 @@
     });
   }
 
-  async function rwphLoginOwnerWithTornAccount(root) {
-    const status = rwphAdminQuery(root, "#rw-admin-status");
-    const button = rwphAdminQuery(root, "#rw-admin-owner-login");
-    if (button?.disabled) return null;
-    const userKey = String(
+  function rwphGetCurrentAdminTornApiKey() {
+    // This identifies the *person clicking* the Admin Licence button.
+    // Admin-key login alone is not a Torn identity and cannot select a faction.
+    return String(
       document.getElementById("rw-key")?.value?.trim() ||
       document.getElementById("rw-paywall-key")?.value?.trim() ||
       GM_getValue(STORAGE_KEY, "") || ""
     ).trim();
+  }
+
+  async function rwphLoginOwnerWithTornAccount(root) {
+    const status = rwphAdminQuery(root, "#rw-admin-status");
+    const button = rwphAdminQuery(root, "#rw-admin-owner-login");
+    if (button?.disabled) return null;
+    const userKey = rwphGetCurrentAdminTornApiKey();
     if (!userKey) throw new Error("Save your own Torn API key in RWPH first, then press Verify Owner Account.");
 
     if (button) { button.disabled = true; button.textContent = "Verifying..."; }
@@ -5145,6 +5151,8 @@
       // Prove the session works on a protected endpoint before revealing tools.
       const confirmed = await adminRequest("POST", "/api/admin/status", "");
       rwphSetAdminToolsVisible(root, true);
+      const ownerSection = rwphFindAdminSection(root);
+      if (ownerSection) ownerSection.dataset.rwphAdminAuth = 'owner';
       const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
       if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(confirmed);
       rwphToastPanelInfo(status, `Verified Torn owner ${result.name} [${result.tornId}]. Admin tools unlocked.`, "info", "RWPH Admin");
@@ -5163,160 +5171,63 @@
     return new Date(Number(unixSeconds) * 1000).toLocaleString();
   }
 
-  async function grantOwnerLicenseFromAdminKey(adminKey, statusEl) {
-    if (!adminKey) throw new Error("Enter your admin key first.");
-
-    const result = await adminRequest("POST", "/api/admin/grant-owner", adminKey, { days: 10000 });
-
-    // v1.1.483: grant-owner now returns a freshly signed owner token in the same
-    // response. Store it immediately so the 9999+ day licence is available
-    // locally without a second paywall verification round-trip.
-    if (result?.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-    if (result?.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
-
-    if (statusEl) {
-      const timeLeft = result?.expiresAt ? formatLicenseDaysLeft(result.expiresAt) : "active";
-      rwphToastPanelInfo(
-        statusEl,
-        `Admin access unlocked. Owner licence active for ${timeLeft}.`,
-        "info",
-        "RWPH Admin"
-      );
+  async function rwphGrantAdminFactionLicence(root) {
+    const status = rwphAdminQuery(root, '#rw-admin-status');
+    const button = rwphAdminQuery(root, '#rw-admin-faction-licence');
+    if (button?.disabled) return null;
+    const userKey = rwphGetCurrentAdminTornApiKey();
+    if (!userKey) throw new Error('Save your own Torn API key in RWPH to identify your faction first.');
+    if (!confirm('Grant 500 additional days to the faction of your verified Torn account? This does not affect other factions in an alliance.')) return null;
+    const adminKey = rwphGetAdminKeyFromPanel(root);
+    if (button) { button.disabled = true; button.textContent = 'Verifying...'; }
+    try {
+      const result = await adminRequest('POST', '/api/admin/grant-admin-faction', adminKey, { userKey });
+      rwphToastPanelInfo(status, `Added 500 days to your verified faction ${result.factionName || ''} [${result.factionId}]. New expiry: ${formatUnixDate(result.expiresAt)}.`, 'info', 'RWPH Admin');
+      await rwphRefreshAdminLicensesFromPanel(root, 'faction');
+      return result;
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Admin Licence (+500 Days)'; }
     }
-
-    return result;
   }
 
-  async function extendAdminLicenseFromCurrentForm(statusEl, skipConfirm = false) {
-    const adminKey = rwphGetAdminKeyFromPanel(document);
-    const tornId = document.getElementById("rw-admin-torn-id")?.value.trim();
-    const name = document.getElementById("rw-admin-name")?.value.trim() || `User ${tornId}`;
-    const days = Number(document.getElementById("rw-admin-days")?.value || 30);
-
-    if (!adminKey && !rwphOwnerAdminSession()) throw new Error("Log in with your admin key or Verify Owner Account.");
-    if (!tornId) throw new Error("Enter a Torn ID first.");
-    if (!days || days <= 0) throw new Error("Enter valid extension days.");
-
-    if (!skipConfirm && !confirm(`Extend license for ${name} (${tornId}) by ${days} day(s)?`)) return null;
-
-    rwphRememberAdminKey(adminKey);
-    if (statusEl) statusEl.textContent = `Extending ${name} (${tornId}) by ${days} day(s)...`;
-
-    const result = await adminRequest("POST", "/api/admin/extend", adminKey, { tornId, name, days });
-
-    if (statusEl) {
-      const previousText = result.previousExpiresAt ? ` Previous expiry: ${formatUnixDate(result.previousExpiresAt)}.` : "";
-      rwphToastPanelInfo(
-        statusEl,
-        `Extended license for ${result.name || name} (${result.tornId || tornId}) by ${result.days || days} day(s).${previousText} New expiry: ${formatUnixDate(result.expiresAt)}.`,
-        "info",
-        "RWPH Admin"
-      );
-    }
-
-    return result;
-  }
-
-  async function removeAdminLicenseDaysFromCurrentForm(statusEl, skipConfirm = false) {
-    const adminKey = rwphGetAdminKeyFromPanel(document);
-    const tornId = document.getElementById("rw-admin-torn-id")?.value.trim();
-    const name = document.getElementById("rw-admin-name")?.value.trim() || `User ${tornId}`;
-    const days = Number(document.getElementById("rw-admin-days")?.value || 30);
-
-    if (!adminKey && !rwphOwnerAdminSession()) throw new Error("Log in with your admin key or Verify Owner Account.");
-    if (!tornId) throw new Error("Enter a Torn ID first.");
-    if (!days || days <= 0) throw new Error("Enter valid days to remove.");
-
-    if (!skipConfirm && !confirm(`Remove ${days} licence day(s) from ${name} (${tornId})?`)) return null;
-
-    rwphRememberAdminKey(adminKey);
-    if (statusEl) statusEl.textContent = `Removing ${days} licence day(s) from ${name} (${tornId})...`;
-
-    const result = await adminRequest("POST", "/api/admin/remove", adminKey, { tornId, name, days });
-
-    if (statusEl) {
-      const previousText = result.previousExpiresAt ? ` Previous expiry: ${formatUnixDate(result.previousExpiresAt)}.` : "";
-      const endedText = result.expiredNow ? " Licence is now expired." : "";
-      rwphToastPanelInfo(
-        statusEl,
-        `Removed ${result.days || days} licence day(s) from ${result.name || name} (${result.tornId || tornId}).${previousText} New expiry: ${formatUnixDate(result.expiresAt)}.${endedText}`,
-        result.expiredNow ? "warn" : "info",
-        "RWPH Admin"
-      );
-    }
-
-    return result;
-  }
-
-  function renderAdminLicenses(licenses, groupLicences = []) {
-    if ((!licenses || !licenses.length) && (!groupLicences || !groupLicences.length)) {
-      return `<div class="rw-muted">No licences found.</div>`;
-    }
-
-    const sorted = [...(licenses || [])].sort((a, b) => Number(b.expiresAt || 0) - Number(a.expiresAt || 0));
-
-    // One clearly separated member card per backend licence record; the existing
-    // Fill action continues to populate the same Admin licence form.
-    return `
-      ${groupLicences.length ? `<div class="rw-admin-list" role="list" aria-label="Faction and alliance licences">
-        <div class="rwph-xanax-wizard-heading">Faction / Alliance Licences (${groupLicences.length})</div>
-        ${[...groupLicences].sort((a,b)=>Number(b.expiresAt || 0)-Number(a.expiresAt || 0)).map(group=>`
-          <article class="rw-admin-license-card rw-admin-group-card" role="listitem">
-            <div class="rw-admin-license-top">
-              <div class="rw-admin-license-member">
-                <div class="rw-admin-license-name">${group.mode === 'alliance' ? 'Alliance Licence' : 'Faction Licence'}</div>
-                <div class="rw-admin-license-id">Purchasing faction ID: ${esc(group.ownerFactionId)} · Buyer [${esc(group.buyerTornId)}]</div>
-              </div>
-              <button type="button" class="secondary rw-admin-group-fill" data-mode="${esc(group.mode)}" data-target="${esc(group.mode === 'alliance' ? group.allianceCode : group.ownerFactionId)}" data-owner="${esc(group.ownerFactionId)}">Fill</button>
+  function renderAdminLicenses(groupLicences = [], mode = 'faction') {
+    const selectedMode = mode === 'alliance' ? 'alliance' : 'faction';
+    const rows = (Array.isArray(groupLicences) ? groupLicences : [])
+      .filter(group => group && group.mode === selectedMode)
+      .sort((a, b) => Number(b.expiresAt || 0) - Number(a.expiresAt || 0));
+    const heading = selectedMode === 'alliance' ? 'Alliance Licences' : 'Faction Licences';
+    if (!rows.length) return `<div class="rw-muted">No ${esc(heading.toLowerCase())} found.</div>`;
+    return `<div class="rw-admin-list" role="list" aria-label="${esc(heading)}">
+      <div class="rwph-xanax-wizard-heading">${esc(heading)} (${rows.length})</div>
+      ${rows.map(group => {
+        const primary = (group.factions || []).find(f => String(f.id) === String(group.ownerFactionId));
+        const ownerName = primary?.name || `Faction ${group.ownerFactionId}`;
+        return `<article class="rw-admin-license-card rw-admin-group-card" role="listitem">
+          <div class="rw-admin-license-top">
+            <div class="rw-admin-license-member">
+              <div class="rw-admin-license-name">${esc(selectedMode === 'alliance' ? 'Alliance Licence' : ownerName)}</div>
+              <div class="rw-admin-license-id">${esc(selectedMode === 'alliance' ? 'Purchasing faction' : 'Faction')}: ${esc(ownerName)} [${esc(group.ownerFactionId)}]</div>
             </div>
-            ${group.mode === 'alliance' ? `<div class="rw-admin-alliance-code"><b>Alliance licence code:</b> <code>${esc(group.allianceCode || 'Not issued')}</code></div>` : `<div class="rw-admin-license-id">Licence target: Faction ID [${esc(group.ownerFactionId)}]</div>`}
-            <div class="rw-admin-license-details">
-              <div class="rw-admin-license-detail"><div class="rw-admin-license-label">Remaining</div><div class="rw-admin-license-value">${esc(formatLicenseDaysLeft(group.expiresAt))}</div></div>
-              <div class="rw-admin-license-detail"><div class="rw-admin-license-label">Expires</div><div class="rw-admin-license-value">${esc(formatUnixDate(group.expiresAt))}</div></div>
-            </div>
-            <div class="rw-admin-group-factions">
-              ${(group.factions || []).map(faction => `
-                <details class="rw-admin-faction-roster">
-                  <summary><b>${esc(faction.name || 'Faction')} [${esc(faction.id)}]</b> — ${faction.verifiedAtMs ? `${(faction.members || []).length} members with API Access + Money Giving` : 'Eligibility not yet verified'}</summary>
-                  ${faction.verifiedAtMs ? `<div class="rw-admin-roster-timestamp">Last verified ${esc(new Date(Number(faction.verifiedAtMs)).toLocaleString())}. Changes to faction positions may not appear until a qualified member uses RWPH again.</div>` : `<div class="rw-admin-roster-timestamp">A member with Faction API Access and Money Giving permissions must use RWPH for its eligible roster to be verified. Other factions cannot read these private permissions.</div>`}
-                  <div class="rw-admin-eligible-member-list">
-                    ${(faction.members || []).map(member => `<div class="rw-admin-eligible-member"><b>${esc(member.name || `User ${member.id}`)}</b><span>ID: ${esc(member.id)} · ${esc(member.position || 'Position unknown')}</span></div>`).join('') || `<span class="rw-muted">${faction.verifiedAtMs ? 'No eligible members in the last verification.' : 'No verified members yet.'}</span>`}
-                  </div>
-                </details>`).join('')}
-            </div>
-          </article>`).join('')}</div>` : ''}
-      <div class="rw-admin-list" role="list" aria-label="Member licences">
-        ${sorted.map((license) => {
-          const tornId = String(license.tornId || "").trim();
-          const memberName = String(license.name || `User ${tornId || "unknown"}`);
-          return `
-            <article class="rw-admin-license-card" role="listitem">
-              <div class="rw-admin-license-top">
-                <div class="rw-admin-license-member">
-                  <div class="rw-admin-license-name">${esc(memberName)}</div>
-                  <div class="rw-admin-license-id">Torn ID: ${esc(tornId || "unknown")}</div>
-                </div>
-                <button type="button" class="secondary rw-admin-fill-revoke" data-torn-id="${esc(tornId)}" data-name="${esc(memberName)}">Fill</button>
-              </div>
-              <div class="rw-admin-license-details">
-                <div class="rw-admin-license-detail">
-                  <div class="rw-admin-license-label">Days remaining</div>
-                  <div class="rw-admin-license-value">${esc(formatLicenseDaysLeft(license.expiresAt))}</div>
-                </div>
-                <div class="rw-admin-license-detail">
-                  <div class="rw-admin-license-label">Expires</div>
-                  <div class="rw-admin-license-value">${esc(formatUnixDate(license.expiresAt))}</div>
-                </div>
-                <div class="rw-admin-license-detail rw-admin-license-source">
-                  <div class="rw-admin-license-label">Licence source</div>
-                  <div class="rw-admin-license-value">${license.manualGrant ? "Manual grant" : "Payment/licence record"}</div>
-                </div>
-              </div>
-            </article>
-          `;
-        }).join("")}
-      </div>
-    `;
+            <button type="button" class="secondary rw-admin-group-fill" data-mode="${esc(selectedMode)}" data-target="${esc(selectedMode === 'alliance' ? group.allianceCode || '' : group.ownerFactionId)}" data-owner="${esc(group.ownerFactionId)}">Fill</button>
+          </div>
+          ${selectedMode === 'alliance' ? `<div class="rw-admin-alliance-code"><b>Alliance licence code:</b> <code>${esc(group.allianceCode || 'Not issued')}</code></div>` : ''}
+          <div class="rw-admin-license-details">
+            <div class="rw-admin-license-detail"><div class="rw-admin-license-label">Remaining</div><div class="rw-admin-license-value">${esc(formatLicenseDaysLeft(group.expiresAt))}</div></div>
+            <div class="rw-admin-license-detail"><div class="rw-admin-license-label">Expires</div><div class="rw-admin-license-value">${esc(formatUnixDate(group.expiresAt))}</div></div>
+            ${selectedMode === 'alliance' ? `<div class="rw-admin-license-detail rw-admin-license-source"><div class="rw-admin-license-label">Factions covered</div><div class="rw-admin-license-value">${(group.factions || []).length}</div></div>` : ''}
+          </div>
+          <div class="rw-admin-group-factions">
+            ${(group.factions || []).map(faction => `<details class="rw-admin-faction-roster">
+              <summary><b>${esc(faction.name || `Faction ${faction.id}`)} [${esc(faction.id)}]</b> — ${faction.verifiedAtMs ? `${(faction.members || []).length} members with both required permissions` : 'Eligible members not verified'}</summary>
+              ${faction.verifiedAtMs
+                ? `<div class="rw-admin-roster-timestamp">Verified ${esc(new Date(Number(faction.verifiedAtMs)).toLocaleString())}. Faction positions may have changed since this snapshot.</div>`
+                : `<div class="rw-admin-roster-timestamp">A member of this faction with Faction API Access and Money Giving must use RWPH before the private eligibility roster can be shown.</div>`}
+              <div class="rw-admin-eligible-member-list">${(faction.members || []).map(member => `<div class="rw-admin-eligible-member"><b>${esc(member.name || `User ${member.id}`)}</b><span>ID: ${esc(member.id)} · ${esc(member.position || 'Position unknown')}</span></div>`).join('') || `<span class="rw-muted">${faction.verifiedAtMs ? 'No eligible members at the last verification.' : 'No verified members yet.'}</span>`}</div>
+            </details>`).join('') || `<div class="rw-muted">No factions recorded for this licence.</div>`}
+          </div>
+        </article>`;
+      }).join('')}
+    </div>`;
   }
 
   function rwphScheduleLicenseLockback(expiresAt) {
@@ -5621,22 +5532,31 @@
   }
 
   function rwphGetAdminKeyFromPanel(root) {
-    if (rwphOwnerAdminSession()) return "";
+    const authMode = rwphFindAdminSection(root)?.dataset?.rwphAdminAuth;
+    if (authMode !== 'key' && rwphOwnerAdminSession()) return '';
     const adminKey = rwphAdminInputValue(root, "#rw-admin-key");
     if (!adminKey) throw new Error("Log in using your admin key or Verify Owner Account first.");
     return adminKey;
   }
 
-  async function rwphRefreshAdminLicensesFromPanel(root) {
-    const status = rwphAdminQuery(root, "#rw-admin-status");
-    const results = rwphAdminQuery(root, "#rw-admin-results");
+  async function rwphRefreshAdminLicensesFromPanel(root, mode = null) {
+    const section = rwphFindAdminSection(root);
+    const status = rwphAdminQuery(root, '#rw-admin-status');
+    const results = rwphAdminQuery(root, '#rw-admin-results');
+    const listMode = mode === 'alliance' || mode === 'faction' ? mode : (section?.dataset?.rwphAdminListMode || 'faction');
+    if (section) section.dataset.rwphAdminListMode = listMode;
     const adminKey = rwphGetAdminKeyFromPanel(root);
     rwphRememberAdminKey(adminKey);
-    if (status) status.textContent = "Loading licences from server...";
-    if (results) results.innerHTML = "";
-    const result = await adminRequest("POST", "/api/admin/licenses", adminKey);
-    if (results) results.innerHTML = renderAdminLicenses(result.licenses || [], result.groupLicences || []);
-    rwphToastPanelInfo(status, `Loaded ${(result.groupLicences || []).length} faction/alliance licence(s) and ${(result.licenses || []).length} legacy member licence(s).`, "info", "RWPH Admin");
+    if (status) status.textContent = `Loading ${listMode} licences from server...`;
+    if (results) results.innerHTML = '';
+    const result = await adminRequest('POST', '/api/admin/licenses', adminKey);
+    const matching = (result.groupLicences || []).filter(group => group.mode === listMode);
+    if (results) results.innerHTML = renderAdminLicenses(result.groupLicences || [], listMode);
+    if (section) for (const button of section.querySelectorAll('#rw-admin-list-factions, #rw-admin-list-alliances')) {
+      const active = (button.id === 'rw-admin-list-alliances') === (listMode === 'alliance');
+      button.setAttribute('aria-pressed', String(active));
+    }
+    rwphToastPanelInfo(status, `Loaded ${matching.length} ${listMode} licence(s).`, 'info', 'RWPH Admin');
     return result;
   }
 
@@ -5677,6 +5597,7 @@
     if (!adminSection) return;
     const unlocked = !!visible;
     adminSection.dataset.rwphAdminUnlocked = unlocked ? "1" : "0";
+    if (!unlocked) delete adminSection.dataset.rwphAdminAuth;
 
     const note = rwphEnsureAdminGateNote(adminSection);
     if (note) {
@@ -5687,8 +5608,10 @@
     }
 
     adminSection.querySelectorAll([
-      "#rw-admin-list",
+      "#rw-admin-list-factions",
+      "#rw-admin-list-alliances",
       "#rw-admin-status-load",
+      "#rw-admin-faction-licence",
       "#rw-admin-default-setup",
       "#rw-move-launcher-admin",
       "#rw-admin-grant",
@@ -5699,7 +5622,7 @@
       "#rw-admin-results"
     ].join(",")).forEach((el) => { el.hidden = !unlocked; });
 
-    ["#rw-admin-torn-id", "#rw-admin-name", "#rw-admin-days", "#rw-admin-licence-type", "#rw-admin-alliance-owner", "#rw-admin-alliance-factions"].forEach((selector) => {
+    ["#rw-admin-torn-id", "#rw-admin-days", "#rw-admin-licence-type", "#rw-admin-alliance-owner", "#rw-admin-alliance-factions"].forEach((selector) => {
       const label = adminSection.querySelector(selector)?.closest?.("label");
       if (label) label.hidden = !unlocked;
     });
@@ -5715,14 +5638,13 @@
     return rwphFindAdminSection(root)?.dataset?.rwphAdminUnlocked === "1";
   }
 
-  async function rwphSaveAdminKeyAndRevealTools(root, options = {}) {
+  async function rwphSaveAdminKeyAndRevealTools(root) {
     const status = rwphAdminQuery(root, "#rw-admin-status");
     const saveButton = rwphAdminQuery(root, "#rw-admin-save-key");
     const adminKey = rwphAdminInputValue(root, "#rw-admin-key");
     if (!adminKey) throw new Error("Enter your admin key first.");
 
-    // Prevent impatient/double clicks from creating overlapping verification,
-    // grant and licence-list requests.
+    // Prevent double clicks while checking the admin key. This never grants a licence.
     if (saveButton?.dataset?.rwphSaving === "1") return null;
     if (saveButton) {
       saveButton.dataset.rwphSaving = "1";
@@ -5736,32 +5658,18 @@
     if (status) status.textContent = "Checking admin key...";
 
     try {
-      // v1.1.483: when owner auto-grant is enabled this ONE request both
-      // verifies ADMIN_KEY and grants/refreshes the owner licence. The old
-      // status -> grant-owner -> licences three-request chain was the delay.
-      const result = options.grantOwner !== false
-        ? await grantOwnerLicenseFromAdminKey(adminKey, null)
-        : await adminRequest("POST", "/api/admin/status", adminKey);
-
+      // Save Admin Key authenticates ONLY. Granting 500 days requires a separate
+      // explicit Admin Licence click and Torn verification of the user's faction.
+      const result = await adminRequest('POST', '/api/admin/status', adminKey);
       rwphSetAdminToolsVisible(root, true);
-
-      const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
-      if (summary) {
-        if (result?.calculations || result?.storage) summary.innerHTML = rwphRenderAdminStatusSummary(result);
-        else summary.innerHTML = `<div class="rw-admin-status-grid"><div class="rw-admin-status-card"><div class="rw-admin-status-label">Admin</div><div class="rw-admin-status-value">Access unlocked</div></div><div class="rw-admin-status-card"><div class="rw-admin-status-label">Owner licence</div><div class="rw-admin-status-value">${esc(result?.expiresAt ? formatLicenseDaysLeft(result.expiresAt) : "Active")}</div></div></div>`;
-      }
-
-      if (result?.token) GM_setValue(PAYWALL_TOKEN_STORAGE_KEY, result.token);
-      if (result?.expiresAt) rwphScheduleLicenseLockback(result.expiresAt);
-
-      if (options.grantOwner !== false && result?.expiresAt) {
-        rwphToastPanelInfo(status, `Admin access unlocked. Owner licence active for ${formatLicenseDaysLeft(result.expiresAt)}.`, "info", "RWPH Admin");
-      } else {
-        rwphToastPanelInfo(status, "Admin key verified. Admin tools unlocked.", "info", "RWPH Admin");
-      }
+      const keySection = rwphFindAdminSection(root);
+      if (keySection) keySection.dataset.rwphAdminAuth = 'key';
+      const summary = rwphAdminQuery(root, '#rw-admin-status-summary');
+      if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(result);
+      rwphToastPanelInfo(status, 'Admin key verified. Admin tools unlocked.', 'info', 'RWPH Admin');
 
       // Do not auto-load the full licence table here. It is intentionally a
-      // separate List Licences action so Save Admin Key stays fast and stable.
+      // separate Faction/Alliance Licences list actions so Save Admin Key stays fast and stable.
       return result;
     } catch (e) {
       GM_setValue(ADMIN_KEY_STORAGE_KEY, "");
@@ -5963,26 +5871,18 @@
     const section = rwphFindAdminSection(root);
     if (!section) return;
     const mode = section.querySelector('#rw-admin-licence-type')?.value || 'faction';
-    for (const label of section.querySelectorAll('[data-rwph-admin-legacy-name]')) label.hidden = mode !== 'member';
     for (const label of section.querySelectorAll('[data-rwph-admin-alliance-owner], [data-rwph-admin-alliance-factions], [data-rwph-admin-alliance-hint]')) label.hidden = mode !== 'alliance';
     const target = section.querySelector('#rw-admin-torn-id');
-    if (target) target.placeholder = mode === 'alliance' ? 'Alliance code; blank only when granting a NEW alliance' : mode === 'member' ? 'Legacy Torn player ID' : 'Faction ID';
+    if (target) target.placeholder = mode === 'alliance' ? 'Alliance code; blank only when granting a NEW alliance' : 'Faction ID';
   }
 
   async function rwphManageAdminLicence(root, action) {
     const mode = rwphAdminInputValue(root, '#rw-admin-licence-type') || 'faction';
     const target = rwphAdminInputValue(root, '#rw-admin-torn-id');
-    const name = rwphAdminInputValue(root, '#rw-admin-name') || `User ${target}`;
     const days = Number(rwphAdminQuery(root, '#rw-admin-days')?.value);
     const adminKey = rwphGetAdminKeyFromPanel(root);
     const status = rwphAdminQuery(root, '#rw-admin-status');
     if (!Number.isSafeInteger(days) || days < 1 || days > 3650) throw new Error('Enter whole licence days from 1 to 3650.');
-    if (mode === 'member') {
-      if (!/^\d+$/.test(target)) throw new Error('Enter a valid legacy member Torn ID.');
-      const path = action === 'grant' ? '/api/admin/grant' : action === 'extend' ? '/api/admin/extend' : '/api/admin/remove';
-      if (!confirm(`${action === 'grant' ? 'Grant' : action === 'extend' ? 'Extend' : 'Remove'} ${days} day(s) for legacy member ${name} [${target}]?`)) return null;
-      return await adminRequest('POST', path, adminKey, { tornId: target, name, days });
-    }
     if (mode !== 'faction' && mode !== 'alliance') throw new Error('Choose a licence type.');
     const ownerFactionId = rwphAdminInputValue(root, '#rw-admin-alliance-owner');
     const additionalFactionIds = rwphAdminInputValue(root, '#rw-admin-alliance-factions')
@@ -6009,7 +5909,7 @@
     rwphSyncAdminLicenceFields(panelRoot);
     panelRoot.addEventListener("click", async (event) => {
       const target = event.target;
-      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-owner-login, #rw-admin-list, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-fill-revoke, .rw-admin-group-fill");
+      const adminAction = target?.closest?.("#rw-admin-save-key, #rw-admin-owner-login, #rw-admin-faction-licence, #rw-admin-list-factions, #rw-admin-list-alliances, #rw-admin-status-load, #rw-admin-default-setup, #rw-admin-grant, #rw-admin-extend, #rw-admin-revoke, .rw-admin-group-fill");
       if (!adminAction || !panelRoot.contains?.(adminAction)) return;
       const rootScope = rwphFindAdminRoot(adminAction);
       const status = rwphAdminQuery(rootScope, "#rw-admin-status");
@@ -6036,17 +5936,10 @@
           rwphToastPanelInfo(status, `Selected ${mode} licence. Choose Grant, Extend or Remove Days.`, 'info', 'RWPH Admin');
           return;
         }
-        if (adminAction.classList?.contains("rw-admin-fill-revoke")) {
-          const licenceType = rwphAdminQuery(rootScope, '#rw-admin-licence-type');
-          if (licenceType) licenceType.value = 'member';
-          rwphSyncAdminLicenceFields(rootScope);
-          const filledId = adminAction.dataset.tornId || "";
-          const filledName = adminAction.dataset.name || (filledId ? `User ${filledId}` : "");
-          const idInput = rwphAdminQuery(rootScope, "#rw-admin-torn-id");
-          const nameInput = rwphAdminQuery(rootScope, "#rw-admin-name");
-          if (idInput) idInput.value = filledId;
-          if (nameInput) nameInput.value = filledName;
-          rwphToastPanelInfo(status, filledName ? `Filled ${filledName} (${filledId}) into the admin form.` : `Filled Torn ID ${filledId} into the admin form.`, "info", "RWPH Admin");
+
+
+        if (adminAction.id === 'rw-admin-faction-licence') {
+          await rwphGrantAdminFactionLicence(rootScope);
           return;
         }
 
@@ -6062,13 +5955,13 @@
           return;
         }
 
-        if (adminAction.id === "rw-admin-list") {
-          await rwphRefreshAdminLicensesFromPanel(rootScope);
+        if (adminAction.id === 'rw-admin-list-factions' || adminAction.id === 'rw-admin-list-alliances') {
+          await rwphRefreshAdminLicensesFromPanel(rootScope, adminAction.id === 'rw-admin-list-alliances' ? 'alliance' : 'faction');
           return;
         }
 
         if (adminAction.id === "rw-admin-save-key") {
-          await rwphSaveAdminKeyAndRevealTools(rootScope, { grantOwner: true, refreshLicenses: false });
+          await rwphSaveAdminKeyAndRevealTools(rootScope);
           return;
         }
 
@@ -6076,7 +5969,7 @@
           const action = adminAction.id === 'rw-admin-grant' ? 'grant' : adminAction.id === 'rw-admin-extend' ? 'extend' : 'remove';
           const result = await rwphManageAdminLicence(rootScope, action);
           if (result) {
-            const destination = result.allianceCode ? `Alliance code ${result.allianceCode}` : result.ownerFactionId ? `Faction [${result.ownerFactionId}]` : `Member [${result.tornId}]`;
+            const destination = result.allianceCode ? `Alliance code ${result.allianceCode}` : `Faction [${result.ownerFactionId}]`;
             rwphToastPanelInfo(status, `${action === 'grant' ? 'Granted/reset' : action === 'extend' ? 'Extended' : 'Removed'} ${result.days} day(s) for ${destination}. New expiry: ${formatUnixDate(result.expiresAt)}.`, result.expiredNow ? 'warn' : 'info', 'RWPH Admin');
             if (result.allianceCode) {
               const input = rwphAdminQuery(rootScope, '#rw-admin-torn-id');
@@ -6087,7 +5980,7 @@
           return;
         }
       } catch (e) {
-        const actionName = adminAction.id === "rw-admin-owner-login" ? "Owner verification" : adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === "rw-admin-list" ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-default-setup" ? "Default setup" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
+        const actionName = adminAction.id === "rw-admin-owner-login" ? "Owner verification" : adminAction.id === "rw-admin-save-key" ? "Admin key save" : adminAction.id === 'rw-admin-faction-licence' ? 'Admin Licence' : (adminAction.id === "rw-admin-list-factions" || adminAction.id === "rw-admin-list-alliances") ? "Admin list" : adminAction.id === "rw-admin-status-load" ? "Server status" : adminAction.id === "rw-admin-default-setup" ? "Default setup" : adminAction.id === "rw-admin-grant" ? "Admin grant" : adminAction.id === "rw-admin-extend" ? "Admin extend" : adminAction.id === "rw-admin-revoke" ? "Admin remove" : "Admin action";
         rwphToastPanelError(status, `${actionName} error: ${e.message}`, "RWPH Admin");
       }
     }, true);
@@ -6309,7 +6202,7 @@
       #rw-payout-helper .rw-admin-license-member{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
       #rw-payout-helper .rw-admin-license-name{font-size:13px;line-height:1.3;font-weight:900;color:var(--rwph-theme-text)!important;}
       #rw-payout-helper .rw-admin-license-id{font-size:10.5px;line-height:1.3;margin-top:3px;color:var(--rwph-theme-soft)!important;}
-      #rw-payout-helper .rw-admin-license-card .rw-admin-fill-revoke{
+      #rw-payout-helper .rw-admin-license-card .rw-admin-group-fill{
         flex:0 0 auto;width:auto;min-height:32px;padding:5px 10px;margin:0;
       }
       #rw-payout-helper .rw-admin-license-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;}
@@ -13154,7 +13047,7 @@
           <div class="rw-actions">
             <button id="rw-unlock-existing">Unlock Panel</button>
             <button id="rw-start-payment">Buy Licence</button>
-            <button id="rw-free-trial" class="secondary">7 Day Free Trial</button>
+            <button id="rw-free-trial" class="secondary">7 Day Faction Trial</button>
             <button id="rw-check-license-days" class="secondary">Your Expiration</button>
           </div>
           <div id="rw-paywall-status" class="rw-muted">Save your API key, then Unlock Panel for an active licence or Buy Licence to start the guided Xanax payment flow.</div>
@@ -13174,7 +13067,6 @@
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-owner-login" class="secondary" type="button" title="Verify Evil_Panda_420 [3236276] using the Torn API key saved in RWPH">Verify Owner Account</button>
-              <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
             </div>
 
@@ -13182,16 +13074,11 @@
               <select id="rw-admin-licence-type">
                 <option value="faction">Faction Licence — target by Faction ID</option>
                 <option value="alliance">Alliance Licence — target by Alliance Code</option>
-                <option value="member">Legacy Individual Licence — target by Torn ID</option>
               </select>
             </label>
 
-            <label>Target: Faction ID / Alliance Code / Legacy Player ID
+            <label>Target: Faction ID / Alliance Code
               <input id="rw-admin-torn-id" type="text" placeholder="Faction ID (or Alliance Code)">
-            </label>
-
-            <label data-rwph-admin-legacy-name hidden>Legacy Player Name
-              <input id="rw-admin-name" type="text" placeholder="Optional legacy member name">
             </label>
             <label data-rwph-admin-alliance-owner hidden>New Alliance — Purchasing Faction ID
               <input id="rw-admin-alliance-owner" type="text" placeholder="Required for a new alliance; leave target code empty">
@@ -13210,9 +13097,14 @@
               <button id="rw-admin-extend" class="secondary">Extend Days</button>
               <button id="rw-admin-revoke" class="danger">Remove Days</button>
             </div>
+            <div class="rw-actions"><button id="rw-admin-faction-licence" class="secondary" type="button" title="Grant 500 days to the verified faction of your own Torn API key">Admin Licence (+500 Days)</button></div>
           </div>
 
           <div id="rw-admin-status" class="rw-muted">Admin tools ready.</div>
+          <div class="rw-actions rw-admin-licence-list-controls" role="group" aria-label="List licences by type">
+            <button id="rw-admin-list-factions" class="secondary" type="button" aria-pressed="false">Faction Licences</button>
+            <button id="rw-admin-list-alliances" class="secondary" type="button" aria-pressed="false">Alliance Licences</button>
+          </div>
           <div id="rw-admin-results"></div>
         </div>
         <div id="rw-paywall-how-section" class="rw-tab-section" hidden>${rwphUserHelpHtml()}</div>
@@ -14215,7 +14107,6 @@
             <div class="rw-actions">
               <button id="rw-admin-save-key" class="secondary">Save Admin Key</button>
               <button id="rw-admin-owner-login" class="secondary" type="button" title="Verify Evil_Panda_420 [3236276] using the Torn API key saved in RWPH">Verify Owner Account</button>
-              <button id="rw-admin-list">List Licences</button>
               <button id="rw-admin-status-load" class="secondary" type="button">Server Status</button>
               <button id="rw-admin-default-setup" class="secondary" type="button">Default Setup</button>
             </div>
@@ -14227,16 +14118,11 @@
               <select id="rw-admin-licence-type">
                 <option value="faction">Faction Licence — target by Faction ID</option>
                 <option value="alliance">Alliance Licence — target by Alliance Code</option>
-                <option value="member">Legacy Individual Licence — target by Torn ID</option>
               </select>
             </label>
 
-            <label>Target: Faction ID / Alliance Code / Legacy Player ID
+            <label>Target: Faction ID / Alliance Code
               <input id="rw-admin-torn-id" type="text" placeholder="Faction ID (or Alliance Code)">
-            </label>
-
-            <label data-rwph-admin-legacy-name hidden>Legacy Player Name
-              <input id="rw-admin-name" type="text" placeholder="Optional legacy member name">
             </label>
             <label data-rwph-admin-alliance-owner hidden>New Alliance — Purchasing Faction ID
               <input id="rw-admin-alliance-owner" type="text" placeholder="Required for a new alliance; leave target code empty">
@@ -14255,9 +14141,14 @@
               <button id="rw-admin-extend" class="secondary">Extend Days</button>
               <button id="rw-admin-revoke" class="danger">Remove Days</button>
             </div>
+            <div class="rw-actions"><button id="rw-admin-faction-licence" class="secondary" type="button" title="Grant 500 days to the verified faction of your own Torn API key">Admin Licence (+500 Days)</button></div>
           </div>
 
           <div id="rw-admin-status" class="rw-muted">Admin tools ready.</div>
+          <div class="rw-actions rw-admin-licence-list-controls" role="group" aria-label="List licences by type">
+            <button id="rw-admin-list-factions" class="secondary" type="button" aria-pressed="false">Faction Licences</button>
+            <button id="rw-admin-list-alliances" class="secondary" type="button" aria-pressed="false">Alliance Licences</button>
+          </div>
           <div id="rw-admin-results"></div>
         </div>
         <div id="rw-how-tab-section" class="rw-tab-section" hidden>${rwphUserHelpHtml()}</div>
