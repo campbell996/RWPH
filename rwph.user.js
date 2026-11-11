@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.623
+// @version      1.1.624
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -3419,7 +3419,7 @@
   }
 
   function rwphSavePayoutFormState() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-min-war-hits", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-excluded-members", "rw-points-excluded-members"];
     const state = {};
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -3464,6 +3464,10 @@
       GM_setValue(PAYOUT_FORM_SCHEMA_STORAGE_KEY, "shared-advanced-presets-v2");
       rwphSafeJsonSet(PAYOUT_FORM_STATE_STORAGE_KEY, state);
     }
+    // Existing saved Advanced profiles keep their historical eligibility (no minimum)
+    // until the member explicitly changes this new setting or reloads the Hybrid preset.
+    if (Object.keys(state).length && !Object.prototype.hasOwnProperty.call(state, "rw-point-min-war-hits") &&
+        Object.prototype.hasOwnProperty.call(state, "rw-calculation-system")) state["rw-point-min-war-hits"] = "0";
     for (const [id, value] of Object.entries(state)) {
       const el = document.getElementById(id);
       if (!el) continue;
@@ -3473,7 +3477,7 @@
   }
 
   function rwphAttachPayoutFormPersistence() {
-    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-excluded-members", "rw-points-excluded-members"];
+    const ids = ["rw-from", "rw-to", "rw-points-from", "rw-points-to", "rw-total", "rw-total-overall", "rw-points-total", "rw-points-total-overall", "rw-calculation-system", "rw-point-war-hit", "rw-point-assist", "rw-point-outside", "rw-point-retal", "rw-point-retal-mode", "rw-point-overseas", "rw-point-overseas-mode", "rw-point-outside-chain-only", "rw-point-min-war-hits", "rw-point-hospital", "rw-point-enemy-hospital", "rw-point-respect", "rw-point-respect-step", "rw-point-respect-ignore-chain", "rw-point-respect-war-only", "rw-point-fair-fight", "rw-point-fair-fight-mode", "rw-point-fair-fight-linear-rate", "rw-point-fair-fight-avg-step", "rw-point-fair-fight-bonus-step", "rw-hybrid-participation-pct", "rw-hybrid-performance-pct", "rw-hybrid-war-pct", "rw-hybrid-support-pct", "rw-hybrid-retal-support", "rw-excluded-members", "rw-points-excluded-members"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el || el.dataset.rwphPersistReady === "1") continue;
@@ -4716,6 +4720,10 @@
     "rw-point-outside-chain-only": {
       title: "Chain-Maintenance Outside Hits Only",
       message: "When enabled, the Outside Hit value is only applied to qualifying chain-maintenance outside hits instead of every outside hit. This is useful for Energy / Efficiency-style payouts.",
+    },
+    "rw-point-min-war-hits": {
+      title: "Minimum ranked-war hits for a payout",
+      text: "0 disables the gate. Members with fewer successful ranked-war hits than this value receive $0; war-hit counts are still shown. This threshold applies to every Advanced system when you enable it."
     },
     "rw-point-hospital": {
       title: "Own Faction Hospitalize Bonus Points",
@@ -9132,23 +9140,23 @@
   const RWPH_ADVANCED_CALCULATION_SYSTEM_INFO = Object.freeze({
     hybrid_hit_performance: {
       label: "Hybrid — Hits + Performance",
-      summary: "Recommended balanced preset: 50% participation, 30% FF performance, 15% war contribution, 5% support.",
+      summary: "Balanced war-first split: 20% participation, 40% performance, 35% war contribution and 5% support. One war hit minimum and chain-recognised outside hits by default.",
       details: "Selecting this loads Hybrid defaults into the shared settings below. Change any value after selection to make your own Hybrid setup.",
     },
     weighted_points: {
       label: "Weighted Points",
-      summary: "Exact FF war scoring with 1.25x retal/overseas modifiers, assist 0.65 and outside 0.35.",
+      summary: "Editable weighted hit points without FF by default: war 1.00, assist 0.65 and outside 0.35; retal/overseas bonuses stay configurable.",
       details: "Performance-focused. The shared values below are the actual values sent to the calculation engine and can be edited after the preset loads.",
     },
     exact_ff: {
       label: "Exact Fair Fight",
-      summary: "War hits use exact FF; retal/overseas default to 1.25x; assist 0.60; outside 0.30.",
+      summary: "War hits use the exact Fair Fight multiplier; retal/overseas default to 1.25x; assist 0.60; outside 0.30.",
       details: "The preset loads exact-FF settings, but every visible Advanced setting remains editable.",
     },
     fixed_pay_per_hit: {
-      label: "Fixed Pay Per Hit",
+      label: "Simple Weighted Hits (Pool Share)",
       summary: "War hit 1.00; retal/overseas 1.25x; assist 0.50; outside 0.25; FF disabled.",
-      details: "Simple weighted hits. Change the shared values to customise the selected system without needing a separate Custom mode.",
+      details: "Not fixed dollars per hit: scores divide the Member Payout pool proportionally. Edit the shared values to customise it.",
     },
     respect_share: {
       label: "Adjusted Respect Share",
@@ -9172,7 +9180,7 @@
     },
     equal_participation: {
       label: "Equal / Participation Pay",
-      summary: "Every member with at least one configured payable contribution receives one equal share.",
+      summary: "Every eligible member with a configured payable contribution gets an equal share. Use Minimum War Hits to stop one outside hit qualifying a member.",
       details: "The action values decide what qualifies as a contribution; payout remains equal between qualifying members.",
     },
     rwph_recommended: {
@@ -9188,23 +9196,23 @@
   });
 
   const RWPH_ADVANCED_SYSTEM_PRESETS = Object.freeze({
-    hybrid_hit_performance: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:50, hybridPerformancePct:30, hybridWarPct:15, hybridSupportPct:5, hybridRetalSupportValue:1 },
-    weighted_points: { pointWarHitValue:1, pointAssistValue:0.65, pointOutsideHitValue:0.35, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    exact_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    fixed_pay_per_hit: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.25, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    respect_share: { pointWarHitValue:0, pointAssistValue:0, pointOutsideHitValue:0, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:1, pointRespectStep:1, pointRespectIgnoreChainBonus:true, pointRespectWarOnly:true, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    tiered_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"tiered", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    base_bonus: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0.1, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"linear", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    energy_efficiency: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:true, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    equal_participation: { pointWarHitValue:1, pointAssistValue:1, pointOutsideHitValue:1, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    rwph_recommended: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
-    rwph_classic: { pointWarHitValue:10, pointAssistValue:3, pointOutsideHitValue:2, pointRetaliationHitValue:0.2, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:2, pointEnemyHospitalBonus:-1, pointRespectValue:0.01, pointRespectStep:0.01, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"avg_step", pointFairFightLinearRate:0, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0 },
+    hybrid_hit_performance: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.15, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.10, pointOverseasMode:"multiplier", pointOutsideChainOnly:true, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:20, hybridPerformancePct:40, hybridWarPct:35, hybridSupportPct:5, hybridRetalSupportValue:1, pointMinimumWarHits:1 },
+    weighted_points: { pointWarHitValue:1, pointAssistValue:0.65, pointOutsideHitValue:0.35, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    exact_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    fixed_pay_per_hit: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.25, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    respect_share: { pointWarHitValue:0, pointAssistValue:0, pointOutsideHitValue:0, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:1, pointRespectStep:1, pointRespectIgnoreChainBonus:true, pointRespectWarOnly:true, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    tiered_ff: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"multiplier", pointOverseasValue:0.25, pointOverseasMode:"multiplier", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"tiered", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    base_bonus: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0.1, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"linear", pointFairFightLinearRate:0.5, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    energy_efficiency: { pointWarHitValue:1, pointAssistValue:0.5, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:true, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    equal_participation: { pointWarHitValue:1, pointAssistValue:1, pointOutsideHitValue:1, pointRetaliationHitValue:0, pointRetaliationMode:"none", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:false, pointFairFightMode:"none", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    rwph_recommended: { pointWarHitValue:1, pointAssistValue:0.6, pointOutsideHitValue:0.3, pointRetaliationHitValue:0.25, pointRetaliationMode:"additive", pointOverseasValue:0.25, pointOverseasMode:"additive", pointOutsideChainOnly:false, pointHospitalBonus:0, pointEnemyHospitalBonus:0, pointRespectValue:0, pointRespectStep:0, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"exact", pointFairFightLinearRate:0, pointFairFightAvgStep:0, pointFairFightBonusPerStep:0, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
+    rwph_classic: { pointWarHitValue:10, pointAssistValue:3, pointOutsideHitValue:2, pointRetaliationHitValue:0.2, pointRetaliationMode:"additive", pointOverseasValue:0, pointOverseasMode:"none", pointOutsideChainOnly:false, pointHospitalBonus:2, pointEnemyHospitalBonus:-1, pointRespectValue:0.01, pointRespectStep:0.01, pointRespectIgnoreChainBonus:false, pointRespectWarOnly:false, pointFairFightEnabled:true, pointFairFightMode:"avg_step", pointFairFightLinearRate:0, pointFairFightAvgStep:0.02, pointFairFightBonusPerStep:0.01, hybridParticipationPct:0, hybridPerformancePct:0, hybridWarPct:0, hybridSupportPct:0, hybridRetalSupportValue:0, pointMinimumWarHits:0 },
   });
 
   const RWPH_ADVANCED_PRESET_FIELD_MAP = Object.freeze({
     pointWarHitValue: ["rw-point-war-hit", "value"], pointAssistValue: ["rw-point-assist", "value"], pointOutsideHitValue: ["rw-point-outside", "value"],
     pointRetaliationHitValue: ["rw-point-retal", "value"], pointRetaliationMode: ["rw-point-retal-mode", "value"], pointOverseasValue: ["rw-point-overseas", "value"], pointOverseasMode: ["rw-point-overseas-mode", "value"],
-    pointOutsideChainOnly: ["rw-point-outside-chain-only", "checked"], pointHospitalBonus: ["rw-point-hospital", "value"], pointEnemyHospitalBonus: ["rw-point-enemy-hospital", "value"],
+    pointOutsideChainOnly: ["rw-point-outside-chain-only", "checked"], pointMinimumWarHits: ["rw-point-min-war-hits", "value"], pointHospitalBonus: ["rw-point-hospital", "value"], pointEnemyHospitalBonus: ["rw-point-enemy-hospital", "value"],
     pointRespectValue: ["rw-point-respect", "value"], pointRespectStep: ["rw-point-respect-step", "value"], pointRespectIgnoreChainBonus: ["rw-point-respect-ignore-chain", "checked"], pointRespectWarOnly: ["rw-point-respect-war-only", "checked"],
     pointFairFightEnabled: ["rw-point-fair-fight", "checked"], pointFairFightMode: ["rw-point-fair-fight-mode", "value"], pointFairFightLinearRate: ["rw-point-fair-fight-linear-rate", "value"], pointFairFightAvgStep: ["rw-point-fair-fight-avg-step", "value"], pointFairFightBonusPerStep: ["rw-point-fair-fight-bonus-step", "value"],
     hybridParticipationPct: ["rw-hybrid-participation-pct", "value"], hybridPerformancePct: ["rw-hybrid-performance-pct", "value"], hybridWarPct: ["rw-hybrid-war-pct", "value"], hybridSupportPct: ["rw-hybrid-support-pct", "value"], hybridRetalSupportValue: ["rw-hybrid-retal-support", "value"],
@@ -9312,6 +9320,7 @@
       pointOverseasValue: num("rw-point-overseas", 0.25),
       pointOverseasMode: String(document.getElementById("rw-point-overseas-mode")?.value || "additive"),
       pointOutsideChainOnly: document.getElementById("rw-point-outside-chain-only")?.checked === true,
+      pointMinimumWarHits: num("rw-point-min-war-hits", 0),
       pointHospitalBonus: num("rw-point-hospital", 0),
       pointEnemyHospitalBonus: num("rw-point-enemy-hospital", 0),
       pointRespectValue: num("rw-point-respect", 0),
@@ -9319,9 +9328,9 @@
       pointRespectIgnoreChainBonus: document.getElementById("rw-point-respect-ignore-chain")?.checked === true,
       pointRespectWarOnly: document.getElementById("rw-point-respect-war-only")?.checked === true,
       ...fairFight,
-      hybridParticipationPct: num("rw-hybrid-participation-pct", 50),
-      hybridPerformancePct: num("rw-hybrid-performance-pct", 30),
-      hybridWarPct: num("rw-hybrid-war-pct", 15),
+      hybridParticipationPct: num("rw-hybrid-participation-pct", 20),
+      hybridPerformancePct: num("rw-hybrid-performance-pct", 40),
+      hybridWarPct: num("rw-hybrid-war-pct", 35),
       hybridSupportPct: num("rw-hybrid-support-pct", 5),
       hybridRetalSupportValue: num("rw-hybrid-retal-support", 1),
     };
@@ -9331,11 +9340,12 @@
     const nonNegative = ["pointWarHitValue","pointAssistValue","pointOutsideHitValue","pointRetaliationHitValue","pointOverseasValue","pointHospitalBonus","pointRespectValue","pointFairFightLinearRate","pointFairFightBonusPerStep","hybridParticipationPct","hybridPerformancePct","hybridWarPct","hybridSupportPct","hybridRetalSupportValue"];
     for (const key of nonNegative) if (!Number.isFinite(Number(settings[key])) || Number(settings[key]) < 0) return "Advanced Calculation values cannot be negative.";
     if (!Number.isFinite(Number(settings.pointEnemyHospitalBonus))) return "Enemy hospital bonus must be a number.";
+    if (!Number.isInteger(Number(settings.pointMinimumWarHits)) || Number(settings.pointMinimumWarHits) < 0 || Number(settings.pointMinimumWarHits) > 100000) return "Minimum War Hits must be a whole number from 0 to 100000.";
     if (Number(settings.pointRespectValue) > 0 && (!Number.isFinite(Number(settings.pointRespectStep)) || Number(settings.pointRespectStep) <= 0)) return "Per respect earned must be greater than 0 when Respect Score is enabled.";
     if (settings.pointFairFightEnabled && settings.pointFairFightMode === "avg_step" && (!Number.isFinite(Number(settings.pointFairFightAvgStep)) || Number(settings.pointFairFightAvgStep) <= 0)) return "Avg FF required per bonus step must be greater than 0.";
     if (["hybrid_hit_performance"].includes(rwphAdvancedCalculationSystem())) {
       const split = Number(settings.hybridParticipationPct)+Number(settings.hybridPerformancePct)+Number(settings.hybridWarPct)+Number(settings.hybridSupportPct);
-      if (!(split > 0)) return "Hybrid split percentages must total more than 0%.";
+      if (Math.abs(split - 100) > 0.000001) return `Hybrid split must equal 100% (currently ${Number(split.toFixed(4))}%).`;
     }
     return "";
   }
@@ -10296,7 +10306,10 @@
 
   function renderRows(rows, summary) {
     const paidRows = rwphRowsWithPositivePayout(rows);
-    if (!paidRows.length) return `<div class="rw-muted">No members have a payout greater than $0.</div>`;
+    if (!paidRows.length) {
+      const notices = (summary?.warnings || []).filter(Boolean).map(esc).join("<br>");
+      return `<div class="rw-muted">No members have a payout greater than $0.</div>${notices ? `<div class="rw-code" role="alert">${notices}</div>` : ""}`;
+    }
     const pointsMode = !!(summary?.pointsMode || summary?.calculationMode === "points");
     const removedLeftFactionHits = Number(summary?.removedLeftFactionHits ?? summary?.calcMeta?.removedLeftFactionHits ?? summary?.calcMeta?.manualExcludedMembersHits ?? 0);
 
@@ -10309,7 +10322,8 @@
         <b>Fetched attacks:</b> ${Number(summary?.attacksFetched || 0)}<br>
         <b>Own faction attacks:</b> ${Number(summary?.calcMeta?.ownFactionAttacks || 0)} |
         <b>Skipped failed:</b> ${Number(summary?.calcMeta?.skippedFailed || 0)}<br>
-        ${(summary?.warnings || []).length ? `<div class="rw-code">${(summary.warnings || []).map(esc).join("<br>")}</div>` : ""}
+        ${(summary?.warnings || []).some(w => /FAIR FIGHT DATA INCOMPLETE/.test(String(w))) ? `<div class="rw-code" role="alert" style="border:2px solid #d18a22;padding:8px;margin:5px 0;font-weight:700;">${(summary.warnings || []).filter(w => /FAIR FIGHT DATA INCOMPLETE/.test(String(w))).map(esc).join("<br>")}</div>` : ""}
+        ${(summary?.warnings || []).length ? `<div class="rw-code">${(summary.warnings || []).filter(w => !/FAIR FIGHT DATA INCOMPLETE/.test(String(w))).map(esc).join("<br>")}</div>` : ""}
         </div>
         <div class="rw-actions">
           <button class="secondary" data-export-csv="1">Export CSV</button>
@@ -13987,7 +14001,7 @@
 <option selected="" value="hybrid_hit_performance">Hybrid — Hits + Performance (Recommended)</option>
 <option value="weighted_points">Weighted Points</option>
 <option value="exact_ff">Exact Fair Fight</option>
-<option value="fixed_pay_per_hit">Fixed Pay Per Hit</option>
+<option value="fixed_pay_per_hit">Simple Weighted Hits (Pool Share)</option>
 <option value="respect_share">Adjusted Respect Share</option>
 <option value="tiered_ff">Tiered Fair Fight</option>
 <option value="base_bonus">Base Pay + Bonus Points</option>
@@ -14072,8 +14086,12 @@
 <label>Overseas modifier type
                     <select id="rw-point-overseas-mode"><option value="none">None / Disabled</option><option value="additive">Add points</option><option selected="" value="multiplier">Multiply by 1 + value</option></select>
 </label>
-<label class="rw-inline-check"><input id="rw-point-outside-chain-only" type="checkbox"/> Outside value applies to chain-maintenance hits only</label>
+<label class="rw-inline-check"><input checked="" id="rw-point-outside-chain-only" type="checkbox"/> Outside points only for Torn-recognised chain hits</label>
 </div>
+<div class="rw-row"><label>Minimum ranked-war hits for payout (0 = off)
+<input id="rw-point-min-war-hits" min="0" max="100000" step="1" type="number" value="1"/>
+</label></div>
+<div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Members below this war-hit minimum receive $0, even if they have assists or outside hits. Outside chain hits are recognised by Torn; they may not all be essential maintenance hits.</div>
 
 </div>
 <div class="rw-advanced-section" data-rwph-advanced-step="4">
@@ -14143,14 +14161,15 @@
 
 
 <div class="rw-row">
-<label>Participation % <input id="rw-hybrid-participation-pct" min="0" step="1" type="number" value="50"/></label>
-<label>Performance % <input id="rw-hybrid-performance-pct" min="0" step="1" type="number" value="30"/></label>
+<label>Participation % <input id="rw-hybrid-participation-pct" min="0" step="1" type="number" value="20"/></label>
+<label>Performance % <input id="rw-hybrid-performance-pct" min="0" step="1" type="number" value="40"/></label>
 </div>
 <div class="rw-row">
-<label>War contribution % <input id="rw-hybrid-war-pct" min="0" step="1" type="number" value="15"/></label>
+<label>War contribution % <input id="rw-hybrid-war-pct" min="0" step="1" type="number" value="35"/></label>
 <label>Support % <input id="rw-hybrid-support-pct" min="0" step="1" type="number" value="5"/></label>
 </div>
 <label>Hybrid retal support value <input id="rw-hybrid-retal-support" min="0" step="0.1" type="number" value="1"/></label>
+<div class="rw-calc-brief rw-calc-mini-note rw-advanced-normal-note">Hybrid percentages must total exactly 100%. When a component has no eligible contributions, its share is redistributed among active components.</div>
 </div>
 <div class="rw-actions rw-primary-calc-actions rw-settings-calc-actions">
 <button class="secondary" id="rw-points-run" type="button">Calculate</button>
