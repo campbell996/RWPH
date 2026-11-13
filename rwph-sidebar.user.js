@@ -2,8 +2,8 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.633.8
-// @description  Experimental RWPH v1.1.633 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
+// @version      1.1.634
+// @description  Experimental RWPH v1.1.634 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
 // @grant        GM_xmlhttpRequest
@@ -8758,6 +8758,47 @@
     htmlNode.appendChild(bodyNode);
     shadow.appendChild(htmlNode);
 
+    // This existing Results renderer uses a Shadow DOM. A scoped stylesheet must live
+    // INSIDE that Shadow DOM so Results and Loading fit the sidebar's content column.
+    if (rwphSidebarUiEnabled()) {
+      const responsive = document.createElement("style");
+      responsive.id = "rwph-sidebar-results-responsive-v16339";
+      responsive.textContent = `
+        :host{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;box-sizing:border-box!important;container:rwph-results-area / inline-size;}
+        html,body{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;}
+        body{padding:clamp(6px,1.6vw,14px)!important;overflow-wrap:anywhere;}
+        .app,.rwph-loading-shell{width:100%!important;max-width:none!important;min-width:0!important;margin:0 auto!important;box-sizing:border-box!important;}
+        :is(.hero,.results-actions-panel,.summary,.member-results-panel,.result-card,.results-meta-card,.summary-card,.rwph-loading-body,.rwph-dashboard,.rwph-status-card,.rwph-side-card){min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow-wrap:anywhere!important;}
+        :is(.grid,.results-hero-meta,.summary,.stats,.result-quick-row,.rwph-dashboard,.mini-grid){min-width:0!important;max-width:100%!important;}
+        .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))!important;}
+        .results-hero-meta,.summary{grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr))!important;}
+        .results-hero-head,.result-card-head,.results-section-head,.rwph-loading-head{flex-wrap:wrap!important;min-width:0!important;}
+        .results-action-zone{width:100%;min-width:0;gap:8px;}
+        .results-action-zone>:is(button,.btn){flex:1 1 180px;max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;}
+        :is(button,.btn,input,textarea,select){max-width:100%!important;box-sizing:border-box!important;}
+        :is(img,iframe,video,canvas,svg){max-width:100%!important;}
+        :is(table,pre){max-width:100%!important;overflow-x:auto!important;}
+        .result-card-head>*{min-width:0!important;}
+        @container rwph-results-area (max-width:720px){
+          .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))!important;}
+          .rwph-dashboard{grid-template-columns:minmax(0,1fr)!important;}
+          .results-section-head{align-items:center!important;flex-direction:column!important;text-align:center!important;}
+          .results-hero-head{justify-content:center!important;text-align:center!important;}
+          .results-hero-meta,.summary{grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr))!important;}
+        }
+        @container rwph-results-area (max-width:440px){
+          body{padding:6px!important;}
+          .grid{grid-template-columns:minmax(0,1fr)!important;}
+          .result-card-head{justify-content:center!important;text-align:center!important;}
+          .result-payout-block{text-align:center!important;}
+          .results-action-zone>:is(button,.btn){flex-basis:100%!important;}
+          .rwph-dashboard,.summary{grid-template-columns:minmax(0,1fr)!important;}
+          .results-hero-meta{grid-template-columns:minmax(0,1fr)!important;}
+        }
+      `;
+      shadow.appendChild(responsive);
+    }
+
     tab.rwphShadowRoot = shadow;
     tab.rwphDocument = rwphResultsPanelDocumentAdapter(tab);
     tab.rwphSourceHtml = String(sourceHtml || "");
@@ -9962,9 +10003,21 @@
       #rwph-saved-reports-list{display:flex;flex-direction:column;gap:8px;align-items:stretch}
       #rwph-saved-reports-panel .rwph-saved-report-slot{height:auto;display:flex;flex-direction:column;min-width:0}
       #rwph-saved-reports-panel .rwph-saved-report-actions{margin-top:auto!important;padding-top:7px}
-      #rwph-saved-reports-panel .rwph-saved-report-meta-grid{display:grid;grid-template-columns:minmax(80px,.65fr) minmax(0,1.35fr);gap:4px 7px;font-size:10.5px;line-height:1.3;color:var(--rwph-theme-soft,#c0c7cc)}
-      #rwph-saved-reports-panel .rwph-saved-report-meta-grid span:nth-child(odd){color:var(--rwph-theme-soft,#c0c7cc);font-weight:700}
-      #rwph-saved-reports-panel .rwph-saved-report-meta-grid b{color:var(--rwph-theme-text,#f4f5f6);font-weight:800;min-width:0;overflow-wrap:anywhere}
+      #rwph-saved-reports-panel .rwph-saved-report-meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,165px),1fr));gap:8px;width:100%;min-width:0;font-size:11px;line-height:1.4}
+      #rwph-saved-reports-panel .rwph-saved-report-info-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;width:100%;padding:10px 9px;border:1px solid var(--rwph-theme-line,rgba(233,189,78,.42));border-radius:10px;background:var(--rwph-theme-bg2,#141a22);color:var(--rwph-theme-text,#f4f5f6);text-align:center;box-sizing:border-box}
+      #rwph-saved-reports-panel .rwph-saved-report-info-card>span{display:block;font-size:10px;line-height:1.4;letter-spacing:.035em;text-transform:uppercase;font-weight:800;color:var(--rwph-theme-soft,#c0c7cc);overflow-wrap:anywhere}
+      #rwph-saved-reports-panel .rwph-saved-report-info-card>b{display:block;color:var(--rwph-theme-text,#f4f5f6);font-size:12px;font-weight:850;line-height:1.45;max-width:100%;min-width:0;overflow-wrap:anywhere}
+      #rwph-saved-reports-panel .rwph-saved-report-info-card>p{font-size:11px;line-height:1.5;margin:0;overflow-wrap:anywhere;color:var(--rwph-theme-soft,#c0c7cc)}
+      #rwph-saved-reports-panel .rwph-saved-report-slot-head{flex-wrap:wrap;justify-content:center;text-align:center}
+      #rwph-saved-reports-panel .rwph-saved-report-overview{grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr));width:100%;min-width:0}
+      #rwph-saved-reports-panel .rwph-saved-report-slot{width:100%;min-width:0}
+      #rwph-saved-reports-panel .rwph-saved-report-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px;width:100%;min-width:0}
+      #rwph-saved-reports-panel .rwph-saved-report-actions button{width:100%;min-width:0;min-height:38px;white-space:normal;overflow-wrap:anywhere}
+      #rwph-saved-reports-panel .rwph-saved-report-empty-copy{padding:12px}
+      #rwph-saved-reports-panel :is(.rwph-saved-report-intro,.rwph-saved-report-auto-delete,.rwph-saved-report-overview,.rwph-saved-reports-body,#rwph-saved-reports-list){min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+      #rwph-saved-reports-panel .rwph-saved-report-auto-delete{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));justify-items:center}
+      #rwph-saved-reports-panel .rwph-saved-report-auto-delete-controls{width:100%;justify-content:center}
+      #rwph-saved-reports-panel .rwph-saved-report-auto-delete-controls :is(select,button){flex:1 1 120px;min-width:0!important;max-width:100%}
       #rwph-saved-reports-panel .rwph-saved-report-empty-copy{font-size:10.5px;line-height:1.4;color:var(--rwph-theme-soft,#c0c7cc);padding:4px 0 2px}
       #rwph-saved-reports-panel .rwph-saved-report-auto-delete{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;align-items:center;padding:8px;border:1px solid var(--rwph-theme-line,rgba(233,189,78,.42));border-radius:9px;background:var(--rwph-theme-panel2,#20252a)}
       #rwph-saved-reports-panel .rwph-saved-report-auto-delete-copy{min-width:0}.rwph-saved-report-auto-delete-copy b{display:block;font-size:12px;color:var(--rwph-theme-text,#f4f5f6)}.rwph-saved-report-auto-delete-copy span{display:block;margin-top:2px;font-size:10px;line-height:1.35;color:var(--rwph-theme-soft,#c0c7cc)}
@@ -10009,10 +10062,10 @@
 
   function rwphSavedReportSlotHtml(report = {}, position, highlighted = false) {
     if (!report || report.empty) {
-      return `<div class="rwph-saved-report-slot empty" data-saved-report-position="${position}">
+      return `<article class="rwph-saved-report-slot empty" data-saved-report-position="${position}">
         <div class="rwph-saved-report-slot-head"><b>Report Slot ${position}</b><span class="rwph-saved-report-badge">AVAILABLE</span></div>
-        <div class="rwph-saved-report-empty-copy">No cached report is using this slot. A successful completed-war calculation can save here automatically.</div>
-      </div>`;
+        <div class="rwph-saved-report-empty-copy rwph-saved-report-info-card"><span>Slot Status</span><b>Available</b><p>No cached report is using this slot. A successful completed-war calculation can save here automatically.</p></div>
+      </article>`;
     }
     const cacheId = Number(report.cacheId || report.id || 0);
     const mode = rwphHtmlEscape(rwphSavedReportModeText(report));
@@ -10022,22 +10075,24 @@
       ? `${Number(report.totalPoints || 0).toFixed(2)} points`
       : `${Number(report.totalWarHits || 0)} war hits`;
     const expires = Number(report.expiresAtMs || 0);
-    return `<div class="rwph-saved-report-slot${highlighted ? " rwph-saved-report-match" : ""}" data-saved-report-position="${position}" data-cached-report-id="${cacheId}">
+    const infoCard = (label, value) => `<div class="rwph-saved-report-info-card"><span>${label}</span><b>${value}</b></div>`;
+    return `<article class="rwph-saved-report-slot${highlighted ? " rwph-saved-report-match" : ""}" data-saved-report-position="${position}" data-cached-report-id="${cacheId}">
       <div class="rwph-saved-report-slot-head"><b>Saved Report ${position}${highlighted ? " — Exact Settings Match" : ""}</b><span class="rwph-saved-report-badge">${mode}${highlighted ? " · MATCH" : ""}</span></div>
-      <div class="rwph-saved-report-meta-grid">
-        <span>Faction</span><b>${faction}</b>
-        <span>War</span><b>${rwphHtmlEscape(rwphSavedReportDateTime(report.start))} → ${rwphHtmlEscape(rwphSavedReportDateTime(report.end))}</b>
-        <span>Saved</span><b>${rwphHtmlEscape(rwphSavedReportSavedTime(report.createdAtMs))}</b>
-        ${expires > 0 ? `<span>Auto Delete</span><b>${rwphHtmlEscape(rwphSavedReportSavedTime(expires))}</b>` : ""}
-        <span>Members</span><b>${Number(report.memberCount || 0)}</b>
-        <span>Score</span><b>${rwphHtmlEscape(metric)}</b>
-        ${total > 0 ? `<span>Total Payout</span><b>${money(total)}</b>` : ""}
+      <div class="rwph-saved-report-meta-grid" aria-label="Saved report ${position} information">
+        ${infoCard('Faction', faction)}
+        ${infoCard('War Start', rwphHtmlEscape(rwphSavedReportDateTime(report.start)))}
+        ${infoCard('War End', rwphHtmlEscape(rwphSavedReportDateTime(report.end)))}
+        ${infoCard('Saved On', rwphHtmlEscape(rwphSavedReportSavedTime(report.createdAtMs)))}
+        ${expires > 0 ? infoCard('Auto Delete', rwphHtmlEscape(rwphSavedReportSavedTime(expires))) : ''}
+        ${infoCard('Members', Number(report.memberCount || 0))}
+        ${infoCard('Score', rwphHtmlEscape(metric))}
+        ${total > 0 ? infoCard('Total Payout', money(total)) : ''}
       </div>
       <div class="rwph-saved-report-actions">
         <button type="button" data-rwph-saved-load="${cacheId}" data-rwph-report-position="${position}">Load Report</button>
         <button type="button" class="danger" data-rwph-saved-delete="${cacheId}" data-rwph-report-position="${position}">Delete</button>
       </div>
-    </div>`;
+    </article>`;
   }
 
   function rwphUpdateSavedReportsOverview(savedCount = 0, maxReports = 5, autoDelete = {}) {
@@ -15227,6 +15282,37 @@
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-floating-panel-body:not(.rwph-unified-part-v1596),
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-saved-reports-body:not(.rwph-unified-part-v1596),
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-mm-body:not(.rwph-unified-part-v1596){zoom:var(--rwph-sidebar-ui-scale,1)!important;}
+      /* v1.1.633.9: results are nested in a flex body and a separate Shadow DOM. */
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane.rwph-results-shell-v1534>.rwph-results-shell-body{
+        display:flex!important;flex:1 1 auto!important;flex-direction:column!important;
+        width:100%!important;height:auto!important;max-width:100%!important;min-height:0!important;
+        padding:0!important;overflow:hidden!important;box-sizing:border-box!important;
+      }
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane.rwph-results-shell-v1534 .rwph-results-content-host-v1536{
+        display:block!important;flex:1 1 auto!important;width:100%!important;height:100%!important;max-width:100%!important;
+        min-width:0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;
+      }
+      /* All sidebar tab elements adapt to the actual panel width, without changing standalone payment wizards. */
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-card,.rw-section,.rw-box,.rwph-mm-card,.rwph-panel-content,.rwph-section-card,.rwph-newsletter-card,.rwph-saved-report-slot,.rwph-saved-report-info-card,.rwph-saved-report-overview-card,.rwph-member-card,.rwph-stats-card){min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow-wrap:anywhere!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-grid,.rw-row,.rw-admin-status-grid,.rwph-mm-grid,.rwph-newsletter-output-grid,.rwph-saved-report-meta-grid,.rwph-saved-report-overview){min-width:0!important;max-width:100%!important;box-sizing:border-box!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-card,.rwph-mm-card,.rwph-saved-report-slot,.rwph-saved-report-info-card) :is(b,strong,p,span,label,summary){overflow-wrap:anywhere;min-width:0;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(img,iframe,canvas,video,svg){max-width:100%!important;box-sizing:border-box!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(input,textarea,select,button){box-sizing:border-box!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(pre,table){max-width:100%!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-report-meta-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))!important;gap:8px!important;width:100%!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-report-info-card{width:100%!important;min-width:0!important;max-width:100%!important;margin:0!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-report-overview{grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr))!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane #rwph-saved-reports-list{width:100%!important;min-width:0!important;max-width:100%!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-report-actions{grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))!important;}
+      @container rwph-tab-area (max-width:520px){
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-report-meta-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,125px),1fr))!important;}
+        #rwph-sidebar-workspace #rwph-sidebar-content>#rwph-saved-reports-panel.rwph-sidebar-docked-pane .rwph-saved-report-auto-delete{grid-template-columns:minmax(0,1fr)!important;gap:9px!important;text-align:center!important;}
+        #rwph-sidebar-workspace #rwph-sidebar-content>#rwph-saved-reports-panel.rwph-sidebar-docked-pane .rwph-saved-report-auto-delete-copy{width:100%!important;min-width:0!important;max-width:100%!important;}
+        #rwph-sidebar-workspace #rwph-sidebar-content>#rwph-saved-reports-panel.rwph-sidebar-docked-pane .rwph-saved-report-auto-delete-controls{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;}
+        #rwph-sidebar-workspace #rwph-sidebar-content>#rwph-saved-reports-panel.rwph-sidebar-docked-pane .rwph-saved-report-auto-delete-controls :is(select,button){width:100%!important;max-width:100%!important;min-width:0!important;}
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-report-actions{grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))!important;}
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-saved-reports-body{padding:7px!important;}
+      }
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rw-card{max-width:100%;}
       #rwph-sidebar-workspace #rwph-sidebar-empty{width:min(100%,1000px);max-width:100%;margin-inline:auto;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-panel-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-floating-panel-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-pay-all-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-results-panel-head{display:none!important;}
