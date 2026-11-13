@@ -5,10 +5,15 @@
     <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download / Update Ranked War Payout Helper">
   </a>
 </p>
+<p align="center">
+  <a href="https://www.tampermonkey.net/script_installation.php#url=https://raw.githubusercontent.com/campbell996/RWPH/refs/heads/main/rwph.user.js">
+    <img src="https://img.shields.io/badge/Download%20Here-Install%20%2F%20Update%20RWPH-00ff66?style=for-the-badge&labelColor=06111f&color=00ff66" alt="Download / Update Ranked War Payout Helper">
+  </a>
+</p>
 
 <p align="center"><strong>Click Download Here to install RWPH or update your existing version.</strong></p>
 
-**Current version:** 1.1.638  
+**Current version:** 1.1.642  
 **Author:** Evil_Panda_420  
 **Game:** [Torn](https://www.torn.com/)
 
