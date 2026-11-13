@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.639
+// @version      1.1.640
 // @description  Experimental RWPH v1.1.636 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -429,6 +429,14 @@
         left:var(--rwph-pda-anchor-left,8px)!important;
         top:var(--rwph-pda-anchor-top,72px)!important;
         right:auto!important;bottom:auto!important;margin:0!important;
+      }
+      /* Fallback only if Torn has no visible Information sidebar. It is page-
+         anchored so the launcher does not follow the user while scrolling. */
+      #rw-payout-launcher.rwph-sidebar-launcher.rwph-desktop-page-launcher{
+        position:absolute!important;top:var(--rwph-launcher-page-top,132px)!important;
+        left:var(--rwph-launcher-page-left,12px)!important;right:auto!important;
+        bottom:auto!important;width:148px!important;min-width:148px!important;
+        max-width:148px!important;margin:0!important;z-index:2147483000!important;
       }
       #rwph-logo-picker-panel .rwph-logo-picker-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
       #rwph-logo-picker-panel .rwph-logo-picker-option{display:flex;flex-direction:column;gap:8px;text-align:left;padding:10px 10px 12px;min-height:0;}
@@ -1994,9 +2002,15 @@
         node=node.parentElement;
       }
       const r=btn.getBoundingClientRect();
-      // The launcher is page-anchored, not sticky: it may legitimately scroll
-      // off-screen while the original Faction Warfare header still exists.
-      return r.width>=24 && r.height>=14;
+      if(r.width<24||r.height<14)return false;
+      // Hidden Torn header clones may retain a real width/height while they
+      // sit thousands of pixels outside the visual page. Treat those as gone.
+      const vw=Math.max(window.innerWidth||0,document.documentElement?.clientWidth||0,320);
+      if(r.right<8||r.left>vw-8)return false;
+      // The launcher is page-anchored: vertical scrolling off-screen is valid.
+      const img=btn.querySelector('.rwph-sidebar-launcher-logo');
+      if(!img || (img.complete && img.naturalWidth===0))return false;
+      return true;
     }catch(_){return false;}
   }
 
@@ -2025,7 +2039,7 @@
   function rwphMountLauncherInSidebarV1608(btn) {
     if (!btn || !rwphShouldShowLauncherOnThisPage()) return false;
     if (rwphIsMobileOrPdaView()) {
-      // v1.1.607 original positioning, deliberately not the 1.1.609 menu mount.
+      // Keep the normal RWPH phone/PDA Faction Warfare mount when it is visible.
       if (btn.isConnected && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()
           && btn.classList.contains('rwph-mobile-faction-war-header-locked')
           && rwphSidebarPdaLauncherVisibleV1639(btn)) return true;
@@ -2036,10 +2050,24 @@
     const sidebar = rwphFindTornSidebarV1608();
     const bsp = sidebar ? rwphFindBspSidebarAnchorV1608(sidebar) : null;
     const point = bsp || rwphFindSidebarInsertionPointV1608(sidebar);
-    if (!point) { if (btn.isConnected) btn.remove(); return false; }
     btn.className = 'rwph-sidebar-launcher';
     btn.removeAttribute('data-rwph-anchor-page-key');
     btn.removeAttribute('data-rwph-locked-faction-header');
+    if (!point || !point.parent?.isConnected) {
+      // Torn sometimes omits/replaces the desktop Information sidebar. Never
+      // silently remove the launcher: place it at a visible page-level spot.
+      if (document.body) {
+        const viewportWidth=Math.max(window.innerWidth||0,document.documentElement?.clientWidth||0,480);
+        const width=148;
+        btn.classList.add('rwph-desktop-page-launcher');
+        btn.style.setProperty('--rwph-launcher-page-left',`${Math.max(8,Math.min(12,viewportWidth-width-8))}px`);
+        btn.style.setProperty('--rwph-launcher-page-top',`${Math.max(8,window.pageYOffset||0)+116}px`);
+        if(btn.parentElement!==document.body)document.body.appendChild(btn);
+        return true;
+      }
+      return false;
+    }
+    btn.classList.remove('rwph-desktop-page-launcher');
     const wantedNext = point.before || (point.after ? point.after.nextSibling : point.parent.firstChild);
     if (btn.parentNode !== point.parent || (point.before ? point.before.previousSibling !== btn
         : point.after ? point.after.nextSibling !== btn : point.parent.firstChild !== btn)) {
@@ -2099,10 +2127,8 @@
   function setLauncherOpenState(isOpen) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
-    if (!btn.classList.contains("rwph-sidebar-launcher") || !btn.querySelector(".rwph-sidebar-launcher-logo")) {
-      btn.className = "rwph-sidebar-launcher";
-      btn.innerHTML = rwphSidebarLauncherHtmlV1608();
-    }
+    if (!btn.classList.contains("rwph-sidebar-launcher")) btn.classList.add("rwph-sidebar-launcher");
+    if (!btn.querySelector(".rwph-sidebar-launcher-logo")) btn.innerHTML = rwphSidebarLauncherHtmlV1608();
     btn.dataset.rwphOpen = isOpen ? "1" : "0";
     btn.title = isOpen ? "Close Ranked War Payout Helper" : "Open Ranked War Payout Helper";
     btn.setAttribute("aria-label", btn.title);
@@ -2125,6 +2151,7 @@
       btn.addEventListener("click", togglePanel);
     }
 
+    if (!btn.querySelector('.rwph-sidebar-launcher-logo')) btn.innerHTML=rwphSidebarLauncherHtmlV1608();
     rwphMountLauncherInSidebarV1608(btn);
     if (rwphIsMobileOrPdaView() && !window.__rwphSidebarMobileCheckTimerV1639) {
       // The launcher can be inserted before the RWPH theme stylesheet has
