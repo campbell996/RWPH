@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.633.1
+// @version      1.1.633.3
 // @description  Experimental RWPH v1.1.633 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -14843,13 +14843,13 @@
 
   const RWPH_SIDEBAR_TABS = Object.freeze([
     { key:'home',       label:'Dashboard',        icon:'⌂',  group:'WORKSPACE' },
+    { key:'licence',    label:'My Licences',       icon:'◇',  group:'WORKSPACE' },
     { key:'basic',      label:'Basic Calculations',icon:'▤',  group:'CALCULATE' },
     { key:'advanced',   label:'Advanced Calculations',icon:'▥', group:'CALCULATE' },
     { key:'results',    label:'Results',           icon:'▣',  group:'REPORTS' },
     { key:'cached',     label:'Cached Reports',    icon:'▱',  group:'REPORTS' },
     { key:'members',    label:'Member Management', icon:'♙',  group:'REPORTS' },
     { key:'newsletter', label:'Newsletter',        icon:'▦',  group:'REPORTS' },
-    { key:'licence',    label:'My Licences',icon:'◇',  group:'PAYMENTS' },
     { key:'theme',      label:'Theme & Colours',   icon:'◈',  group:'CUSTOMISE' },
     { key:'logos',      label:'Logo Selector',     icon:'◉',  group:'CUSTOMISE' },
     { key:'admin',      label:'Admin',             icon:'⚙',  group:'MANAGE' },
@@ -15071,7 +15071,7 @@
       #rwph-sidebar-navigation .rwph-sidebar-nav-button[aria-selected='true']{background:var(--rwph-theme-panel2,#314157);border-color:var(--rwph-theme-outline,#c6a863);color:var(--rwph-theme-text,#fff);box-shadow:inset 3px 0 var(--rwph-theme-outline,#c6a863);}
       .rwph-sidebar-nav-icon{display:grid;place-items:center;flex:0 0 24px;height:24px;font:800 19px/1 Arial,Helvetica,sans-serif;color:var(--rwph-theme-outline,#d7b565);}
       .rwph-sidebar-nav-label{min-width:0;overflow-wrap:anywhere;}
-      #rwph-sidebar-content{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;min-height:0;overflow:hidden;background:var(--rwph-theme-bg,#101620);}
+      #rwph-sidebar-content{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;min-height:0;overflow:hidden;background:var(--rwph-theme-bg,#101620);container:rwph-tab-area / inline-size;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;transform:none!important;float:none!important;z-index:auto!important;margin:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;flex:1 1 auto!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane[data-rwph-sidebar-active='1']{display:flex!important;flex-direction:column!important;visibility:visible!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane:not([data-rwph-sidebar-active='1']){display:none!important;visibility:hidden!important;}
@@ -15082,7 +15082,7 @@
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-results-content-host-v1536,
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-mm-body,
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-newsletter-body{
-         width:min(100%,1000px)!important;max-width:100%!important;
+         width:100%!important;max-width:none!important;
          margin-left:auto!important;margin-right:auto!important;
          box-sizing:border-box!important;align-self:center!important;
       }
@@ -15102,11 +15102,37 @@
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-open-saved-reports,
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-open-basic-calculations-panel,
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-open-advanced-calculations-panel,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-license-days,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-check-license-days,
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rwph-theme-logo-bottom-card,
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rwph-user-layout-preferences-v1597{display:none!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper>.rw-body{padding:16px!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rw-tab-section[hidden]{display:none!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane button{max-width:100%;}
+      /* v1.1.633.2: one centered content system for every docked tab, not the standalone payment wizards. */
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane,
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>:is(.rw-body,.rwph-floating-panel-body,.rwph-saved-reports-body,.rwph-mm-body,.rwph-newsletter-body,.rwph-panel-content,.rwph-results-content-host-v1536,.rwph-newsletter-main-scroll){text-align:center!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(h1,h2,h3,h4,h5,h6,p,li,summary,label,button,th,td,.rw-small,.rw-muted,.rwph-mm-title,.rwph-mm-sub,.rwph-mm-stat,.rwph-mm-number-label,.rwph-panel-title,.rwph-section-title,.rw-admin-status-value){text-align:center!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-card,.rw-box,.rw-section,.rw-summary,.rw-result-card,.rw-stat-box,.rw-payment-card,.rw-api-visible-card,.rw-help-section-card,.rw-admin-box,.rw-how-box,.rwph-mm-card,.rwph-licence-card,fieldset,details){text-align:center!important;margin-left:auto!important;margin-right:auto!important;max-width:100%;min-width:0;box-sizing:border-box;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-actions,.rwph-panel-layout-actions,.rwph-calc-ux-footer,.rwph-mm-control-stack){justify-content:center!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rw-actions{flex-wrap:wrap!important;align-items:center!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-row,.rwph-api-key-inline,.rw-licence-control-grid,.rw-admin-status-grid,.rwph-mm-grid,.rwph-mm-toolbar,.rwph-mm-card-head,.rwph-mm-stats){justify-items:center!important;min-width:0;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rw-licence-control-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr))!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-mm-stat{justify-content:center!important;flex-wrap:wrap!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(input:not([type='checkbox']):not([type='radio']),select){max-width:100%;box-sizing:border-box;text-align:center!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-actions,.rwph-mm-toolbar) button{max-width:100%!important;text-align:center!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-card,.rw-help-section-card,.rw-admin-box,.rwph-mm-card) > :is(h2,h3,h4,p,div){max-width:100%;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-admin-status-grid,.rwph-mm-grid,.rwph-newsletter-output-grid,.rw-help-api-grid){max-width:100%;margin-inline:auto;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(table,pre,textarea){max-width:100%;}
+      /* v1.1.633.3: responsive to the *tab content column* as the navigation collapses, expands or the workspace is resized. */
+      @container rwph-tab-area (max-width:560px){
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rw-row,
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-api-key-inline,
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rw-admin-status-grid{grid-template-columns:minmax(0,1fr)!important;}
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane .rwph-mm-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))!important;}
+        #rwph-sidebar-content>.rwph-sidebar-docked-pane :is(.rw-row,.rwph-api-key-inline,.rw-admin-status-grid,.rwph-mm-grid){min-width:0!important;max-width:100%;}
+      }
+
       #rwph-sidebar-empty{display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:9px;padding:28px;min-width:0;text-align:center;}
       #rwph-sidebar-empty[data-visible='1']{display:flex;}
       #rwph-sidebar-empty .rwph-sidebar-empty-icon{display:grid;place-items:center;width:64px;height:64px;border:1px solid var(--rwph-theme-line,#33465b);border-radius:18px;background:var(--rwph-theme-panel2,#1e2939);color:var(--rwph-theme-outline,#dec280);font-size:32px;}
