@@ -2,11 +2,10 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.643
+// @version      1.1.644
 // @description  Experimental RWPH v1.1.636 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
-// @run-at      document-idle
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -241,9 +240,11 @@
   }
 
   // v1.1.527: load the saved three-colour theme before ANY panel or restored Results document can render.
-  rwphEnsureThreeColourThemeSystem();
-  rwphApplyPanelThemeChoice();
-  rwphEnsureMainUiCssV1527();
+  // PDA may expose GM storage after scripts have begun executing. Do not
+  // abort the entire userscript before the launcher exists when that happens.
+  try { rwphEnsureThreeColourThemeSystem(); } catch(e) { console.warn("RWPH early theme setup:",e); }
+  try { rwphApplyPanelThemeChoice(); } catch(e) { console.warn("RWPH early theme choice:",e); }
+  try { rwphEnsureMainUiCssV1527(); } catch(e) { console.warn("RWPH early main CSS:",e); }
 
   if (rwphRestoreOpenResultsPageAfterRefresh()) return;
 
@@ -2077,14 +2078,20 @@
   }
 
   function rwphSidebarLauncherHtmlV1608() {
-    return `<img class="rwph-dynamic-logo-icon rwph-sidebar-launcher-logo" src="${rwphCurrentLogoIconUri()}" alt="" aria-hidden="true" draggable="false" />`;
+    // Torn PDA may load its GM storage shim after the script starts. The
+    // selected logo takes precedence once the shim is available.
+    let image = RWPH_LOGO_PRESETS.logo01.image;
+    try { image = rwphCurrentLogoIconUri() || image; } catch (_) {}
+    return `<img class="rwph-dynamic-logo-icon rwph-sidebar-launcher-logo" src="${image}" alt="" aria-hidden="true" draggable="false" />`;
   }
 
   function setLauncherOpenState(isOpen) {
     const btn = document.getElementById("rw-payout-launcher");
     if (!btn) return;
-    if (!btn.classList.contains("rwph-sidebar-launcher") || !btn.querySelector(".rwph-sidebar-launcher-logo")) {
-      btn.className = "rwph-sidebar-launcher";
+    // Never replace className here: it also owns the mobile header/page
+    // anchor. Losing those classes makes the PDA launcher invisible.
+    btn.classList.add("rwph-sidebar-launcher");
+    if (!btn.querySelector(".rwph-sidebar-launcher-logo")) {
       btn.innerHTML = rwphSidebarLauncherHtmlV1608();
     }
     btn.dataset.rwphOpen = isOpen ? "1" : "0";
@@ -10044,7 +10051,7 @@
     return "Basic — War Hits Only";
   }
 
-  let rwphSavedReportsFactionId = String(GM_getValue("rwph_saved_reports_faction_id", "") || "").trim();
+  let rwphSavedReportsFactionId = (()=>{try{return String(GM_getValue("rwph_saved_reports_faction_id", "") || "").trim();}catch(_){return "";}})();
   let rwphSavedReportsListRequestSerial = 0;
   let rwphSavedReportsLastVerifiedList = null;
   const rwphCalculationInFlightSignatures = new Set();
@@ -15232,7 +15239,7 @@
   const RWPH_SIDEBAR_PAGE_COUNT=RWPH_SIDEBAR_SETUP_TARGETS.length-1;
   const rwphSidebar = { active:'home', requested:null, observer:null, scheduled:false, switching:false,
     closing:false, verified:false, verifiedAt:0, adminReady:false,
-    collapsed:!!GM_getValue(RWPH_SIDEBAR_COLLAPSE_KEY,false), lastCalculation:'basic',
+    collapsed:(()=>{try{return !!GM_getValue(RWPH_SIDEBAR_COLLAPSE_KEY,false);}catch(_){return false;}})(), lastCalculation:'basic',
     defaults:null, loadingDefaults:null, wizardOpen:false, geometrySession:false, navWidthPreference:null };
   function rwphSidebarDevice() {return (window.matchMedia?.('(max-width:760px), (pointer:coarse)')?.matches) ? 'mobile':'pc';}
   function rwphSidebarContentSize() { return rwphContentSizePercentV1597(); }
@@ -16536,14 +16543,108 @@
   }
   // ==== END SIDEBAR EDITION ====
 
-  rwphSidebarStart();
+  // v1.1.644 — Launcher first. Torn PDA has a separate WebView/script-injection
+  // lifecycle. A workspace error must NEVER prevent the launcher from starting.
+  // No independent positioning system: the normal RWPH launcher mount function
+  // remains the single source of truth for PC and PDA positions.
+  const rwphSidebarBootStatusV1644 = {
+    version: '1.1.644', attempts:0, mounted:false, lastError:'',
+    startTime:Date.now(), uiError:''
+  };
+  window.__rwphSidebarBootStatusV1644 = rwphSidebarBootStatusV1644;
+  function rwphSidebarTryLauncherV1644() {
+    if (!document.head || !document.body) return;
+    if (!rwphShouldShowLauncherOnThisPage()) return;
+    rwphSidebarBootStatusV1644.attempts++;
+    try {
+      rwphEnsureDynamicLogoCss();
+      rwphInstallLauncherNavObserver();
+      syncLauncherButtonVisibility();
+      const btn = document.getElementById('rw-payout-launcher');
+      rwphSidebarBootStatusV1644.mounted = !!btn?.isConnected;
+      if (rwphSidebarBootStatusV1644.mounted) {
+        document.getElementById('rwph-sidebar-startup-help-v1644')?.remove();
+      }
+    } catch (e) {
+      rwphSidebarBootStatusV1644.lastError = String(e?.message || e).slice(0,240);
+      console.warn('RWPH Sidebar launcher bootstrap:',e);
+    }
+  }
+  function rwphSidebarStartupDiagnosticsV1644() {
+    if (!rwphShouldShowLauncherOnThisPage() || !document.body) return;
+    const btn = document.getElementById('rw-payout-launcher');
+    let visible = false;
+    try {
+      if (btn?.isConnected) {
+        const r = btn.getBoundingClientRect(), css=getComputedStyle(btn);
+        visible = r.width > 10 && r.height > 10 && css.display!=='none'
+          && css.visibility!=='hidden' && css.opacity!=='0'
+          && r.right > 0 && r.left < window.innerWidth
+          && r.bottom > 0 && r.top < window.innerHeight;
+      }
+    } catch (_) {}
+    if (visible) {
+      document.getElementById('rwph-sidebar-startup-help-v1644')?.remove();
+      return;
+    }
+    // Diagnostic only, not a second launcher or alternative mount location.
+    if (document.getElementById('rwph-sidebar-startup-help-v1644')) return;
+    const help=document.createElement('button');
+    help.id='rwph-sidebar-startup-help-v1644';
+    help.type='button';
+    help.textContent='RWPH launcher issue · tap for details';
+    Object.assign(help.style,{position:'fixed',bottom:'10px',right:'10px',
+      zIndex:'2147483647',padding:'9px',background:'#8c2020',color:'#fff',
+      border:'1px solid #fff',borderRadius:'7px',fontSize:'12px',maxWidth:'220px'});
+    help.addEventListener('click',()=>{
+      const b=document.getElementById('rw-payout-launcher');
+      const rect=b?.getBoundingClientRect();
+      const report=[
+        'RWPH Sidebar '+rwphSidebarBootStatusV1644.version,
+        'Script executed: YES',
+        'Page: '+location.pathname,
+        'PDA detected: '+rwphIsMobileOrPdaView(),
+        'Launcher element: '+!!b,
+        'Launcher classes: '+(b?.className||'(none)'),
+        'Launcher parent: '+(b?.parentElement?.tagName||'(none)'),
+        'Launcher rectangle: '+(rect?`${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}`:'(none)'),
+        'Attempts: '+rwphSidebarBootStatusV1644.attempts,
+        'Last launcher error: '+(rwphSidebarBootStatusV1644.lastError||'(none)'),
+        'Workspace error: '+(rwphSidebarBootStatusV1644.uiError||'(none)'),
+        'GM storage ready: '+(typeof GM_getValue==='function'),
+      ].join('\n');
+      alert(report);
+    });
+    document.body.appendChild(help);
+  }
+  function rwphSidebarBootstrapV1644() {
+    const retry=()=>rwphSidebarTryLauncherV1644();
+    retry();
+    document.addEventListener('DOMContentLoaded',retry);
+    window.addEventListener('pageshow',retry);
+    window.addEventListener('focus',retry);
+    // Torn PDA can inject the script before storage helpers or the faction
+    // header are ready. These retries only call the existing mount function.
+    [120,500,1200,2500,5000,9000].forEach(ms=>setTimeout(retry,ms));
+    setTimeout(rwphSidebarStartupDiagnosticsV1644,11000);
+  }
+  rwphSidebarBootstrapV1644();
+
+  // The workspace starts separately; its failure cannot abort the launcher.
+  setTimeout(()=>{
+    try { rwphSidebarStart(); }
+    catch(e) {
+      rwphSidebarBootStatusV1644.uiError=String(e?.message||e).slice(0,240);
+      console.warn('RWPH Sidebar workspace initialization:',e);
+    }
+  },0);
   rwphSidebarFetchAdminDefaults().catch(()=>{});
   rwphFetchGlobalPanelLayouts(false).catch(() => {});
   const rwphDefaultSetupResumed = rwphSidebarUiEnabled() ? false : rwphRestoreDefaultSetupWizardFromStorage();
-  rwphInstallPageNavigationAutoClose();
-  rwphInstallLauncherNavObserver();
-  setupXanaxPaymentButtonHandler();
-  syncLauncherButtonVisibility();
+  try { rwphInstallPageNavigationAutoClose(); }
+  catch(e) { console.warn('RWPH sidebar navigation initialization:',e); }
+  try { setupXanaxPaymentButtonHandler(); }
+  catch(e) { console.warn('RWPH sidebar payment listener initialization:',e); }
   if (!rwphDefaultSetupResumed) rwphScheduleXanaxPaymentHelperOpen();
   const rwphPaymentsOnlyTab = rwphDefaultSetupResumed ? false : rwphMaybeOpenPayAllFromFactionControlsUrl();
   if (!rwphDefaultSetupResumed && !rwphPaymentsOnlyTab && rwphShouldShowLauncherOnThisPage() && rwphGetPanelOpenState()) {
@@ -17292,10 +17393,10 @@
 
   rwphInjectPanelTitlesUnderLogoV1450();
   rwphInjectMainPanelLogoOnlyGuardV1451();
-  rwphEnsureThreeColourThemeSystem();
-  rwphApplyPanelThemeChoice();
-  rwphEnsureMainUiCssV1527();
-  rwphApplyLogoChoice();
+  try { rwphEnsureThreeColourThemeSystem(); } catch(e) {console.warn("RWPH theme:",e);}
+  try { rwphApplyPanelThemeChoice(); } catch(e) {console.warn("RWPH theme choice:",e);}
+  try { rwphEnsureMainUiCssV1527(); } catch(e) {console.warn("RWPH main UI CSS:",e);}
+  try { rwphApplyLogoChoice(); } catch(e) {console.warn("RWPH logo choice:",e);}
   rwphInstallWizardFitCssV1501();
   rwphEnsureCalculationPanelStylesV1509();
   rwphInstallThreeColourThemeObserverV1529();
