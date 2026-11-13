@@ -13,10 +13,7 @@
   </a>
 </p>
 
-<p align="center"><strong>Version 1. This version uses a multi panel layout system. PDA Install copy and paste in remote url. </strong></p>
-<p align="center"><strong>https://www.tampermonkey.net/script_installation.php#url=https://raw.githubusercontent.com/campbell996/RWPH/refs/heads/main/rwph.user.js </strong></p>
-<p align="center"><strong>Version 2. This version uses a single panel layout system. PDA Install copy and paste in remote url. </strong></p>
-<p align="center"><strong>https://www.tampermonkey.net/script_installation.php#url=https://raw.githubusercontent.com/campbell996/RWPH/refs/heads/main/rwph-sidebar.user.js </strong></p>
+<p align="center"><strong>For PDA Install right hold-click the download/install button and copy the link url and paste it in the pda remote url when adding a script. </strong></p>
 
 <p align="center"><strong>Click Download Here to install RWPH or update your existing version.</strong></p>
 
