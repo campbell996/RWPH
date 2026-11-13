@@ -2,10 +2,11 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.642
+// @version      1.1.643
 // @description  Experimental RWPH v1.1.636 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
+// @run-at      document-idle
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -16485,6 +16486,30 @@
     }
   }
   function rwphSidebarStart() {
+    // Torn PDA can run userscripts before the <body> has been parsed. An
+    // immediate observe(document.body) throws and aborts this entire script,
+    // including the launcher bootstrap below. Schedule exactly one retry once
+    // the real document nodes exist. Do not create a second layout/launcher.
+    if (!document.body || !document.head) {
+      if (!rwphSidebar.waitingForDocument) {
+        rwphSidebar.waitingForDocument = true;
+        let nodeObserver = null;
+        const resume = () => {
+          if (!document.body || !document.head) return;
+          document.removeEventListener('DOMContentLoaded', resume);
+          try { nodeObserver?.disconnect(); } catch (_) {}
+          rwphSidebar.waitingForDocument = false;
+          rwphSidebarStart();
+          rwphScheduleLauncherSync();
+        };
+        document.addEventListener('DOMContentLoaded', resume);
+        if (document.documentElement) {
+          nodeObserver = new MutationObserver(resume);
+          nodeObserver.observe(document.documentElement, {childList: true});
+        }
+      }
+      return;
+    }
     if(rwphSidebar.observer)return;
     // Launcher CSS must load on script startup, not first panel open.
     // Otherwise an icon-only PDA header / page-anchored launcher inherits
