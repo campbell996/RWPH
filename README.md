@@ -13,6 +13,10 @@
   </a>
 </p>
 
+<p align="center"><strong>Version 1. This version uses a multi panel layout system. </strong></p>
+<p align="center"><strong>Version 1. This version uses a multi panel layout system. </strong></p>
+<p align="center"><strong>Version 1. This version uses a multi panel layout system. </strong></p>
+
 <p align="center"><strong>Click Download Here to install RWPH or update your existing version.</strong></p>
 
 **Current version:** 1.1.642  
