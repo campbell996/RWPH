@@ -2,8 +2,8 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.632.1
-// @description  Alternative single-workspace/sidebar interface for RWPH v1.1.632, using the same existing Cloudflare Worker and MySQL.
+// @version      1.1.633.1
+// @description  Experimental RWPH v1.1.633 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
 // @grant        GM_xmlhttpRequest
@@ -27,8 +27,8 @@
   const PENDING_PAYMENT_STORAGE_KEY = "rw_payout_helper_pending_payment";
   const XANAX_PAYMENT_HELPER_STORAGE_KEY = "rw_payout_helper_xanax_payment_helper";
   const PANEL_OPEN_STORAGE_KEY = "rw_payout_helper_panel_open";
-  const RWPH_CONTENT_SIZE_KEY_V1597 = "rwph_user_content_size_percent_v1597";
-  const RWPH_PERSONAL_PANEL_LAYOUTS_KEY_V1599 = "rwph_personal_panel_layouts_v1599";
+  const RWPH_CONTENT_SIZE_KEY_V1597 = "rwph_sidebar_user_content_size_percent_v1633";
+  const RWPH_PERSONAL_PANEL_LAYOUTS_KEY_V1599 = "rwph_sidebar_personal_panel_layouts_v1633";
   const RWPH_CONTENT_SIZE_MIN_V1597 = 75;
   const RWPH_CONTENT_SIZE_MAX_V1597 = 135;
   const DEFAULT_SETUP_WIZARD_STORAGE_KEY = "rw_payout_helper_default_setup_wizard_v1";
@@ -2447,7 +2447,10 @@
 
   function rwphApplyPanelLayout(panel) {
     // Sidebar edition: panel positions are owned by the one workspace, not per-panel geometry.
-    if (rwphSidebarUiEnabled()) return;
+    if (rwphSidebarUiEnabled()) {
+      if (panel?.id==='rwph-xanax-send-status'||panel?.id==='rw-pay-all-panel') rwphSidebarApplyDefaultGeometry(panel);
+      return;
+    }
     if (!panel || !panel.id || panel.dataset?.rwphDefaultSetupPreview === "1") return;
     // Always restore the user's latest move/resize first, even if the backend is slow.
     if (rwphApplyPersonalPanelLayoutV1599(panel)) return;
@@ -2487,6 +2490,7 @@
   }
 
   function rwphLayoutPreferencesHtmlV1597() {
+    if (rwphSidebarUiEnabled()) return ""; // Sidebar customiser owns the sole content-size slider.
     const current = rwphContentSizePercentV1597();
     return `<div class="rwph-user-layout-preferences-v1597 rw-card" style="min-width:0;max-width:100%;box-sizing:border-box;padding:10px;margin-top:8px;">
       <label for="rwph-user-content-size" style="display:block;font-weight:800;">Content Size: <output id="rwph-user-content-size-value">${current}%</output></label>
@@ -5379,7 +5383,7 @@
     const userName = info.name || "this user";
     const tornId = info.tornId || "unknown";
     const expiresText = info.expiresAt ? formatUnixDate(info.expiresAt) : "No active expiry found";
-    const timeLeft = info.expiresAt ? formatLicenseDaysLeft(info.expiresAt) : "No active licence";
+    const timeLeft = info.expiresAt ? rwphLicenceTimeToMinute(info.expiresAt) : "No active licence";
 
     const panel = document.createElement("div");
     panel.id = "rwph-licence-info-panel";
@@ -5424,16 +5428,71 @@
         <div class="rw-card rwph-licence-note">This panel only shows your RWPH licence state. Extend Licence from the main panel when you want to add time; Torn item sending/confirmation remains manual.</div>
         <div class="rwph-licence-status-grid">
           <div class="rw-card"><div class="rwph-stat-label">User</div><div class="rwph-stat-value">${esc(userName)} (${esc(tornId)})</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Licence type / status</div><div id="rwph-my-licence-type" class="rwph-stat-value">${valid ? `${esc(info.licenceMode === 'alliance' ? 'Alliance Licence' : 'Faction Licence')} · Active` : "Not active"}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Days / Hours / Minutes remaining</div><div id="rwph-my-licence-remaining" class="rwph-stat-value">${esc(timeLeft)}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Expiry date / time</div><div id="rwph-my-licence-expiry" class="rwph-stat-value">${esc(expiresText)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 1 Xanax / 10 days (no discounts); Alliance: 1 Xanax per faction / 10 days, 1 Xanax off per added faction / 30 days (1.5× at 360+ days)</div></div>
         </div>
+        <div id="rwph-my-licence-factions" class="rwph-my-licence-factions" aria-live="polite"><div class="rw-card">Loading verified faction/member access...</div></div>
       </div>
     `;
     document.body.appendChild(panel);
+    rwphLoadOwnLicenceDetails(panel, info);
     panel.querySelector("#rwph-licence-info-close")?.addEventListener("click", rwphCloseLicenceInfoPanel);
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+  }
+
+  function rwphLicenceTimeToMinute(expiresAt) {
+    const remaining = Math.max(0, Math.floor(Number(expiresAt || 0) - Date.now() / 1000));
+    if (!remaining) return 'Expired';
+    const days = Math.floor(remaining / 86400);
+    const hours = Math.floor((remaining % 86400) / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    return `${days} day${days === 1 ? '' : 's'}, ${hours} hour${hours === 1 ? '' : 's'}, ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  }
+
+  async function rwphLoadOwnLicenceDetails(panel, basicInfo = {}) {
+    const host = panel.querySelector('#rwph-my-licence-factions');
+    const type = panel.querySelector('#rwph-my-licence-type');
+    const remaining = panel.querySelector('#rwph-my-licence-remaining');
+    const expiry = panel.querySelector('#rwph-my-licence-expiry');
+    if (!host) return;
+    const key = String(GM_getValue(STORAGE_KEY, '') || document.querySelector('#rw-key,#rw-paywall-key')?.value || '').trim();
+    if (!key) { host.innerHTML = '<div class="rw-card">Save your Torn API key to see licence members.</div>'; return; }
+    try {
+      const data = await apiPost('/api/paywall/my-licence-details', { userKey: key });
+      if (!panel.isConnected) return;
+      if (!data.valid) {
+        if (type) type.textContent = 'No active licence';
+        if (remaining) remaining.textContent = 'Expired';
+        host.innerHTML = '<div class="rw-card">No active Faction or Alliance Licence covers your current faction.</div>';
+        return;
+      }
+      if (type) type.textContent = (data.licenceMode === 'alliance' ? 'Alliance Licence' : 'Faction Licence') + ' · Active';
+      if (expiry) expiry.textContent = formatUnixDate(data.expiresAt);
+      if (remaining) remaining.textContent = rwphLicenceTimeToMinute(data.expiresAt);
+      const title = data.licenceMode === 'alliance'
+        ? `<b>Alliance · ${data.factions.length} faction(s)</b><p class="rwph-licence-note">Alliance code: ${esc(data.allianceCode || 'Unavailable')}</p>`
+        : '<b>Faction Licence · eligible members</b>';
+      host.innerHTML = `<div class="rw-card" style="margin-bottom:8px">${title}</div>` +
+        (Array.isArray(data.factions) ? data.factions.map(faction => {
+          const members = Array.isArray(faction.members) ? faction.members : [];
+          const checked = Number(faction.verifiedAtMs || 0);
+          const age = checked ? new Date(checked).toLocaleString() : 'Not yet verified';
+          const detail = members.length
+            ? members.map(m => `<div class="rw-card" style="margin:5px 0;padding:8px"><b>${esc(m.name || 'Member')}</b> [${esc(m.id)}] · ${esc(m.position || 'Position unknown')}</div>`).join('')
+            : '<p class="rwph-licence-note">No verified member snapshot available yet. A member with both required permissions must authenticate to refresh it.</p>';
+          return `<details class="rw-card rwph-licence-member-dropdown" style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:800">${esc(faction.name || 'Faction')} [${esc(faction.id)}] · ${members.length} verified member(s)</summary><p class="rwph-licence-note">Last verified: ${esc(age)} · Faction API Access and Money Giving</p>${detail}</details>`;
+        }).join('') : '');
+      // Keep the countdown current without repeating Torn API calls.
+      const update = () => {
+        if (!panel.isConnected) { clearInterval(timer); return; }
+        if (remaining) remaining.textContent = rwphLicenceTimeToMinute(data.expiresAt);
+      };
+      const timer = setInterval(update, 30000);
+    } catch (error) {
+      if (panel.isConnected) host.innerHTML = `<div class="rw-card">Unable to load verified member list: ${esc(error.message || error)}. Deploy the updated RWPH Worker if this is a new installation.</div>`;
+    }
   }
 
   async function showLicenseDays(statusEl) {
@@ -5631,6 +5690,7 @@
     });
 
     if (unlocked) rwphSyncAdminLicenceFields(adminSection);
+    if (rwphSidebarUiEnabled()) { rwphSidebar.adminReady=unlocked;rwphSidebarScheduleSync(); }
     const status = adminSection.querySelector("#rw-admin-status");
     if (status && !unlocked && !String(status.textContent || "").trim()) {
       status.textContent = "Admin tools are hidden until a valid admin key or owner account is verified.";
@@ -9615,7 +9675,7 @@
       #rwph-member-management-panel .rwph-mm-heading b{font-size:12px;color:var(--rwph-theme-text,#f4f5f6)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       #rwph-member-management-panel .rwph-mm-body{height:auto!important;max-height:none!important;flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0 6px 34px!important;display:flex!important;flex-direction:column!important;gap:6px!important;background:linear-gradient(180deg, rgba(33,23,20,1), rgba(11,7,5,1))!important;scrollbar-gutter:stable;box-sizing:border-box!important;position:relative!important;}
       #rwph-member-management-panel .rwph-mm-control-stack{position:sticky!important;top:-1px!important;z-index:110!important;margin:0 -6px 8px!important;padding:7px 6px 8px!important;background:linear-gradient(180deg, var(--rwph-theme-panel,#20252a) 0%, var(--rwph-theme-panel2,#20252a) 72%, var(--rwph-theme-panel,#20252a) 100%)!important;border-top:1px solid rgba(0,0,0,.55)!important;border-bottom:1px solid var(--rwph-theme-line2,rgba(233,189,78,.68))!important;box-shadow:0 12px 22px rgba(0,0,0,.70)!important;display:flex!important;flex-direction:column!important;gap:5px!important;isolation:isolate!important;}
-      #rwph-member-management-panel .rwph-mm-toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important;align-items:center!important;margin:0!important;padding:5px!important;border:1px solid var(--rwph-theme-line,rgba(233,189,78,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#20252a), var(--rwph-theme-panel,#20252a))!important;box-shadow:0 6px 14px rgba(0,0,0,.20)!important;}
+      #rwph-member-management-panel .rwph-mm-toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important;align-items:center!important;margin:0!important;padding:5px!important;border:1px solid var(--rwph-theme-line,rgba(233,189,78,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#20252a), var(--rwph-theme-panel,#20252a))!important;box-shadow:0 6px 14px rgba(0,0,0,.20)!important;}
       #rwph-member-management-panel .rwph-mm-toolbar button{width:100%!important;padding:5px 6px!important;min-height:0!important;height:26px!important;font-size:11px!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
       #rwph-member-management-panel .rwph-mm-status{font-size:10px!important;opacity:1!important;line-height:1.2!important;padding:5px 7px!important;border:1px solid var(--rwph-theme-line,rgba(233,189,78,.42))!important;border-radius:var(--rwph-theme-card-radius,9px)!important;background:linear-gradient(180deg, var(--rwph-theme-panel2,#20252a), var(--rwph-theme-panel,#20252a))!important;color:var(--rwph-theme-soft,#c0c7cc)!important;}
       #rwph-member-management-panel #rwph-mm-cards{min-width:0!important;display:block!important;padding-bottom:36px!important;margin-bottom:0!important;box-sizing:border-box!important;}
@@ -9762,6 +9822,7 @@
           <div class="rwph-mm-toolbar">
             <button id="rwph-mm-refresh" type="button">Refresh</button>
             <button id="rwph-mm-save" class="secondary" type="button">Save</button>
+             <button id="rwph-mm-back-to-calc" class="secondary" type="button">Back to Calculation</button>
             <button id="rwph-mm-clear" class="danger" type="button">Clear</button>
           </div>
           <div class="rwph-mm-status" id="rwph-mm-status">Loading members...</div>
@@ -9769,6 +9830,11 @@
         <div id="rwph-mm-cards"><div class="rwph-mm-empty">Loading...</div></div>
       </div>`;
     document.body.appendChild(panel);
+    panel.querySelector('#rwph-mm-back-to-calc')?.addEventListener('click',()=>{
+      const tab=safeMode==='points'?'advanced':'basic';
+      rwphSidebar.lastCalculation=tab;
+      rwphCloseMemberManagementPanel();rwphSidebarSelect(tab);
+    });
     rwphEnablePanelMoveResize(panel, ".rwph-floating-panel-head, .rwph-panel-head");
     const status = panel.querySelector("#rwph-mm-status");
     const cards = panel.querySelector("#rwph-mm-cards");
@@ -12823,8 +12889,8 @@
 
   function rwphEnablePanelMoveResize(panel, handleSelector = ".rw-head") {
     if (!panel) return;
-    if (rwphSidebarUiEnabled()) {
-      // Keep the original panel's events and UI; do not attach competing drag/resize handlers.
+    if (rwphSidebarUiEnabled() && panel.id!=='rwph-xanax-send-status' && panel.id!=='rw-pay-all-panel') {
+      // Docked feature panels share one workspace move/resize controller.
       try { rwphEnsureThreeColourThemeSystem(); rwphApplyPanelThemeChoice(); rwphEnsureMainUiCssV1527(); } catch (_) {}
       return;
     }
@@ -14783,8 +14849,7 @@
     { key:'cached',     label:'Cached Reports',    icon:'▱',  group:'REPORTS' },
     { key:'members',    label:'Member Management', icon:'♙',  group:'REPORTS' },
     { key:'newsletter', label:'Newsletter',        icon:'▦',  group:'REPORTS' },
-    { key:'payouts',    label:'Ranked War Payouts',icon:'＄', group:'PAYMENTS' },
-    { key:'licence',    label:'Licence & Payments',icon:'◇',  group:'PAYMENTS' },
+    { key:'licence',    label:'My Licences',icon:'◇',  group:'PAYMENTS' },
     { key:'theme',      label:'Theme & Colours',   icon:'◈',  group:'CUSTOMISE' },
     { key:'logos',      label:'Logo Selector',     icon:'◉',  group:'CUSTOMISE' },
     { key:'admin',      label:'Admin',             icon:'⚙',  group:'MANAGE' },
@@ -14801,16 +14866,168 @@
     'rwph-member-management-panel':'members',
     'rwph-newsletter-panel':'newsletter',
     'rwph-newsletter-member-stats-panel':'newsletter',
-    'rw-pay-all-panel':'payouts',
-    'rwph-xanax-send-status':'licence',
     'rwph-licence-info-panel':'licence',
     'rwph-layout-theme-panel':'theme',
     'rwph-logo-picker-panel':'logos',
     'rwph-default-setup-panel':'adminsetup',
     'rwph-default-setup-controller':'adminsetup',
-    'rw-wrong-payment-panel':'licence',
   });
-  const rwphSidebar = { active:'home', requested:null, observer:null, scheduled:false, switching:false, closing:false };
+  const RWPH_SIDEBAR_GEOMETRY_KEY = 'rwph_sidebar_workspace_geometry_v1633';
+  const RWPH_SIDEBAR_COLLAPSE_KEY = 'rwph_sidebar_collapsed_v1633';
+  const RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY = 'rwph_sidebar_admin_default_layouts_v1633';
+  const RWPH_SIDEBAR_TARGETS = Object.freeze([
+    {id:'rwph-sidebar-workspace',name:'Main Workspace'},
+    {id:'rwph-xanax-send-status',name:'Licence Payment Wizard'},
+    {id:'rw-pay-all-panel',name:'Ranked War Payouts'},
+  ]);
+  const rwphSidebar = { active:'home', requested:null, observer:null, scheduled:false, switching:false,
+    closing:false, verified:false, verifiedAt:0, adminReady:false,
+    collapsed:!!GM_getValue(RWPH_SIDEBAR_COLLAPSE_KEY,false), lastCalculation:'basic',
+    defaults:null, loadingDefaults:null, wizardOpen:false, geometrySession:false };
+  function rwphSidebarDevice() {return (window.matchMedia?.('(max-width:760px), (pointer:coarse)')?.matches) ? 'mobile':'pc';}
+  function rwphSidebarContentSize() { return rwphContentSizePercentV1597(); }
+  function rwphSidebarSetContentSize(next) {
+    const percent=rwphSetContentSizePercentV1597(next);
+    const shell=document.getElementById('rwph-sidebar-workspace');
+    shell?.style.setProperty('--rwph-sidebar-ui-scale',(percent/100).toFixed(3));
+    const slider=shell?.querySelector('#rwph-sidebar-content-slider');
+    const output=shell?.querySelector('#rwph-sidebar-content-output');
+    if(slider)slider.value=String(percent);
+    if(output)output.textContent=percent+'%';
+    return percent;
+  }
+  function rwphSidebarToggleCollapsed(force) {
+    rwphSidebar.collapsed = typeof force==='boolean'?force:!rwphSidebar.collapsed;
+    GM_setValue(RWPH_SIDEBAR_COLLAPSE_KEY,rwphSidebar.collapsed);
+    const shell=document.getElementById('rwph-sidebar-workspace');
+    shell?.classList.toggle('rwph-sidebar-collapsed',rwphSidebar.collapsed);
+    const btn=shell?.querySelector('#rwph-sidebar-collapse');
+    if(btn) {btn.textContent=rwphSidebar.collapsed?'›':'‹';btn.title=rwphSidebar.collapsed?'Expand sidebar':'Collapse sidebar';btn.setAttribute('aria-label',btn.title);btn.setAttribute('aria-expanded',String(!rwphSidebar.collapsed));}
+  }
+  function rwphSidebarReadLocalGeometry(target) {
+    try {const all=JSON.parse(GM_getValue(RWPH_SIDEBAR_GEOMETRY_KEY,'{}')||'{}');return all?.[rwphSidebarDevice()]?.[target] || null;}catch(_){return null;}
+  }
+  function rwphSidebarWriteLocalGeometry(target,geom){
+    let all={};try {all=JSON.parse(GM_getValue(RWPH_SIDEBAR_GEOMETRY_KEY,'{}')||'{}')||{};}catch(_){}
+    const device=rwphSidebarDevice();all[device] ||= {};
+    all[device][target]=geom;
+    GM_setValue(RWPH_SIDEBAR_GEOMETRY_KEY,JSON.stringify(all));
+  }
+  function rwphSidebarRectGeometry(panel) {
+    const r=panel.getBoundingClientRect(), w=window.innerWidth, h=window.innerHeight;
+    return {leftRatio:r.left/Math.max(1,w),topRatio:r.top/Math.max(1,h),widthRatio:r.width/Math.max(1,w),heightRatio:r.height/Math.max(1,h)};
+  }
+  function rwphSidebarGeometryFor(id) {
+    const saved=rwphSidebarReadLocalGeometry(id);
+    if(saved)return saved;
+    const fromServer=rwphSidebar.defaults?.[rwphSidebarDevice()]?.panels?.[id];
+    return fromServer || null;
+  }
+  function rwphSidebarApplyGeometry(panel,geom){
+    if(!panel||!geom)return;
+    const w=window.innerWidth,h=window.innerHeight;
+    const px=(v,ratio,base,fallback)=>Number.isFinite(Number(ratio))?Number(ratio)*base:Number.isFinite(Number(v))?Number(v):fallback;
+    const width=Math.max(260,Math.min(w-8,px(geom.width,geom.widthRatio,w,Math.min(1120,w-16))));
+    const height=Math.max(230,Math.min(h-8,px(geom.height,geom.heightRatio,h,Math.min(800,h-16))));
+    const left=Math.max(0,Math.min(w-width,px(geom.left,geom.leftRatio,w,(w-width)/2)));
+    const top=Math.max(0,Math.min(h-height,px(geom.top,geom.topRatio,h,10)));
+    for(const [k,v] of Object.entries({left,top,width,height}))panel.style.setProperty(k,Math.round(v)+'px','important');
+    panel.style.setProperty('transform','none','important');
+    if(panel.id==='rwph-sidebar-workspace')panel.classList.remove('rwph-sidebar-maximized');
+  }
+  function rwphSidebarApplyDefaultGeometry(panel){
+    if(!panel||panel.dataset.rwphSidebarGeometryReady==='1')return;
+    panel.dataset.rwphSidebarGeometryReady='1';
+    const g=rwphSidebarGeometryFor(panel.id);
+    if(g)rwphSidebarApplyGeometry(panel,g);
+  }
+  async function rwphSidebarFetchAdminDefaults(){
+    if(rwphSidebar.loadingDefaults)return rwphSidebar.loadingDefaults;
+    rwphSidebar.loadingDefaults=(async()=>{
+      try{
+        const r=await fetch(PAYWALL_API_BASE+'/api/ui/sidebar-panel-layouts',{cache:'no-store'});
+        if(!r.ok)throw new Error('Layout endpoint unavailable');
+        const data=await r.json();if(data?.ok)rwphSidebar.defaults=data.layouts;
+      }catch(_){try{rwphSidebar.defaults=JSON.parse(GM_getValue(RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY,'{}')||'{}')}catch(_) {}}
+      const shell=document.getElementById('rwph-sidebar-workspace');
+      if(shell && !rwphSidebarReadLocalGeometry(shell.id))rwphSidebarApplyGeometry(shell,rwphSidebarGeometryFor(shell.id));
+      for(const id of ['rwph-xanax-send-status','rw-pay-all-panel']){
+        const wizard=document.getElementById(id);
+        if(wizard && !rwphSidebarReadLocalGeometry(id))rwphSidebarApplyGeometry(wizard,rwphSidebarGeometryFor(id));
+      }
+      return rwphSidebar.defaults;
+    })();
+    try{return await rwphSidebar.loadingDefaults;}finally{rwphSidebar.loadingDefaults=null;}
+  }
+  function rwphSidebarDragResize(shell){
+    if(shell.dataset.rwphSidebarMoveReady==='1')return;
+    shell.dataset.rwphSidebarMoveReady='1';
+    const header=shell.querySelector('#rwph-sidebar-header');
+    const begin=(e,kind)=>{
+      if(e.button!==0||shell.classList.contains('rwph-sidebar-maximized')||shell.classList.contains('rwph-sidebar-minimized')||rwphSidebar.wizardOpen)return;
+      if(e.target.closest('button,input,select,textarea'))return;
+      const original=shell.getBoundingClientRect(),startX=e.clientX,startY=e.clientY;
+      const movement=(ev)=>{
+        const dx=ev.clientX-startX,dy=ev.clientY-startY;
+        let left=original.left,top=original.top,width=original.width,height=original.height;
+        if(kind==='move'){left+=dx;top+=dy;}
+        else{
+          if(kind.includes('e'))width+=dx;
+          if(kind.includes('w')){left+=dx;width-=dx;}
+          if(kind.includes('s'))height+=dy;
+          if(kind.includes('n')){top+=dy;height-=dy;}
+        }
+        width=Math.max(Math.min(window.innerWidth,280),Math.min(width,window.innerWidth-4));
+        height=Math.max(220,Math.min(height,window.innerHeight-4));
+        left=Math.max(0,Math.min(left,window.innerWidth-width));top=Math.max(0,Math.min(top,window.innerHeight-height));
+        for(const [k,v] of Object.entries({left,top,width,height}))shell.style.setProperty(k,Math.round(v)+'px','important');
+        shell.style.setProperty('transform','none','important');
+      };
+      const done=()=>{window.removeEventListener('pointermove',movement);window.removeEventListener('pointerup',done);window.removeEventListener('pointercancel',done);rwphSidebarWriteLocalGeometry(shell.id,rwphSidebarRectGeometry(shell));};
+      window.addEventListener('pointermove',movement);window.addEventListener('pointerup',done,{once:true});window.addEventListener('pointercancel',done,{once:true});
+      e.preventDefault();
+    };
+    header?.addEventListener('pointerdown',e=>begin(e,'move'));
+    shell.querySelectorAll('[data-rwph-sidebar-resize]').forEach(h=>h.addEventListener('pointerdown',e=>{e.stopPropagation();begin(e,h.dataset.rwphSidebarResize)}));
+  }
+  function rwphSidebarStandaloneWizardSync(){
+    const wizard=document.getElementById('rwph-xanax-send-status')||document.getElementById('rw-pay-all-panel');
+    const shell=document.getElementById('rwph-sidebar-workspace');
+    rwphSidebar.wizardOpen=!!wizard;
+    if(shell){shell.hidden=!!wizard;}
+    if(wizard)rwphSidebarApplyDefaultGeometry(wizard);
+  }
+  async function rwphSidebarRefreshAccess(force=false){
+    const key=String(GM_getValue(STORAGE_KEY,'')||'').trim();
+    if(!key){rwphSidebar.verified=false;rwphSidebar.verifiedAt=Date.now();rwphSidebarUpdateLocks();return false;}
+    if(!force && rwphSidebar.verifiedAt && Date.now()-rwphSidebar.verifiedAt<18000)return rwphSidebar.verified;
+    const info=await getSavedLicenseInfo(force);
+    rwphSidebar.verified=info?.valid===true && Number(info.expiresAt||0)>Date.now()/1000;
+    rwphSidebar.verifiedAt=Date.now();rwphSidebarUpdateLocks();
+    return rwphSidebar.verified;
+  }
+  function rwphSidebarAllowed(tab){
+    if(['home','help','theme','logos'].includes(tab))return true;
+    if(tab==='adminsetup')return rwphSidebarAdminReady();
+    return rwphSidebar.verified;
+  }
+  function rwphSidebarAdminReady(){
+    return rwphAdminToolsAreVisible(document.getElementById('rw-payout-helper'))===true;
+  }
+  function rwphSidebarUpdateLocks(){
+    const shell=document.getElementById('rwph-sidebar-workspace');if(!shell)return;
+    const adminReady=rwphSidebarAdminReady();
+    shell.querySelectorAll('[data-rwph-sidebar-tab]').forEach(btn=>{
+      const tab=btn.dataset.rwphSidebarTab;
+      btn.hidden=(tab==='adminsetup'&&!adminReady);
+      const locked=!rwphSidebarAllowed(tab);
+      btn.dataset.locked=locked?'1':'0';
+      btn.setAttribute('aria-disabled',String(locked));
+      btn.title=locked?'Unlock RWPH with a valid Torn API key and faction/alliance licence':btn.textContent.trim();
+    });
+    const login=shell.querySelector('#rwph-sidebar-admin-login');if(login)login.hidden=rwphSidebar.verified;
+  }
+
   function rwphSidebarCss() {
     if (document.getElementById('rwph-sidebar-css')) return;
     const style=document.createElement('style');
@@ -14818,7 +15035,7 @@
     style.textContent=`
       #rwph-sidebar-workspace{position:fixed!important;inset:auto!important;top:clamp(8px,3vh,28px)!important;left:50%!important;transform:translateX(-50%)!important;width:min(1220px,calc(100vw - 28px))!important;height:min(820px,calc(100dvh - 32px))!important;max-height:calc(100dvh - 16px)!important;z-index:2147483638!important;display:grid!important;grid-template-rows:64px minmax(0,1fr);background:var(--rwph-theme-bg,#101620)!important;color:var(--rwph-theme-text,#eaf0fa)!important;border:1px solid var(--rwph-theme-line2,#4c617a)!important;border-radius:16px!important;overflow:hidden!important;box-shadow:0 24px 80px rgba(0,0,0,.68)!important;font:13px/1.5 Arial,Helvetica,sans-serif!important;box-sizing:border-box!important;isolation:isolate;}
       #rwph-sidebar-workspace *,#rwph-sidebar-workspace *::before,#rwph-sidebar-workspace *::after{box-sizing:border-box;}
-      #rwph-sidebar-header{display:flex;align-items:center;gap:14px;min-width:0;padding:7px 16px;background:linear-gradient(100deg,var(--rwph-theme-panel,#182331),var(--rwph-theme-bg2,#202c3a))!important;border-bottom:1px solid var(--rwph-theme-line,#304258);}
+      #rwph-sidebar-header{display:flex;align-items:center;gap:14px;cursor:move;touch-action:none;user-select:none;min-width:0;padding:7px 16px;background:linear-gradient(100deg,var(--rwph-theme-panel,#182331),var(--rwph-theme-bg2,#202c3a))!important;border-bottom:1px solid var(--rwph-theme-line,#304258);}
       #rwph-sidebar-header-logo{width:110px;height:44px;object-fit:contain;flex:none;}
       #rwph-sidebar-heading{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0;}
       #rwph-sidebar-heading strong{font-size:17px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--rwph-theme-text,#fff);}
@@ -14827,6 +15044,25 @@
       #rwph-sidebar-workspace .rwph-sidebar-header-button{min-width:36px;height:36px;padding:4px 8px;border:1px solid var(--rwph-theme-line2,#455669);border-radius:9px;background:var(--rwph-theme-panel2,#263342);color:var(--rwph-theme-text,#fff);font-weight:800;font-size:17px;cursor:pointer;}
       #rwph-sidebar-workspace .rwph-sidebar-header-button:hover{border-color:var(--rwph-theme-gold,#e1b96b);}
       #rwph-sidebar-layout{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:0;}
+      #rwph-sidebar-workspace.rwph-sidebar-collapsed #rwph-sidebar-layout{grid-template-columns:56px minmax(0,1fr)!important;}
+      #rwph-sidebar-workspace.rwph-sidebar-collapsed #rwph-sidebar-navigation{padding:8px 3px;}
+      #rwph-sidebar-workspace.rwph-sidebar-collapsed .rwph-sidebar-nav-label,#rwph-sidebar-workspace.rwph-sidebar-collapsed .rwph-sidebar-group-label,#rwph-sidebar-workspace.rwph-sidebar-collapsed .rwph-sidebar-customiser{display:none!important;}
+      #rwph-sidebar-workspace.rwph-sidebar-collapsed .rwph-sidebar-nav-button{justify-content:center!important;padding:6px 0!important;}
+      #rwph-sidebar-workspace.rwph-sidebar-collapsed .rwph-sidebar-nav-icon{flex:0 0 24px!important;}
+      #rwph-sidebar-workspace[hidden]{display:none!important;}
+      #rwph-sidebar-navigation #rwph-sidebar-collapse{display:block;width:27px;height:27px;margin:1px 2px 8px auto;padding:0;border:1px solid var(--rwph-theme-line2,#4d5f70);border-radius:7px;background:var(--rwph-theme-panel2,#253344);color:var(--rwph-theme-text,#fff);font-size:20px;line-height:24px;cursor:pointer;}
+      #rwph-sidebar-workspace.rwph-sidebar-collapsed #rwph-sidebar-collapse{margin:1px auto 8px;}
+      #rwph-sidebar-navigation [data-rwph-sidebar-tab][hidden]{display:none!important;}
+      #rwph-sidebar-navigation .rwph-sidebar-nav-button[data-locked="1"]{opacity:.40;cursor:not-allowed;}
+      #rwph-sidebar-navigation .rwph-sidebar-nav-button[data-locked="1"] .rwph-sidebar-nav-icon::after{content:"🔒";position:relative;top:-6px;font-size:9px;}
+      #rwph-sidebar-workspace .rwph-sidebar-customiser{padding:8px 5px;border-top:1px solid var(--rwph-theme-line,#334257);margin-top:10px;}
+      #rwph-sidebar-workspace .rwph-sidebar-customiser label{font-size:10px;font-weight:700;display:block;margin-bottom:4px;}
+      #rwph-sidebar-content-slider{display:block;appearance:auto;touch-action:auto;width:100%;height:18px;accent-color:var(--rwph-theme-outline,#d9b975);cursor:ew-resize;}
+      #rwph-sidebar-workspace .rwph-sidebar-resize{position:absolute;z-index:60;width:20px;height:20px;touch-action:none;}
+      #rwph-sidebar-workspace .rwph-sidebar-resize[data-rwph-sidebar-resize="sw"]{left:0;bottom:0;cursor:nesw-resize;}
+      #rwph-sidebar-workspace .rwph-sidebar-resize[data-rwph-sidebar-resize="se"]{right:0;bottom:0;cursor:nwse-resize;}
+      #rwph-sidebar-workspace .rwph-sidebar-resize[data-rwph-sidebar-resize="nw"]{left:0;top:0;cursor:nwse-resize;}
+      #rwph-sidebar-workspace .rwph-sidebar-resize::before{content:"";position:absolute;inset:5px;border:2px solid var(--rwph-theme-outline,#d9b975);border-top:none;border-left:none;}
       #rwph-sidebar-navigation{background:var(--rwph-theme-bg2,#151e2b);border-right:1px solid var(--rwph-theme-line,#304258);overflow-y:auto;overflow-x:hidden;padding:11px 8px;scrollbar-width:thin;scrollbar-color:var(--rwph-theme-outline,#78869a) transparent;}
       .rwph-sidebar-group-label{margin:14px 9px 5px;font-size:9px;line-height:15px;letter-spacing:.16em;font-weight:900;color:var(--rwph-theme-soft,#9fb0c2);}
       .rwph-sidebar-group-label:first-child{margin-top:3px;}
@@ -14835,16 +15071,39 @@
       #rwph-sidebar-navigation .rwph-sidebar-nav-button[aria-selected='true']{background:var(--rwph-theme-panel2,#314157);border-color:var(--rwph-theme-outline,#c6a863);color:var(--rwph-theme-text,#fff);box-shadow:inset 3px 0 var(--rwph-theme-outline,#c6a863);}
       .rwph-sidebar-nav-icon{display:grid;place-items:center;flex:0 0 24px;height:24px;font:800 19px/1 Arial,Helvetica,sans-serif;color:var(--rwph-theme-outline,#d7b565);}
       .rwph-sidebar-nav-label{min-width:0;overflow-wrap:anywhere;}
-      #rwph-sidebar-content{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--rwph-theme-bg,#101620);}
+      #rwph-sidebar-content{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;min-height:0;overflow:hidden;background:var(--rwph-theme-bg,#101620);}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;transform:none!important;float:none!important;z-index:auto!important;margin:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;flex:1 1 auto!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane[data-rwph-sidebar-active='1']{display:flex!important;flex-direction:column!important;visibility:visible!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane:not([data-rwph-sidebar-active='1']){display:none!important;visibility:hidden!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-body,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-floating-panel-body,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-saved-reports-body,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-pay-all-body,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-results-content-host-v1536{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overscroll-behavior:contain;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-body,
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-floating-panel-body,
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-saved-reports-body,
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-results-content-host-v1536,
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-mm-body,
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-newsletter-body{
+         width:min(100%,1000px)!important;max-width:100%!important;
+         margin-left:auto!important;margin-right:auto!important;
+         box-sizing:border-box!important;align-self:center!important;
+      }
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-body:not(.rwph-unified-part-v1596),
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-floating-panel-body:not(.rwph-unified-part-v1596),
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-saved-reports-body:not(.rwph-unified-part-v1596),
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-mm-body:not(.rwph-unified-part-v1596){zoom:var(--rwph-sidebar-ui-scale,1)!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane .rw-card{max-width:100%;}
+      #rwph-sidebar-workspace #rwph-sidebar-empty{width:min(100%,1000px);max-width:100%;margin-inline:auto;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-panel-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-floating-panel-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-pay-all-head,#rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-results-panel-head{display:none!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rw-resize-handle,
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>.rwph-results-resize-handle,
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane>[class*="resize-handle"]{display:none!important;pointer-events:none!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rw-tabs{display:none!important;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rwph-sidebar-admin-open-row{display:flex!important;justify-content:center;margin:8px auto;width:100%;}
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rwph-main-calculation-actions,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-open-saved-reports,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-open-basic-calculations-panel,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper #rw-open-advanced-calculations-panel,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rwph-theme-logo-bottom-card,
+      #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rwph-user-layout-preferences-v1597{display:none!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper>.rw-body{padding:16px!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>#rw-payout-helper .rw-tab-section[hidden]{display:none!important;}
       #rwph-sidebar-workspace #rwph-sidebar-content>.rwph-sidebar-docked-pane button{max-width:100%;}
@@ -14864,6 +15123,7 @@
       #rwph-sidebar-workspace.rwph-sidebar-minimized .rwph-sidebar-header-button{min-width:30px!important;height:30px!important;padding:2px!important;font-size:15px!important;}
       @media(max-width:680px){
         #rwph-sidebar-workspace{top:4px!important;width:calc(100vw - 8px)!important;height:calc(100dvh - 8px)!important;border-radius:10px!important;}
+        #rwph-sidebar-workspace.rwph-sidebar-collapsed #rwph-sidebar-layout{grid-template-columns:44px minmax(0,1fr)!important;}
         #rwph-sidebar-header{gap:8px;padding:6px 9px;}
         #rwph-sidebar-header-logo{width:75px;height:30px;}
         #rwph-sidebar-heading strong{font-size:13px;}
@@ -14889,11 +15149,20 @@
     shell.setAttribute('role','dialog');
     shell.setAttribute('aria-label','RWPH Sidebar Workspace');
     const tabsHtml=[];
+    const contentSize=rwphSidebarContentSize();
     let group='';
     RWPH_SIDEBAR_TABS.forEach(tab=>{
-      if(tab.group!==group){group=tab.group;tabsHtml.push(`<div class="rwph-sidebar-group-label">${group}</div>`);}
+      if(tab.group!==group){
+        if(group==='CUSTOMISE')tabsHtml.push(`<div class="rwph-sidebar-customiser" aria-label="Customiser content resizer">
+          <label for="rwph-sidebar-content-slider">Content Size: <output id="rwph-sidebar-content-output">${contentSize}%</output></label>
+          <input type="range" id="rwph-sidebar-content-slider" min="75" max="135" step="5" value="${contentSize}" aria-label="Drag to resize text, cards and form controls in all tabs">
+          <button type="button" id="rwph-sidebar-content-reset" class="rwph-sidebar-header-button" style="font-size:10px;min-width:0;width:100%;height:25px;margin-top:6px;">Reset 100%</button>
+        </div>`);
+        group=tab.group;tabsHtml.push(`<div class="rwph-sidebar-group-label">${group}</div>`);
+      }
       tabsHtml.push(`<button type="button" class="rwph-sidebar-nav-button" data-rwph-sidebar-tab="${tab.key}" role="tab" aria-selected="false"><span class="rwph-sidebar-nav-icon" aria-hidden="true">${tab.icon}</span><span class="rwph-sidebar-nav-label">${tab.label}</span></button>`);
     });
+    shell.style.setProperty('--rwph-sidebar-ui-scale',(contentSize/100).toFixed(3));
     shell.innerHTML=`
       <header id="rwph-sidebar-header">
         <img id="rwph-sidebar-header-logo" class="rwph-dynamic-logo-icon" src="${rwphCurrentLogoIconUri()}" alt="RWPH logo">
@@ -14901,12 +15170,37 @@
         <div id="rwph-sidebar-header-actions"><button type="button" id="rwph-sidebar-minimize" class="rwph-sidebar-header-button" title="Minimize workspace to use Torn pages" aria-label="Minimize workspace to use Torn pages">−</button><button type="button" id="rwph-sidebar-expand" class="rwph-sidebar-header-button" title="Expand / restore workspace" aria-label="Expand / restore workspace">⛶</button><button type="button" id="rwph-sidebar-close" class="rwph-sidebar-header-button" title="Close RWPH workspace" aria-label="Close RWPH workspace">×</button></div>
       </header>
       <div id="rwph-sidebar-layout">
-        <nav id="rwph-sidebar-navigation" role="tablist" aria-label="RWPH feature tabs">${tabsHtml.join('')}</nav>
+        <nav id="rwph-sidebar-navigation" aria-label="RWPH feature tabs">
+          <button type="button" id="rwph-sidebar-collapse" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">‹</button>
+          <div role="tablist" aria-label="RWPH sidebar tab choices">${tabsHtml.join('')}</div>
+        </nav>
         <div id="rwph-sidebar-content">
           <div id="rwph-sidebar-empty" data-visible="1" role="status"><div class="rwph-sidebar-empty-icon" aria-hidden="true">▣</div><strong id="rwph-sidebar-empty-title">Opening RWPH</strong><p id="rwph-sidebar-empty-message">Choose a feature in the sidebar to get started.</p></div>
         </div>
-      </div>`;
+      </div>
+      <span class="rwph-sidebar-resize" data-rwph-sidebar-resize="nw" title="Resize workspace"></span>
+      <span class="rwph-sidebar-resize" data-rwph-sidebar-resize="sw" title="Resize workspace"></span>
+      <span class="rwph-sidebar-resize" data-rwph-sidebar-resize="se" title="Resize workspace"></span>`;
     document.body.appendChild(shell);
+    // Capture this existing Admin action before legacy multi-panel handlers see it.
+    shell.addEventListener('click',e=>{
+      if(e.target?.closest?.('#rw-admin-default-setup')){
+        e.preventDefault();e.stopImmediatePropagation();
+        if(rwphSidebarAdminReady())rwphSidebarSelect('adminsetup');
+      }
+    },true);
+    rwphSidebarUpdateLocks();
+    shell.querySelector('#rwph-sidebar-collapse')?.addEventListener('click',()=>rwphSidebarToggleCollapsed());
+    shell.querySelector('#rwph-sidebar-content-slider')?.addEventListener('input',e=>rwphSidebarSetContentSize(e.target.value));
+    shell.querySelector('#rwph-sidebar-content-reset')?.addEventListener('click',()=>rwphSidebarSetContentSize(100));
+    shell.addEventListener('click',e=>{
+      if(e.target?.closest?.('#rw-paywall-save-key,#rw-save,#rw-unlock-existing,#rw-free-trial,#rw-lock'))
+        setTimeout(()=>rwphSidebarRefreshAccess(true).catch(()=>false),900);
+    },true);
+    rwphSidebarToggleCollapsed(rwphSidebar.collapsed);
+    rwphSidebarApplyDefaultGeometry(shell);
+    rwphSidebarDragResize(shell);
+    rwphSidebarFetchAdminDefaults().catch(()=>{});
     shell.querySelectorAll('[data-rwph-sidebar-tab]').forEach(button=>button.addEventListener('click',()=>rwphSidebarSelect(button.dataset.rwphSidebarTab)));
     shell.querySelector('#rwph-sidebar-close')?.addEventListener('click',rwphSidebarCloseWorkspace);
     shell.querySelector('#rwph-sidebar-minimize')?.addEventListener('click',()=>{
@@ -14914,7 +15208,7 @@
       const btn=shell.querySelector('#rwph-sidebar-minimize');
       if(btn){btn.textContent=minimized?'▢':'−';btn.title=minimized?'Restore RWPH workspace':'Minimize workspace to use Torn pages';btn.setAttribute('aria-label',btn.title);}
     });
-    shell.querySelector('#rwph-sidebar-expand')?.addEventListener('click',()=>shell.classList.toggle('rwph-sidebar-maximized'));
+    shell.querySelector('#rwph-sidebar-expand')?.addEventListener('click',()=>{const maximized=shell.classList.toggle('rwph-sidebar-maximized');if(!maximized)rwphSidebarApplyGeometry(shell,rwphSidebarGeometryFor(shell.id));});
     try { rwphApplyPanelThemeChoice(); rwphApplyLogoChoice(); } catch (_) {}
     return shell;
   }
@@ -14939,6 +15233,7 @@
     if(panel.parentElement!==content) content.insertBefore(panel,content.querySelector('#rwph-sidebar-empty'));
     panel.classList.add('rwph-sidebar-docked-pane');
     panel.dataset.rwphSidebarPane='1';
+    rwphApplyUnifiedPanelContentScaleV1594(panel);
     // original HTML and JS remain owned by their existing view functions.
     return true;
   }
@@ -14946,21 +15241,23 @@
     const content=document.getElementById('rwph-sidebar-content');
     if(!content)return [];
     if(['home','admin','help'].includes(tab))return [content.querySelector('#rw-payout-helper')].filter(Boolean);
+    if(tab==='adminsetup')return [content.querySelector('#rwph-sidebar-adminsetup-pane')].filter(Boolean);
     return Array.from(content.children).filter(el=>RWPH_SIDEBAR_DOCK_IDS[el.id]===tab && el.dataset.rwphSidebarPane==='1');
   }
   function rwphSidebarEmptyMessage(tab) {
     if(tab==='results')return 'Your latest calculated results will appear here when a calculation has finished.';
     if(tab==='newsletter')return 'Calculate or load a report first. The Newsletter tab then opens the report’s existing newsletter editor.';
-    if(tab==='payouts')return 'Calculate or load a report first, then select Start Payments to begin the payout wizard.';
-    if(tab==='licence')return 'Choose Extend Licence from Dashboard to open the licence payment wizard on Torn Items, or check Your Expiration.';
+    if(tab==='licence')return 'My Licences shows server-verified faction/alliance status and expandable eligible member lists.';
     if(tab==='cached'||tab==='members')return 'A valid Torn API key and an active faction licence are required. Enter your key on Dashboard if needed.';
-    if(tab==='adminsetup')return 'Admin Setup requires verified Admin access. Sign in from the Admin tab before opening it.';
+    if(tab==='adminsetup')return 'Save an Admin Key or verify the Owner account to configure the three Sidebar UI defaults.';
     return 'This view is not open. Select the tab again or return to Dashboard.';
   }
   function rwphSidebarShow(tab, { preserveRequest=false }={}) {
     const shell=document.getElementById('rwph-sidebar-workspace');
     if(!shell)return;
-    const safeTab=RWPH_SIDEBAR_TABS.some(t=>t.key===tab)?tab:'home';
+    rwphSidebarUpdateLocks();
+    const proposed=RWPH_SIDEBAR_TABS.some(t=>t.key===tab)?tab:'home';
+    const safeTab=rwphSidebarAllowed(proposed)?proposed:'home';
     rwphSidebar.active=safeTab;
     if(!preserveRequest)rwphSidebar.requested=null;
     const title=RWPH_SIDEBAR_TABS.find(t=>t.key===safeTab)?.label||'Dashboard';
@@ -14970,6 +15267,19 @@
       btn.setAttribute('aria-selected',active?'true':'false');
       btn.setAttribute('aria-pressed',active?'true':'false');
     });
+    const main=shell.querySelector('#rw-payout-helper');
+    if(main && !main.querySelector('#rwph-sidebar-admin-login')) {
+      const unlock=main.querySelector('#rw-paywall-unlock-section,#rw-payout-tab');
+      if(unlock){
+        const loginRow=document.createElement('div');loginRow.className='rwph-sidebar-admin-open-row';
+        loginRow.innerHTML='<button id="rwph-sidebar-admin-login" class="secondary" type="button">Admin / Owner Login</button>';
+        unlock.appendChild(loginRow);
+        loginRow.querySelector('button').addEventListener('click',()=>{
+          main.querySelector('#rw-paywall-tab-admin,#rw-tab-admin')?.click();
+          rwphSidebar.active='home';rwphSidebarShow('home');
+        });
+      }
+    }
     const panes=rwphSidebarPanesForTab(safeTab);
     const chosen=panes[panes.length-1]||null;
     shell.querySelectorAll('[data-rwph-sidebar-pane="1"]').forEach(p=>p.dataset.rwphSidebarActive=p===chosen?'1':'0');
@@ -14983,7 +15293,7 @@
   }
   function rwphSidebarSync() {
     if(rwphSidebar.closing)return;
-    const content=document.getElementById('rwph-sidebar-content');
+    rwphSidebarStandaloneWizardSync();
     let newestTab=null;
     for(const id of Object.keys(RWPH_SIDEBAR_DOCK_IDS)) {
       const panel=document.getElementById(id);
@@ -14992,11 +15302,13 @@
       if(rwphSidebarDock(panel))newestTab=RWPH_SIDEBAR_DOCK_IDS[id];
     }
     if(!document.getElementById('rwph-sidebar-workspace'))return;
-    if(newestTab && !rwphSidebar.switching && !rwphSidebar.requested)rwphSidebar.active=newestTab;
+    if(!rwphSidebar.verifiedAt)rwphSidebarRefreshAccess().catch(()=>false);
+    if(newestTab && !rwphSidebar.switching && !rwphSidebar.requested && rwphSidebarAllowed(newestTab))rwphSidebar.active=newestTab;
     if(rwphSidebar.requested){
       const requested=rwphSidebar.requested;
       if(rwphSidebarPanesForTab(requested).length){rwphSidebar.requested=null;rwphSidebar.active=requested;}
     }
+    rwphSidebarUpdateLocks();
     rwphSidebarShow(rwphSidebar.active,{preserveRequest:true});
   }
   function rwphSidebarScheduleSync() {
@@ -15007,12 +15319,92 @@
   async function rwphSidebarEnsureMain() {
     if(document.getElementById('rw-payout-helper'))return document.getElementById('rw-payout-helper');
     await createPanel();
+    await rwphSidebarRefreshAccess(true).catch(()=>false);
     rwphSidebarSync();
     return document.getElementById('rw-payout-helper');
   }
+  function rwphSidebarOpenAdminSetup() {
+    if(!rwphSidebarAdminReady())return;
+    const shell=rwphSidebarEnsure(), content=shell.querySelector('#rwph-sidebar-content');
+    let pane=content.querySelector('#rwph-sidebar-adminsetup-pane');
+    if(pane){pane.remove();}
+    pane=document.createElement('section');pane.id='rwph-sidebar-adminsetup-pane';
+    pane.className='rwph-sidebar-docked-pane';pane.dataset.rwphSidebarPane='1';
+    pane.style.cssText='display:flex;flex-direction:column;min-height:0;overflow-y:auto;padding:16px;';
+    const device=rwphSidebarDevice();
+    pane.innerHTML=`<div class="rw-card" style="margin:0 auto 12px;max-width:720px;width:100%;"><h3 style="margin:0 0 6px">Sidebar Default Setup</h3><p class="rw-muted" style="margin:0 0 8px">Only three panels: Main Workspace, Licence Payment Wizard, Ranked War Payouts. Saved separately from normal RWPH.</p>
+       <label>Device <select id="rwph-sidebar-setup-device"><option value="pc">PC</option><option value="mobile">Phone / PDA</option></select></label>
+       <p class="rw-muted" style="font-size:11px">Choose a panel and set its default position and dimensions. Drag the main workspace or an open wizard, then select Capture to record its current size.</p></div>
+       <div id="rwph-sidebar-setup-rows" style="width:100%;max-width:720px;margin:0 auto"></div>
+       <div class="rw-actions" style="max-width:720px;width:100%;margin:10px auto"><button type="button" id="rwph-sidebar-save-defaults">Publish Sidebar Defaults</button><button type="button" id="rwph-sidebar-reset-personal" class="secondary">Use Published Defaults</button></div>
+       <div id="rwph-sidebar-default-status" class="rw-muted" role="status" style="max-width:720px;margin:0 auto"></div>`;
+    content.insertBefore(pane,content.querySelector('#rwph-sidebar-empty'));
+    const deviceSelect=pane.querySelector('#rwph-sidebar-setup-device');deviceSelect.value=device;
+    const draft={pc:{},mobile:{}};
+    const render=()=>{
+      const d=deviceSelect.value, host=pane.querySelector('#rwph-sidebar-setup-rows');
+      host.innerHTML=RWPH_SIDEBAR_TARGETS.map(target=>{
+        const g=draft[d][target.id]||rwphSidebar.defaults?.[d]?.panels?.[target.id]||{};
+        const viewW=Math.max(320,window.innerWidth),viewH=Math.max(300,window.innerHeight);
+        const value=(v,ratio,base,fallback)=>Math.round(Number.isFinite(Number(ratio))?Number(ratio)*base:Number.isFinite(Number(v))?Number(v):fallback);
+        const fallbackW=target.id==='rwph-sidebar-workspace'?Math.min(viewW-16,1120):Math.min(viewW-16,540);
+        const fallbackH=target.id==='rwph-sidebar-workspace'?Math.min(viewH-20,780):Math.min(viewH-20,640);
+        return `<div class="rw-card" data-rwph-setup-target="${target.id}" style="margin-bottom:10px"><b>${target.name}</b>
+          <div class="rw-row" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px">
+          <label>Left <input data-geo="left" type="number" min="0" value="${value(g.left,g.leftRatio,viewW,10)}"></label>
+          <label>Top <input data-geo="top" type="number" min="0" value="${value(g.top,g.topRatio,viewH,10)}"></label>
+          <label>Width <input data-geo="width" type="number" min="260" value="${value(g.width,g.widthRatio,viewW,fallbackW)}"></label>
+          <label>Height <input data-geo="height" type="number" min="220" value="${value(g.height,g.heightRatio,viewH,fallbackH)}"></label></div>
+          <button type="button" class="secondary" data-action="capture">Capture Open Panel</button>
+          <button type="button" class="secondary" data-action="preview">Apply To Open Panel</button></div>`;
+      }).join('');
+    };
+    deviceSelect.addEventListener('change',render);
+    const geometry=(card)=>{
+      const result={};for(const input of card.querySelectorAll('[data-geo]'))result[input.dataset.geo]=Number(input.value);
+      return {leftRatio:result.left/Math.max(1,window.innerWidth),topRatio:result.top/Math.max(1,window.innerHeight),widthRatio:result.width/Math.max(1,window.innerWidth),heightRatio:result.height/Math.max(1,window.innerHeight)};
+    };
+    pane.querySelector('#rwph-sidebar-setup-rows').addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-action]'),card=btn?.closest('[data-rwph-setup-target]');if(!btn||!card)return;
+      const id=card.dataset.rwphSetupTarget, target=document.getElementById(id);
+      const status=pane.querySelector('#rwph-sidebar-default-status');
+      if(btn.dataset.action==='capture'){
+        if(!target){status.textContent='That panel is not currently open. You can enter its geometry manually.';return;}
+        draft[deviceSelect.value][id]=rwphSidebarRectGeometry(target);render();status.textContent='Captured '+id;
+      }else{
+        const g=geometry(card);draft[deviceSelect.value][id]=g;
+        if(target)rwphSidebarApplyGeometry(target,g);
+        status.textContent='Preview applied to '+id+'. Use Publish Sidebar Defaults to save.';
+      }
+    });
+    pane.querySelector('#rwph-sidebar-save-defaults').addEventListener('click',async()=>{
+      const btn=pane.querySelector('#rwph-sidebar-save-defaults'),status=pane.querySelector('#rwph-sidebar-default-status'),d=deviceSelect.value;
+      pane.querySelectorAll('[data-rwph-setup-target]').forEach(card=>{draft[d][card.dataset.rwphSetupTarget]=geometry(card);});
+      const panels=draft[d];btn.disabled=true;status.textContent='Publishing Sidebar '+d+' defaults...';
+      try{
+        const key=GM_getValue(ADMIN_KEY_STORAGE_KEY,'');
+        const data=await adminRequest('POST','/api/admin/sidebar-panel-layout',key,{device:d,layout:{device:d,panels,viewport:{width:window.innerWidth,height:window.innerHeight}}});
+        rwphSidebar.defaults ||= {};rwphSidebar.defaults[d]=data.layout;
+        GM_setValue(RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY,JSON.stringify(rwphSidebar.defaults));
+        status.textContent='Published '+d+' defaults for the three Sidebar panels.';
+      }catch(e){status.textContent='Could not publish: '+e.message+'. Deploy the matching sidebar Worker first.';}
+      finally{btn.disabled=false;}
+    });
+    pane.querySelector('#rwph-sidebar-reset-personal').addEventListener('click',()=>{
+      GM_setValue(RWPH_SIDEBAR_GEOMETRY_KEY,'{}');
+      const shell=document.getElementById('rwph-sidebar-workspace');
+      if(shell)rwphSidebarApplyGeometry(shell,rwphSidebar.defaults?.[rwphSidebarDevice()]?.panels?.[shell.id]);
+      pane.querySelector('#rwph-sidebar-default-status').textContent='Personal geometry cleared; published defaults will be used.';
+    });
+    render();
+    rwphSidebarShow('adminsetup',{preserveRequest:true});
+  }
+
   async function rwphSidebarSelect(tab) {
     const valid=RWPH_SIDEBAR_TABS.some(t=>t.key===tab);if(!valid)return;
     rwphSidebarEnsure();
+    if(!['home','help','theme','logos'].includes(tab))await rwphSidebarRefreshAccess().catch(()=>false);
+    if(!rwphSidebarAllowed(tab)){rwphSidebar.requested=null;rwphSidebarShow('home');return;}
     rwphSidebar.requested=tab;
     rwphSidebar.active=tab;
     rwphSidebarShow(tab,{preserveRequest:true});
@@ -15037,19 +15429,15 @@
           const ctx=rwphGetStoredPayAllReportContext();
           if(ctx?.newsletterData)rwphOpenNewsletterPanelV1537(ctx.newsletterData);
         }
-      } else if (tab==='payouts') {
-        if(!panelNow().length){const rows=rwphGetStoredPayAllRows();if(rows.length){if(rwphIsPaymentsOnlyTabContext())openPayAllCopyPanel(rows);else rwphOpenPayAllInFactionControls(rows);}}
       } else if (tab==='licence') {
-        if(!panelNow().length){
-          const main=await rwphSidebarEnsureMain();
-          const btn=main?.querySelector('#rw-license-days');if(btn)btn.click();
-        }
+        const main=await rwphSidebarEnsureMain();
+        const btn=main?.querySelector('#rw-license-days,#rw-check-license-days');if(btn)btn.click();
       } else if (tab==='theme') {
         if(!panelNow().length)rwphOpenPanelThemePicker();
       } else if (tab==='logos') {
         if(!panelNow().length)rwphOpenLogoPicker();
       } else if (tab==='adminsetup') {
-        if(!panelNow().length){await rwphSidebarEnsureMain();rwphOpenDefaultSetupPanel(GM_getValue(ADMIN_KEY_STORAGE_KEY,''));}
+        rwphSidebarOpenAdminSetup();
       } else if (tab==='results') {
         // Results are created by calculation/load; do not fabricate payout data.
       }
@@ -15072,7 +15460,7 @@
         // React to RWPH panel nodes, their replacement and panel close, not every Torn mutation.
         const changed=Array.from(record.addedNodes).concat(Array.from(record.removedNodes));
         if(changed.some(n=> n.nodeType===1 && (
-          n.id==='rwph-sidebar-workspace' || Object.prototype.hasOwnProperty.call(RWPH_SIDEBAR_DOCK_IDS,n.id) ||
+          n.id==='rwph-sidebar-workspace' || n.id==='rwph-xanax-send-status' || n.id==='rw-pay-all-panel' || Object.prototype.hasOwnProperty.call(RWPH_SIDEBAR_DOCK_IDS,n.id) ||
           (n.querySelector && Object.keys(RWPH_SIDEBAR_DOCK_IDS).some(id=>n.querySelector('[id="'+id+'"]')))))) {
           rwphSidebarScheduleSync();return;
         }
@@ -15084,8 +15472,9 @@
   // ==== END SIDEBAR EDITION ====
 
   rwphSidebarStart();
+  rwphSidebarFetchAdminDefaults().catch(()=>{});
   rwphFetchGlobalPanelLayouts(false).catch(() => {});
-  const rwphDefaultSetupResumed = rwphRestoreDefaultSetupWizardFromStorage();
+  const rwphDefaultSetupResumed = rwphSidebarUiEnabled() ? false : rwphRestoreDefaultSetupWizardFromStorage();
   rwphInstallPageNavigationAutoClose();
   rwphInstallLauncherNavObserver();
   setupXanaxPaymentButtonHandler();

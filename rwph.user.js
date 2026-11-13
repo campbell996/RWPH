@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.632
+// @version      1.1.633
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5376,7 +5376,7 @@
     const userName = info.name || "this user";
     const tornId = info.tornId || "unknown";
     const expiresText = info.expiresAt ? formatUnixDate(info.expiresAt) : "No active expiry found";
-    const timeLeft = info.expiresAt ? formatLicenseDaysLeft(info.expiresAt) : "No active licence";
+    const timeLeft = info.expiresAt ? rwphLicenceTimeToMinute(info.expiresAt) : "No active licence";
 
     const panel = document.createElement("div");
     panel.id = "rwph-licence-info-panel";
@@ -5421,16 +5421,71 @@
         <div class="rw-card rwph-licence-note">This panel only shows your RWPH licence state. Extend Licence from the main panel when you want to add time; Torn item sending/confirmation remains manual.</div>
         <div class="rwph-licence-status-grid">
           <div class="rw-card"><div class="rwph-stat-label">User</div><div class="rwph-stat-value">${esc(userName)} (${esc(tornId)})</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Licence type / status</div><div id="rwph-my-licence-type" class="rwph-stat-value">${valid ? `${esc(info.licenceMode === 'alliance' ? 'Alliance Licence' : 'Faction Licence')} · Active` : "Not active"}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Days / Hours / Minutes remaining</div><div id="rwph-my-licence-remaining" class="rwph-stat-value">${esc(timeLeft)}</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">Expiry date / time</div><div id="rwph-my-licence-expiry" class="rwph-stat-value">${esc(expiresText)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 1 Xanax / 10 days (no discounts); Alliance: 1 Xanax per faction / 10 days, 1 Xanax off per added faction / 30 days (1.5× at 360+ days)</div></div>
         </div>
+        <div id="rwph-my-licence-factions" class="rwph-my-licence-factions" aria-live="polite"><div class="rw-card">Loading verified faction/member access...</div></div>
       </div>
     `;
     document.body.appendChild(panel);
+    rwphLoadOwnLicenceDetails(panel, info);
     panel.querySelector("#rwph-licence-info-close")?.addEventListener("click", rwphCloseLicenceInfoPanel);
     rwphEnablePanelMoveResize(panel, ".rwph-panel-head");
+  }
+
+  function rwphLicenceTimeToMinute(expiresAt) {
+    const remaining = Math.max(0, Math.floor(Number(expiresAt || 0) - Date.now() / 1000));
+    if (!remaining) return 'Expired';
+    const days = Math.floor(remaining / 86400);
+    const hours = Math.floor((remaining % 86400) / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    return `${days} day${days === 1 ? '' : 's'}, ${hours} hour${hours === 1 ? '' : 's'}, ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  }
+
+  async function rwphLoadOwnLicenceDetails(panel, basicInfo = {}) {
+    const host = panel.querySelector('#rwph-my-licence-factions');
+    const type = panel.querySelector('#rwph-my-licence-type');
+    const remaining = panel.querySelector('#rwph-my-licence-remaining');
+    const expiry = panel.querySelector('#rwph-my-licence-expiry');
+    if (!host) return;
+    const key = String(GM_getValue(STORAGE_KEY, '') || document.querySelector('#rw-key,#rw-paywall-key')?.value || '').trim();
+    if (!key) { host.innerHTML = '<div class="rw-card">Save your Torn API key to see licence members.</div>'; return; }
+    try {
+      const data = await apiPost('/api/paywall/my-licence-details', { userKey: key });
+      if (!panel.isConnected) return;
+      if (!data.valid) {
+        if (type) type.textContent = 'No active licence';
+        if (remaining) remaining.textContent = 'Expired';
+        host.innerHTML = '<div class="rw-card">No active Faction or Alliance Licence covers your current faction.</div>';
+        return;
+      }
+      if (type) type.textContent = (data.licenceMode === 'alliance' ? 'Alliance Licence' : 'Faction Licence') + ' · Active';
+      if (expiry) expiry.textContent = formatUnixDate(data.expiresAt);
+      if (remaining) remaining.textContent = rwphLicenceTimeToMinute(data.expiresAt);
+      const title = data.licenceMode === 'alliance'
+        ? `<b>Alliance · ${data.factions.length} faction(s)</b><p class="rwph-licence-note">Alliance code: ${esc(data.allianceCode || 'Unavailable')}</p>`
+        : '<b>Faction Licence · eligible members</b>';
+      host.innerHTML = `<div class="rw-card" style="margin-bottom:8px">${title}</div>` +
+        (Array.isArray(data.factions) ? data.factions.map(faction => {
+          const members = Array.isArray(faction.members) ? faction.members : [];
+          const checked = Number(faction.verifiedAtMs || 0);
+          const age = checked ? new Date(checked).toLocaleString() : 'Not yet verified';
+          const detail = members.length
+            ? members.map(m => `<div class="rw-card" style="margin:5px 0;padding:8px"><b>${esc(m.name || 'Member')}</b> [${esc(m.id)}] · ${esc(m.position || 'Position unknown')}</div>`).join('')
+            : '<p class="rwph-licence-note">No verified member snapshot available yet. A member with both required permissions must authenticate to refresh it.</p>';
+          return `<details class="rw-card rwph-licence-member-dropdown" style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:800">${esc(faction.name || 'Faction')} [${esc(faction.id)}] · ${members.length} verified member(s)</summary><p class="rwph-licence-note">Last verified: ${esc(age)} · Faction API Access and Money Giving</p>${detail}</details>`;
+        }).join('') : '');
+      // Keep the countdown current without repeating Torn API calls.
+      const update = () => {
+        if (!panel.isConnected) { clearInterval(timer); return; }
+        if (remaining) remaining.textContent = rwphLicenceTimeToMinute(data.expiresAt);
+      };
+      const timer = setInterval(update, 30000);
+    } catch (error) {
+      if (panel.isConnected) host.innerHTML = `<div class="rw-card">Unable to load verified member list: ${esc(error.message || error)}. Deploy the updated RWPH Worker if this is a new installation.</div>`;
+    }
   }
 
   async function showLicenseDays(statusEl) {
