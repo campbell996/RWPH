@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.631
+// @version      1.1.632
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5424,7 +5424,7 @@
           <div class="rw-card"><div class="rwph-stat-label">Licence status</div><div class="rwph-stat-value">${valid ? "Active" : "Not active"}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Time left</div><div class="rwph-stat-value">${esc(timeLeft)}</div></div>
           <div class="rw-card"><div class="rwph-stat-label">Expires</div><div class="rwph-stat-value">${esc(expiresText)}</div></div>
-          <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 1 Xanax / 6 days (-5 per 360 days); Alliance: 5 Xanax per faction / 30 days, discounts double at 360+ days</div></div>
+          <div class="rw-card"><div class="rwph-stat-label">New licence rates</div><div class="rwph-stat-value">Faction: 1 Xanax / 10 days (no discounts); Alliance: 1 Xanax per faction / 10 days, 1 Xanax off per added faction / 30 days (1.5× at 360+ days)</div></div>
         </div>
       </div>
     `;
@@ -11701,16 +11701,16 @@
     return Math.max(1, parsed);
   }
 
-  // v1.1.630: display quote mirrors rwphQuoteGroupLicence in the Worker; Worker remains authoritative.
+  // v1.1.632: display quote mirrors rwphQuoteGroupLicence in the Worker; Worker remains authoritative.
   function rwphGroupLicenceQuoteV1625(state) {
     const mode = state.mode === 'alliance' ? 'alliance' : 'faction';
-    const step = mode === 'alliance' ? 30 : 6;
+    const step = mode === 'alliance' ? 30 : 10;
     const days = Math.max(step, Math.min(3600, Math.ceil(Number(state.durationDays || step) / step) * step));
     const added = mode === 'alliance' ? [...new Set((state.selectedFactions || []).map(f => String(f.id)))].length : 0;
     const blocks = days / step;
-    const gross = mode === 'alliance' ? 5 * (1 + added) * blocks : blocks;
-    const discountPerBlock = mode === 'alliance' ? added * (days >= 360 ? 2 : 1) : 0;
-    const discount = mode === 'alliance' ? discountPerBlock * blocks : 5 * Math.floor(days / 360);
+    const gross = mode === 'alliance' ? 3 * (1 + added) * blocks : blocks;
+    const discountPerBlock = mode === 'alliance' ? added * (days >= 360 ? 1.5 : 1) : 0;
+    const discount = mode === 'alliance' ? Math.floor(discountPerBlock * blocks) : 0;
     return { days, step, added, totalFactions: 1 + added, gross, discountPerBlock, discount, amount: gross - discount };
   }
   function rwphIncludePurchaserInFactionSelectionV1570(_state) { /* Faction licences now follow faction IDs, not selected user IDs. */ }
@@ -11735,10 +11735,10 @@
     if (page === "licence") return `
       <div class="rwph-xanax-wizard-page"><div class="rwph-xanax-wizard-progress">Step 1 · Licence type</div>
       <div class="rwph-xanax-wizard-card"><div class="rwph-xanax-wizard-heading">Choose who your licence covers</div>
-        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> <b>Faction Licence</b> — 1 Xanax every 6 days, with 5 Xanax off per complete 360 days; members of your faction with BOTH Faction API Access and Money Giving</label>
-        <label><input type="radio" name="rwph-licence-mode" value="alliance" ${state.mode === 'alliance' ? 'checked' : ''}> <b>Alliance Licence</b> — 5 Xanax per faction every 30 days; your faction plus chosen additional factions; minimum 30 days</label>
+        <label><input type="radio" name="rwph-licence-mode" value="faction" ${state.mode === 'faction' ? 'checked' : ''}> <b>Faction Licence</b> — 1 Xanax every 10 days, no discounts; members of your faction with BOTH Faction API Access and Money Giving</label>
+        <label><input type="radio" name="rwph-licence-mode" value="alliance" ${state.mode === 'alliance' ? 'checked' : ''}> <b>Alliance Licence</b> — 1 Xanax per faction every 10 days; your faction plus chosen additional factions; minimum 30 days</label>
         <div class="rwph-xanax-wizard-copy">Only members of a covered faction with BOTH Faction API Access and Money Giving permission can use RWPH. Members of ANY covered faction with both permissions can extend its existing alliance licence; the group owner manages additions.</div>
-        ${state.mode === 'alliance' ? '<div class="rwph-xanax-days-result">Alliance licence requires at least 1 added faction. Every added faction gives 1 Xanax discount per 30 days, with no discount cap. For purchases of 360+ days, the discount doubles on every block.</div>' : ''}
+        ${state.mode === 'alliance' ? '<div class="rwph-xanax-days-result">Alliance licence requires at least 1 added faction. Every added faction gives 1 Xanax discount per 30 days, with no discount cap. For purchases of 360+ days, the discount becomes 1.5× on every block (fractional discounts round down to whole Xanax).</div>' : ''}
       </div>${nav(state.mode === 'alliance' ? 'Manage Alliance Factions' : 'Choose Licence Duration')}</div>`;
 
     if (page === "alliance") return `
@@ -11757,7 +11757,7 @@
           <div class="rwph-alliance-faction-row"><b>${esc(state.ownerFactionName || 'Owning faction')} [${esc(state.ownerFactionId || state.ownFactionId || 'your faction')}]</b><span>Included (Owner)</span></div>
           ${(state.selectedFactions || []).map(f => `<div class="rwph-alliance-faction-row"><span>${esc(f.name || 'Faction')} [${esc(f.id)}]</span>${state.canEditFactions !== false && !(state.originalAllianceFactionIds || []).includes(String(f.id)) ? `<button type="button" data-rwph-alliance-remove="${esc(f.id)}">Remove</button>` : '<span>Included</span>'}</div>`).join('')}
           ${!quote.added ? '<div class="rwph-xanax-helper-message rwph-xanax-helper-error">Add at least one other faction to buy an Alliance Licence.</div>' : ''}
-          <div class="rwph-xanax-days-result">${quote.added} added factions · ${quote.totalFactions} factions total · Discount ${quote.discountPerBlock} Xanax per 30-day block${quote.days >= 360 ? ' (doubled at 360+ days)' : ''}</div>
+          <div class="rwph-xanax-days-result">${quote.added} added factions · ${quote.totalFactions} factions total · Discount ${quote.discountPerBlock} Xanax per 30-day block${quote.days >= 360 ? ' (1.5× at 360+ days)' : ''}</div>
         </div>${nav('Choose Licence Duration')}</div>`;
 
     if (page === "amount") return `
@@ -11765,11 +11765,11 @@
         <div class="rwph-xanax-wizard-progress">Step 2 · Choose licence duration and confirm price</div>
         <div class="rwph-xanax-wizard-card rwph-helper-expected-action">
           <div class="rwph-xanax-wizard-heading">How many days of licence?</div>
-          <div class="rwph-xanax-wizard-copy">${state.mode === 'alliance' ? 'Alliance Licence — minimum 30 days, 30-day increments; double discount for 360+ days' : 'Faction Licence — 6-day increments; 5 Xanax off per complete 360 days'}</div>
+          <div class="rwph-xanax-wizard-copy">${state.mode === 'alliance' ? 'Alliance Licence — minimum 30 days, 30-day increments; 1.5× discount at 360+ days' : 'Faction Licence — 10-day increments; no discounts'}</div>
           <label class="rwph-xanax-amount-label">Licence duration (days)
             <input id="rwph-payment-helper-duration-days" type="number" min="${quote.step}" max="3600" step="${quote.step}" inputmode="numeric" value="${quote.days}">
           </label>
-          <div class="rwph-xanax-days-result">${state.mode === 'alliance' ? `${quote.totalFactions} factions × 5 Xanax × ${quote.days / 30} block(s) = <b>${quote.gross} Xanax</b><br>` : `Base price: <b>${quote.gross} Xanax</b><br>`}Discount: <b>-${quote.discount} Xanax</b><br><b>${quote.amount} Xanax</b> for <b>${quote.days} days</b></div>
+          <div class="rwph-xanax-days-result">${state.mode === 'alliance' ? `${quote.totalFactions} factions × 3 Xanax × ${quote.days / 30} 30-day block(s) = <b>${quote.gross} Xanax</b><br>` : `Base price: <b>${quote.gross} Xanax</b><br>`}Discount: <b>-${quote.discount} Xanax</b>${state.mode === 'alliance' && quote.days >= 360 ? ' (1.5×, rounded down to a whole Xanax)' : ''}<br><b>${quote.amount} Xanax</b> for <b>${quote.days} days</b></div>
           <div class="rw-muted">The Cloudflare backend validates the licence type, faction list, duration and total price before issuing a payment code. You must send the exact quoted amount.</div>
         </div>${nav('Confirm Price & Create Payment Code')}</div>`;
 
@@ -11962,7 +11962,7 @@
       mode: "faction", selectedFactions: [], factionResults: [], factionSearch: '',
       ownerFactionName: '', ownFactionId: '', ownerFactionId: '', allianceCode: '',
       originalAllianceFactionIds: [], canEditFactions: true, allianceLoaded: false,
-      allianceLoading: false, allianceLoadError: '', durationDays: 6, billable: 1,
+      allianceLoading: false, allianceLoadError: '', durationDays: 10, billable: 1,
       code: String(code || ""),
       message: String(message || ""),
       isError: !!isError,
@@ -12221,7 +12221,7 @@
       const current = document.getElementById("rwph-xanax-send-status");
       if (current?.__rwphPaymentWizardState?.selectionFirst) return;
       rwphSetupPaymentHelperPanelClicks("");
-      const box = rwphRenderPaymentHelperPanel("", "", false, { daysPerItem: 6 });
+      const box = rwphRenderPaymentHelperPanel("", "", false, { daysPerItem: 10 });
       if (!box) return;
       const wizard = box.__rwphPaymentWizardState;
       wizard.selectionFirst = true;
@@ -13073,7 +13073,7 @@
         <button id="rw-close" class="danger" style="margin:0;padding:4px 8px;">×</button>
       </div>
       <div class="rw-body">
-        <div class="rw-lock-pay-heading">Faction Licence: 1 Xanax / 6 days, -5 Xanax per complete 360 days · Alliance: 5 Xanax / faction / 30 days, bigger discounts at 360+ days</div>
+        <div class="rw-lock-pay-heading">Faction Licence: 1 Xanax / 10 days, no discounts · Alliance: 1 Xanax / faction / 10 days, 1 Xanax off per added faction every 30 days (1.5× at 360+ days)</div>
         <div class="rw-small">
           RWPH calculates completed ranked-war payouts while keeping Torn transactions manual. Save your API key, then unlock an active licence or start a Xanax licence payment.
         </div>
