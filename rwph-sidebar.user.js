@@ -2,10 +2,11 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.644
-// @description  Experimental RWPH v1.1.636 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
+// @version      1.1.645
+// @description  Sidebar UI with dedicated early Torn PDA launcher startup and diagnostic support; same normal RWPH faction-header position.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
+// @match        https://torn.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -17,6 +18,18 @@
 
 (function () {
   "use strict";
+
+  try { window.__rwphSidebarExecutedV1645 = { version: '1.1.645', at: Date.now(), stage: 'script-start', errors: [] }; } catch (_) {}
+  try {
+    window.addEventListener('error', function (ev) {
+      const state = window.__rwphSidebarExecutedV1645;
+      if (state && state.errors.length < 8) state.errors.push(String(ev.message || ev.error?.message || 'unknown').slice(0,200));
+    });
+    window.addEventListener('unhandledrejection', function (ev) {
+      const state = window.__rwphSidebarExecutedV1645;
+      if (state && state.errors.length < 8) state.errors.push('Promise: ' + String(ev.reason?.message || ev.reason || 'unknown').slice(0,190));
+    });
+  } catch (_) {}
 
   const PAYWALL_API_BASE = "https://rwph-backend.rankedwarpayouthelper.workers.dev";
 
@@ -2111,6 +2124,7 @@
       btn.id = "rw-payout-launcher";
       btn.type = "button";
       btn.className = "rwph-sidebar-launcher";
+      btn.dataset.rwphSidebarOwner = '1';
       btn.innerHTML = rwphSidebarLauncherHtmlV1608();
       btn.setAttribute("aria-label", "Open Ranked War Payout Helper");
       btn.addEventListener("click", togglePanel);
@@ -15162,6 +15176,29 @@
   }
 
 
+  // v1.1.645: Start the exact original RWPH launcher engine in the SAME
+  // startup position as rwph.user.js, before any additional Sidebar UI state.
+  // This is not a separate launcher or an alternate positioning controller.
+  function rwphSidebarEarlyLauncherV1645() {
+    try {
+      if (!document.body || !document.documentElement) return;
+      rwphEnsureDynamicLogoCss();
+      rwphInstallLauncherNavObserver();
+      syncLauncherButtonVisibility();
+      const boot = window.__rwphSidebarExecutedV1645;
+      if (boot) { boot.stage='launcher-started'; boot.launcher=!!document.getElementById('rw-payout-launcher'); }
+    } catch(e) {
+      const boot = window.__rwphSidebarExecutedV1645;
+      if (boot && boot.errors.length < 8) boot.errors.push('Launcher: ' + String(e?.message||e).slice(0,180));
+    }
+  }
+  rwphSidebarEarlyLauncherV1645();
+  document.addEventListener('DOMContentLoaded',rwphSidebarEarlyLauncherV1645);
+  window.addEventListener('pageshow',rwphSidebarEarlyLauncherV1645);
+  document.addEventListener('flutterInAppWebViewPlatformReady',rwphSidebarEarlyLauncherV1645);
+  try { if(window.__PDA_platformReadyPromise?.then) window.__PDA_platformReadyPromise.then(rwphSidebarEarlyLauncherV1645,()=>{}); } catch(_){}
+  [200,800,2000,5000].forEach(ms=>setTimeout(rwphSidebarEarlyLauncherV1645,ms));
+
   // ==== SIDEBAR EDITION (only in rwph-sidebar.user.js) ====
   // An integrated workspace docks original RWPH feature views, so the original
   // event handlers, network requests, data models and payment verification remain authoritative.
@@ -15229,13 +15266,15 @@
   ]);
   // One physical main workspace and two physical wizard panels. Each wizard
   // page uses the *existing* page preview renderer and the same geometry engine.
-  const RWPH_SIDEBAR_SETUP_TARGETS = Object.freeze([
-    {id:'rwph-sidebar-workspace',name:'Main Sidebar Panel'},
-    ...['rwph-xanax-send-status','rw-pay-all-panel'].flatMap(panelId=>
-      RWPH_DEFAULT_SETUP_PANEL_TARGETS.filter(t=>t.panelId===panelId && t.page)
-        .map(t=>({id:t.id,panelId:t.panelId,page:t.page,name:t.label,width:t.width,height:t.height}))
-    ),
-  ]);
+  const rwphSidebarSetupTargetsV1645 = [{id:'rwph-sidebar-workspace',name:'Main Sidebar Panel'}];
+  for (const panelId of ['rwph-xanax-send-status','rw-pay-all-panel']) {
+    for (const target of RWPH_DEFAULT_SETUP_PANEL_TARGETS) {
+      if (target.panelId===panelId && target.page) {
+        rwphSidebarSetupTargetsV1645.push({id:target.id,panelId:target.panelId,page:target.page,name:target.label,width:target.width,height:target.height});
+      }
+    }
+  }
+  const RWPH_SIDEBAR_SETUP_TARGETS = Object.freeze(rwphSidebarSetupTargetsV1645);
   const RWPH_SIDEBAR_PAGE_COUNT=RWPH_SIDEBAR_SETUP_TARGETS.length-1;
   const rwphSidebar = { active:'home', requested:null, observer:null, scheduled:false, switching:false,
     closing:false, verified:false, verifiedAt:0, adminReady:false,
@@ -16548,7 +16587,7 @@
   // No independent positioning system: the normal RWPH launcher mount function
   // remains the single source of truth for PC and PDA positions.
   const rwphSidebarBootStatusV1644 = {
-    version: '1.1.644', attempts:0, mounted:false, lastError:'',
+    version: '1.1.645', attempts:0, mounted:false, lastError:'',
     startTime:Date.now(), uiError:''
   };
   window.__rwphSidebarBootStatusV1644 = rwphSidebarBootStatusV1644;
@@ -16611,6 +16650,9 @@
         'Attempts: '+rwphSidebarBootStatusV1644.attempts,
         'Last launcher error: '+(rwphSidebarBootStatusV1644.lastError||'(none)'),
         'Workspace error: '+(rwphSidebarBootStatusV1644.uiError||'(none)'),
+        'Early boot stage: '+(window.__rwphSidebarExecutedV1645?.stage||'(not reached)'),
+        'Early errors: '+((window.__rwphSidebarExecutedV1645?.errors||[]).join(' | ')||'(none)'),
+        'Launcher may belong to another RWPH installation: '+(!!document.getElementById('rw-payout-launcher') && !document.getElementById('rw-payout-launcher')?.dataset.rwphSidebarOwner),
         'GM storage ready: '+(typeof GM_getValue==='function'),
       ].join('\n');
       alert(report);
