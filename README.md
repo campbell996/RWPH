@@ -8,7 +8,7 @@
 
 <p align="center"><strong>Click Download Here to install RWPH or update your existing version.</strong></p>
 
-**Current version:** 1.1.631  
+**Current version:** 1.1.632  
 **Author:** Evil_Panda_420  
 **Game:** [Torn](https://www.torn.com/)
 
