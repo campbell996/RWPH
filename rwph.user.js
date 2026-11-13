@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.636
+// @version      1.1.639
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -5056,10 +5056,61 @@
   }
 
   function rwphOwnerAdminSession() {
+    // GM_setValue is persistent across Torn page refreshes and panel re-creation.
+    // The Worker-signed token is still checked on the protected Admin endpoint.
     const session = GM_getValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
     if (!session || typeof session !== "object" || !session.token ||
-        Number(session.expiresAt || 0) <= Date.now() / 1000 + 2) return null;
+        Number(session.expiresAt || 0) <= Date.now() / 1000 + 2) {
+      if (session) GM_setValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
+      return null;
+    }
     return session;
+  }
+
+  let rwphOwnerSessionExpiryTimerV1639 = null;
+  function rwphScheduleOwnerSessionExpiryV1639() {
+    if (rwphOwnerSessionExpiryTimerV1639 !== null) clearTimeout(rwphOwnerSessionExpiryTimerV1639);
+    rwphOwnerSessionExpiryTimerV1639 = null;
+    const session = rwphOwnerAdminSession();
+    if (!session) {
+      const root=document.getElementById('rw-payout-helper');
+      const section=rwphFindAdminSection(root);
+      if(section?.dataset?.rwphAdminAuth==='owner')rwphSetAdminToolsVisible(root,false,'Owner verification expired. Press Verify Owner Account again.');
+      return;
+    }
+    const delay = Math.max(0, (Number(session.expiresAt) * 1000) - Date.now() + 100);
+    rwphOwnerSessionExpiryTimerV1639 = setTimeout(() => {
+      if(rwphOwnerAdminSession()){rwphScheduleOwnerSessionExpiryV1639();return;}
+      const root=document.getElementById('rw-payout-helper');
+      const section=rwphFindAdminSection(root);
+      if(section?.dataset?.rwphAdminAuth==='owner')rwphSetAdminToolsVisible(root,false,'Owner verification expired. Press Verify Owner Account again.');
+    },Math.min(delay,2147483647));
+  }
+
+  async function rwphRestoreOwnerVerificationV1639(root) {
+    if(!root || !rwphOwnerAdminSession())return false;
+    if(root.__rwphOwnerRestorePendingV1639)return root.__rwphOwnerRestorePendingV1639;
+    root.__rwphOwnerRestorePendingV1639=(async()=>{
+      try{
+        // A locally saved timestamp cannot unlock Admin. Revalidate the actual
+        // signed 30-minute session against the Worker after each new panel/open.
+        const confirmed=await adminRequest('POST','/api/admin/status','');
+        if(!root.isConnected || !rwphOwnerAdminSession())return false;
+        rwphSetAdminToolsVisible(root,true);
+        const section=rwphFindAdminSection(root);
+        if(section)section.dataset.rwphAdminAuth='owner';
+        const summary=rwphAdminQuery(root,'#rw-admin-status-summary');
+        if(summary)summary.innerHTML=rwphRenderAdminStatusSummary(confirmed);
+        rwphScheduleOwnerSessionExpiryV1639();
+        return true;
+      }catch(error){
+        // Offline or rejected session: no Admin access. Preserve a still
+        // unexpired token on network failures so reopening can retry.
+        if(root.isConnected)rwphSetAdminToolsVisible(root,false,'Verify Owner Account to unlock Admin.');
+        return false;
+      }finally{root.__rwphOwnerRestorePendingV1639=null;}
+    })();
+    return root.__rwphOwnerRestorePendingV1639;
   }
 
   function rwphRememberAdminKey(adminKey) {
@@ -5155,6 +5206,7 @@
       if (ownerSection) ownerSection.dataset.rwphAdminAuth = 'owner';
       const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
       if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(confirmed);
+      rwphScheduleOwnerSessionExpiryV1639();
       rwphToastPanelInfo(status, `Verified Torn owner ${result.name} [${result.tornId}]. Admin tools unlocked.`, "info", "RWPH Admin");
       return result;
     } catch (e) {
@@ -13411,6 +13463,8 @@
     rwphAttachAdvancedSettingHelpButtons();
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Save Admin Key or Verify Owner Account to show the admin tools.");
+    // Restore previously verified Owner after closing/reopening a panel or refreshing Torn.
+    void rwphRestoreOwnerVerificationV1639(panel);
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
@@ -14510,6 +14564,8 @@
 
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Save Admin Key or Verify Owner Account to show the admin tools.");
+    // Restore previously verified Owner after closing/reopening a panel or refreshing Torn.
+    void rwphRestoreOwnerVerificationV1639(panel);
 
     // Close is already bound before any optional panel setup above.
 

@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper — Sidebar UI (Experimental)
 // @namespace    RankedWarPayoutHelper.SidebarUI
 // @author       Evil_Panda_420
-// @version      1.1.638
+// @version      1.1.639
 // @description  Experimental RWPH v1.1.636 sidebar workspace with three-panel admin layout controls and the shared Cloudflare Worker/MySQL.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -1981,12 +1981,54 @@
     }
   }
 
+  function rwphSidebarPdaLauncherVisibleV1639(btn) {
+    // Torn phone/PDA swaps/retains hidden header clones. An attached button can
+    // still be invisible when its parent's page header has been replaced.
+    if (!btn?.isConnected) return false;
+    try {
+      if (btn.closest('[hidden],[aria-hidden="true"]')) return false;
+      let node=btn;
+      while(node && node.nodeType===1){
+        const style=getComputedStyle(node);
+        if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse'||Number(style.opacity)===0)return false;
+        node=node.parentElement;
+      }
+      const r=btn.getBoundingClientRect();
+      // The launcher is page-anchored, not sticky: it may legitimately scroll
+      // off-screen while the original Faction Warfare header still exists.
+      return r.width>=24 && r.height>=14;
+    }catch(_){return false;}
+  }
+
+  function rwphSidebarRestorePdaLauncherV1639(btn) {
+    if (!btn || !rwphIsMobileOrPdaView() || !rwphShouldShowLauncherOnThisPage()) return false;
+    if (rwphSidebarPdaLauncherVisibleV1639(btn)) return true;
+    // Reuse the existing page-anchored fallback rather than a second mobile
+    // positioning engine. Remove stale state so the fallback can re-anchor.
+    delete btn.dataset.rwphAnchorPageKey;
+    btn.classList.remove('rwph-mobile-page-anchored-launcher');
+    // A stale cached Faction Warfare element may still be attached inside a
+    // hidden header. Discard it, then allow the existing fallback to re-anchor.
+    window.__rwphPdaFactionWarfareAnchorV1445 = null;
+    if(btn.parentElement && btn.parentElement!==document.body)btn.remove();
+    const anchored = rwphMountLauncherMobileFallback(btn);
+    if(anchored && rwphSidebarPdaLauncherVisibleV1639(btn))return true;
+    // Torn PDA may preserve a hidden icon header as a DOM clone. Always offer a
+    // visible page-positioned fallback rather than leaving the launcher hidden.
+    window.__rwphPdaFactionWarfareAnchorV1445 = null;
+    return rwphMountPdaLauncherPageAnchored(btn,{
+      el:document.body,
+      rect:{left:Math.max(8,(window.innerWidth||360)-58),right:Math.max(54,(window.innerWidth||360)-12),top:72,bottom:118,width:46,height:46}
+    },{gap:0}) && rwphSidebarPdaLauncherVisibleV1639(btn);
+  }
+
   function rwphMountLauncherInSidebarV1608(btn) {
     if (!btn || !rwphShouldShowLauncherOnThisPage()) return false;
     if (rwphIsMobileOrPdaView()) {
       // v1.1.607 original positioning, deliberately not the 1.1.609 menu mount.
       if (btn.isConnected && btn.dataset.rwphAnchorPageKey === rwphCurrentPageKey()
-          && btn.classList.contains('rwph-mobile-faction-war-header-locked')) return true;
+          && btn.classList.contains('rwph-mobile-faction-war-header-locked')
+          && rwphSidebarPdaLauncherVisibleV1639(btn)) return true;
       const warfare = rwphFindFactionWarfareTarget();
       if (warfare && rwphMountPdaLauncherPageAnchored(btn,warfare)) return true;
       return rwphMountLauncherMobileFallback(btn);
@@ -2084,6 +2126,16 @@
     }
 
     rwphMountLauncherInSidebarV1608(btn);
+    if (rwphIsMobileOrPdaView() && !window.__rwphSidebarMobileCheckTimerV1639) {
+      // The launcher can be inserted before the RWPH theme stylesheet has
+      // loaded; its unstyled button may initially measure only 16×6 pixels.
+      // Do not mistake that first paint for an invisible Torn PDA header.
+      window.__rwphSidebarMobileCheckTimerV1639=setTimeout(()=>{
+        window.__rwphSidebarMobileCheckTimerV1639=null;
+        const current=document.getElementById('rw-payout-launcher');
+        if(current && rwphShouldShowLauncherOnThisPage())rwphSidebarRestorePdaLauncherV1639(current);
+      },350);
+    }
   }
 
   function cycleLauncherCorner() {
@@ -5064,10 +5116,61 @@
   }
 
   function rwphOwnerAdminSession() {
+    // GM_setValue is persistent across Torn page refreshes and panel re-creation.
+    // The Worker-signed token is still checked on the protected Admin endpoint.
     const session = GM_getValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
     if (!session || typeof session !== "object" || !session.token ||
-        Number(session.expiresAt || 0) <= Date.now() / 1000 + 2) return null;
+        Number(session.expiresAt || 0) <= Date.now() / 1000 + 2) {
+      if (session) GM_setValue(OWNER_ADMIN_SESSION_STORAGE_KEY, null);
+      return null;
+    }
     return session;
+  }
+
+  let rwphOwnerSessionExpiryTimerV1639 = null;
+  function rwphScheduleOwnerSessionExpiryV1639() {
+    if (rwphOwnerSessionExpiryTimerV1639 !== null) clearTimeout(rwphOwnerSessionExpiryTimerV1639);
+    rwphOwnerSessionExpiryTimerV1639 = null;
+    const session = rwphOwnerAdminSession();
+    if (!session) {
+      const root=document.getElementById('rw-payout-helper');
+      const section=rwphFindAdminSection(root);
+      if(section?.dataset?.rwphAdminAuth==='owner')rwphSetAdminToolsVisible(root,false,'Owner verification expired. Press Verify Owner Account again.');
+      return;
+    }
+    const delay = Math.max(0, (Number(session.expiresAt) * 1000) - Date.now() + 100);
+    rwphOwnerSessionExpiryTimerV1639 = setTimeout(() => {
+      if(rwphOwnerAdminSession()){rwphScheduleOwnerSessionExpiryV1639();return;}
+      const root=document.getElementById('rw-payout-helper');
+      const section=rwphFindAdminSection(root);
+      if(section?.dataset?.rwphAdminAuth==='owner')rwphSetAdminToolsVisible(root,false,'Owner verification expired. Press Verify Owner Account again.');
+    },Math.min(delay,2147483647));
+  }
+
+  async function rwphRestoreOwnerVerificationV1639(root) {
+    if(!root || !rwphOwnerAdminSession())return false;
+    if(root.__rwphOwnerRestorePendingV1639)return root.__rwphOwnerRestorePendingV1639;
+    root.__rwphOwnerRestorePendingV1639=(async()=>{
+      try{
+        // A locally saved timestamp cannot unlock Admin. Revalidate the actual
+        // signed 30-minute session against the Worker after each new panel/open.
+        const confirmed=await adminRequest('POST','/api/admin/status','');
+        if(!root.isConnected || !rwphOwnerAdminSession())return false;
+        rwphSetAdminToolsVisible(root,true);
+        const section=rwphFindAdminSection(root);
+        if(section)section.dataset.rwphAdminAuth='owner';
+        const summary=rwphAdminQuery(root,'#rw-admin-status-summary');
+        if(summary)summary.innerHTML=rwphRenderAdminStatusSummary(confirmed);
+        rwphScheduleOwnerSessionExpiryV1639();
+        return true;
+      }catch(error){
+        // Offline or rejected session: no Admin access. Preserve a still
+        // unexpired token on network failures so reopening can retry.
+        if(root.isConnected)rwphSetAdminToolsVisible(root,false,'Verify Owner Account to unlock Admin.');
+        return false;
+      }finally{root.__rwphOwnerRestorePendingV1639=null;}
+    })();
+    return root.__rwphOwnerRestorePendingV1639;
   }
 
   function rwphRememberAdminKey(adminKey) {
@@ -5163,6 +5266,7 @@
       if (ownerSection) ownerSection.dataset.rwphAdminAuth = 'owner';
       const summary = rwphAdminQuery(root, "#rw-admin-status-summary");
       if (summary) summary.innerHTML = rwphRenderAdminStatusSummary(confirmed);
+      rwphScheduleOwnerSessionExpiryV1639();
       rwphToastPanelInfo(status, `Verified Torn owner ${result.name} [${result.tornId}]. Admin tools unlocked.`, "info", "RWPH Admin");
       return result;
     } catch (e) {
@@ -13493,6 +13597,8 @@
     rwphAttachAdvancedSettingHelpButtons();
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Save Admin Key or Verify Owner Account to show the admin tools.");
+    // Restore previously verified Owner after closing/reopening a panel or refreshing Torn.
+    void rwphRestoreOwnerVerificationV1639(panel);
 
     document.getElementById("rw-close").addEventListener("click", closePanel);
 
@@ -14592,6 +14698,8 @@
 
     rwphBindAdminControls(panel);
     rwphSetAdminToolsVisible(panel, false, savedAdminKey ? "Saved admin key found. Click Save Admin Key to verify it and show the admin tools." : "Save Admin Key or Verify Owner Account to show the admin tools.");
+    // Restore previously verified Owner after closing/reopening a panel or refreshing Torn.
+    void rwphRestoreOwnerVerificationV1639(panel);
 
     // Close is already bound before any optional panel setup above.
 
@@ -15265,13 +15373,12 @@
     if(button)button.disabled=true;
     try{
       // Only erase personal settings after the defaults were successfully retrieved.
-      const response=await fetch(PAYWALL_API_BASE+'/api/ui/sidebar-panel-layouts',{cache:'no-store'});
-      if(!response.ok)throw new Error('Could not retrieve the published Admin Default Setup.');
-      const data=await response.json();
-      if(!data?.ok||!data.layouts)throw new Error('The server did not return saved defaults.');
-      const layouts=data.layouts;
-      if(!layouts.pc?.panels?.['rwph-sidebar-workspace'] && !layouts.mobile?.panels?.['rwph-sidebar-workspace'])
-        throw new Error('No Sidebar Admin Default Setup has been published yet.');
+      // Tampermonkey's cross-origin transport is required from Torn pages.
+      // Never discard personal layouts until the Worker returns both device setups.
+      const result=await rwphSidebarRequestPublishedDefaults(true);
+      const layouts=result.layouts;
+      if(!layouts?.pc?.panels?.['rwph-sidebar-workspace'] || !layouts?.mobile?.panels?.['rwph-sidebar-workspace'])
+        throw new Error('Both Sidebar PC and Phone/PDA default setups must exist in MySQL. Deploy the updated Worker.');
       rwphSidebar.defaults=layouts;
       GM_setValue(RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY,JSON.stringify(layouts));
       GM_setValue(RWPH_SIDEBAR_GEOMETRY_KEY,'{}');
@@ -15299,7 +15406,9 @@
         const geom=published[key]||published[id];
         if(geom)rwphApplyPanelGeometry(panel,geom,{normalized:true});
       }
-      rwphShowToast('Published Admin Default Setup restored for all panels on PC and phone/PDA.','success','RWPH Layout');
+      rwphShowToast(result.offline
+        ? 'Layout restored using cached Admin defaults. The Worker was unreachable; please check the deployed backend.'
+        : 'Published Sidebar PC and Phone/PDA layout defaults restored.','success','RWPH Layout');
     }catch(error){
       rwphShowToast(error?.message||'Could not restore published layouts.','warning','RWPH Layout');
     }finally{if(button)button.disabled=false;}
@@ -15369,14 +15478,36 @@
     const g=rwphSidebarGeometryFor(panel.id);
     if(g)rwphSidebarApplyGeometry(panel,g);
   }
+  // One cross-origin request path for both initial layout loading and Reset Layout.
+  // The Worker is authoritative; use the last successfully fetched defaults only
+  // if it cannot be reached, and never overwrite a previously published snapshot.
+  async function rwphSidebarRequestPublishedDefaults(allowCache=false){
+    try{
+      const response=await rwphPublicJsonRequest('GET','/api/ui/sidebar-panel-layouts',null,15000);
+      const layouts=response?.layouts;
+      if(!layouts?.pc?.panels || !layouts?.mobile?.panels)
+        throw new Error('Backend did not return separate PC and Phone/PDA Sidebar defaults.');
+      rwphSidebar.defaults=layouts;
+      GM_setValue(RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY,JSON.stringify(layouts));
+      return {layouts,offline:false,records:response?.records};
+    }catch(error){
+      if(allowCache){
+        let cached=null;
+        try{cached=JSON.parse(GM_getValue(RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY,'null')||'null');}catch(_){}
+        if(cached?.pc?.panels?.['rwph-sidebar-workspace'] && cached?.mobile?.panels?.['rwph-sidebar-workspace']){
+          rwphSidebar.defaults=cached;
+          console.warn('RWPH Sidebar uses cached published layouts:',error?.message||error);
+          return {layouts:cached,offline:true};
+        }
+      }
+      throw new Error(`Could not load the four MySQL Admin Default Setups: ${error?.message||error}. Deploy/update the RWPH Worker.`);
+    }
+  }
   async function rwphSidebarFetchAdminDefaults(){
     if(rwphSidebar.loadingDefaults)return rwphSidebar.loadingDefaults;
     rwphSidebar.loadingDefaults=(async()=>{
-      try{
-        const r=await fetch(PAYWALL_API_BASE+'/api/ui/sidebar-panel-layouts',{cache:'no-store'});
-        if(!r.ok)throw new Error('Layout endpoint unavailable');
-        const data=await r.json();if(data?.ok)rwphSidebar.defaults=data.layouts;
-      }catch(_){try{rwphSidebar.defaults=JSON.parse(GM_getValue(RWPH_SIDEBAR_ADMIN_DEFAULTS_KEY,'{}')||'{}')}catch(_) {}}
+      try{await rwphSidebarRequestPublishedDefaults(true);}
+      catch(error){console.warn('RWPH Sidebar defaults are unavailable:',error?.message||error);}
       const shell=document.getElementById('rwph-sidebar-workspace');
       if(shell && !rwphSidebarReadLocalGeometry(shell.id) && shell.dataset.rwphSidebarFrameUserAdjusted!=='1')rwphSidebarApplyGeometry(shell,rwphSidebarGeometryFor(shell.id));
       for(const id of ['rwph-xanax-send-status','rw-pay-all-panel']){
@@ -16310,9 +16441,10 @@
     const renderSummary=()=>{
       const host=panel.querySelector('#rwph-sidebar-setup-summary');if(!host)return;
       host.textContent=['pc','mobile'].map(d=>{
-        const layout=rwphSidebar.defaults?.[d],when=layout?.updatedAt?new Date(layout.updatedAt).toLocaleString():'Not configured';
-        return (d==='mobile'?'Phone / PDA':'PC')+': '+Object.keys(layout?.panels||{}).length+' physical panels · '+Math.max(0,Object.keys(layout?.panels||{}).length-3)+' wizard pages · '+when;
-      }).join(' | ');
+        const layout=rwphSidebar.defaults?.[d];
+        const when=layout?.adminConfigured===false?'Factory default — Admin has not customised it':layout?.updatedAt?new Date(layout.updatedAt).toLocaleString():'Not configured';
+        return 'Sidebar '+(d==='mobile'?'Phone / PDA':'PC')+': '+Object.keys(layout?.panels||{}).length+' saved entries · '+when;
+      }).join(' | ')+'. Normal RWPH PC and Phone/PDA are stored separately in MySQL.';
     };
     renderSummary();rwphSidebarFetchAdminDefaults().then(renderSummary).catch(()=>{});
     const originalMain=rwphSidebarRectGeometry(shell);
