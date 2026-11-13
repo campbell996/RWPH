@@ -13,7 +13,7 @@
   </a>
 </p>
 
-<p align="center"><strong>For PDA Install right hold-click the download/install button and copy the link url and paste it in the pda remote url when adding a script. </strong></p>
+<p align="center"><strong>For PDA Install click-hold the download/install button and copy the link url and paste it in the pda remote url when adding a script. </strong></p>
 
 <p align="center"><strong>Click Download Here to install RWPH or update your existing version.</strong></p>
 
