@@ -2,7 +2,7 @@
 // @name         Ranked War Payout Helper
 // @namespace    RankedWarPayoutHelper
 // @author       Evil_Panda_420
-// @version      1.1.634
+// @version      1.1.636
 // @description  Server-side locked Torn ranked-war payout helper using its standalone Cloudflare Worker + Aiven MySQL backend.
 // @license      Copyright BackFromTheDead_Gaming Campbell. All Rights Reserved. Personal use only. Redistribution, resale, or modified reposting is not permitted without permission.
 // @match        https://www.torn.com/*
@@ -11345,6 +11345,180 @@
   // during its own click handler. On a phone/PDA that invokes the software
   // keyboard, which also shrinks visualViewport. This guard runs at capture
   // phase *before* Torn's handler and touches message inputs only.
+  // v1.1.636: Visually guide manual Xanax licence payments on Torn Items.
+  // This is one DOM observer + one highlight style, shared by both RWPH editions.
+  // It never clicks any Torn control, enters a value, or submits a payment.
+  function rwphInstallXanaxInventoryGuideV1636() {
+    if (window.__rwphXanaxInventoryGuideV1636 || !/(?:^|\/)item\.php$/i.test(location.pathname)) return;
+    window.__rwphXanaxInventoryGuideV1636 = true;
+    const marker = 'data-rwph-xanax-guide';
+    const highlighted = new Set();
+    let scheduled = false;
+    let lastScrolledItem = null;
+    let lastScrollAt = 0;
+
+    const css = document.createElement('style');
+    css.id = 'rwph-xanax-item-guide-v1636';
+    css.textContent = `
+      body [${marker}]{
+        outline:3px solid var(--rwph-theme-outline,#e9bd4e)!important;
+        outline-offset:2px!important;
+        border-radius:7px!important;
+        box-shadow:0 0 0 2px color-mix(in srgb,var(--rwph-theme-outline,#e9bd4e) 23%,transparent),
+                   0 0 14px color-mix(in srgb,var(--rwph-theme-outline,#e9bd4e) 55%,transparent)!important;
+        scroll-margin-top:110px!important;
+        scroll-margin-bottom:95px!important;
+        animation:rwphXanaxGuidePulseV1636 1.5s ease-in-out infinite!important;
+      }
+      @keyframes rwphXanaxGuidePulseV1636{
+        0%,100%{outline-offset:2px;}
+        50%{outline-offset:5px;}
+      }
+      @media(prefers-reduced-motion:reduce){body [${marker}]{animation:none!important;}}
+    `;
+    (document.head || document.documentElement).appendChild(css);
+
+    const active = () => {
+      if (sessionStorage.getItem('rwph_xanax_helper_closed') === '1') return false;
+      return shouldRunXanaxPaymentAutofill() && !rwphDefaultSetupWizardActive();
+    };
+    const onTornInventory = el => !!el && el.isConnected && !el.closest?.(
+      '#rwph-xanax-send-status,#rw-payout-helper,#rwph-sidebar-workspace,#rw-pay-all-panel,'+
+      '[id*="chat" i],[class*="chat" i],[id*="messenger" i],[class*="messenger" i],'+
+      '[id*="settings" i],[class*="settings" i]');
+    const visible = el => {
+      if (!(el instanceof Element) || !onTornInventory(el)) return false;
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 3 && rect.height > 3;
+    };
+    const label = el => [
+      el?.getAttribute?.('aria-label'),el?.getAttribute?.('title'),
+      el?.getAttribute?.('data-label'),el?.innerText,el?.textContent
+    ].filter(Boolean).map(v => String(v).replace(/\s+/g,' ').trim()).filter(Boolean);
+    const controls = scope => Array.from((scope || document).querySelectorAll(
+      'button,a,[role="button"],input[type="submit"],input[type="button"],label[for],[role="tab"]'
+    )).filter(visible);
+    const namedControl = (scope, pattern) => controls(scope).find(el => label(el).some(v => pattern.test(v)));
+    const reset = () => {
+      for (const el of highlighted) if (el.isConnected) el.removeAttribute(marker);
+      highlighted.clear();
+    };
+    const mark = (el, step) => {
+      if (!visible(el)) return false;
+      el.setAttribute(marker,step);
+      highlighted.add(el);
+      return true;
+    };
+    const drugsTab = () => {
+      const explicit = Array.from(document.querySelectorAll(
+        'a[href="#drugs-items"],a[href$="#drugs-items"],[role="tab"][aria-controls*="drug" i],'+
+        '[data-category="drugs"],[data-tab="drugs"]'
+      )).find(visible);
+      if (explicit) return explicit;
+      return controls(document).find(el =>
+        el.closest('nav,[role="tablist"],[class*="categor" i],[class*="tabs" i]') &&
+        label(el).some(v => /^drugs(?:\s*\(\d+\))?$/i.test(v))) || null;
+    };
+    const xanaxRow = () => {
+      const explicit = Array.from(document.querySelectorAll(
+        'li[data-item="206"],[data-item-id="206"],[data-itemid="206"],'+
+        'li[data-id="206"],[data-item="206"]'
+      )).find(visible);
+      if (explicit) return explicit;
+      // Torn may change the item-id attribute; prefer a compact card with an exact Xanax label.
+      const regions = document.querySelectorAll(
+        '#drugs-items li,[id*="drugs-items"] li,[class*="drug" i] li,'+
+        '[class*="item" i] li,[class*="inventory" i] [class*="item" i]'
+      );
+      return Array.from(regions).filter(visible).find(el =>
+        el.getBoundingClientRect().height < 600 &&
+        (el.querySelector('[title="Xanax"],[alt="Xanax"],[aria-label="Xanax"]') ||
+          Array.from(el.querySelectorAll('b,strong,h3,h4,span')).some(node =>
+            /^xanax$/i.test(String(node.textContent || '').trim())))) || null;
+    };
+    const drugsSelected = (tab, item) => {
+      if (item && visible(item)) return true;
+      if ((location.hash || '').toLowerCase().includes('drugs-items')) return true;
+      return !!tab && (tab.getAttribute('aria-selected') === 'true' ||
+        /(?:^|\s)(?:active|selected|current)(?:\s|$)/i.test(tab.className || '') ||
+        /(?:^|\s)(?:active|selected|current)(?:\s|$)/i.test(tab.parentElement?.className || ''));
+    };
+    const scrollToXanax = item => {
+      if (!item || item === lastScrolledItem || Date.now()-lastScrollAt < 2200) return;
+      lastScrolledItem = item;
+      lastScrollAt = Date.now();
+      try {
+        item.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+          block:'center',inline:'nearest'});
+      } catch (_) { try { item.scrollIntoView(); } catch (_) {} }
+    };
+    const sendArea = addMessage => {
+      if (!addMessage) return null;
+      let scope = addMessage.parentElement;
+      // Smallest actual send form/dialog containing both the action and its inputs.
+      for (let depth = 0;scope && depth < 7;scope=scope.parentElement,depth++) {
+        if (!onTornInventory(scope)) break;
+        if (scope.matches('form,[role="dialog"],[class*="modal" i],[class*="send" i]') &&
+            (scope.querySelector('input,textarea,[contenteditable="true"],[role="textbox"]')))
+          return scope;
+      }
+      return addMessage.closest('[role="dialog"],form,[class*="modal" i]') || addMessage.parentElement;
+    };
+    const scan = () => {
+      scheduled = false;
+      reset();
+      if (!active()) return;
+      const tab = drugsTab();
+      const item = xanaxRow();
+      if (!drugsSelected(tab,item)) { mark(tab,'drugs');return; }
+      if (item) scrollToXanax(item);
+
+      // Send-item buttons only come from Torn. The RWPH wizard, chat and other
+      // forms are excluded; no control is ever programmatically activated.
+      const addMessage = namedControl(document,/^(?:\+\s*)?add(?:\s+a)?\s+message(?:\s*\+)?$/i);
+      const area = sendArea(addMessage);
+      const messageField = area ? Array.from(area.querySelectorAll(
+        'textarea,input[placeholder*="message" i],[contenteditable="true"],[role="textbox"]'
+      )).find(visible) : null;
+      const sendButton = area ? namedControl(area,/^(?:send|send item|send xanax|send now|confirm send)$/i) : null;
+      if (addMessage || messageField) {
+        if (addMessage) mark(addMessage,'add-message');
+        if (messageField) mark(messageField,'message-field');
+        if (sendButton) mark(sendButton,'send');
+        return;
+      }
+      const sendThisItem = namedControl(document,/^send this item$/i);
+      if (sendThisItem && (item && (item.contains(sendThisItem) ||
+          sendThisItem.closest('[role="dialog"],[class*="item" i],[class*="modal" i]')))) {
+        mark(sendThisItem,'send-this-item');
+        return;
+      }
+      mark(item,'xanax');
+    };
+    const schedule = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(scan,120);
+    };
+    const attach = () => {
+      if (!document.body) { setTimeout(attach,100);return; }
+      const observer = new MutationObserver(schedule);
+      observer.observe(document.body,{
+        childList:true,subtree:true,attributes:true,
+        attributeFilter:['class','style','aria-selected','hidden']
+      });
+      document.addEventListener('click',schedule,true);
+      window.addEventListener('hashchange',schedule);
+      window.addEventListener('focus',schedule);
+      // Torn changes some inventory panels without child-list mutations.
+      window.setInterval(scan,900);
+      schedule();
+    };
+    attach();
+  }
+
   function rwphInstallXanaxAddMessageNoKeyboardV1606() {
     if (!rwphIsTouchPhoneOrPda() || window.__rwphXanaxAddMessageGuardV1606) return;
     window.__rwphXanaxAddMessageGuardV1606 = true;
@@ -15578,6 +15752,7 @@
   rwphEnsureCalculationPanelStylesV1509();
   rwphInstallThreeColourThemeObserverV1529();
   rwphInstallStableViewportGuardV1606();
+  rwphInstallXanaxInventoryGuideV1636();
   rwphInstallXanaxAddMessageNoKeyboardV1606();
   if (!rwphPaymentsOnlyTab) setTimeout(rwphRestoreResultsLoadingPanelAfterRefresh, 450);
 
